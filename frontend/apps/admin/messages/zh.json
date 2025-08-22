@@ -13,7 +13,7 @@
     "actions": ""
   },
   "login": {
-    "title": "登录 mailess",
+    "title": "登录 mailez",
     "description": "输入邮箱和密码",
     "email": "邮箱",
     "password": "密码",

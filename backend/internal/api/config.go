@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 
-	"mailess/backend/internal/models"
+	"mailez/backend/internal/models"
 )
 
 func (h *Handler) registerConfig(r fiber.Router, mw fiber.Handler) {

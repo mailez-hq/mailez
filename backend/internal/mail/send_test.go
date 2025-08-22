@@ -44,3 +44,10 @@ func TestBuildMessageMultipartAlternative(t *testing.T) {
 		t.Errorf("multipart boundary not closed:\n%s", body)
 	}
 }
+
+func TestBuildMessageCustomFrom(t *testing.T) {
+	msg := buildMessage("team@x.test", "b@x.test", "hi", "hello", "")
+	if !strings.Contains(msg, "From: team@x.test\r\n") {
+		t.Errorf("message must carry the selected From header:\n%s", msg)
+	}
+}

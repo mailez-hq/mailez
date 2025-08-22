@@ -6,8 +6,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"mailess/backend/internal/crypto"
-	"mailess/backend/internal/models"
+	"mailez/backend/internal/crypto"
+	"mailez/backend/internal/models"
 )
 
 func (h *Handler) registerFetches(r fiber.Router, mw fiber.Handler) {

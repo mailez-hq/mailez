@@ -15,9 +15,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 
-	"mailess/backend/internal/auth"
-	"mailess/backend/internal/config"
-	"mailess/backend/internal/models"
+	"mailez/backend/internal/auth"
+	"mailez/backend/internal/config"
+	"mailez/backend/internal/models"
 )
 
 func newUserCreateHarness(t *testing.T) (*Handler, *fiber.App) {
@@ -35,7 +35,7 @@ func newUserCreateHarness(t *testing.T) (*Handler, *fiber.App) {
 		t.Fatalf("migrate: %v", err)
 	}
 	cfg := config.Config{SecretKey: "test-secret"}
-	mgr := auth.NewManager(db, auth.NewMemoryStore(), "mailess_session", time.Hour)
+	mgr := auth.NewManager(db, auth.NewMemoryStore(), "mailez_session", time.Hour)
 	h := New(db, mgr, cfg)
 	app := fiber.New()
 	// Act as a global admin; role enforcement is covered elsewhere.

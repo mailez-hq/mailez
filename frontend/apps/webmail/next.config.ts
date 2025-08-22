@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
-const API_TARGET = process.env.API_TARGET || "http://localhost:8081";
+// Local dev talks to the backend on 8080 (same port the backend listens on
+// inside compose); container deployments override this with API_TARGET.
+const API_TARGET = process.env.API_TARGET || "http://localhost:8080";
 
 const nextConfig: NextConfig = {
   async rewrites() {

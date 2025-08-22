@@ -12,7 +12,9 @@ import (
 // Send delivers a message via the submission port using the temp token auth.
 // When html is non-empty the body is sent as multipart/alternative so clients
 // receive both the plain-text and the rich-text representation.
-func (c *Client) Send(email, token, to, subject, text, html string) error {
+// Send delivers a message via the submission port using the temp token auth.
+// from is the envelope/From sender; email is the authenticated account.
+func (c *Client) Send(email, token, from, to, subject, text, html string) error {
 	host := c.SMTPAddr
 	serverHost := host
 	if i := strings.LastIndex(host, ":"); i >= 0 {
@@ -25,14 +27,20 @@ func (c *Client) Send(email, token, to, subject, text, html string) error {
 	}
 	defer conn.Close()
 
-	if err := conn.StartTLS(&tls.Config{InsecureSkipVerify: true, ServerName: serverHost}); err != nil {
-		return fmt.Errorf("smtp starttls: %w", err)
+	tlsErr := conn.StartTLS(&tls.Config{InsecureSkipVerify: true, ServerName: serverHost})
+	var auth smtp.Auth
+	if tlsErr == nil {
+		auth = smtp.PlainAuth("", email, token, serverHost)
+	} else {
+		// TLS_FLAVOR=notls deployments accept plaintext on the internal
+		// submission port; net/smtp refuses PlainAuth over plaintext, so use
+		// the explicit AUTH PLAIN form.
+		auth = NewPlainAuth(email, token)
 	}
-	auth := smtp.PlainAuth("", email, token, serverHost)
 	if err := conn.Auth(auth); err != nil {
 		return fmt.Errorf("smtp auth: %w", err)
 	}
-	if err := conn.Mail(email); err != nil {
+	if err := conn.Mail(from); err != nil {
 		return fmt.Errorf("smtp mail: %w", err)
 	}
 	if err := conn.Rcpt(to); err != nil {
@@ -42,7 +50,7 @@ func (c *Client) Send(email, token, to, subject, text, html string) error {
 	if err != nil {
 		return fmt.Errorf("smtp data: %w", err)
 	}
-	msg := buildMessage(email, to, subject, text, html)
+	msg := buildMessage(from, to, subject, text, html)
 	if _, err := wc.Write([]byte(msg)); err != nil {
 		return fmt.Errorf("smtp write: %w", err)
 	}
@@ -87,7 +95,7 @@ func writePart(b *strings.Builder, boundary, contentType, body string) {
 func newBoundary() string {
 	b := make([]byte, 12)
 	if _, err := rand.Read(b); err != nil {
-		return "mailess"
+		return "mailez"
 	}
 	return hex.EncodeToString(b)
 }

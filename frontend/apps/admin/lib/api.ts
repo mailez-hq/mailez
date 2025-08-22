@@ -20,7 +20,13 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error((body as { error?: string }).error || res.statusText);
   }
   if (res.status === 204) return undefined as T;
-  return res.json();
+  const text = await res.text();
+  if (!text) return undefined as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return undefined as T;
+  }
 }
 
 export const apiPost = <T,>(path: string, body: unknown) =>

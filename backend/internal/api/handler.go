@@ -4,11 +4,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 
-	"mailess/backend/internal/ai"
-	"mailess/backend/internal/auth"
-	"mailess/backend/internal/config"
-	"mailess/backend/internal/mail"
-	"mailess/backend/internal/models"
+	"mailez/backend/internal/ai"
+	"mailez/backend/internal/auth"
+	"mailez/backend/internal/config"
+	"mailez/backend/internal/mail"
+	"mailez/backend/internal/models"
 )
 
 // Handler serves the management REST API v1.
@@ -25,7 +25,7 @@ func New(db *gorm.DB, authMgr *auth.Manager, cfg config.Config) *Handler {
 		DB:   db,
 		Auth: authMgr,
 		Cfg:  cfg,
-		Mail: mail.New(cfg.MailImapAddr, cfg.MailSmtpAddr),
+		Mail: mail.New(cfg.MailImapAddr, cfg.MailSmtpAddr, cfg.MailSieveAddr),
 		AI:   ai.New(cfg),
 	}
 }
@@ -42,6 +42,7 @@ func (h *Handler) Register(r fiber.Router) {
 	h.registerContacts(r)
 	h.registerAnonmail(r)
 	h.registerMail(r)
+	h.registerSieve(r)
 	h.registerAI(r)
 
 	h.registerDomains(r, h.requireGlobalAdmin)

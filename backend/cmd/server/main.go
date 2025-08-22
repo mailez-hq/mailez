@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"mailess/backend/internal/config"
-	"mailess/backend/internal/server"
+	"mailez/backend/internal/config"
+	"mailez/backend/internal/server"
 )
 
 func main() {

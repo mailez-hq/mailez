@@ -28,8 +28,8 @@ func dnsServer() string {
 		return cfg.Servers[0] + ":" + cfg.Port
 	}
 	// Fall back to a public resolver when no resolv.conf is available.
-	if os.Getenv("MAILESS_DNS") != "" {
-		return os.Getenv("MAILESS_DNS")
+	if os.Getenv("MAILEZ_DNS") != "" {
+		return os.Getenv("MAILEZ_DNS")
 	}
 	return "8.8.8.8:53"
 }

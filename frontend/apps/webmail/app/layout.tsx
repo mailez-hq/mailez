@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { PreferencesProvider } from "@/components/preferences-provider";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { themeBootstrapScript } from "@/lib/preferences";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "mailess · Webmail",
-  description: "mailess webmail",
+  title: "mailez Webmail",
+  description: "mailez webmail — mail easy",
 };
 
 // Supported locales; the language lives in the NEXT_LOCALE cookie only and the
@@ -31,11 +34,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const messages = (await import(`../messages/${locale}.json`)).default;
 
   return (
-    <html lang={locale} className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body className="min-h-screen bg-zinc-50 font-sans dark:bg-zinc-950 antialiased">
-        <Providers locale={locale} messages={messages}>
-          {children}
-        </Providers>
+    <html lang={locale} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+      </head>
+      <body
+        className={`min-h-screen bg-background font-sans text-foreground antialiased ${geistSans.variable} ${geistMono.variable}`}
+      >
+        <PreferencesProvider>
+          <Providers locale={locale} messages={messages}>
+            {children}
+          </Providers>
+        </PreferencesProvider>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
