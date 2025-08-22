@@ -48,9 +48,10 @@ func (u *User) Destination() string {
 }
 
 // ReplyActive reports whether the auto-reply is currently active.
-func (u *User) ReplyActive(now time.Time) bool {
+func (u *User) ReplyActive() bool {
 	if !u.ReplyEnabled {
 		return false
 	}
+	now := time.Now()
 	return !now.Before(u.ReplyStartdate) && !now.After(u.ReplyEnddate)
 }
