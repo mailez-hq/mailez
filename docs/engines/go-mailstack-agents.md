@@ -1,6 +1,6 @@
 # 工程：Go 重写邮件栈容器代理（去 Python）
 
-> 状态：**待办 / 未开始** · 优先级：中（功能稳定后推进）
+> 状态：**已立项，M1 待启动**（2026-08-23 用户决定前置） · 优先级：高
 
 ## 背景与目标
 
@@ -28,6 +28,36 @@ Python：每个容器 `CMD /start.py`，依赖 vendor 进来的 `podop`（内部
 | base（共享） | `socrate` 库 | `set_env`/`conf.jinja`/`drop_privs_to`/`system.py` |
 | base（共享） | `podop` 库 | unix socket 代理：legacy IMAP/legacy MTA 查询 → 后端 `/internal/*` HTTP |
 
+## Python 链的坑（代码事实）
+
+逐行读 `start.py` / `socrate` / `podop` 后，这层 Python 的问题不是"语言慢"，
+而是**工程性缺陷**，Go 重写不止是换语言，是把这些坑一次性填掉：
+
+1. **子进程无人监督**：legacy MTA / legacy IMAP 用 `multiprocessing.Process` 起 podop
+   后就没有任何守护逻辑——podop 一旦崩溃，legacy MTA/IMAP stack 照跑，但认证、
+   别名、配额查询全部静默失败，故障靠用户发现。
+2. **SIGTERM 处理粗暴**：`system.py` 收到 SIGTERM 直接 `sys.exit(143)`，子进程
+   （nginx/legacy MTA/IMAP stack）收不到信号，队列、索引可能来不及落盘；exit 143 还
+   会让 Docker 显示"非正常退出"。
+3. **`os.system()` 大量 shell 字符串**：`chown`、`postconf -e`、`flock`、`killall`
+   全是拼接字符串交给 shell，无错误检查、无引号安全，一行写错整个启动失败。
+4. **日志用正则过滤**：`LogFilter` 用正则吞掉"噪音"行（legacy MTA 连接断开、
+   nginx 解析失败），真出问题时这些被吞的行恰恰是线索——为了"干净"牺牲可观测性。
+5. **Jinja + 全量 env 渲染**：整个 `os.environ` 灌进模板，无类型、无校验；
+   `TLS_FLAVOR` 拼错要到 nginx 起不来才知道。配置错误全部推迟到运行时。
+6. **启动死等无退避**：rspamd `while True: sleep(1)` 死等后端，letsencrypt
+   `sleep(5)` 后每 24h 循环——没有超时上限、没有熔断，依赖方挂了就无限刷日志。
+7. **运行时脆弱（已踩过的坑）**：CRLF 破坏 shebang、90+ 个 pip 依赖
+   （cryptography 等重量级编译包）、venv 体积、pip 源网络问题——整条链的任何
+   一环断裂，镜像就构建不出来。
+8. **动态代码执行**：oletools `exec(olefy.read())` 直接执行外部脚本且未降权
+   （root 运行）——这是 RCE 级隐患，noinet 网络只能防外联，防不了内部篡改。
+9. **证书链验证 300 行 Python**：`config.py` 内嵌 ISRG 根证书做链校验/PIN
+   检查，Python 标准库做这事又长又绕，Go 的 `crypto/x509` 几行就能完成。
+10. **权限处理粗糙**：降权是一次性 `setuid/setgid`；legacy MTA 为了读 `.netrc`
+    直接 `chmod /root/ 0755`——把 root 目录放开给低权限用户，不干净。
+11. **零单测**：配置生成全靠起容器验证，改一行逻辑要等整条链跑完。
+
 ## 架构设计
 
 ```
@@ -46,10 +76,29 @@ Python：每个容器 `CMD /start.py`，依赖 vendor 进来的 `podop`（内部
 生成配置），配置内容可控、可审计；podop 协议按 vendored 源码复刻查询格式
 （`L<table>\t<key>\t<args>`）。
 
+## Go 重写的设计原则（利用 Go 优势）
+
+| Python 现状 | Go 方案 | 收益 |
+|---|---|---|
+| shebang + venv + pip | 静态二进制（`CGO_ENABLED=0`）+ `go:embed` 模板 | 镜像体积降 90%+；无解释器/依赖/行尾问题；天然跨架构（arm64 信创直接 buildx） |
+| `os.system()` shell 字符串 | `os/exec` 直接执行 + 显式错误处理 | 无注入面；失败即报错停止，不静默 |
+| `multiprocessing.Process` 裸起子进程 | 内置 supervisor：`signal.NotifyContext` + 子进程重启策略 | SIGTERM 优雅转发、等待落盘；子进程崩溃自动拉起 |
+| `LogFilter` 正则吞日志 | `slog` 结构化日志，按 level 降噪 + metrics | 不再丢线索；可观测性保留 |
+| Jinja 全量 env 无校验 | env → 强类型 `Config` struct + 校验（枚举/端口/必填） | 配置错误启动即报，行号定位 |
+| 运行时才暴露模板错 | 模板输出 golden file 单测 + 启动前 `nginx -t` / `postconf -n` / `legacy IMAP -t` | 改配置先过测试再发版 |
+| 死等依赖 | 指数退避 + 超时上限；`/healthz` 聚合子进程状态 | 就绪语义清晰，依赖挂了快速失败 |
+| certbot 子进程 + 300 行链验证 | `go-acme/lego` 客户端 + `crypto/x509` 标准库 | 一个二进制管 ACME + 链裁剪 + DANE 摘要，内嵌过期监控 |
+| `exec()` 动态代码 | 静态代码路径，无动态执行 | 消除 RCE 面 |
+| `chmod /root 0755` | 最小权限：capabilities/指定目录 | 安全边界干净 |
+
+额外一条：配置生成器支持**原子写入**（临时文件 + rename），启动失败不破坏
+现有配置，配合 compose 的 restart 可安全重试。
+
 ## 里程碑
 
-- [ ] **M1 骨架**：Go agent 框架 + 模板/配置生成接口 + podop socket 代理 +
-      降权 + 健康检查；用一个组件（先 nginx）端到端验证
+- [ ] **M1 unbound agent（Pilot）**：最薄组件，验证框架（env→Config→生成
+      conf→exec→健康检查），顺带实现 resolver fallback（unbound 挂了退
+      Docker DNS）
 - [ ] **M2 nginx agent**：替换 `start.py` + `config.py`（TLS 策略、证书路径、
       协议代理、认证转发）
 - [ ] **M3 legacy IMAP agent**：passdb/userdb/quota/sieve 关联、podop socket
