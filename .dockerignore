@@ -1,0 +1,16 @@
+# Keep the repo-root build context (mailstack-agent multi-stage builds) small.
+.git
+.pnpm-store/
+node_modules/
+**/node_modules/
+.next/
+out/
+dist/
+deploy/data/
+deploy/certs/
+deploy/*.env
+*.db
+*.db-journal
+*.log
+backend/.gocache-*/
+**/__pycache__/
