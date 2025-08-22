@@ -1,0 +1,63 @@
+package mail
+
+import (
+	"crypto/tls"
+	"fmt"
+	"net/smtp"
+	"strings"
+)
+
+// Send delivers a message via the submission port using the temp token auth.
+func (c *Client) Send(email, token, to, subject, body string) error {
+	host := c.SMTPAddr
+	serverHost := host
+	if i := strings.LastIndex(host, ":"); i >= 0 {
+		serverHost = host[:i]
+	}
+
+	conn, err := smtp.Dial(host)
+	if err != nil {
+		return fmt.Errorf("smtp dial: %w", err)
+	}
+	defer conn.Close()
+
+	if err := conn.StartTLS(&tls.Config{InsecureSkipVerify: true, ServerName: serverHost}); err != nil {
+		return fmt.Errorf("smtp starttls: %w", err)
+	}
+	auth := smtp.PlainAuth("", email, token, serverHost)
+	if err := conn.Auth(auth); err != nil {
+		return fmt.Errorf("smtp auth: %w", err)
+	}
+	if err := conn.Mail(email); err != nil {
+		return fmt.Errorf("smtp mail: %w", err)
+	}
+	if err := conn.Rcpt(to); err != nil {
+		return fmt.Errorf("smtp rcpt: %w", err)
+	}
+	wc, err := conn.Data()
+	if err != nil {
+		return fmt.Errorf("smtp data: %w", err)
+	}
+	msg := buildMessage(email, to, subject, body)
+	if _, err := wc.Write([]byte(msg)); err != nil {
+		return fmt.Errorf("smtp write: %w", err)
+	}
+	if err := wc.Close(); err != nil {
+		return fmt.Errorf("smtp close: %w", err)
+	}
+	return conn.Quit()
+}
+
+func buildMessage(from, to, subject, body string) string {
+	var b strings.Builder
+	b.WriteString("From: " + from + "\r\n")
+	b.WriteString("To: " + to + "\r\n")
+	b.WriteString("Subject: " + subject + "\r\n")
+	b.WriteString("MIME-Version: 1.0\r\n")
+	b.WriteString("Content-Type: text/plain; charset=UTF-8\r\n")
+	b.WriteString("Content-Transfer-Encoding: 8bit\r\n")
+	b.WriteString("\r\n")
+	b.WriteString(body)
+	b.WriteString("\r\n")
+	return b.String()
+}

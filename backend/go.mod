@@ -3,6 +3,7 @@ module mailess/backend
 go 1.26.3
 
 require (
+	github.com/emersion/go-imap v1.2.1
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gofiber/fiber/v2 v2.52.15
 	github.com/redis/go-redis/v9 v9.22.0
@@ -14,6 +15,7 @@ require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21 // indirect
 	github.com/glebarez/go-sqlite v1.21.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect

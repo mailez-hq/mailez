@@ -20,6 +20,8 @@ type Config struct {
 	Subnet            string
 	Domain            string
 	Hostname          string
+	MailImapAddr      string
+	MailSmtpAddr      string
 }
 
 // Load reads configuration from the environment.
@@ -37,6 +39,8 @@ func Load() Config {
 		Subnet:            env("SUBNET", "192.168.203.0/24"),
 		Domain:            env("DOMAIN", "example.com"),
 		Hostname:          env("HOSTNAME", "localhost"),
+		MailImapAddr:      env("MAIL_IMAP_ADDR", "front:10143"),
+		MailSmtpAddr:      env("MAIL_SMTP_ADDR", "front:10025"),
 	}
 }
 
