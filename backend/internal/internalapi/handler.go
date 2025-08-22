@@ -29,4 +29,5 @@ func (h *Handler) Register(r fiber.Router) {
 	r.Get("/auth/email", h.authEmail)
 	h.registerPostfix(r)
 	h.registerDovecot(r)
+	h.registerAutoconfig(r)
 }
