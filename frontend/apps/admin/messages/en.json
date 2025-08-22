@@ -13,7 +13,7 @@
     "actions": ""
   },
   "login": {
-    "title": "Sign in to mailess",
+    "title": "Sign in to mailez",
     "description": "Enter your email and password",
     "email": "Email",
     "password": "Password",

@@ -21,6 +21,9 @@ export type MailMessage = {
   date: string;
   flags: string[];
   has_attachment: boolean;
+  thread_id?: string;
+  thread_count?: number;
+  thread_latest?: boolean;
   text_body?: string;
   html_body?: string;
   attachments?: MailAttachment[];
@@ -38,7 +41,15 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error((body as { error?: string }).error || res.statusText);
   }
   if (res.status === 204) return undefined as T;
-  return res.json();
+  // Operation endpoints may answer 200 with an empty/plain body (e.g. "OK");
+  // tolerate that instead of failing JSON parsing.
+  const text = await res.text();
+  if (!text) return undefined as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return undefined as T;
+  }
 }
 
 export const apiPost = <T,>(path: string, body: unknown) =>
@@ -82,14 +93,59 @@ export const mailSearch = (folder: string, q: string) =>
 export const mailMessage = (folder: string, uid: number) =>
   api<MailMessage>(`/mail/message?folder=${encodeURIComponent(folder)}&uid=${uid}`);
 
-export const mailSend = (to: string, subject: string, body: string, html?: string) =>
-  apiPost("/mail/send", { to, subject, body, html });
+export type MailThread = {
+  thread_id: string;
+  subject: string;
+  messages: MailMessage[];
+};
+
+export const mailThread = (folder: string, threadId: string) =>
+  api<MailThread>(
+    `/mail/thread?folder=${encodeURIComponent(folder)}&thread_id=${encodeURIComponent(threadId)}`,
+  );
+
+export const mailSend = (to: string, subject: string, body: string, html?: string, from?: string) =>
+  apiPost("/mail/send", { to, subject, body, html, from });
 
 export const mailFlag = (folder: string, uid: number, flag: string, value: boolean) =>
   apiPost("/mail/flag", { folder, uid, flag, value });
 
 export const mailDelete = (folder: string, uid: number) =>
   apiPost("/mail/delete", { folder, uid });
+
+export const mailMove = (folder: string, uids: number[], destination: string) =>
+  apiPost("/mail/move", { folder, uids, destination });
+
+export type MailIdentity = {
+  email: string;
+  name: string;
+  dkim_enabled: boolean;
+};
+
+export const mailIdentities = () => api<MailIdentity[]>("/mail/identities");
+
+// Sieve filter rules (ManageSieve)
+export type SieveScript = {
+  name: string;
+  active: boolean;
+};
+
+export const sieveList = () => api<SieveScript[]>("/sieve");
+
+export const sieveGet = (name: string) =>
+  api<{ name: string; content: string }>(`/sieve/${encodeURIComponent(name)}`);
+
+export const sievePut = (name: string, content: string, activate: boolean) =>
+  api(`/sieve/${encodeURIComponent(name)}`, {
+    method: "PUT",
+    body: JSON.stringify({ content, activate }),
+  });
+
+export const sieveDelete = (name: string) =>
+  api(`/sieve/${encodeURIComponent(name)}`, { method: "DELETE" });
+
+export const sieveActivate = (name: string) =>
+  apiPost(`/sieve/${encodeURIComponent(name)}/activate`, {});
 
 export type AIStatus = { enabled: boolean; provider: string };
 
@@ -100,6 +156,18 @@ export const aiSummarize = (text: string) =>
 
 export const aiDraft = (context: string) =>
   api<{ draft: string }>("/ai/draft", { method: "POST", body: JSON.stringify({ context }) });
+
+export const aiPrioritize = (messages: { uid: number; subject: string; from: string }[]) =>
+  api<{ scores: Record<string, number> }>("/ai/prioritize", {
+    method: "POST",
+    body: JSON.stringify({ messages }),
+  });
+
+export const aiSearch = (query: string) =>
+  api<{ query: string; messages: MailMessage[] }>("/ai/search", {
+    method: "POST",
+    body: JSON.stringify({ query }),
+  });
 
 // Self-service settings (GET /me / PUT /me/settings / PUT /me/password)
 export type MeSettings = Me & {

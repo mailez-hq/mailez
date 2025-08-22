@@ -1,4 +1,4 @@
-# mailess deployment scripts
+# mailez deployment scripts
 
 ## `go run ./cmd/e2e` — end-to-end mail path smoke test
 
@@ -11,10 +11,10 @@ Prerequisites:
 
 - The stack is up: `cd deploy && docker compose up -d --build`
 - The backend has been seeded once (creates `admin@example.com` /
-  `MailuDemo2026!`). Run the seed from a container or locally:
+  `MailezDemo2026!`). Run the seed from a container or locally:
 
   ```sh
-  cd backend && go run ./cmd/seed   # uses ./mailess.db next to it
+  cd backend && go run ./cmd/seed   # uses ./mailez.db next to it
   ```
 
   or point `DB_DSN` at the deployed database.

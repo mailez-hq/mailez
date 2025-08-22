@@ -3,7 +3,7 @@ package api
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"mailess/backend/internal/models"
+	"mailez/backend/internal/models"
 )
 
 func (h *Handler) registerAudit(r fiber.Router, mw fiber.Handler) {

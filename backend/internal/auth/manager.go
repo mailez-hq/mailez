@@ -8,8 +8,8 @@ import (
 
 	"gorm.io/gorm"
 
-	"mailess/backend/internal/models"
-	"mailess/backend/internal/password"
+	"mailez/backend/internal/models"
+	"mailez/backend/internal/password"
 )
 
 // Manager coordinates sessions, login and temporary tokens.
@@ -21,8 +21,8 @@ type Manager struct {
 	TokenTTL    time.Duration
 }
 
-const sessionKeyPrefix = "mailess:session:"
-const tokenKeyPrefix = "mailess:token:"
+const sessionKeyPrefix = "mailez:session:"
+const tokenKeyPrefix = "mailez:token:"
 
 // NewManager wires the auth manager. store may be nil (disabled sessions).
 func NewManager(db *gorm.DB, store Store, sessionName string, ttl time.Duration) *Manager {

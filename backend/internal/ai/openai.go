@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"mailess/backend/internal/config"
+	"mailez/backend/internal/config"
 )
 
 // OpenAI is an OpenAI-compatible chat completions provider. Any server that

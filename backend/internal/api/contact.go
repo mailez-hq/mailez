@@ -5,7 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"mailess/backend/internal/models"
+	"mailez/backend/internal/models"
 )
 
 // registerContacts mounts self-service address book endpoints. A user only

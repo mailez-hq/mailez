@@ -3,7 +3,7 @@ package api
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"mailess/backend/internal/password"
+	"mailez/backend/internal/password"
 )
 
 func (h *Handler) registerMe(r fiber.Router) {

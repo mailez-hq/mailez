@@ -88,29 +88,29 @@ export function ComposeEditor({ value, onChange, placeholder }: {
       size="sm"
       title={title}
       onClick={onClick}
-      className={cn("h-7 w-7 p-0", active && "bg-zinc-200 dark:bg-zinc-700")}
+      className={cn("h-7 w-7 p-0", active && "bg-accent text-accent-foreground")}
     >
       {icon}
     </Button>
   );
 
   return (
-    <div className="overflow-hidden rounded-md border border-zinc-300 dark:border-zinc-700">
-      <div className="flex flex-wrap items-center gap-0.5 border-b bg-zinc-50 px-2 py-1 dark:bg-zinc-900">
+    <div className="overflow-hidden rounded-md border border-border">
+      <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/40 px-2 py-1">
         {toolBtn(state.bold, () => editor.chain().focus().toggleBold().run(), <Bold className="h-3.5 w-3.5" />)}
         {toolBtn(state.italic, () => editor.chain().focus().toggleItalic().run(), <Italic className="h-3.5 w-3.5" />)}
         {toolBtn(state.underline, () => editor.chain().focus().toggleUnderline().run(), <Underline className="h-3.5 w-3.5" />)}
         {toolBtn(state.strike, () => editor.chain().focus().toggleStrike().run(), <Strikethrough className="h-3.5 w-3.5" />)}
-        <span className="mx-1 h-4 w-px bg-zinc-200 dark:bg-zinc-700" />
+        <span className="mx-1 h-4 w-px bg-border" />
         {toolBtn(state.h2, () => editor.chain().focus().toggleHeading({ level: 2 }).run(), <Heading2 className="h-3.5 w-3.5" />)}
         {toolBtn(state.h3, () => editor.chain().focus().toggleHeading({ level: 3 }).run(), <Heading3 className="h-3.5 w-3.5" />)}
-        <span className="mx-1 h-4 w-px bg-zinc-200 dark:bg-zinc-700" />
+        <span className="mx-1 h-4 w-px bg-border" />
         {toolBtn(state.bullet, () => editor.chain().focus().toggleBulletList().run(), <List className="h-3.5 w-3.5" />)}
         {toolBtn(state.ordered, () => editor.chain().focus().toggleOrderedList().run(), <ListOrdered className="h-3.5 w-3.5" />)}
         {toolBtn(state.quote, () => editor.chain().focus().toggleBlockquote().run(), <Quote className="h-3.5 w-3.5" />)}
         {toolBtn(state.code, () => editor.chain().focus().toggleCodeBlock().run(), <Code2 className="h-3.5 w-3.5" />)}
         {toolBtn(state.link, toggleLink, <LinkIcon className="h-3.5 w-3.5" />)}
-        <span className="mx-1 h-4 w-px bg-zinc-200 dark:bg-zinc-700" />
+        <span className="mx-1 h-4 w-px bg-border" />
         {toolBtn(false, () => editor.chain().focus().undo().run(), <Undo2 className="h-3.5 w-3.5" />)}
         {toolBtn(false, () => editor.chain().focus().redo().run(), <Redo2 className="h-3.5 w-3.5" />)}
       </div>

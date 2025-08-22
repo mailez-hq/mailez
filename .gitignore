@@ -5,6 +5,7 @@ backend/*.exe
 
 # Node
 node_modules/
+.pnpm-store/
 .next/
 out/
 dist/

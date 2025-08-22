@@ -19,9 +19,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 
-	"mailess/backend/internal/auth"
-	"mailess/backend/internal/config"
-	"mailess/backend/internal/models"
+	"mailez/backend/internal/auth"
+	"mailez/backend/internal/config"
+	"mailez/backend/internal/models"
 )
 
 func newDkimTestHandler(t *testing.T) (*Handler, *fiber.App) {
@@ -39,7 +39,7 @@ func newDkimTestHandler(t *testing.T) (*Handler, *fiber.App) {
 		t.Fatalf("migrate: %v", err)
 	}
 	cfg := config.Config{SecretKey: "test-secret", DkimSelector: "dkim"}
-	mgr := auth.NewManager(db, auth.NewMemoryStore(), "mailess_session", time.Hour)
+	mgr := auth.NewManager(db, auth.NewMemoryStore(), "mailez_session", time.Hour)
 	h := New(db, mgr, cfg)
 	app := fiber.New()
 	// Register only the DKIM routes with a pass-through middleware; role/auth

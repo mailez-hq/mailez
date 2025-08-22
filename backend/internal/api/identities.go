@@ -1,0 +1,75 @@
+package api
+
+import (
+	"strings"
+
+	"github.com/gofiber/fiber/v2"
+
+	"mailez/backend/internal/models"
+)
+
+// MailIdentity is a From address the current user may pick when composing.
+type MailIdentity struct {
+	Email       string `json:"email"`
+	Name        string `json:"name"`
+	DkimEnabled bool   `json:"dkim_enabled"`
+}
+
+// mailIdentities lists the addresses the current user may send from: their own
+// address plus every non-disabled alias that delivers to them (or that they
+// own as an anonymous alias). DKIM health is reported per hosting domain.
+func (h *Handler) mailIdentities(c *fiber.Ctx) error {
+	user := currentUser(c)
+
+	dkim := func(domainName string) bool {
+		var d models.Domain
+		if err := h.DB.Select("dkim_key").First(&d, "name = ?", domainName).Error; err != nil {
+			return false
+		}
+		return d.DkimKey != ""
+	}
+
+	ids := []MailIdentity{{
+		Email:       user.Email,
+		Name:        user.DisplayedName,
+		DkimEnabled: dkim(user.DomainName),
+	}}
+	seen := map[string]bool{strings.ToLower(user.Email): true}
+
+	var aliases []models.Alias
+	if err := h.DB.
+		Where("disabled = ?", false).
+		Where("destination LIKE ? OR owner_email = ?", "%"+user.Email+"%", user.Email).
+		Find(&aliases).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	for _, a := range aliases {
+		key := strings.ToLower(a.Email)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		ids = append(ids, MailIdentity{
+			Email:       a.Email,
+			DkimEnabled: dkim(a.DomainName),
+		})
+	}
+	return c.JSON(ids)
+}
+
+// userMaySendAs reports whether from is the user's own address or one of their
+// aliases (the same rule the reference implementation applies for spoofing protection).
+func (h *Handler) userMaySendAs(user *models.User, from string) bool {
+	from = strings.ToLower(strings.TrimSpace(from))
+	if from == "" || strings.EqualFold(from, user.Email) {
+		return true
+	}
+	var count int64
+	if err := h.DB.Model(&models.Alias{}).
+		Where("lower(email) = ? AND disabled = ? AND (destination LIKE ? OR owner_email = ?)",
+			from, false, "%"+user.Email+"%", user.Email).
+		Count(&count).Error; err != nil {
+		return false
+	}
+	return count > 0
+}
