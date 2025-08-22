@@ -16,8 +16,10 @@ func main() {
 	switch os.Args[1] {
 	case "unbound":
 		err = runUnbound()
+	case "nginx":
+		err = runNginx()
 	case "version":
-		fmt.Println("mailez mailstack-agent (unbound pilot)")
+		fmt.Println("mailez mailstack-agent (unbound + nginx)")
 		return
 	default:
 		usage()
@@ -31,5 +33,5 @@ func main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: mailstack-agent <component>")
-	fmt.Fprintln(os.Stderr, "components: unbound")
+	fmt.Fprintln(os.Stderr, "components: unbound nginx")
 }
