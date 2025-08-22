@@ -163,11 +163,12 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 		To      string `json:"to"`
 		Subject string `json:"subject"`
 		Body    string `json:"body"`
+		HTML    string `json:"html"`
 	}
 	if err := c.BodyParser(&in); err != nil || in.To == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "to is required"})
 	}
-	if err := h.Mail.Send(user.Email, token, in.To, in.Subject, in.Body); err != nil {
+	if err := h.Mail.Send(user.Email, token, in.To, in.Subject, in.Body, in.HTML); err != nil {
 		return c.Status(502).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(fiber.StatusOK)

@@ -27,6 +27,7 @@
     "to": "收件人",
     "subject": "主题",
     "body": "正文",
+    "bodyPlaceholder": "在此输入邮件内容...",
     "send": "发送",
     "noTextBody": "（无纯文本正文）",
     "htmlVersion": "HTML 版本：",

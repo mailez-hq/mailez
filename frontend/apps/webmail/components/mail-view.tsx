@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { ComposeEditor } from "@/components/compose-editor";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MailSettings } from "@/components/mail-settings";
 import { MailContacts } from "@/components/mail-contacts";
@@ -17,6 +17,37 @@ import {
   mailDelete, mailFlag,
   mailFolders, mailMessage, mailMessages, mailSearch, mailSend, type MailMessage, type Me,
 } from "@/lib/api";
+
+// textToHtml converts a plain-text draft (reply quoting, AI drafts) into
+// sanitized HTML for the rich-text editor: "> " lines become blockquotes,
+// everything else becomes paragraphs.
+function textToHtml(text: string): string {
+  const esc = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const out: string[] = [];
+  let inQuote = false;
+  const closeQuote = () => {
+    if (inQuote) {
+      out.push("</blockquote>");
+      inQuote = false;
+    }
+  };
+  for (const raw of text.replace(/\r\n/g, "\n").split("\n")) {
+    const m = raw.match(/^>\s?(.*)$/);
+    if (m) {
+      if (!inQuote) {
+        out.push("<blockquote>");
+        inQuote = true;
+      }
+      out.push(`<p>${esc(m[1]) || "<br>"}</p>`);
+    } else {
+      closeQuote();
+      out.push(`<p>${esc(raw) || "<br>"}</p>`);
+    }
+  }
+  closeQuote();
+  return out.join("");
+}
 
 export function MailView({ me }: { me: Me }) {
   const t = useTranslations("mail");
@@ -43,6 +74,7 @@ export function MailView({ me }: { me: Me }) {
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [bodyText, setBodyText] = useState("");
 
   const loadFolders = useCallback(async () => {
     try {
@@ -177,7 +209,8 @@ export function MailView({ me }: { me: Me }) {
   function openCompose(to: string, subject: string, body: string) {
     setTo(to);
     setSubject(subject);
-    setBody(body);
+    setBody(textToHtml(body));
+    setBodyText(body);
     setComposeOpen(true);
   }
 
@@ -220,7 +253,8 @@ export function MailView({ me }: { me: Me }) {
     setError("");
     try {
       const res = await aiDraft(detail.text_body || detail.html_body || "");
-      setBody(res.draft);
+      setBody(textToHtml(res.draft));
+      setBodyText(res.draft);
     } catch (e) {
       setError(e instanceof Error ? e.message : "ai draft failed");
     } finally {
@@ -267,9 +301,9 @@ export function MailView({ me }: { me: Me }) {
     e.preventDefault();
     setError("");
     try {
-      await mailSend(to, subject, body);
+      await mailSend(to, subject, bodyText, body);
       setComposeOpen(false);
-      setTo(""); setSubject(""); setBody("");
+      setTo(""); setSubject(""); setBody(""); setBodyText("");
       loadMessages(folder);
     } catch (err) {
       setError(err instanceof Error ? err.message : "send failed");
@@ -505,7 +539,11 @@ export function MailView({ me }: { me: Me }) {
             </div>
             <div className="space-y-1">
               <Label>{t("body")}</Label>
-              <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={8} placeholder="Write your message..." />
+              <ComposeEditor
+                value={body}
+                onChange={(html, text) => { setBody(html); setBodyText(text); }}
+                placeholder={t("bodyPlaceholder")}
+              />
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <DialogFooter>
