@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 
+	"mailess/backend/internal/ai"
 	"mailess/backend/internal/auth"
 	"mailess/backend/internal/config"
 	"mailess/backend/internal/mail"
@@ -16,6 +17,7 @@ type Handler struct {
 	Auth *auth.Manager
 	Cfg  config.Config
 	Mail *mail.Client
+	AI   *ai.Manager
 }
 
 func New(db *gorm.DB, authMgr *auth.Manager, cfg config.Config) *Handler {
@@ -24,6 +26,7 @@ func New(db *gorm.DB, authMgr *auth.Manager, cfg config.Config) *Handler {
 		Auth: authMgr,
 		Cfg:  cfg,
 		Mail: mail.New(cfg.MailImapAddr, cfg.MailSmtpAddr),
+		AI:   ai.New(cfg),
 	}
 }
 
@@ -34,6 +37,7 @@ func (h *Handler) Register(r fiber.Router) {
 	h.registerUsers(r)
 	h.registerAliases(r)
 	h.registerMail(r)
+	h.registerAI(r)
 }
 
 // requireAuth allows any authenticated (non-anonymous) session.
