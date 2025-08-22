@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile-upstream:1.4.3
 
 # build static assets (intermediate)
-FROM base as static
+ARG BASE_IMAGE=mailez/base:local
+FROM ${BASE_IMAGE} as static
 
 COPY static/ /static/
 
@@ -11,7 +12,7 @@ RUN set -euxo pipefail \
 
 
 # nginx image
-FROM base
+FROM ${BASE_IMAGE}
 
 ARG VERSION
 LABEL version=$VERSION
