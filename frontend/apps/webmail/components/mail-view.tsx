@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   aiStatus, aiSummarize,
+  mailDelete, mailFlag,
   mailFolders, mailMessage, mailMessages, mailSend, type MailMessage, type Me,
 } from "@/lib/api";
 
@@ -18,6 +19,7 @@ export function MailView({ me }: { me: Me }) {
   const [folders, setFolders] = useState<string[]>([]);
   const [folder, setFolder] = useState("INBOX");
   const [messages, setMessages] = useState<MailMessage[]>([]);
+  const [cursor, setCursor] = useState(0);
   const [selected, setSelected] = useState<MailMessage | null>(null);
   const [detail, setDetail] = useState<MailMessage | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -60,12 +62,58 @@ export function MailView({ me }: { me: Me }) {
     setSelected(m);
     setDetail(null);
     setSummary("");
+    if (!m.flags.includes("\\Seen")) {
+      mailFlag(folder, m.uid, "\\Seen", true).catch(() => {});
+      m.flags.push("\\Seen");
+    }
     try {
       setDetail(await mailMessage(folder, m.uid));
     } catch (e) {
       setError(e instanceof Error ? e.message : "load message failed");
     }
   }
+
+  async function removeMessage(m: MailMessage) {
+    try {
+      await mailDelete(folder, m.uid);
+      setMessages((ms) => ms.filter((x) => x.uid !== m.uid));
+      if (selected?.uid === m.uid) {
+        setSelected(null);
+        setDetail(null);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "delete failed");
+    }
+  }
+
+  function reply() {
+    if (!detail) return;
+    setTo(detail.from[0]?.email || "");
+    setSubject(detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`);
+    setBody("");
+    setComposeOpen(true);
+  }
+
+  // keyboard navigation: j/k move, Enter open, r reply, # delete
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (messages.length === 0) return;
+      if (e.key === "j") {
+        setCursor((c) => Math.min(c + 1, messages.length - 1));
+      } else if (e.key === "k") {
+        setCursor((c) => Math.max(c - 1, 0));
+      } else if (e.key === "Enter") {
+        openMessage(messages[cursor]);
+      } else if (e.key === "r") {
+        openMessage(messages[cursor]).then(() => setTimeout(reply, 50));
+      } else if (e.key === "#") {
+        removeMessage(messages[cursor]);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   async function summarize() {
     if (!detail) return;
@@ -129,25 +177,44 @@ export function MailView({ me }: { me: Me }) {
       <div className="flex w-96 shrink-0 flex-col border-r">
         <div className="border-b px-3 py-2 text-sm font-medium text-zinc-500">{folder}</div>
         <ScrollArea className="flex-1">
-          {messages.map((m) => (
-            <button
-              key={m.uid}
-              onClick={() => openMessage(m)}
-              className={`flex w-full flex-col items-start gap-0.5 border-b px-3 py-2.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${
-                selected?.uid === m.uid ? "bg-zinc-100 dark:bg-zinc-800" : ""
-              }`}
-            >
-              <div className="flex w-full items-baseline justify-between">
-                <span className="truncate text-sm font-medium">
-                  {m.from[0]?.name || m.from[0]?.email || "unknown"}
+          {messages.map((m, i) => {
+            const unread = !m.flags.includes("\\Seen");
+            return (
+              <div
+                key={m.uid}
+                onClick={() => openMessage(m)}
+                className={`flex cursor-pointer flex-col items-start gap-0.5 border-b px-3 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${
+                  selected?.uid === m.uid
+                    ? "bg-zinc-100 dark:bg-zinc-800"
+                    : cursor === i
+                      ? "bg-zinc-50 dark:bg-zinc-800/40"
+                      : ""
+                }`}
+              >
+                <div className="flex w-full items-baseline justify-between">
+                  <span className={`truncate ${unread ? "font-semibold" : "font-normal"}`}>
+                    {m.from[0]?.name || m.from[0]?.email || "unknown"}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="text-xs text-zinc-400">{fmtDate(m.date)}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeMessage(m);
+                      }}
+                      className="text-xs text-zinc-400 hover:text-red-500"
+                      title="Delete (#)"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                </div>
+                <span className={`truncate text-sm ${unread ? "font-medium text-zinc-900 dark:text-zinc-100" : "text-zinc-600 dark:text-zinc-400"}`}>
+                  {m.subject || "(no subject)"}
                 </span>
-                <span className="shrink-0 text-xs text-zinc-400">{fmtDate(m.date)}</span>
               </div>
-              <span className="truncate text-sm text-zinc-700 dark:text-zinc-300">
-                {m.subject || "(no subject)"}
-              </span>
-            </button>
-          ))}
+            );
+          })}
           {messages.length === 0 && (
             <p className="p-4 text-sm text-zinc-400">No messages</p>
           )}

@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { api, apiDelete, apiPost } from "@/lib/api";
+import { api, apiDelete, apiPost, apiPut } from "@/lib/api";
 import type { User } from "@/lib/types";
 
 const fmtBytes = (n: number) => `${Math.round(n / 1e6) / 1000} GB`;
@@ -23,6 +23,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<User | null>(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,18 +42,36 @@ export default function UsersPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  function openEdit(u: User) {
+    setEditTarget(u);
+    setEmail(u.email);
+    setDisplayedName(u.displayed_name);
+    setQuota(u.quota_bytes);
+    setGlobalAdmin(u.global_admin);
+    setEnabled(u.enabled);
+    setPassword("");
+    setOpen(true);
+  }
+
   async function create(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await apiPost("/users", {
-        email, password, displayed_name: displayedName, quota_bytes: quota,
-        global_admin: globalAdmin, enabled,
-      });
+      if (editTarget) {
+        await apiPut(`/users/${encodeURIComponent(editTarget.email)}`, {
+          password, quota_bytes: quota, global_admin: globalAdmin, enabled, displayed_name: displayedName,
+        });
+      } else {
+        await apiPost("/users", {
+          email, password, displayed_name: displayedName, quota_bytes: quota,
+          global_admin: globalAdmin, enabled,
+        });
+      }
       setOpen(false);
+      setEditTarget(null);
       setEmail(""); setPassword("");
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "create failed");
+      setError(err instanceof Error ? err.message : "save failed");
     }
   }
 
@@ -102,7 +121,9 @@ export default function UsersPage() {
                 <Switch checked={enabled} onCheckedChange={setEnabled} />
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
-              <DialogFooter><Button type="submit">Create</Button></DialogFooter>
+              <DialogFooter>
+                <Button type="submit">{editTarget ? "Save" : "Create"}</Button>
+              </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
@@ -131,7 +152,10 @@ export default function UsersPage() {
                   <TableCell>{u.global_admin ? "Admin" : "User"}</TableCell>
                   <TableCell>{u.enabled ? "Enabled" : "Disabled"}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => remove(u)}>Delete</Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(u)}>Edit</Button>
+                      <Button variant="ghost" size="sm" onClick={() => remove(u)}>Delete</Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
