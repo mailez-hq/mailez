@@ -20,16 +20,25 @@ import (
 
 // Message is the API-facing representation of a mail.
 type Message struct {
-	UID           uint32    `json:"uid"`
-	Seq           uint32    `json:"seq"`
-	Subject       string    `json:"subject"`
-	From          []Address `json:"from"`
-	To            []Address `json:"to"`
-	Date          time.Time `json:"date"`
-	Flags         []string  `json:"flags"`
-	HasAttachment bool      `json:"has_attachment"`
-	TextBody      string    `json:"text_body,omitempty"`
-	HTMLBody      string    `json:"html_body,omitempty"`
+	UID           uint32       `json:"uid"`
+	Seq           uint32       `json:"seq"`
+	Subject       string       `json:"subject"`
+	From          []Address    `json:"from"`
+	To            []Address    `json:"to"`
+	Date          time.Time    `json:"date"`
+	Flags         []string     `json:"flags"`
+	HasAttachment bool         `json:"has_attachment"`
+	TextBody      string       `json:"text_body,omitempty"`
+	HTMLBody      string       `json:"html_body,omitempty"`
+	Attachments   []Attachment `json:"attachments,omitempty"`
+}
+
+// Attachment is one file embedded in a message, base64-encoded for download.
+type Attachment struct {
+	Filename    string `json:"filename"`
+	ContentType string `json:"content_type"`
+	Size        int    `json:"size"`
+	Data        string `json:"data,omitempty"`
 }
 
 // Address is a mail address with an optional display name.
@@ -96,28 +105,33 @@ func (c *Client) ListFolders(email, token string) ([]string, error) {
 // PageSize bounds the number of messages returned per folder view.
 const PageSize = 50
 
-// ListMessages returns the most recent messages of a folder (envelope only).
-func (c *Client) ListMessages(email, token, folder string) ([]Message, error) {
+// ListMessages returns a page of the most recent messages of a folder (envelope
+// only). Page is zero-based; the total message count is returned alongside.
+func (c *Client) ListMessages(email, token, folder string, page int) ([]Message, int, error) {
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer cli.Logout()
 
 	mbox, err := cli.Select(folder, true)
 	if err != nil {
-		return nil, fmt.Errorf("imap select %q: %w", folder, err)
+		return nil, 0, fmt.Errorf("imap select %q: %w", folder, err)
 	}
-	if mbox.Messages == 0 {
-		return []Message{}, nil
+	if mbox.Messages == 0 || page < 0 {
+		return []Message{}, int(mbox.Messages), nil
 	}
 
-	from := uint32(1)
-	if mbox.Messages > PageSize {
-		from = mbox.Messages - PageSize + 1
+	end := mbox.Messages - uint32(page)*PageSize
+	if end == 0 {
+		return []Message{}, int(mbox.Messages), nil
+	}
+	start := uint32(1)
+	if end > PageSize {
+		start = end - PageSize + 1
 	}
 	seqset := new(imap.SeqSet)
-	seqset.AddRange(from, mbox.Messages)
+	seqset.AddRange(start, end)
 
 	messages := make(chan *imap.Message, 10)
 	done := make(chan error, 1)
@@ -130,9 +144,53 @@ func (c *Client) ListMessages(email, token, folder string) ([]Message, error) {
 		out = append(out, envelopeToMessage(msg))
 	}
 	if err := <-done; err != nil {
-		return nil, fmt.Errorf("imap fetch: %w", err)
+		return nil, 0, fmt.Errorf("imap fetch: %w", err)
 	}
 	// newest first
+	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
+		out[i], out[j] = out[j], out[i]
+	}
+	return out, int(mbox.Messages), nil
+}
+
+// SearchMessages returns messages matching a free-text query (subject, from,
+// body) in a folder, newest first.
+func (c *Client) SearchMessages(email, token, folder, query string) ([]Message, error) {
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return nil, err
+	}
+	defer cli.Logout()
+
+	if _, err := cli.Select(folder, true); err != nil {
+		return nil, fmt.Errorf("imap select %q: %w", folder, err)
+	}
+	criteria := imap.NewSearchCriteria()
+	criteria.Text = []string{query}
+	uids, err := cli.Search(criteria)
+	if err != nil {
+		return nil, fmt.Errorf("imap search: %w", err)
+	}
+	if len(uids) == 0 {
+		return []Message{}, nil
+	}
+	seqset := new(imap.SeqSet)
+	for _, uid := range uids {
+		seqset.AddNum(uid)
+	}
+	messages := make(chan *imap.Message, 10)
+	done := make(chan error, 1)
+	go func() {
+		done <- cli.UidFetch(seqset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure}, messages)
+	}()
+
+	var out []Message
+	for msg := range messages {
+		out = append(out, envelopeToMessage(msg))
+	}
+	if err := <-done; err != nil {
+		return nil, fmt.Errorf("imap uidfetch: %w", err)
+	}
 	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
 		out[i], out[j] = out[j], out[i]
 	}
@@ -173,9 +231,10 @@ func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, 
 
 	out := envelopeToMessage(msg)
 	if body := msg.GetBody(section); body != nil {
-		if textBody, htmlBody, err := extractText(body); err == nil {
+		if textBody, htmlBody, attachments, err := extractBody(body); err == nil {
 			out.TextBody = textBody
 			out.HTMLBody = htmlBody
+			out.Attachments = attachments
 		}
 	}
 	return &out, nil
@@ -222,11 +281,12 @@ func hasAttachments(bs *imap.BodyStructure) bool {
 	return bs.Disposition == "attachment"
 }
 
-// extractText walks a MIME body and returns the plain-text and HTML parts.
-func extractText(r io.Reader) (text, html string, err error) {
+// extractBody walks a MIME body and returns the plain-text part, the HTML part
+// and any attachments (decoded and base64-encoded for transport).
+func extractBody(r io.Reader) (text, html string, attachments []Attachment, err error) {
 	msg, err := mail.ReadMessage(r)
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 	mt, params, err := mime.ParseMediaType(msg.Header.Get("Content-Type"))
 	if err != nil {
@@ -246,11 +306,21 @@ func extractText(r io.Reader) (text, html string, err error) {
 				break
 			}
 			partType, _, _ := mime.ParseMediaType(part.Header.Get("Content-Type"))
+			disposition, dparams, _ := mime.ParseMediaType(part.Header.Get("Content-Disposition"))
+			filename := dparams["filename"]
 			b, _ := io.ReadAll(part)
-			if strings.HasPrefix(partType, "text/plain") && text == "" {
-				text = decodeBody(b, part.Header.Get("Content-Transfer-Encoding"))
+			decoded := []byte(decodeBody(b, part.Header.Get("Content-Transfer-Encoding")))
+			if disposition == "attachment" || filename != "" {
+				attachments = append(attachments, Attachment{
+					Filename:    filename,
+					ContentType: partType,
+					Size:        len(decoded),
+					Data:        base64.StdEncoding.EncodeToString(decoded),
+				})
+			} else if strings.HasPrefix(partType, "text/plain") && text == "" {
+				text = string(decoded)
 			} else if strings.HasPrefix(partType, "text/html") && html == "" {
-				html = decodeBody(b, part.Header.Get("Content-Transfer-Encoding"))
+				html = string(decoded)
 			}
 		}
 	} else {
@@ -261,7 +331,7 @@ func extractText(r io.Reader) (text, html string, err error) {
 			html = decodeBody(b, encoding)
 		}
 	}
-	return text, html, nil
+	return text, html, attachments, nil
 }
 
 func decodeBody(b []byte, encoding string) string {

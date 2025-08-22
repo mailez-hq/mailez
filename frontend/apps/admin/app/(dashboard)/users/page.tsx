@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Card, CardContent, CardHeader, CardTitle,
@@ -19,7 +20,11 @@ import type { User } from "@/lib/types";
 
 const fmtBytes = (n: number) => `${Math.round(n / 1e6) / 1000} GB`;
 
+// backend serializes time.Time as RFC3339; date inputs need yyyy-mm-dd
+const toDateInput = (s: string) => (s && !s.startsWith("0001") ? s.slice(0, 10) : "");
+
 export default function UsersPage() {
+  const t = useTranslations("users");
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
@@ -31,6 +36,20 @@ export default function UsersPage() {
   const [quota, setQuota] = useState(1000000000);
   const [globalAdmin, setGlobalAdmin] = useState(false);
   const [enabled, setEnabled] = useState(true);
+  const [enableImap, setEnableImap] = useState(true);
+  const [enablePop, setEnablePop] = useState(true);
+  const [allowSpoofing, setAllowSpoofing] = useState(false);
+  const [forwardEnabled, setForwardEnabled] = useState(false);
+  const [forwardDestination, setForwardDestination] = useState("");
+  const [forwardKeep, setForwardKeep] = useState(true);
+  const [replyEnabled, setReplyEnabled] = useState(false);
+  const [replySubject, setReplySubject] = useState("");
+  const [replyBody, setReplyBody] = useState("");
+  const [replyStartdate, setReplyStartdate] = useState("");
+  const [replyEnddate, setReplyEnddate] = useState("");
+  const [spamEnabled, setSpamEnabled] = useState(true);
+  const [spamMarkAsRead, setSpamMarkAsRead] = useState(true);
+  const [spamThreshold, setSpamThreshold] = useState(80);
 
   const load = useCallback(async () => {
     try {
@@ -49,26 +68,56 @@ export default function UsersPage() {
     setQuota(u.quota_bytes);
     setGlobalAdmin(u.global_admin);
     setEnabled(u.enabled);
+    setEnableImap(u.enable_imap);
+    setEnablePop(u.enable_pop);
+    setAllowSpoofing(u.allow_spoofing);
+    setForwardEnabled(u.forward_enabled);
+    setForwardDestination(u.forward_destination);
+    setForwardKeep(u.forward_keep);
+    setReplyEnabled(u.reply_enabled);
+    setReplySubject(u.reply_subject);
+    setReplyBody(u.reply_body);
+    setReplyStartdate(toDateInput(u.reply_startdate));
+    setReplyEnddate(toDateInput(u.reply_enddate));
+    setSpamEnabled(u.spam_enabled);
+    setSpamMarkAsRead(u.spam_mark_as_read);
+    setSpamThreshold(u.spam_threshold);
     setPassword("");
     setOpen(true);
   }
 
-  async function create(e: React.FormEvent) {
+  async function save(e: React.FormEvent) {
     e.preventDefault();
     try {
+      const body = {
+        password,
+        quota_bytes: quota,
+        global_admin: globalAdmin,
+        enabled,
+        displayed_name: displayedName,
+        enable_imap: enableImap,
+        enable_pop: enablePop,
+        allow_spoofing: allowSpoofing,
+        forward_enabled: forwardEnabled,
+        forward_destination: forwardDestination,
+        forward_keep: forwardKeep,
+        reply_enabled: replyEnabled,
+        reply_subject: replySubject,
+        reply_body: replyBody,
+        reply_startdate: replyStartdate,
+        reply_enddate: replyEnddate,
+        spam_enabled: spamEnabled,
+        spam_mark_as_read: spamMarkAsRead,
+        spam_threshold: spamThreshold,
+      };
       if (editTarget) {
-        await apiPut(`/users/${encodeURIComponent(editTarget.email)}`, {
-          password, quota_bytes: quota, global_admin: globalAdmin, enabled, displayed_name: displayedName,
-        });
+        await apiPut(`/users/${encodeURIComponent(editTarget.email)}`, body);
       } else {
-        await apiPost("/users", {
-          email, password, displayed_name: displayedName, quota_bytes: quota,
-          global_admin: globalAdmin, enabled,
-        });
+        await apiPost("/users", { email, ...body });
       }
       setOpen(false);
       setEditTarget(null);
-      setEmail(""); setPassword("");
+      setEmail(""); setPassword(""); setDisplayedName("");
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "save failed");
@@ -76,7 +125,7 @@ export default function UsersPage() {
   }
 
   async function remove(u: User) {
-    if (!confirm(`Delete user ${u.email}?`)) return;
+    if (!confirm(t("deleteConfirm", { email: u.email }))) return;
     try {
       await apiDelete(`/users/${encodeURIComponent(u.email)}`);
       load();
@@ -88,41 +137,141 @@ export default function UsersPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Users</h1>
+        <h1 className="text-2xl font-semibold">{t("title")}</h1>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>New user</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <form onSubmit={create} className="space-y-4">
-              <DialogHeader><DialogTitle>New user</DialogTitle></DialogHeader>
+          <DialogTrigger render={<Button>{t("new")}</Button>} />
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+            <form onSubmit={save} className="space-y-4">
+              <DialogHeader>
+                <DialogTitle>{editTarget ? t("edit") : t("new")}</DialogTitle>
+              </DialogHeader>
               <div className="space-y-2">
-                <Label>Email</Label>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" required />
+                <Label>{t("email")}</Label>
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" required disabled={!!editTarget} />
               </div>
               <div className="space-y-2">
-                <Label>Password</Label>
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <Label>{editTarget ? t("keepPassword") : t("password")}</Label>
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required={!editTarget} />
               </div>
               <div className="space-y-2">
-                <Label>Displayed name</Label>
+                <Label>{t("displayedName")}</Label>
                 <Input value={displayedName} onChange={(e) => setDisplayedName(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Quota (bytes)</Label>
+                <Label>{t("quota")}</Label>
                 <Input type="number" value={quota} onChange={(e) => setQuota(Number(e.target.value))} />
               </div>
               <div className="flex items-center justify-between">
-                <Label>Global admin</Label>
+                <Label>{t("globalAdmin")}</Label>
                 <Switch checked={globalAdmin} onCheckedChange={setGlobalAdmin} />
               </div>
               <div className="flex items-center justify-between">
-                <Label>Enabled</Label>
+                <Label>{t("enabled")}</Label>
                 <Switch checked={enabled} onCheckedChange={setEnabled} />
               </div>
+
+              <div className="border-t pt-4">
+                <h2 className="mb-2 text-sm font-medium">{t("services")}</h2>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>{t("enableImap")}</Label>
+                    <Switch checked={enableImap} onCheckedChange={setEnableImap} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label>{t("enablePop")}</Label>
+                    <Switch checked={enablePop} onCheckedChange={setEnablePop} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label>{t("allowSpoofing")}</Label>
+                    <Switch checked={allowSpoofing} onCheckedChange={setAllowSpoofing} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h2 className="mb-2 text-sm font-medium">{t("forwarding")}</h2>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>{t("forwardMail")}</Label>
+                    <Switch checked={forwardEnabled} onCheckedChange={setForwardEnabled} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("forwardTo")}</Label>
+                    <Input
+                      value={forwardDestination}
+                      onChange={(e) => setForwardDestination(e.target.value)}
+                      disabled={!forwardEnabled}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label>{t("forwardKeep")}</Label>
+                    <Switch checked={forwardKeep} onCheckedChange={setForwardKeep} disabled={!forwardEnabled} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h2 className="mb-2 text-sm font-medium">{t("autoReply")}</h2>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>{t("enableAutoReply")}</Label>
+                    <Switch checked={replyEnabled} onCheckedChange={setReplyEnabled} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("replySubject")}</Label>
+                    <Input value={replySubject} onChange={(e) => setReplySubject(e.target.value)} disabled={!replyEnabled} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("replyBody")}</Label>
+                    <textarea
+                      value={replyBody}
+                      onChange={(e) => setReplyBody(e.target.value)}
+                      disabled={!replyEnabled}
+                      className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>{t("startDate")}</Label>
+                      <Input type="date" value={replyStartdate} onChange={(e) => setReplyStartdate(e.target.value)} disabled={!replyEnabled} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{t("endDate")}</Label>
+                      <Input type="date" value={replyEnddate} onChange={(e) => setReplyEnddate(e.target.value)} disabled={!replyEnabled} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h2 className="mb-2 text-sm font-medium">{t("spamFilter")}</h2>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>{t("enableSpam")}</Label>
+                    <Switch checked={spamEnabled} onCheckedChange={setSpamEnabled} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label>{t("markAsRead")}</Label>
+                    <Switch checked={spamMarkAsRead} onCheckedChange={setSpamMarkAsRead} disabled={!spamEnabled} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("threshold")}</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={spamThreshold}
+                      onChange={(e) => setSpamThreshold(Number(e.target.value))}
+                      disabled={!spamEnabled}
+                    />
+                  </div>
+                </div>
+              </div>
+
               {error && <p className="text-sm text-red-600">{error}</p>}
               <DialogFooter>
-                <Button type="submit">{editTarget ? "Save" : "Create"}</Button>
+                <Button type="submit">{editTarget ? t("common:edit") : t("common:create")}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -130,17 +279,17 @@ export default function UsersPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Mail accounts</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{t("accounts")}</CardTitle></CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Quota</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-20" />
+                <TableHead>{t("email")}</TableHead>
+                <TableHead>{t("name")}</TableHead>
+                <TableHead>{t("quota")}</TableHead>
+                <TableHead>{t("role")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
+                <TableHead className="w-28" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -149,19 +298,19 @@ export default function UsersPage() {
                   <TableCell className="font-medium">{u.email}</TableCell>
                   <TableCell>{u.displayed_name}</TableCell>
                   <TableCell>{fmtBytes(u.quota_bytes)}</TableCell>
-                  <TableCell>{u.global_admin ? "Admin" : "User"}</TableCell>
-                  <TableCell>{u.enabled ? "Enabled" : "Disabled"}</TableCell>
+                  <TableCell>{u.global_admin ? t("admin") : t("user")}</TableCell>
+                  <TableCell>{u.enabled ? t("enabled") : t("disabled")}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(u)}>Edit</Button>
-                      <Button variant="ghost" size="sm" onClick={() => remove(u)}>Delete</Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(u)}>{t("common:edit")}</Button>
+                      <Button variant="ghost" size="sm" onClick={() => remove(u)}>{t("common:delete")}</Button>
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
               {users.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-zinc-400">No users</TableCell>
+                  <TableCell colSpan={6} className="text-center text-zinc-400">{t("common:noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>

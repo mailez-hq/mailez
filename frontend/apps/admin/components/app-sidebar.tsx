@@ -2,19 +2,30 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { logout } from "@/lib/api";
 import type { Me } from "@/lib/api";
 
-const nav = [
-  { href: "/domains", label: "Domains" },
-  { href: "/users", label: "Users" },
-  { href: "/aliases", label: "Aliases" },
+const navItems = [
+  { href: "/domains", key: "domains", roles: ["admin"] },
+  { href: "/users", key: "users", roles: ["admin", "manager"] },
+  { href: "/aliases", key: "aliases", roles: ["admin", "manager"] },
+  { href: "/relays", key: "relays", roles: ["admin"] },
+  { href: "/fetches", key: "fetches", roles: ["admin"] },
+  { href: "/tokens", key: "tokens", roles: ["admin"] },
+  { href: "/anon-aliases", key: "anonAliases", roles: ["admin", "manager", "user"] },
+  { href: "/audit", key: "audit", roles: ["admin"] },
+  { href: "/config", key: "config", roles: ["admin"] },
 ];
 
 export function AppSidebar({ me }: { me: Me }) {
+  const t = useTranslations("nav");
   const pathname = usePathname();
   const router = useRouter();
+  const role = me.global_admin ? "admin" : me.manager ? "manager" : "user";
+  const nav = navItems.filter((item) => item.roles.includes(role));
 
   async function onLogout() {
     await logout();
@@ -24,9 +35,12 @@ export function AppSidebar({ me }: { me: Me }) {
 
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r bg-white dark:bg-zinc-900">
-      <Link href="/domains" className="flex items-center gap-2 px-4 py-4">
-        <span className="text-lg font-semibold">mailess</span>
-      </Link>
+      <div className="flex items-center justify-between px-4 py-4">
+        <Link href={nav[0]?.href || "/"} className="text-lg font-semibold">
+          mailess
+        </Link>
+        <LocaleSwitcher />
+      </div>
       <nav className="flex flex-1 flex-col gap-1 px-2 py-2">
         {nav.map((item) => {
           const active = pathname.startsWith(item.href);
@@ -40,7 +54,7 @@ export function AppSidebar({ me }: { me: Me }) {
                   : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
               }`}
             >
-              {item.label}
+              {t(item.key)}
             </Link>
           );
         })}
@@ -53,7 +67,7 @@ export function AppSidebar({ me }: { me: Me }) {
           <p className="truncate text-xs text-zinc-500">{me.email}</p>
         </div>
         <Button variant="ghost" size="sm" onClick={onLogout}>
-          Logout
+          {t("logout")}
         </Button>
       </div>
     </aside>

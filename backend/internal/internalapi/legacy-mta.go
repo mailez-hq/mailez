@@ -25,24 +25,24 @@ func (h *Handler) registerPostfix(r fiber.Router) {
 
 // postfixDomain maps a served domain (or alternative) to itself.
 func (h *Handler) postfixDomain(c *fiber.Ctx) error {
-	domain := c.Params("domain")
+	domain, _ := url.PathUnescape(c.Params("domain"))
 	if regexp.MustCompile(`^\[.*\]$`).MatchString(domain) {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
 	var d models.Domain
-	if err := h.DB.First(&d, "name = ?", domain).Error; err != nil {
+	if err := h.DB.Where("name IN ?", domainCandidates(domain)).First(&d).Error; err != nil {
 		var alt models.Alternative
-		if err2 := h.DB.First(&alt, "name = ?", domain).Error; err2 != nil {
+		if err2 := h.DB.Where("name IN ?", domainCandidates(domain)).First(&alt).Error; err2 != nil {
 			return c.SendStatus(fiber.StatusNotFound)
 		}
-		return c.JSON(alt.DomainName)
+		return c.JSON(asciiDomain(alt.DomainName))
 	}
-	return c.JSON(d.Name)
+	return c.JSON(asciiDomain(d.Name))
 }
 
 // postfixMailbox maps a user email to itself.
 func (h *Handler) postfixMailbox(c *fiber.Ctx) error {
-	email, _ := url.QueryUnescape(c.Params("email"))
+	email, _ := url.PathUnescape(c.Params("email"))
 	u := h.findUser(email)
 	if u == nil {
 		return c.SendStatus(fiber.StatusNotFound)
@@ -52,7 +52,7 @@ func (h *Handler) postfixMailbox(c *fiber.Ctx) error {
 
 // postfixAlias resolves a destination list (comma-joined) for an address.
 func (h *Handler) postfixAlias(c *fiber.Ctx) error {
-	alias, _ := url.QueryUnescape(c.Params("alias"))
+	alias, _ := url.PathUnescape(c.Params("alias"))
 	if unsupportedAddress(alias) {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
@@ -64,14 +64,18 @@ func (h *Handler) postfixAlias(c *fiber.Ctx) error {
 		return c.JSON(domain)
 	}
 	if dest := h.resolveDestination(localpart, domain, false); dest != nil {
-		return c.JSON(strings.Join(dest, ","))
+		encoded := make([]string, len(dest))
+		for i, d := range dest {
+			encoded[i] = asciiEmail(d)
+		}
+		return c.JSON(strings.Join(encoded, ","))
 	}
 	return c.SendStatus(fiber.StatusNotFound)
 }
 
 // postfixTransport returns the relay transport for a domain.
 func (h *Handler) postfixTransport(c *fiber.Ctx) error {
-	email, _ := url.QueryUnescape(c.Params("email"))
+	email, _ := url.PathUnescape(c.Params("email"))
 	if email == "*" || regexp.MustCompile(`(^|.*@)\[.*\]$`).MatchString(email) {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
@@ -89,7 +93,7 @@ func (h *Handler) postfixTransport(c *fiber.Ctx) error {
 
 // postfixSenderLogin lists senders allowed to authenticate as the given sender.
 func (h *Handler) postfixSenderLogin(c *fiber.Ctx) error {
-	sender, _ := url.QueryUnescape(c.Params("sender"))
+	sender, _ := url.PathUnescape(c.Params("sender"))
 	if unsupportedAddress(sender) {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
@@ -123,24 +127,53 @@ func (h *Handler) postfixSenderLogin(c *fiber.Ctx) error {
 	return c.JSON(strings.Join(out, ","))
 }
 
-// postfixSenderRate is a no-op limiter stub for now (always allowed).
+// postfixSenderRate limits outbound mail per user: 404 means allowed, a 450
+// policy response is returned once the hourly limit is exceeded.
 func (h *Handler) postfixSenderRate(c *fiber.Ctx) error {
+	sender, _ := url.PathUnescape(c.Params("sender"))
+	var u models.User
+	if err := h.DB.First(&u, "email = ?", sender).Error; err != nil {
+		return c.SendStatus(fiber.StatusNotFound)
+	}
+	if h.rate.hit(sender) {
+		return c.JSON("450 4.2.1 You are sending too many emails too fast.")
+	}
 	return c.SendStatus(fiber.StatusNotFound)
 }
 
-// SRS rewriting is not implemented yet; return 404 (no rewriting).
+// postfixRecipientMap restores the original recipient of an SRS address so
+// bounces reach the original sender.
 func (h *Handler) postfixRecipientMap(c *fiber.Ctx) error {
+	recipient, _ := url.PathUnescape(c.Params("recipient"))
+	if !isSRSAddress(recipient) {
+		return c.SendStatus(fiber.StatusNotFound)
+	}
+	if original, ok := h.srs.reverse(recipient); ok {
+		return c.JSON(original)
+	}
 	return c.SendStatus(fiber.StatusNotFound)
 }
 
+// postfixSenderMap rewrites the envelope sender to a SRS address when the mail
+// was not emitted by a user of a served domain.
 func (h *Handler) postfixSenderMap(c *fiber.Ctx) error {
-	return c.SendStatus(fiber.StatusNotFound)
+	sender, _ := url.PathUnescape(c.Params("sender"))
+	if unsupportedAddress(sender) {
+		return c.SendStatus(fiber.StatusNotFound)
+	}
+	localpart, domain, _ := h.resolveDomain(sender)
+	var d models.Domain
+	if err := h.DB.First(&d, "name = ?", domain).Error; err == nil {
+		return c.SendStatus(fiber.StatusNotFound)
+	}
+	return c.JSON(h.srs.forward(localpart, domain, h.Cfg.Domain))
 }
 
-// postfixDane answers DANE support for a domain.
+// postfixDane answers whether DANE TLSA records exist for a domain.
 func (h *Handler) postfixDane(c *fiber.Ctx) error {
-	// DANE TLSA records are not queried in the scaffold; always "dane-only"
-	// would break plain hosts, so respond 404 unless configured.
+	if hasDaneRecord(c.Params("domain")) {
+		return c.JSON("dane-only")
+	}
 	return c.SendStatus(fiber.StatusNotFound)
 }
 

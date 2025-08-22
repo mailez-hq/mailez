@@ -181,7 +181,7 @@ func (h *Handler) autoconfigApple(c *fiber.Ctx) error {
 <key>PayloadVersion</key>
 <integer>1</integer>
 </dict>
-</plist>`, h.Cfg.Domain, host, host, host, h.Cfg.Domain, host, host, host, host, host, host, host)
+</plist>`, h.Cfg.Domain, host, host, host, h.Cfg.Domain, host, host, host, host, host, host)
 	c.Set("Content-Type", "application/x-apple-aspen-config")
 	return c.SendString(xml)
 }

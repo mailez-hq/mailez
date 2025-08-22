@@ -22,7 +22,7 @@ func (h *Handler) resolveDomain(value string) (localpart, domain string, ok bool
 // realDomain maps an alternative name to its canonical domain.
 func (h *Handler) realDomain(domain string) string {
 	var alt models.Alternative
-	if err := h.DB.First(&alt, "name = ?", domain).Error; err == nil {
+	if err := h.DB.Where("name IN ?", domainCandidates(domain)).First(&alt).Error; err == nil {
 		return alt.DomainName
 	}
 	return domain

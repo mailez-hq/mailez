@@ -6,12 +6,12 @@ import (
 	"mailess/backend/internal/models"
 )
 
-func (h *Handler) registerDomains(r fiber.Router) {
-	r.Get("/domains", h.listDomains)
-	r.Post("/domains", h.createDomain)
-	r.Get("/domains/:name", h.getDomain)
-	r.Put("/domains/:name", h.updateDomain)
-	r.Delete("/domains/:name", h.deleteDomain)
+func (h *Handler) registerDomains(r fiber.Router, mw fiber.Handler) {
+	r.Get("/domains", mw, h.listDomains)
+	r.Post("/domains", mw, h.createDomain)
+	r.Get("/domains/:name", mw, h.getDomain)
+	r.Put("/domains/:name", mw, h.updateDomain)
+	r.Delete("/domains/:name", mw, h.deleteDomain)
 }
 
 func (h *Handler) listDomains(c *fiber.Ctx) error {
@@ -49,16 +49,35 @@ func (h *Handler) updateDomain(c *fiber.Ctx) error {
 	if err := h.DB.First(&d, "name = ?", c.Params("name")).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "domain not found"})
 	}
-	var in models.Domain
+	var in struct {
+		MaxUsers        *int    `json:"max_users"`
+		MaxAliases      *int    `json:"max_aliases"`
+		MaxQuotaBytes   *int64  `json:"max_quota_bytes"`
+		SignupEnabled   *bool   `json:"signup_enabled"`
+		AnonmailEnabled *bool   `json:"anonmail_enabled"`
+		Comment         *string `json:"comment"`
+	}
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
 	}
-	d.MaxUsers = in.MaxUsers
-	d.MaxAliases = in.MaxAliases
-	d.MaxQuotaBytes = in.MaxQuotaBytes
-	d.SignupEnabled = in.SignupEnabled
-	d.AnonmailEnabled = in.AnonmailEnabled
-	d.Comment = in.Comment
+	if in.MaxUsers != nil {
+		d.MaxUsers = *in.MaxUsers
+	}
+	if in.MaxAliases != nil {
+		d.MaxAliases = *in.MaxAliases
+	}
+	if in.MaxQuotaBytes != nil {
+		d.MaxQuotaBytes = *in.MaxQuotaBytes
+	}
+	if in.SignupEnabled != nil {
+		d.SignupEnabled = *in.SignupEnabled
+	}
+	if in.AnonmailEnabled != nil {
+		d.AnonmailEnabled = *in.AnonmailEnabled
+	}
+	if in.Comment != nil {
+		d.Comment = *in.Comment
+	}
 	if err := h.DB.Save(&d).Error; err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}

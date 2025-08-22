@@ -1,16 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 400" width="1240" height="400" role="img" aria-label="mailez — mail easy">
   <defs>
-    <linearGradient id="mailez-paper" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FDFBF3"/>
-      <stop offset="1" stop-color="#F0ECDD"/>
+    <linearGradient id="mailez-art" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2E6E8E"/>
+      <stop offset="1" stop-color="#2F8E6C"/>
     </linearGradient>
-    <linearGradient id="mailez-sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#F7F2E2"/>
-      <stop offset="1" stop-color="#EFE8D2"/>
-    </linearGradient>
-    <linearGradient id="mailez-water" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#DCEDE1"/>
-      <stop offset="1" stop-color="#C5E1D0"/>
+    <linearGradient id="mailez-mtn" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1F6B50"/>
+      <stop offset="1" stop-color="#175A44"/>
     </linearGradient>
     <linearGradient id="mailez-ez" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#2F8E6C"/>
@@ -23,30 +19,31 @@
       <rect x="56" y="56" width="400" height="400" rx="16"/>
     </clipPath>
     <filter id="mailez-shadow" x="-40%" y="-40%" width="180%" height="200%">
-      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#16404A" flood-opacity="0.28"/>
+      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#123B3A" flood-opacity="0.22"/>
     </filter>
   </defs>
 
   <g transform="translate(44 14) scale(0.72)">
     <g filter="url(#mailez-shadow)">
       <g clip-path="url(#mailez-stamp)">
-        <rect x="24" y="24" width="464" height="464" fill="url(#mailez-paper)"/>
+        <rect x="24" y="24" width="464" height="464" fill="#FCF9EF"/>
       </g>
     </g>
     <g clip-path="url(#mailez-art)">
-      <rect x="56" y="56" width="400" height="400" fill="url(#mailez-sky)"/>
-      <path d="M56 456 L56 255 C105 180 185 210 235 195 C285 180 345 215 456 190 L456 456 Z" fill="#93C3BC" stroke="#6FA8A1" stroke-width="3" stroke-linejoin="round"/>
-      <path d="M56 456 L56 300 C115 225 195 260 250 240 C305 220 360 260 456 235 L456 456 Z" fill="#4B8FA3" stroke="#2E6477" stroke-width="3" stroke-linejoin="round"/>
-      <path d="M56 456 L56 380 C90 300 125 255 155 250 C185 245 220 295 256 305 C292 315 330 255 355 250 C385 245 420 300 456 350 L456 456 Z" fill="#2F8E6C" stroke="#1F5F49" stroke-width="3" stroke-linejoin="round"/>
-      <rect x="56" y="400" width="400" height="56" fill="url(#mailez-water)"/>
-      <rect x="56" y="400" width="400" height="5" fill="#C08A55"/>
-      <path d="M60 420 Q80 415 100 420 T140 420 T180 420 T220 420 T260 420 T300 420 T340 420 T380 420 T420 420 T452 420" fill="none" stroke="#3C7F6D" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
-      <path d="M60 434 Q80 429 100 434 T140 434 T180 434 T220 434 T260 434 T300 434 T340 434 T380 434 T420 434 T452 434" fill="none" stroke="#3C7F6D" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
-      <path d="M60 448 Q80 443 100 448 T140 448 T180 448 T220 448 T260 448 T300 448 T340 448 T380 448 T420 448 T452 448" fill="none" stroke="#3C7F6D" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
-      <rect x="410" y="414" width="34" height="34" rx="8" fill="#C3482F"/>
-      <polyline points="434.5 423 429.3 438 426.3 431.3 419.5 428.3 434.5 423" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-      <rect x="56" y="56" width="400" height="400" rx="16" fill="none" stroke="#397567" stroke-width="3" opacity="0.5"/>
-      <rect x="66" y="66" width="380" height="380" rx="12" fill="none" stroke="#397567" stroke-width="1.5" opacity="0.35"/>
+      <rect x="56" y="56" width="400" height="400" fill="url(#mailez-art)"/>
+      <g transform="translate(161 208) rotate(-6 95 60)" fill="none" stroke="#F6F0DF" stroke-width="24" stroke-linecap="round" opacity="0.17">
+        <path d="M12 0 V120"/>
+        <path d="M0 12 H82"/>
+        <path d="M0 60 H58"/>
+        <path d="M0 108 H82"/>
+        <path d="M108 12 H190"/>
+        <path d="M178 12 L118 108"/>
+        <path d="M108 108 H190"/>
+      </g>
+      <path d="M56 456 L56 390 C120 350 170 330 240 320 C320 310 400 360 456 350 L456 456 Z" fill="url(#mailez-mtn)"/>
+      <path d="M70 365 Q95 359 120 365 T170 365 T220 365 T270 365 T320 365 T370 365 T420 365 T442 365" fill="none" stroke="#F6F0DF" stroke-width="5" stroke-linecap="round" opacity="0.16"/>
+      <path d="M70 385 Q95 379 120 385 T170 385 T220 385 T270 385 T320 385 T370 385 T420 385 T442 385" fill="none" stroke="#F6F0DF" stroke-width="5" stroke-linecap="round" opacity="0.16"/>
+      <path d="M70 405 Q95 399 120 405 T170 405 T220 405 T270 405 T320 405 T370 405 T420 405 T442 405" fill="none" stroke="#F6F0DF" stroke-width="5" stroke-linecap="round" opacity="0.16"/>
     </g>
   </g>
 

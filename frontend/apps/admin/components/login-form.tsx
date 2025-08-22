@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { login } from "@/lib/api";
 
 export function LoginForm() {
+  const t = useTranslations("login");
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -33,13 +36,13 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle className="text-xl">Sign in to mailess</CardTitle>
-        <CardDescription>Enter your email and password</CardDescription>
+        <CardTitle className="text-xl">{t("title")}</CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("email")}</Label>
             <Input
               id="email"
               type="email"
@@ -50,7 +53,7 @@ export function LoginForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="pw">Password</Label>
+            <Label htmlFor="pw">{t("password")}</Label>
             <Input
               id="pw"
               type="password"
@@ -61,8 +64,12 @@ export function LoginForm() {
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
+            {loading ? t("submitting") : t("submit")}
           </Button>
+          <p className="text-center text-sm">
+            {t("alreadyAccount")}{" "}
+            <Link href="/signup" className="underline">{t("signupLink")}</Link>
+          </p>
         </form>
       </CardContent>
     </Card>

@@ -1,6 +1,7 @@
 package password
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
@@ -59,6 +60,21 @@ func verifyBcryptSHA256(stored, password string) bool {
 	digest := sha256.Sum256([]byte(password))
 	full := fmt.Sprintf("$2b$%d$%s%s", rounds, parts[3], parts[4])
 	return bcrypt.CompareHashAndPassword([]byte(full), []byte(hex.EncodeToString(digest[:]))) == nil
+}
+
+// HashPBKDF2SHA256 hashes a password with passlib's pbkdf2_sha256 scheme
+// ($pbkdf2-sha256$<rounds>$<salt>$<hash>). Used for app tokens, which must
+// match VerifyPBKDF2SHA256 when authenticating mail clients.
+func HashPBKDF2SHA256(password string) (string, error) {
+	const rounds = 260000
+	salt := make([]byte, 16)
+	if _, err := rand.Read(salt); err != nil {
+		return "", err
+	}
+	dk := pbkdf2.Key([]byte(password), salt, rounds, 32, sha256.New)
+	return fmt.Sprintf("$pbkdf2-sha256$%d$%s$%s", rounds,
+		base64.RawURLEncoding.EncodeToString(salt),
+		base64.RawURLEncoding.EncodeToString(dk)), nil
 }
 
 // VerifyPBKDF2SHA256 verifies passlib's pbkdf2_sha256 scheme, used for app

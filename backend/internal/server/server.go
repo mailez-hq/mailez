@@ -15,6 +15,7 @@ import (
 	"mailess/backend/internal/api"
 	"mailess/backend/internal/auth"
 	"mailess/backend/internal/config"
+	"mailess/backend/internal/fetch"
 	"mailess/backend/internal/internalapi"
 	"mailess/backend/internal/models"
 )
@@ -42,8 +43,11 @@ func New(cfg config.Config) *Server {
 
 	s := &Server{App: app, DB: db, Redis: rdb, Cfg: cfg}
 	s.Auth = auth.NewManager(db, newStore(rdb), "mailess_session", time.Duration(cfg.SessionLifetime)*time.Second)
-	s.internal = internalapi.New(db, s.Auth, cfg)
+	s.internal = internalapi.New(db, s.Auth, cfg, rdb)
 	s.routes()
+	// Start the external mailbox poller (fetchmail equivalent).
+	fetcher := fetch.New(db, cfg.SmtpAddress+":25", cfg.SecretKey, time.Duration(cfg.FetchInterval)*time.Second)
+	go fetcher.Run(context.Background())
 	return s
 }
 

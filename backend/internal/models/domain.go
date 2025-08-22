@@ -9,6 +9,7 @@ type Domain struct {
 	MaxQuotaBytes   int64  `gorm:"not null;default:0" json:"max_quota_bytes"`
 	SignupEnabled   bool   `gorm:"not null;default:false" json:"signup_enabled"`
 	AnonmailEnabled bool   `gorm:"not null;default:false" json:"anonmail_enabled"`
+	DkimKey         string `gorm:"type:text" json:"-"`
 
 	Users        []User        `gorm:"foreignKey:DomainName;references:Name" json:"-"`
 	Aliases      []Alias       `gorm:"foreignKey:DomainName;references:Name" json:"-"`

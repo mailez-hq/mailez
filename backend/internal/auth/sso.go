@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+
+	"mailess/backend/internal/models"
 )
 
 // RegisterSSO mounts the user-facing session endpoints.
@@ -31,6 +33,8 @@ func (m *Manager) ssoLogin(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "wrong e-mail or password"})
 	}
 	setSessionCookie(c, m.SessionName, sid, m.SessionTTL)
+	// record the login in the audit trail
+	m.DB.Create(&models.AuditLog{User: user.Email, IP: c.IP(), Method: "POST", Path: "/sso/login", Status: fiber.StatusOK})
 	return c.JSON(fiber.Map{"email": user.Email})
 }
 
@@ -49,10 +53,18 @@ func (m *Manager) ssoMe(c *fiber.Ctx) error {
 	if err != nil || user == nil {
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
+	manager := user.GlobalAdmin
+	if !manager {
+		var count int64
+		if err := m.DB.Table("manager").Where("user_email = ?", user.Email).Count(&count).Error; err == nil {
+			manager = count > 0
+		}
+	}
 	return c.JSON(fiber.Map{
 		"email":          user.Email,
 		"displayed_name": user.DisplayedName,
 		"global_admin":   user.GlobalAdmin,
+		"manager":        manager,
 		"enabled":        user.Enabled,
 	})
 }
