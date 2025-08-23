@@ -2,7 +2,11 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@source "../../packages/ui";
+/* Tailwind v4 resolves @source relative to this CSS file; the shared UI kit
+   lives three levels up (frontend/packages/ui). Without this, classes that
+   exist only in packages/ui (e.g. text-primary-foreground on the Button
+   default variant) are never emitted and buttons lose their text color. */
+@source "../../../packages/ui/**/*.{ts,tsx}";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -53,55 +57,55 @@
 }
 
 :root {
-  --background: #fafaf7;
-  --foreground: #1c1917;
+  --background: #ffffff;
+  --foreground: #18181b;
   --card: #ffffff;
-  --card-foreground: #1c1917;
+  --card-foreground: #18181b;
   --popover: #ffffff;
-  --popover-foreground: #1c1917;
+  --popover-foreground: #18181b;
   --primary: #2e6e8e;
   --primary-foreground: #ffffff;
-  --secondary: #f2f0ea;
-  --secondary-foreground: #1c1917;
-  --muted: #f2f0ea;
-  --muted-foreground: #79716b;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
   --accent: #e2edf2;
   --accent-foreground: #1d4a63;
   --destructive: #c94b4b;
-  --border: #e7e4dd;
-  --input: #e7e4dd;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
   --ring: #2e6e8e;
   --ai: #2e6e8e;
   --ai-foreground: #ffffff;
   --chart-1: #2f8e6c;
   --chart-2: #2e6e8e;
-  --chart-3: #8a8578;
+  --chart-3: #71717a;
   --chart-4: #c9a227;
   --chart-5: #5b8c5a;
   --radius: 0.625rem;
-  --sidebar: #f4f2ec;
-  --sidebar-foreground: #44403c;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #52525b;
   --sidebar-primary: #2f8e6c;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #e2edf2;
   --sidebar-accent-foreground: #1d4a63;
-  --sidebar-border: #e7e4dd;
+  --sidebar-border: #e4e4e7;
   --sidebar-ring: #2e6e8e;
 }
 
 .dark {
-  --background: #141613;
-  --foreground: #edeae4;
-  --card: #1c1e1b;
-  --card-foreground: #edeae4;
-  --popover: #1c1e1b;
-  --popover-foreground: #edeae4;
+  --background: #101012;
+  --foreground: #f4f4f5;
+  --card: #18181b;
+  --card-foreground: #f4f4f5;
+  --popover: #18181b;
+  --popover-foreground: #f4f4f5;
   --primary: #4d8fac;
   --primary-foreground: #0b231b;
-  --secondary: #262823;
-  --secondary-foreground: #edeae4;
-  --muted: #262823;
-  --muted-foreground: #a3a09a;
+  --secondary: #27272a;
+  --secondary-foreground: #f4f4f5;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
   --accent: #1f3d4d;
   --accent-foreground: #8fc7e0;
   --destructive: #e56b6b;
@@ -112,11 +116,11 @@
   --ai-foreground: #0e1d26;
   --chart-1: #3ba77f;
   --chart-2: #4d8fac;
-  --chart-3: #8a8578;
+  --chart-3: #a1a1aa;
   --chart-4: #c9a227;
   --chart-5: #5b8c5a;
-  --sidebar: #181a17;
-  --sidebar-foreground: #a3a09a;
+  --sidebar: #141416;
+  --sidebar-foreground: #a1a1aa;
   --sidebar-primary: #3ba77f;
   --sidebar-primary-foreground: #0b231b;
   --sidebar-accent: #1f3d4d;
