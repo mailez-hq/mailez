@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { usePaletteActions } from "@/components/palette/palette-actions";
 import { usePreferences } from "@/components/preferences-provider";
+import { useNewMailNotification } from "@/components/mailbox/use-new-mail-notification";
 import { setupPushSubscription, teardownPushSubscription } from "@/lib/push";
 import {
   aiDraft, aiStatus, aiSummarize,
@@ -29,25 +30,6 @@ import {
   readFileAsBase64,
   textToHtml,
 } from "@/components/mailbox/mail-utils";
-
-// playChime rings a short notification tone without shipping an audio file.
-function playChime() {
-  try {
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new Ctx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = 880;
-    gain.gain.setValueAtTime(0.05, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.4);
-  } catch {
-    // audio unavailable; skip silently
-  }
-}
 
 // The store context is intentionally untyped for now: every field mirrors a
 // local inside the provider, and MailView stays a thin view on top of it.
@@ -70,6 +52,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const ts = useTranslations("settings");
   const router = useRouter();
   const { theme, setTheme, density, setDensity, prefs, setUndoSend } = usePreferences();
+  useNewMailNotification(prefs.notifications, t);
 
   // ---- mailbox: folder / list / selection ----
   const [folders, setFolders] = useState<string[]>([]);
@@ -150,7 +133,6 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const draftUidRef = useRef<number | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSearchRef = useRef("");
-  const lastInboxUnseen = useRef<number | null>(null);
   const resizeRef = useRef<{ x: number; w: number } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -423,34 +405,6 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       window.removeEventListener("offline", off);
     };
   }, []);
-
-  // New-mail notification: poll unseen counts; when the Inbox count grows and
-  // the tab is not focused, ring a chime and raise a desktop notification.
-  useEffect(() => {
-    if (!prefs.notifications) return;
-    const check = () => {
-      mailUnseen()
-        .then((counts) => {
-          const n = counts["Inbox"] ?? 0;
-          const prev = lastInboxUnseen.current;
-          lastInboxUnseen.current = n;
-          if (prev !== null && n > prev && !document.hasFocus()) {
-            playChime();
-            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-              try {
-                new Notification("mailez", { body: t("newMail", { count: n - prev }) });
-              } catch {
-                // notification rejected by the platform
-              }
-            }
-          }
-        })
-        .catch(() => {});
-    };
-    check();
-    const id = setInterval(check, 60000);
-    return () => clearInterval(id);
-  }, [prefs.notifications, t]);
 
   function showToast(label: string, onUndo?: () => void, duration = 5000) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
