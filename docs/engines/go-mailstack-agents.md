@@ -1,6 +1,6 @@
 # 工程：Go 重写邮件栈容器代理（去 Python）
 
-> 状态：**M1 unbound ✅ / M2 nginx 代码完成，待镜像验证**（2026-08-23）· 优先级：高
+> 状态：**M1 unbound ✅ / M2 nginx ✅（e2e 10/10）**（2026-08-23）· 优先级：高
 
 ## 背景与目标
 
@@ -99,9 +99,11 @@ Python：每个容器 `CMD /start.py`，依赖 vendor 进来的 `podop`（内部
 - [x] **M1 unbound agent（Pilot）**：最薄组件，验证框架（env→Config→生成
       conf→exec→健康检查），e2e 10/10 验证通过（容器 COMMAND 已是
       `/mailstack-agent unbound`）
-- [x] **M2 nginx agent（代码完成）**：替换 `start.py` + `config.py` + 证书链
-      逻辑；Go template 重写 5 个 Jinja 模板（字节级语义一致），单测覆盖
-      notls 渲染/端口派生/证书链裁剪；待镜像构建 + e2e 验证
+- [x] **M2 nginx agent**：替换 `start.py` + `config.py` + 证书链逻辑；
+      Go template 重写 5 个 Jinja 模板（字节级语义一致），单测覆盖
+      notls 渲染/端口派生/证书链裁剪；镜像多阶段构建（含静态资源与
+      dhparam），e2e 10/10 验证通过（容器 COMMAND 已是
+      `/mailstack-agent nginx`）
 - [ ] **M3 legacy IMAP agent**：passdb/userdb/quota/sieve 关联、podop socket
 - [ ] **M4 legacy MTA agent**：main.cf/master.cf 生成、别名/中继查询
 - [ ] **M5 rspamd agent**：配置渲染（替代 Jinja）、DKIM vault 关联
