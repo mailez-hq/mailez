@@ -201,42 +201,37 @@ function ThreadMessage({
         </div>
       )}
 
-      {/* Message body */}
+      {/* Message body: HTML preferred, plain text as fallback */}
       <div className="mail-body">
-        {segments.length === 0 && !htmlBody && loading && (
+        {mounted && htmlBody ? (
+          <div dangerouslySetInnerHTML={{ __html: htmlBody }} />
+        ) : segments.length === 0 && loading ? (
           <p className="flex items-center gap-1.5 text-muted-foreground">
             <Loader2 className="size-3.5 animate-spin" />
             {t("loading")}
           </p>
-        )}
-        {segments.length === 0 && !htmlBody && !loading && (
+        ) : segments.length === 0 ? (
           <p className="text-muted-foreground">{t("noTextBody")}</p>
-        )}
-        {segments.map((seg, i) =>
-          seg.type === "p" ? (
-            <p key={i} className="text-sm leading-6">
-              {seg.lines.map((l, j) => (
-                <span key={j}>
-                  <Highlight text={l} terms={highlightTerms} />
-                  {j < seg.lines.length - 1 && <br />}
-                </span>
-              ))}
-            </p>
-          ) : (
-            <QuoteBlock
-              key={i}
-              lines={seg.lines}
-              expanded={expandedQuotes.has(i)}
-              onToggle={() => onToggleQuote(i)}
-            />
-          ),
-        )}
-
-          {mounted && htmlBody && (
-          <div className="mt-4 border-t border-border pt-3">
-            <p className="mb-2 text-xs text-muted-foreground">{t("htmlVersion")}</p>
-            <div className="mail-body" dangerouslySetInnerHTML={{ __html: htmlBody }} />
-          </div>
+        ) : (
+          segments.map((seg, i) =>
+            seg.type === "p" ? (
+              <p key={i} className="text-sm leading-6">
+                {seg.lines.map((l, j) => (
+                  <span key={j}>
+                    <Highlight text={l} terms={highlightTerms} />
+                    {j < seg.lines.length - 1 && <br />}
+                  </span>
+                ))}
+              </p>
+            ) : (
+              <QuoteBlock
+                key={i}
+                lines={seg.lines}
+                expanded={expandedQuotes.has(i)}
+                onToggle={() => onToggleQuote(i)}
+              />
+            ),
+          )
         )}
       </div>
 
@@ -943,7 +938,7 @@ export function ReadingPane({
 
       {/* Raw message dialog */}
       <Dialog open={rawOpen} onOpenChange={setRawOpen}>
-        <DialogContent className="max-h-[85vh] max-w-3xl">
+        <DialogContent className="max-h-[85vh] sm:max-w-3xl">
           <DialogHeader><DialogTitle>{t("viewRaw")}</DialogTitle></DialogHeader>
           {rawLoading && <p className="text-sm text-muted-foreground">{t("loading")}</p>}
           {rawError && <p className="text-sm text-destructive">{rawError}</p>}
