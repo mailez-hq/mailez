@@ -1,27 +1,45 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
   Archive,
+  CalendarClock,
+  ChevronsUpDown,
   ExternalLink,
   FileText,
   Inbox,
   Menu,
+  Plus,
   Search,
   Send,
   Star,
   Trash2,
   Filter,
   Folder as FolderIcon,
+  FolderPlus,
+  MoreVertical,
   PenLine,
   Settings,
   Settings2,
+  Share2,
   Users,
   X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
+import type { MailAccount } from "@/lib/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/logo";
+import { FolderACLDialog } from "@/components/mailbox/folder-acl-dialog";
 import { labelColor } from "@/components/mailbox/mail-utils";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +59,7 @@ const FOLDER_ICON: Record<string, React.ReactNode> = {
 
 // Common folders always sort before custom ones; INBOX is pinned first.
 const FOLDER_ORDER = ["INBOX", "Sent", "Drafts", "Trash", "Archive", "Junk", "Spam"];
+const SYSTEM_FOLDERS = new Set(FOLDER_ORDER.map((f) => f.toUpperCase()));
 
 function sortFolders(folders: string[]): string[] {
   return [...folders].sort((a, b) => {
@@ -59,6 +78,14 @@ function folderLabel(t: ReturnType<typeof useTranslations<"mail">>, name: string
   return t.has(key) ? t(key) : name;
 }
 
+// A folder-management dialog: create/rename take a name input, delete/clear ask
+// for confirmation.
+type FolderDialog =
+  | { mode: "create"; value: string }
+  | { mode: "rename"; name: string; value: string }
+  | { mode: "delete"; name: string }
+  | { mode: "clear"; name: string };
+
 export function FolderNav({
   folders,
   unseen,
@@ -71,12 +98,21 @@ export function FolderNav({
   quotaBytes,
   quotaUsed,
   open,
+  accountList,
+  activeAccount,
+  onSwitchAccount,
+  onManageAccounts,
   onSelect,
   onSelectLabel,
   onManageLabels,
   onSelectSavedSearch,
   onRemoveSavedSearch,
   onMoveToFolder,
+  onScheduled,
+  onCreateFolder,
+  onRenameFolder,
+  onDeleteFolder,
+  onClearFolder,
   onCompose,
   onSettings,
   onContacts,
@@ -94,12 +130,21 @@ export function FolderNav({
   quotaBytes?: number;
   quotaUsed?: number;
   open: boolean;
+  accountList?: MailAccount[];
+  activeAccount?: number | null;
+  onSwitchAccount?: (id: number | null) => void;
+  onManageAccounts?: () => void;
   onSelect: (folder: string) => void;
   onSelectLabel: (label: string) => void;
   onManageLabels?: () => void;
   onSelectSavedSearch: (query: string) => void;
   onRemoveSavedSearch: (query: string) => void;
   onMoveToFolder: (folder: string, uid: number) => void;
+  onScheduled: () => void;
+  onCreateFolder: (name: string) => void;
+  onRenameFolder: (name: string, newName: string) => void;
+  onDeleteFolder: (name: string) => void;
+  onClearFolder: (name: string) => void;
   onCompose: () => void;
   onSettings: () => void;
   onContacts: () => void;
@@ -108,6 +153,31 @@ export function FolderNav({
 }) {
   const t = useTranslations("mail");
   const orderedFolders = sortFolders(folders);
+  const [dialog, setDialog] = useState<FolderDialog | null>(null);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [aclFor, setAclFor] = useState<string | null>(null);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
+  const activeExternal = accountList?.find((a) => a.id === activeAccount) ?? null;
+  const currentAccountEmail = activeExternal ? activeExternal.email : email;
+
+  // Close the account switcher on Escape / outside click.
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setAccountMenuOpen(false);
+    const onDown = (e: MouseEvent) => {
+      if (!(e.target instanceof Element) || !e.target.closest("[data-account-menu]")) {
+        setAccountMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onDown);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onDown);
+    };
+  }, [accountMenuOpen]);
   const quotaPercent =
     typeof quotaBytes === "number" &&
     typeof quotaUsed === "number" &&
@@ -122,6 +192,35 @@ export function FolderNav({
         : quotaPercent >= 70
           ? "bg-[#C9A227]"
           : "bg-primary";
+
+  const openCreate = () => {
+    setNameInput("");
+    setDialog({ mode: "create", value: "" });
+    requestAnimationFrame(() => nameRef.current?.focus());
+  };
+  const openRename = (name: string) => {
+    setNameInput(name);
+    setDialog({ mode: "rename", name, value: name });
+    setMenuFor(null);
+    requestAnimationFrame(() => nameRef.current?.focus());
+  };
+  const submitName = (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = nameInput.trim();
+    if (!value) return;
+    if (dialog?.mode === "create") {
+      onCreateFolder(value);
+    } else if (dialog?.mode === "rename") {
+      onRenameFolder(dialog.name, value);
+    }
+    setDialog(null);
+  };
+  const confirmDestructive = () => {
+    if (!dialog) return;
+    if (dialog.mode === "delete") onDeleteFolder(dialog.name);
+    if (dialog.mode === "clear") onClearFolder(dialog.name);
+    setDialog(null);
+  };
 
   return (
     <>
@@ -153,6 +252,66 @@ export function FolderNav({
           </Button>
         </div>
 
+        {/* aggregated account switcher: internal mailbox + external accounts */}
+        {onSwitchAccount && onManageAccounts && (
+          <div className="relative px-3 pb-2" data-account-menu>
+            <button
+              onClick={() => setAccountMenuOpen((o) => !o)}
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors hover:bg-sidebar-accent/60"
+              title={currentAccountEmail}
+            >
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                {currentAccountEmail.charAt(0).toUpperCase()}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-left">{currentAccountEmail}</span>
+              <ChevronsUpDown className="size-3.5 shrink-0 opacity-50" />
+            </button>
+            {accountMenuOpen && (
+              <div className="absolute left-3 right-3 top-full z-30 mt-1 rounded-lg border border-border bg-popover p-1 text-sm shadow-lg">
+                <button
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted",
+                    activeAccount === null && "bg-muted font-medium",
+                  )}
+                  onClick={() => {
+                    onSwitchAccount(null);
+                    setAccountMenuOpen(false);
+                  }}
+                >
+                  <span className="min-w-0 flex-1 truncate">{email}</span>
+                  <span className="text-[10px] text-muted-foreground">{t("myAccount")}</span>
+                </button>
+                {accountList?.map((a) => (
+                  <button
+                    key={a.id}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted",
+                      activeAccount === a.id && "bg-muted font-medium",
+                    )}
+                    onClick={() => {
+                      onSwitchAccount(a.id);
+                      setAccountMenuOpen(false);
+                    }}
+                  >
+                    <span className="min-w-0 flex-1 truncate">{a.email}</span>
+                    {!a.enabled && <span className="text-[10px] text-destructive">{t("accountOff")}</span>}
+                  </button>
+                ))}
+                <button
+                  className="mt-0.5 flex w-full items-center gap-2 rounded-md border-t border-border px-2 py-1.5 text-left text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    onManageAccounts();
+                  }}
+                >
+                  <Plus className="size-3.5" />
+                  {t("manageAccounts")}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="px-3 pb-2">
           <Button className="w-full" onClick={onCompose}>
             <PenLine className="size-4" />
@@ -161,43 +320,121 @@ export function FolderNav({
         </div>
 
         <nav className="mail-scroll flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
+          <div className="flex items-center justify-between pr-1">
+            <p className="px-2.5 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+              {t("folders")}
+            </p>
+            <button
+              onClick={openCreate}
+              title={t("newFolder")}
+              className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <FolderPlus className="size-3.5" />
+            </button>
+          </div>
           {orderedFolders.map((f) => {
             const active = f === current;
+            const system = SYSTEM_FOLDERS.has(f.toUpperCase());
             const icon =
               FOLDER_ICON[f.toUpperCase()] || <FolderIcon className="size-4" />;
             return (
-              <button
+              <div
                 key={f}
-                onClick={() => {
-                  onSelect(f);
-                  onClose();
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "move";
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const uid = Number(e.dataTransfer.getData("text/plain"));
-                  if (uid) onMoveToFolder(f, uid);
-                }}
-                className={cn(
-                  "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
-                  active
-                    ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
-                )}
+                className="group relative flex w-full items-center rounded-lg transition-colors"
               >
-                <span className="shrink-0 opacity-70">{icon}</span>
-                <span className="truncate">{folderLabel(t, f)}</span>
-                {unseen?.[f] != null && unseen[f] > 0 && (
-                  <span className="ml-auto shrink-0 rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-medium text-primary">
-                    {unseen[f]}
-                  </span>
+                <button
+                  onClick={() => {
+                    onSelect(f);
+                    onClose();
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const uid = Number(e.dataTransfer.getData("text/plain"));
+                    if (uid) onMoveToFolder(f, uid);
+                  }}
+                  className={cn(
+                    "flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
+                    active
+                      ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                  )}
+                >
+                  <span className="shrink-0 opacity-70">{icon}</span>
+                  <span className="truncate">{folderLabel(t, f)}</span>
+                  {unseen?.[f] != null && unseen[f] > 0 && (
+                    <span className="ml-auto shrink-0 rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-medium text-primary">
+                      {unseen[f]}
+                    </span>
+                  )}
+                </button>
+                {!system && (
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className={cn(
+                        "size-6 rounded-md",
+                        menuFor === f ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+                      )}
+                      onClick={() => setMenuFor(menuFor === f ? null : f)}
+                    >
+                      <MoreVertical className="size-3.5" />
+                      <span className="sr-only">{t("menu")}</span>
+                    </Button>
+                    {menuFor === f && (
+                      <div className="absolute right-0 top-full z-30 w-40 rounded-lg border border-border bg-popover p-1 text-sm shadow-lg">
+                        <button
+                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted"
+                          onClick={() => {
+                            setMenuFor(null);
+                            setAclFor(f);
+                          }}
+                        >
+                          <Share2 className="size-3.5" />
+                          {t("shareFolder")}
+                        </button>
+                        <button
+                          className="flex w-full items-center rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted"
+                          onClick={() => openRename(f)}
+                        >
+                          {t("renameFolder")}
+                        </button>
+                        <button
+                          className="flex w-full items-center rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted"
+                          onClick={() => {
+                            setMenuFor(null);
+                            setDialog({ mode: "clear", name: f });
+                          }}
+                        >
+                          {t("clearFolder")}
+                        </button>
+                        <button
+                          className="flex w-full items-center rounded-md px-2 py-1.5 text-left text-destructive transition-colors hover:bg-muted"
+                          onClick={() => {
+                            setMenuFor(null);
+                            setDialog({ mode: "delete", name: f });
+                          }}
+                        >
+                          {t("deleteFolder")}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
-              </button>
+              </div>
             );
           })}
+          <button
+            onClick={onScheduled}
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground"
+          >
+            <CalendarClock className="size-4 shrink-0 opacity-70" />
+            <span className="truncate">{t("scheduled")}</span>
+          </button>
           {labels && (
             <div className="mt-3 border-t border-sidebar-border pt-2">
               <div className="flex items-center justify-between pr-1">
@@ -318,6 +555,70 @@ export function FolderNav({
           )}
         </div>
       </aside>
+
+      {/* folder name dialog (create / rename) */}
+      <Dialog open={dialog !== null && (dialog.mode === "create" || dialog.mode === "rename")} onOpenChange={(o) => !o && setDialog(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {dialog?.mode === "rename" ? t("renameFolder") : t("newFolder")}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={submitName} className="grid gap-3">
+            <Label htmlFor="folder-name" className="sr-only">
+              {t("folderNamePlaceholder")}
+            </Label>
+            <Input
+              id="folder-name"
+              ref={nameRef}
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              placeholder={t("folderNamePlaceholder")}
+            />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDialog(null)}>
+                {t("cancel")}
+              </Button>
+              <Button type="submit" disabled={!nameInput.trim()}>
+                {t("save")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* confirm dialog (delete / clear) */}
+      <Dialog open={dialog !== null && (dialog.mode === "delete" || dialog.mode === "clear")} onOpenChange={(o) => !o && setDialog(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {dialog?.mode === "delete" ? t("deleteFolder") : t("clearFolder")}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {dialog && dialog.mode !== "create"
+              ? dialog.mode === "delete"
+                ? t("confirmDeleteFolder", { name: dialog.name })
+                : t("confirmClearFolder", { name: dialog.name })
+              : ""}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialog(null)}>
+              {t("cancel")}
+            </Button>
+            <Button variant="destructive" onClick={confirmDestructive}>
+              {t("confirmDelete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* folder sharing / ACL dialog */}
+      <FolderACLDialog
+        folder={aclFor ?? ""}
+        open={aclFor !== null}
+        onOpenChange={(o) => !o && setAclFor(null)}
+      />
     </>
   );
 }

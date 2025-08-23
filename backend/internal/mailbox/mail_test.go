@@ -28,6 +28,8 @@ type fakeGateway struct {
 	moved    [][2]string
 }
 
+func (f *fakeGateway) With(dial mail.Dial) mail.Gateway { return f }
+
 func (f *fakeGateway) ListMessages(email, token, folder string, page int) ([]mail.Message, int, error) {
 	return f.messages, f.total, nil
 }

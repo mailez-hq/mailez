@@ -10,9 +10,11 @@ import { highlightTerms } from "@/components/mailbox/highlight";
 import { MailSettings } from "@/components/settings/mail-settings";
 import { MailContacts } from "@/components/contacts/mail-contacts";
 import { FolderNav } from "@/components/mailbox/folder-nav";
+import { LabelManager } from "@/components/mailbox/label-manager";
 import { MessageListPanel } from "@/components/mailbox/message-list-panel";
 import { ReadingPane } from "@/components/mailbox/reading-pane";
 import { ComposePanel } from "@/components/compose/compose-panel";
+import { ScheduledDialog } from "@/components/compose/scheduled-dialog";
 import { CommandPalette } from "@/components/palette/command-palette";
 import { ShortcutsDialog } from "@/components/mailbox/shortcuts-dialog";
 import { SieveEditor } from "@/components/sieve/sieve-editor";
@@ -37,6 +39,11 @@ export function MailView() {
     folder,
     sidebarOpen,
     setSidebarOpen,
+    accountList,
+    activeAccount,
+    switchAccount,
+    openSettingsSection,
+    settingsInitialSection,
     selectFolder,
     selectLabel,
     runSavedSearch,
@@ -66,8 +73,14 @@ export function MailView() {
     searchAll,
     activeView,
     selectView,
+    categoryFilter,
+    setCategoryFilter,
     doAiSearch,
     loadMessages,
+    createFolder,
+    renameFolder,
+    deleteFolder,
+    clearFolder,
     openMessage,
     toggleSelect,
     removeMessage,
@@ -108,6 +121,12 @@ export function MailView() {
     threadLoading,
     toggleThread,
     selectThreadMessage,
+    scheduled,
+    scheduledOpen,
+    setScheduledOpen,
+    scheduledLoading,
+    loadScheduled,
+    cancelScheduled,
     composeOpen,
     identities,
     from,
@@ -135,6 +154,8 @@ export function MailView() {
     aiDraftReply,
     prefs,
     setUndoSend,
+    scheduleAt,
+    setScheduleAt,
     signOn,
     encryptOn,
     setSignOn,
@@ -185,21 +206,33 @@ export function MailView() {
         quotaBytes={me.quota_bytes}
         quotaUsed={me.quota_bytes_used}
         open={sidebarOpen}
+        accountList={accountList}
+        activeAccount={activeAccount}
+        onSwitchAccount={switchAccount}
+        onManageAccounts={() => openSettingsSection("accounts")}
         onSelect={selectFolder}
         onSelectLabel={selectLabel}
         onSelectSavedSearch={runSavedSearch}
         onRemoveSavedSearch={removeSavedSearch}
         onMoveToFolder={(dest, uid) => moveTo([uid], dest, t("toastMoved"))}
+        onCreateFolder={createFolder}
+        onRenameFolder={renameFolder}
+        onDeleteFolder={deleteFolder}
+        onClearFolder={clearFolder}
         onCompose={() => openCompose()}
-        onSettings={() => setSettingsOpen(true)}
+        onSettings={() => openSettingsSection("appearance")}
         onContacts={() => setContactsOpen(true)}
         onSieve={() => setSieveOpen(true)}
+        onScheduled={() => {
+          setScheduledOpen(true);
+          loadScheduled();
+        }}
         onClose={() => setSidebarOpen(false)}
       />
 
       <div
         className={cn(
-          "min-w-0 flex-col",
+          "min-w-0 min-h-0 flex-col",
           detail ? "hidden md:flex" : "flex",
           "w-full md:w-[var(--list-w)]",
         )}
@@ -237,6 +270,8 @@ export function MailView() {
           onToggleSearchAll={() => setSearchAll((v: boolean) => !v)}
           activeView={activeView}
           onSelectView={selectView}
+          category={categoryFilter}
+          onCategoryChange={setCategoryFilter}
           onMenu={() => setSidebarOpen(true)}
           aiSearchEnabled={ai.search}
           aiPriorityEnabled={ai.priority}
@@ -339,6 +374,8 @@ export function MailView() {
           onAiDraft={aiDraftReply}
           undoSendSeconds={prefs.undoSendSeconds}
           onUndoSendSeconds={setUndoSend}
+          scheduleAt={scheduleAt}
+          onScheduleAt={setScheduleAt}
           signOn={signOn}
           encryptOn={encryptOn}
           onToggleSign={() => setSignOn((v: boolean) => !v)}
@@ -363,6 +400,7 @@ export function MailView() {
       <MailSettings
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
+        initialSection={settingsInitialSection}
         onSaved={() => loadMessages(folder)}
       />
 
@@ -392,6 +430,8 @@ export function MailView() {
       <SieveEditor open={sieveOpen} onOpenChange={setSieveOpen} />
 
       <LabelManager open={labelManagerOpen} onOpenChange={setLabelManagerOpen} />
+
+      <ScheduledDialog open={scheduledOpen} onOpenChange={setScheduledOpen} />
 
       {ctxMenu && (() => {
         const m = ctxMenu.message;

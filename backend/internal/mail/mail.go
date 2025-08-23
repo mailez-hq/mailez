@@ -44,6 +44,9 @@ type Message struct {
 	// into a pre-filled compose. UnsubscribePost marks RFC 8058 one-click.
 	UnsubscribeURL  string `json:"unsubscribe_url,omitempty"`
 	UnsubscribePost bool   `json:"unsubscribe_post,omitempty"`
+	// Category is the deterministic auto-classification (work/social/
+	// newsletter/shopping/finance/other) derived from sender and headers.
+	Category string `json:"category,omitempty"`
 }
 
 // Attachment is one file embedded in a message, base64-encoded for download.
@@ -63,9 +66,13 @@ type Address struct {
 // Client is a stateless IMAP gateway. Each operation opens its own connection
 // authenticated with a per-session temp token (never the user's password).
 type Client struct {
-	IMAPAddr  string // host:port, e.g. gateway:10143
-	SMTPAddr  string // host:port, e.g. gateway:10025
+	IMAPAddr  string // host:port, e.g. gateway:1143
+	SMTPAddr  string // host:port, e.g. gateway:1587
 	SieveAddr string // host:port, e.g. gateway:4190
+
+	// dial, when set by With(), overrides the gateway target for every
+	// operation on that client copy (external aggregated accounts).
+	dial Dial
 
 	// msgIDToUID caches the most recent (folder, Message-ID → UID) resolutions so
 	// the reverse lookup served by UIDByMessageID is O(1) for hot messages
@@ -82,14 +89,19 @@ func (c *Client) tlsConfig() *tls.Config {
 	return &tls.Config{InsecureSkipVerify: true} // internal connections only
 }
 
-// openIMAP dials the gateway IMAP proxy, upgrades to STARTTLS and logs in.
+// openIMAP dials the mail server, upgrades to TLS when required and logs in.
+// External (aggregated) accounts dial their own server with the stored
+// credentials; internal accounts use the gateway and the temp token.
 func (c *Client) openIMAP(email, token string) (*client.Client, error) {
+	if c.dial.External {
+		return openExternalIMAP(c.dial)
+	}
 	cli, err := client.Dial(c.IMAPAddr)
 	if err != nil {
 		return nil, fmt.Errorf("imap dial: %w", err)
 	}
 	if err := cli.StartTLS(c.tlsConfig()); err != nil {
-		// TLS_FLAVOR=notls deployments serve plaintext on the internal proxy
+		// MAILEZ_TLS=off deployments serve plaintext on the internal proxy
 		// port; fall back to the trusted internal link without encryption.
 		// Log the miss so a misconfigured gateway is visible in operations.
 		log.Printf("imap %s: STARTTLS unavailable, continuing in plaintext: %v", c.IMAPAddr, err)
@@ -163,15 +175,21 @@ func (c *Client) ListMessages(email, token, folder string, page int) ([]Message,
 	seqset := new(imap.SeqSet)
 	seqset.AddRange(start, end)
 
+	// Headers are fetched alongside the envelope so each row can be tagged
+	// with a deterministic category (newsletter detection needs the
+	// List-Unsubscribe header).
+	headerSection := &imap.BodySectionName{Peek: true, BodyPartName: imap.BodyPartName{Specifier: imap.HeaderSpecifier}}
 	messages := make(chan *imap.Message, 10)
 	done := make(chan error, 1)
 	go func() {
-		done <- cli.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure}, messages)
+		done <- cli.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure, headerSection.FetchItem()}, messages)
 	}()
 
 	var out []Message
 	for msg := range messages {
-		out = append(out, envelopeToMessage(msg))
+		m := envelopeToMessage(msg)
+		m.Category = classifyFetched(msg, headerSection)
+		out = append(out, m)
 	}
 	if err := <-done; err != nil {
 		return nil, 0, fmt.Errorf("imap fetch: %w", err)

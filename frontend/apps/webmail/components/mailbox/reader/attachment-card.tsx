@@ -71,7 +71,7 @@ export function AttachmentCard({ attachment }: { attachment: MailAttachment }) {
         </Button>
       )}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader><DialogTitle>{attachment.filename}</DialogTitle></DialogHeader>
           <iframe
             src={`data:application/pdf;base64,${attachment.data}`}

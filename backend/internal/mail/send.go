@@ -6,8 +6,10 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"net/smtp"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -19,38 +21,36 @@ import (
 // becomes multipart/mixed so both plain-text and rich-text stay intact.
 // from is the envelope/From sender; email is the authenticated account.
 func (c *Client) Send(email, token, from string, to, cc, bcc []string, subject, text, html string, attachments []Attachment) error {
-	host := c.SMTPAddr
-	serverHost := host
-	if i := strings.LastIndex(host, ":"); i >= 0 {
-		serverHost = host[:i]
-	}
-
-	conn, err := smtp.Dial(host)
+	conn, err := c.openSMTP(email, token)
 	if err != nil {
-		return fmt.Errorf("smtp dial: %w", err)
+		return err
 	}
 	defer conn.Close()
-
-	tlsErr := conn.StartTLS(&tls.Config{InsecureSkipVerify: true, ServerName: serverHost})
-	var auth smtp.Auth
-	if tlsErr == nil {
-		auth = smtp.PlainAuth("", email, token, serverHost)
-	} else {
-		// MAILEZ_TLS=off deployments accept plaintext on the internal
-		// submission port; net/smtp refuses PlainAuth over plaintext, so use
-		// the explicit AUTH PLAIN form.
-		auth = NewPlainAuth(email, token)
-	}
-	if err := conn.Auth(auth); err != nil {
-		return fmt.Errorf("smtp auth: %w", err)
-	}
-	if err := conn.Mail(from); err != nil {
-		return fmt.Errorf("smtp mail: %w", err)
-	}
 	recipients := make([]string, 0, len(to)+len(cc)+len(bcc))
 	recipients = append(recipients, to...)
 	recipients = append(recipients, cc...)
 	recipients = append(recipients, bcc...)
+	return submitSMTP(conn, from, recipients, BuildMessage(from, to, cc, subject, text, html, attachments))
+}
+
+// SubmitRaw delivers a pre-built RFC 5322 message through the dial's
+// submission server without rebuilding it; the outbox worker uses it to deliver
+// parked messages from external (aggregated) accounts.
+func (c *Client) SubmitRaw(d Dial, from string, recipients []string, raw string) error {
+	conn, err := openExternalSMTP(d)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return submitSMTP(conn, from, recipients, raw)
+}
+
+// submitSMTP runs the envelope/data phase of an SMTP transaction for an already
+// connected and authenticated client.
+func submitSMTP(conn *smtp.Client, from string, recipients []string, msg string) error {
+	if err := conn.Mail(from); err != nil {
+		return fmt.Errorf("smtp mail: %w", err)
+	}
 	for _, rcpt := range recipients {
 		rcpt = strings.TrimSpace(rcpt)
 		if rcpt == "" {
@@ -64,7 +64,6 @@ func (c *Client) Send(email, token, from string, to, cc, bcc []string, subject, 
 	if err != nil {
 		return fmt.Errorf("smtp data: %w", err)
 	}
-	msg := BuildMessage(from, to, cc, subject, text, html, attachments)
 	if _, err := wc.Write([]byte(msg)); err != nil {
 		return fmt.Errorf("smtp write: %w", err)
 	}
@@ -72,6 +71,74 @@ func (c *Client) Send(email, token, from string, to, cc, bcc []string, subject, 
 		return fmt.Errorf("smtp close: %w", err)
 	}
 	return conn.Quit()
+}
+
+// openSMTP connects and authenticates to the submission server. External
+// (aggregated) accounts use their own host/security/credentials; internal
+// accounts use the gateway with the per-session temp token.
+func (c *Client) openSMTP(email, token string) (*smtp.Client, error) {
+	if c.dial.External {
+		return openExternalSMTP(c.dial)
+	}
+	host := c.SMTPAddr
+	serverHost := host
+	if i := strings.LastIndex(host, ":"); i >= 0 {
+		serverHost = host[:i]
+	}
+
+	conn, err := smtp.Dial(host)
+	if err != nil {
+		return nil, fmt.Errorf("smtp dial: %w", err)
+	}
+	tlsErr := conn.StartTLS(&tls.Config{InsecureSkipVerify: true, ServerName: serverHost})
+	var auth smtp.Auth
+	if tlsErr == nil {
+		auth = smtp.PlainAuth("", email, token, serverHost)
+	} else {
+		// MAILEZ_TLS=off deployments accept plaintext on the internal
+		// submission port; net/smtp refuses PlainAuth over plaintext, so use
+		// the explicit AUTH PLAIN form.
+		auth = NewPlainAuth(email, token)
+	}
+	if err := conn.Auth(auth); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("smtp auth: %w", err)
+	}
+	return conn, nil
+}
+
+// openExternalSMTP connects to an external submission server honouring its
+// security policy and authenticates with the stored credentials.
+func openExternalSMTP(d Dial) (*smtp.Client, error) {
+	addr := net.JoinHostPort(d.Host, strconv.Itoa(d.Port))
+	tlsCfg := &tls.Config{InsecureSkipVerify: true, ServerName: d.Host}
+	var raw net.Conn
+	var err error
+	switch d.Security {
+	case "tls", "ssl", "smtps":
+		raw, err = tls.Dial("tcp", addr, tlsCfg)
+	default: // none, starttls: start plain, upgrade below
+		raw, err = net.Dial("tcp", addr)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("smtp dial %s: %w", addr, err)
+	}
+	cli, err := smtp.NewClient(raw, d.Host)
+	if err != nil {
+		raw.Close()
+		return nil, fmt.Errorf("smtp client: %w", err)
+	}
+	if d.Security == "starttls" {
+		if err := cli.StartTLS(tlsCfg); err != nil {
+			cli.Close()
+			return nil, fmt.Errorf("smtp starttls: %w", err)
+		}
+	}
+	if err := cli.Auth(smtp.PlainAuth("", d.Username, d.Password, d.Host)); err != nil {
+		cli.Close()
+		return nil, fmt.Errorf("smtp auth: %w", err)
+	}
+	return cli, nil
 }
 
 // headerValue keeps the first line of a user-controlled header field so CR/LF

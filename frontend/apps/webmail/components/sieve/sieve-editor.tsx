@@ -159,7 +159,7 @@ export function SieveEditor({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-3xl">
+      <DialogContent className="max-h-[85vh] sm:max-w-3xl">
         <DialogHeader><DialogTitle>{t("title")}</DialogTitle></DialogHeader>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="grid min-h-0 gap-4 md:grid-cols-[220px_1fr]">

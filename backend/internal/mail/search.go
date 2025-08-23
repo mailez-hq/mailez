@@ -150,15 +150,20 @@ func (c *Client) SearchMessagesSpec(email, token, folder string, sel SearchQuery
 	return out, nil
 }
 
-// SearchAllMessages runs a query against every mailbox (except Trash) and
-// merges the results, newest first, tagging each hit with its source folder so
-// the reader can open it from the right place.
+// SearchAllMessages parses an advanced query expression and runs it against
+// every mailbox.
 func (c *Client) SearchAllMessages(email, token, query string) ([]Message, error) {
+	return c.SearchAllMessagesSpec(email, token, parseSearchQuery(query))
+}
+
+// SearchAllMessagesSpec runs a structured query against every mailbox (except
+// Trash) and merges the results, newest first, tagging each hit with its
+// source folder so the reader can open it from the right place.
+func (c *Client) SearchAllMessagesSpec(email, token string, sel SearchQuery) ([]Message, error) {
 	folders, err := c.ListFolders(email, token)
 	if err != nil {
 		return nil, err
 	}
-	sel := parseSearchQuery(query)
 	var out []Message
 	seen := make(map[string]bool)
 	for _, f := range folders {

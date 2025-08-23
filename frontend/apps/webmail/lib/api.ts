@@ -3,27 +3,7 @@ import type {
   Contact,
   DraftTone,
   LoginResult,
-  MailAttachment,
-  MailIdentity,
-  MailLabel,
-  MailMessage,
-  MailPage,
-  Me,
-  MeSettings,
-  OutboundAttachment,
-  PgpStatus,
-  PushSubscriptionInput,
-  SieveScript,
-  TotpStatus,
-} from "@mailez/types";
-
-// The wire types live in the shared @mailez/types package; re-export them so
-// existing components keep importing from "@/lib/api".
-export type {
-  AIStatus,
-  Contact,
-  DraftTone,
-  LoginResult,
+  MailAccount,
   MailAttachment,
   MailIdentity,
   MailLabel,
@@ -36,10 +16,57 @@ export type {
   PgpStatus,
   PushSubscriptionInput,
   SieveScript,
+  SnoozedMessage,
+  SmimeCert,
+  SmimeStatus,
   TotpStatus,
+  Webhook,
+} from "@mailez/types";
+
+// The wire types live in the shared @mailez/types package; re-export them so
+// existing components keep importing from "@/lib/api".
+export type {
+  AIStatus,
+  Contact,
+  DraftTone,
+  LoginResult,
+  MailAccount,
+  MailAttachment,
+  MailIdentity,
+  MailLabel,
+  MailMessage,
+  MailPage,
+  MailThread,
+  Me,
+  MeSettings,
+  OutboundAttachment,
+  PgpStatus,
+  PushSubscriptionInput,
+  SieveScript,
+  SnoozedMessage,
+  SmimeCert,
+  SmimeStatus,
+  TotpStatus,
+  Webhook,
 };
 
 const API = "/api/v1";
+
+// Active aggregated account: when set, every /mail/* request is scoped to that
+// external mailbox so the whole UI (folders, list, reading pane) follows the
+// account switch. The internal gateway account is the null default.
+let activeAccountId: number | null = null;
+export const setActiveAccountId = (id: number | null) => {
+  activeAccountId = id;
+};
+export const getActiveAccountId = () => activeAccountId;
+
+// mailPath appends the active account selector to mailbox-scoped requests.
+function mailPath(path: string): string {
+  if (activeAccountId == null || !path.startsWith("/mail/")) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}account_id=${activeAccountId}`;
+}
 
 // ApiError carries the HTTP status and the backend's machine-readable code
 // (e.g. "rate_limited") so the UI can react programmatically.
@@ -56,7 +83,7 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
+  const res = await fetch(`${API}${mailPath(path)}`, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
@@ -104,12 +131,25 @@ export async function me(): Promise<Me> {
 
 export const mailFolders = () => api<string[]>("/mail/folders");
 
+export const mailFolderCreate = (name: string) =>
+  apiPost<void>("/mail/folders", { name });
+
+export const mailFolderRename = (name: string, newName: string) =>
+  apiPut<void>("/mail/folders", { name, new_name: newName });
+
+export const mailFolderDelete = (name: string) =>
+  api<void>(`/mail/folders?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+
+export const mailFolderClear = (name: string) =>
+  apiPost<void>("/mail/folders/clear", { name });
+
 export const mailUnseen = () => api<Record<string, number>>("/mail/unseen");
 
 export async function mailMessages(folder: string, page = 0): Promise<MailPage> {
-  const res = await fetch(`${API}/mail/messages?folder=${encodeURIComponent(folder)}&page=${page}`, {
-    headers: { "Content-Type": "application/json" },
-  });
+  const res = await fetch(
+    `${API}${mailPath(`/mail/messages?folder=${encodeURIComponent(folder)}&page=${page}`)}`,
+    { headers: { "Content-Type": "application/json" } },
+  );
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { error?: string }).error || res.statusText);
@@ -141,7 +181,8 @@ export const mailThread = (folder: string, threadId: string) =>
   );
 
 // mailSend submits a message. With undoSeconds > 0 the backend parks it in the
-// outbox for that window and returns its id, so the caller can offer undo.
+// outbox for that window and returns its id, so the caller can offer undo. A
+// sendAt (RFC3339) future value schedules the send instead.
 export const mailSend = (
   to: string[],
   cc: string[],
@@ -152,15 +193,31 @@ export const mailSend = (
   from?: string,
   attachments?: OutboundAttachment[],
   undoSeconds = 0,
+  sendAt?: string,
 ) =>
-  api<{ queued?: boolean; outbox_id?: number; undo_seconds?: number }>("/mail/send", {
-    method: "POST",
-    body: JSON.stringify({ to, cc, bcc, subject, body, html, from, attachments, undo_seconds: undoSeconds }),
-  });
+  api<{ queued?: boolean; outbox_id?: number; undo_seconds?: number; scheduled?: boolean }>(
+    "/mail/send",
+    {
+      method: "POST",
+      body: JSON.stringify({ to, cc, bcc, subject, body, html, from, attachments, undo_seconds: undoSeconds, send_at: sendAt }),
+    },
+  );
 
 // mailUndoSend cancels a parked message within its undo window.
 export const mailUndoSend = (outboxId: number) =>
   api<void>(`/mail/outbox/${outboxId}`, { method: "DELETE" });
+
+// ScheduledSend is one queued message waiting for its send_at moment.
+export interface ScheduledSend {
+  id: number;
+  from: string;
+  subject: string;
+  send_at: string;
+  recipients: string[];
+}
+
+// mailScheduled lists the current user's upcoming scheduled sends.
+export const mailScheduled = () => api<ScheduledSend[]>("/mail/scheduled");
 
 // mailUnsubscribe triggers a sender's List-Unsubscribe URL through the
 // backend (avoids CORS and hides the user's IP from the sender).
@@ -184,6 +241,12 @@ export const mailSaveDraft = (
 export const mailFlag = (folder: string, uid: number, flag: string, value: boolean) =>
   apiPost("/mail/flag", { folder, uid, flag, value });
 
+// Snooze: until is a unix-seconds timestamp, or 0/null to wake the message up.
+export const mailSnooze = (folder: string, uid: number, until: number | null) =>
+  apiPost("/mail/snooze", { folder, uid, until: until ?? 0 });
+
+export const mailSnoozed = () => api<SnoozedMessage[]>("/mail/snoozed");
+
 // Label definitions (name + color) persisted per account.
 export const mailLabels = () => api<MailLabel[]>("/mail/labels");
 
@@ -202,7 +265,68 @@ export const mailDelete = (folder: string, uid: number) =>
 export const mailMove = (folder: string, uids: number[], destination: string) =>
   apiPost("/mail/move", { folder, uids, destination });
 
+export interface FolderACLEntry {
+  identifier: string;
+  rights: string;
+}
+
+export const mailACL = (folder: string) =>
+  api<{ folder: string; entries: FolderACLEntry[]; my_rights: string }>(
+    `/mail/acl?folder=${encodeURIComponent(folder)}`,
+  );
+
+export const mailACLSet = (folder: string, identifier: string, rights: string) =>
+  api<void>("/mail/acl", {
+    method: "PUT",
+    body: JSON.stringify({ folder, identifier, rights }),
+  });
+
+export const mailACLDelete = (folder: string, identifier: string) =>
+  api<void>(
+    `/mail/acl?folder=${encodeURIComponent(folder)}&identifier=${encodeURIComponent(identifier)}`,
+    { method: "DELETE" },
+  );
+
 export const mailIdentities = () => api<MailIdentity[]>("/mail/identities");
+
+// Aggregated external accounts (full aggregation client).
+export const accounts = () => api<MailAccount[]>("/accounts");
+
+export const accountCreate = (input: {
+  name: string;
+  email: string;
+  imap_host: string;
+  imap_port: number;
+  imap_security: string;
+  smtp_host?: string;
+  smtp_port?: number;
+  smtp_security?: string;
+  username: string;
+  password: string;
+}) => apiPost<MailAccount>("/accounts", input);
+
+export const accountUpdate = (
+  id: number,
+  input: Partial<{
+    name: string;
+    email: string;
+    imap_host: string;
+    imap_port: number;
+    imap_security: string;
+    smtp_host: string;
+    smtp_port: number;
+    smtp_security: string;
+    username: string;
+    password: string;
+    enabled: boolean;
+  }>,
+) => apiPut<MailAccount>(`/accounts/${id}`, input);
+
+export const accountDelete = (id: number) =>
+  api<void>(`/accounts/${id}`, { method: "DELETE" });
+
+export const accountTest = (id: number) =>
+  apiPost<{ ok: boolean }>(`/accounts/${id}/test`, {});
 
 // Web Push subscriptions (new-mail notifications via service worker).
 export const pushVapid = () => api<{ public_key: string }>("/push/vapid");
@@ -265,6 +389,25 @@ export const pgpGenerate = (): Promise<PgpStatus> =>
 
 export const pgpDelete = () => api<void>("/me/pgp", { method: "DELETE" });
 
+export interface PgpKey {
+  id: number;
+  email: string;
+  public_key: string;
+  fingerprint: string;
+  created_at: string;
+}
+
+export const pgpListKeys = () => api<PgpKey[]>("/me/pgp/keys");
+
+export const pgpImportKey = (email: string, publicKey: string) =>
+  api<PgpKey>("/me/pgp/keys", {
+    method: "POST",
+    body: JSON.stringify({ email, public_key: publicKey }),
+  });
+
+export const pgpDeleteKey = (id: number) =>
+  api<void>(`/me/pgp/keys/${id}`, { method: "DELETE" });
+
 export const pgpLookup = (email: string) =>
   api<{ public_key: string }>(`/pgp/key?email=${encodeURIComponent(email)}`);
 
@@ -292,6 +435,75 @@ export const pgpVerify = (text: string, signature: string, publicKey: string) =>
     body: JSON.stringify({ text, signature, public_key: publicKey }),
   });
 
+// Webhook event callbacks
+export const webhookList = () => api<Webhook[]>("/webhooks");
+
+export const webhookCreate = (w: { url: string; secret: string; events: string; enabled?: boolean }) =>
+  api<Webhook>("/webhooks", { method: "POST", body: JSON.stringify(w) });
+
+export const webhookUpdate = (id: number, w: { url?: string; secret?: string; events?: string; enabled?: boolean }) =>
+  api<Webhook>(`/webhooks/${id}`, { method: "PUT", body: JSON.stringify(w) });
+
+export const webhookDelete = (id: number) =>
+  api<void>(`/webhooks/${id}`, { method: "DELETE" });
+
+export const webhookTest = (id: number) =>
+  api<{ ok: boolean; status: number; error?: string }>(`/webhooks/${id}/test`, { method: "POST" });
+
+// S/MIME (certificate management + CMS encrypt/decrypt/sign/verify)
+export const smimeStatus = () => api<SmimeStatus>("/me/smime");
+
+export const smimeImport = (inp: {
+  cert_pem?: string;
+  private_key?: string;
+  p12_b64?: string;
+  p12_password?: string;
+}) =>
+  api<{ email: string; fingerprint: string; subject: string; issuer: string; not_after: string }>(
+    "/me/smime",
+    { method: "POST", body: JSON.stringify(inp) },
+  ).then((k) => ({ has_cert: true, ...k }));
+
+export const smimeDelete = () => api<void>("/me/smime", { method: "DELETE" });
+
+export const smimeListCerts = () => api<SmimeCert[]>("/me/smime/certs");
+
+export const smimeImportCert = (email: string, certPem: string) =>
+  api<SmimeCert>("/me/smime/certs", {
+    method: "POST",
+    body: JSON.stringify({ email, cert_pem: certPem }),
+  });
+
+export const smimeDeleteCert = (id: number) =>
+  api<void>(`/me/smime/certs/${id}`, { method: "DELETE" });
+
+export const smimeLookup = (email: string) =>
+  api<{ cert_pem: string; fingerprint: string }>(`/smime/cert?email=${encodeURIComponent(email)}`);
+
+export const smimeEncrypt = (text: string, certPem: string) =>
+  api<{ encrypted: string }>("/mail/smime/encrypt", {
+    method: "POST",
+    body: JSON.stringify({ text, cert_pem: certPem }),
+  });
+
+export const smimeDecrypt = (text: string) =>
+  api<{ plaintext: string }>("/mail/smime/decrypt", {
+    method: "POST",
+    body: JSON.stringify({ text }),
+  });
+
+export const smimeSign = (text: string) =>
+  api<{ signature: string }>("/mail/smime/sign", {
+    method: "POST",
+    body: JSON.stringify({ text }),
+  });
+
+export const smimeVerify = (signature: string, certPem: string) =>
+  api<{ valid: boolean; content: string }>("/mail/smime/verify", {
+    method: "POST",
+    body: JSON.stringify({ signature, cert_pem: certPem }),
+  });
+
 // Two-factor authentication (TOTP)
 export const totpStatus = () => api<TotpStatus>("/me/totp");
 
@@ -313,8 +525,25 @@ export const changePassword = (oldPw: string, newPw: string) =>
 // address book
 export const contacts = () => api<Contact[]>("/contacts");
 
-export const createContact = (name: string, email: string, comment = "") =>
-  apiPost<Contact>("/contacts", { name, email, comment });
+export const createContact = (name: string, email: string, comment = "", groups = "", avatar = "") =>
+  apiPost<Contact>("/contacts", { name, email, comment, groups, avatar });
+
+export const updateContact = (
+  id: number,
+  body: Partial<Pick<Contact, "name" | "email" | "comment" | "groups" | "avatar">>,
+) => apiPut<Contact>(`/contacts/${id}`, body);
 
 export const deleteContact = (id: number) =>
   api(`/contacts/${id}`, { method: "DELETE" });
+
+export const exportContacts = async (): Promise<string> => {
+  const res = await fetch(`${API}/contacts/export`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError((body as { error?: string }).error || res.statusText, res.status);
+  }
+  return res.text();
+};
+
+export const importContacts = (data: string) =>
+  apiPost<{ added: number; total: number }>("/contacts/import", { data });

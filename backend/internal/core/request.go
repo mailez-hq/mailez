@@ -4,9 +4,15 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+
+	"mailez/backend/internal/core/models"
+	"mailez/backend/internal/crypto"
+	"mailez/backend/internal/mail"
 )
 
 // StringList accepts either a JSON string ("a@x, b@y") or an array of
@@ -64,4 +70,37 @@ func (a *App) MailToken(c *fiber.Ctx) (string, error) {
 	user := CurrentUser(c)
 	sid := c.Cookies(a.Auth.SessionName)
 	return a.Auth.CreateTempToken(c.Context(), user.Email, sid)
+}
+
+// MailDial resolves the mailbox connection for a request: the internal gateway
+// account by default, or the external account named by ?account_id= when
+// present. External dials carry the decrypted stored credentials so the mail
+// client can connect to the aggregated server directly.
+func (a *App) MailDial(c *fiber.Ctx) (mail.Dial, error) {
+	user := CurrentUser(c)
+	if id := c.Query("account_id"); id != "" {
+		aid, err := strconv.ParseUint(id, 10, 64)
+		if err != nil || aid == 0 {
+			return mail.Dial{}, errors.New("invalid account_id")
+		}
+		var acc models.Account
+		if err := a.DB.First(&acc, "id = ? AND user_email = ?", aid, user.Email).Error; err != nil {
+			return mail.Dial{}, errors.New("account not found")
+		}
+		if !acc.Enabled {
+			return mail.Dial{}, errors.New("account is disabled")
+		}
+		pw, err := crypto.Decrypt(a.Cfg.SecretKey, acc.PasswordEnc)
+		if err != nil {
+			return mail.Dial{}, errors.New("cannot unlock account credentials")
+		}
+		d := mail.ExternalDial(acc.Email, acc.ImapHost, acc.ImapPort, acc.ImapSecurity, acc.Username, pw)
+		d.AccountID = acc.ID
+		return d, nil
+	}
+	token, err := a.MailToken(c)
+	if err != nil {
+		return mail.Dial{}, err
+	}
+	return mail.LocalDial(user.Email, token), nil
 }
