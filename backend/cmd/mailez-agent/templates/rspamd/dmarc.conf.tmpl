@@ -8,7 +8,7 @@
     #bcc_addrs = ["postmaster@example.com"]; # additional addresses to copy on reports
     #report_local_controller = false; # Store reports for local/controller scans (for testing only)
     #helo = 'rspamd.localhost'; # Helo used in SMTP dialog
-    smtp = '{{ .MtaAddress }}'; # SMTP server IP
+    smtp = '{{ .PostfixAddress }}'; # SMTP server IP
     smtp_port = 25; # SMTP server port
     #from_name = 'Rspamd'; # SMTP FROM
     #msgid_from = 'rspamd'; # Msgid format
@@ -23,4 +23,3 @@
     #exclude_recipients = ["a@example.com", "b@another.com"]; # Alternative, use array to exclude reports for recipients
   }
 .include(try=true,priority=1,duplicate=merge) "/overrides/dmarc.conf"
-

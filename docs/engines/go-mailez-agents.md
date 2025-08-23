@@ -2,7 +2,7 @@
 
 ## 定位
 
-mailez 的每个邮件容器（gateway / mta / mail-keeper / mail-filter /
+mailez 的每个邮件容器（gateway / legacy MTA / legacy IMAP / mail-filter /
 macro-scanner / resolver）都由**同一个静态 Go 二进制**（`mailez-agent`）
 驱动：读取环境变量 → 渲染配置 → 拉起对应服务 → 代理内部协议。配置模板
 通过 `go:embed` 编译进二进制，镜像内不携带任何脚本解释器或运行时依赖。
@@ -19,8 +19,8 @@ macro-scanner / resolver）都由**同一个静态 Go 二进制**（`mailez-agen
 | 组件 | agent 行为 |
 |---|---|
 | gateway（nginx） | 渲染 nginx.conf（HTTP + SMTP 邮件代理 + 认证转发）；内嵌 ACME 客户端处理证书；启动 legacy IMAP 登录代理作为 IMAP/POP3/Sieve/Submission 前门 |
-| mta（legacy MTA） | 渲染 main.cf / master.cf；实现 socketmap 查询代理；运行 MTA-STS 策略守护 |
-| mail-keeper（legacy IMAP） | 渲染 dovecot.conf；实现 dict 代理（passdb/userdb/quota/sieve 回源到控制面） |
+| legacy MTA | 渲染 main.cf / master.cf；实现 socketmap 查询代理；运行 MTA-STS 策略守护 |
+| legacy IMAP | 渲染 dovecot.conf；实现 dict 代理（passdb/userdb/quota/sieve 回源到控制面） |
 | mail-filter（rspamd） | 渲染 `/conf` 模板到 `/etc/rspamd/local.d`；等待控制面就绪 |
 | macro-scanner | 实现 OLEFY/1.0 扫描协议，供 rspamd 调用 |
 | resolver（unbound） | 渲染 unbound.conf；拉取 root hints / 信任锚 |
@@ -61,5 +61,5 @@ macro-scanner / resolver）都由**同一个静态 Go 二进制**（`mailez-agen
 - `backend/cmd/build-images/`：镜像构建命令（Go，跨平台）
 - `deploy/images/`：共享基础设施镜像（gateway / mail-filter / resolver /
   macro-scanner）
-- `deploy/engines/postdove/`：引擎 A 镜像（mta / mail-keeper）
+- `deploy/engines/postdove/`：引擎 A 镜像（legacy MTA / legacy IMAP）
 - `deploy/engines/reference/`：引擎 B（占位，集成时落位）
