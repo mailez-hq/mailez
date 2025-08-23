@@ -72,7 +72,7 @@ services:
       redis:
         condition: service_healthy
 
-  admin:
+  frontend-admin:
     build: ../frontend/apps/admin
     restart: always
     environment:
@@ -83,7 +83,7 @@ services:
     depends_on:
       - backend
 
-  webmail:
+  frontend-webmail:
     build: ../frontend/apps/webmail
     restart: always
     environment:
