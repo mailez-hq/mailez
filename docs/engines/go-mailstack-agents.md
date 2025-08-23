@@ -1,6 +1,6 @@
 # 工程：Go 重写邮件栈容器代理（去 Python）
 
-> 状态：**M1 unbound ✅ / M2 nginx ✅（e2e 10/10）**（2026-08-23）· 优先级：高
+> 状态：**M1 unbound ✅ / M2 nginx ✅ / M3 legacy IMAP 代码完成待验证**（2026-08-23）· 优先级：高
 
 ## 背景与目标
 
@@ -104,7 +104,10 @@ Python：每个容器 `CMD /start.py`，依赖 vendor 进来的 `podop`（内部
       notls 渲染/端口派生/证书链裁剪；镜像多阶段构建（含静态资源与
       dhparam），e2e 10/10 验证通过（容器 COMMAND 已是
       `/mailstack-agent nginx`）
-- [ ] **M3 legacy IMAP agent**：passdb/userdb/quota/sieve 关联、podop socket
+- [x] **M3 legacy IMAP agent（代码完成）**：passdb/userdb/quota/sieve 关联；
+      Go 实现 podop legacy IMAP dict 协议（H/L/B/S/C + tabescape，转发
+      `/internal/legacy IMAP/`）；dovecot.conf 模板转换 + ham/spam 脚本渲染；
+      单测 9/9（含协议回环测试）；待镜像构建 + e2e 验证
 - [ ] **M4 legacy MTA agent**：main.cf/master.cf 生成、别名/中继查询
 - [ ] **M5 rspamd agent**：配置渲染（替代 Jinja）、DKIM vault 关联
 - [ ] **M6 去 Python**：base 镜像移除 python3/pip/venv/requirements，镜像
