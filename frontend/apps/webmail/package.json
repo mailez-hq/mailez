@@ -13,6 +13,8 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@mailez/types": "file:../../packages/types",
+    "@mailez/ui": "file:../../packages/ui",
     "@base-ui/react": "^1.7.0",
     "@tiptap/extension-placeholder": "^3.30.2",
     "@tiptap/pm": "^3.30.2",
