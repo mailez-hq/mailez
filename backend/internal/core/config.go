@@ -105,4 +105,3 @@ func envBool(key string, fallback bool) bool {
 	}
 	return fallback
 }
-

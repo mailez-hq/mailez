@@ -44,4 +44,3 @@ func asciiEmail(email string) string {
 	}
 	return email[:at] + "@" + asciiDomain(email[at+1:])
 }
-

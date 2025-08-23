@@ -56,4 +56,3 @@ func writeRenderedPostfix(files map[string][]byte) error {
 	}
 	return nil
 }
-

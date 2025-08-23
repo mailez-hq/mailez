@@ -99,4 +99,3 @@ func VerifyPBKDF2SHA256(stored, password string) bool {
 	dk := pbkdf2.Key([]byte(password), salt, rounds, len(expected), sha256.New)
 	return subtle.ConstantTimeCompare(dk, expected) == 1
 }
-

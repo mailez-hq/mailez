@@ -61,4 +61,3 @@ func runDovecot() error {
 
 	return agent.RunChild(ctx, []string{"/usr/sbin/legacy IMAP", "-c", "/etc/legacy IMAP/dovecot.conf", "-F"})
 }
-
