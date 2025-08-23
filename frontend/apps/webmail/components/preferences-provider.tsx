@@ -7,6 +7,8 @@ import {
   readPreferences,
   resolveTheme,
   writePreferences,
+  type Accent,
+  type AiPrefs,
   type Density,
   type Preferences,
   type Theme,
@@ -16,8 +18,13 @@ type PreferencesContextValue = {
   prefs: Preferences;
   theme: Theme;
   density: Density;
+  accent: Accent;
   setTheme: (theme: Theme) => void;
   setDensity: (density: Density) => void;
+  setAccent: (accent: Accent) => void;
+  setAi: (ai: AiPrefs) => void;
+  setNotifications: (enabled: boolean) => void;
+  setUndoSend: (seconds: number) => void;
   resolvedDark: boolean;
 };
 
@@ -63,17 +70,38 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     (density: Density) => update({ ...prefs, density }),
     [prefs, update],
   );
+  const setAccent = useCallback(
+    (accent: Accent) => update({ ...prefs, accent }),
+    [prefs, update],
+  );
+  const setAi = useCallback(
+    (ai: AiPrefs) => update({ ...prefs, ai }),
+    [prefs, update],
+  );
+  const setNotifications = useCallback(
+    (notifications: boolean) => update({ ...prefs, notifications }),
+    [prefs, update],
+  );
+  const setUndoSend = useCallback(
+    (undoSendSeconds: number) => update({ ...prefs, undoSendSeconds }),
+    [prefs, update],
+  );
 
   const value = useMemo(
     () => ({
       prefs,
       theme: prefs.theme,
       density: prefs.density,
+      accent: prefs.accent,
       setTheme,
       setDensity,
+      setAccent,
+      setAi,
+      setNotifications,
+      setUndoSend,
       resolvedDark,
     }),
-    [prefs, setTheme, setDensity, resolvedDark],
+    [prefs, setTheme, setDensity, setAccent, setAi, setNotifications, setUndoSend, resolvedDark],
   );
 
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;

@@ -1,27 +1,36 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LocaleSwitcher } from "@/components/locale-switcher";
-import { MailView } from "@/components/mail-view";
-import { login, me, type Me } from "@/lib/api";
+import { login, loginTotp, me } from "@/lib/api";
 
+// The root route is the sign-in page. An already-authenticated visitor is
+// sent straight into the mailbox; after a successful login we route into it.
 export default function Home() {
   const t = useTranslations("login");
-  const [user, setUser] = useState<Me | null>(null);
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingToken, setPendingToken] = useState("");
+  const [code, setCode] = useState("");
 
   const check = useCallback(() => {
-    me().then(setUser).catch(() => setUser(null)).finally(() => setLoading(false));
-  }, []);
+    me()
+      .then(() => router.replace("/mail/INBOX"))
+      .catch(() => {
+        // not authenticated: stay on the sign-in form
+      })
+      .finally(() => setLoading(false));
+  }, [router]);
 
   useEffect(check, [check]);
 
@@ -30,8 +39,26 @@ export default function Home() {
     setError("");
     setBusy(true);
     try {
-      await login(email, pw);
-      setUser(await me());
+      const res = await login(email, pw);
+      if (res.totp_required && res.pending_token) {
+        setPendingToken(res.pending_token);
+      } else {
+        router.replace("/mail/INBOX");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("error"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onSubmitTotp(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      await loginTotp(pendingToken, code);
+      router.replace("/mail/INBOX");
     } catch (err) {
       setError(err instanceof Error ? err.message : t("error"));
     } finally {
@@ -46,10 +73,6 @@ export default function Home() {
         <span className="sr-only">{t("title")}</span>
       </div>
     );
-  }
-
-  if (user) {
-    return <MailView me={user} />;
   }
 
   return (
@@ -69,20 +92,41 @@ export default function Home() {
           <CardDescription>{t("description")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">{t("email")}</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pw">{t("password")}</Label>
-              <Input id="pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} required />
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? t("submitting") : t("submit")}
-            </Button>
-          </form>
+          {pendingToken ? (
+            <form onSubmit={onSubmitTotp} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="code">{t("totp")}</Label>
+                <Input
+                  id="code"
+                  inputMode="numeric"
+                  autoFocus
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="123456"
+                  required
+                />
+              </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button type="submit" className="w-full" disabled={busy}>
+                {busy ? t("submitting") : t("verify")}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={onSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">{t("email")}</Label>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pw">{t("password")}</Label>
+                <Input id="pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} required />
+              </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button type="submit" className="w-full" disabled={busy}>
+                {busy ? t("submitting") : t("submit")}
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

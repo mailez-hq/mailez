@@ -13,10 +13,13 @@ import { cn } from "@/lib/utils";
 
 // Rich-text compose editor. Emits HTML for the wire and plain text as a
 // degraded body for recipients that only understand text/plain.
-export function ComposeEditor({ value, onChange, placeholder }: {
+export function ComposeEditor({ value, onChange, placeholder, autoFocus }: {
   value: string;
   onChange: (html: string, text: string) => void;
   placeholder?: string;
+  // Focus the editor body once it mounts (used for reply/forward, where the
+  // recipient is pre-filled and the user should start typing immediately).
+  autoFocus?: boolean;
 }) {
   const editor = useEditor({
     extensions: [
@@ -43,6 +46,14 @@ export function ComposeEditor({ value, onChange, placeholder }: {
     }
   }, [value, editor]);
 
+  // place the cursor above the quoted content on reply/forward so the user
+  // can start typing right away; a short delay lets the dialog finish opening
+  useEffect(() => {
+    if (!editor || !autoFocus) return;
+    const t = setTimeout(() => editor.commands.focus("start"), 60);
+    return () => clearTimeout(t);
+  }, [editor, autoFocus]);
+
   const state = useEditorState({
     editor,
     // the selector runs before the editor is created (and after it is
@@ -67,7 +78,7 @@ export function ComposeEditor({ value, onChange, placeholder }: {
   });
 
   if (!editor) {
-    return <div className="h-48 rounded-md border" />;
+    return <div className="min-h-[10rem] flex-1 rounded-md border" />;
   }
 
   function toggleLink() {
@@ -95,8 +106,8 @@ export function ComposeEditor({ value, onChange, placeholder }: {
   );
 
   return (
-    <div className="overflow-hidden rounded-md border border-border">
-      <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/40 px-2 py-1">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-border">
+      <div className="flex shrink-0 flex-wrap items-center gap-0.5 border-b bg-muted/40 px-2 py-1">
         {toolBtn(state.bold, () => editor.chain().focus().toggleBold().run(), <Bold className="h-3.5 w-3.5" />)}
         {toolBtn(state.italic, () => editor.chain().focus().toggleItalic().run(), <Italic className="h-3.5 w-3.5" />)}
         {toolBtn(state.underline, () => editor.chain().focus().toggleUnderline().run(), <Underline className="h-3.5 w-3.5" />)}
@@ -116,7 +127,7 @@ export function ComposeEditor({ value, onChange, placeholder }: {
       </div>
       <EditorContent
         editor={editor}
-        className="mail-prose max-h-64 overflow-y-auto px-3 py-2"
+        className="mail-prose min-h-[10rem] flex-1 overflow-y-auto px-3 py-2"
       />
     </div>
   );

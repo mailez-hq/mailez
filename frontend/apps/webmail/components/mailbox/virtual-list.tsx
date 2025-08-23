@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,6 +18,7 @@ export function VirtualList<T>({
   overscan = 8,
   onEndReached,
   scrollKey,
+  onPullRefresh,
 }: {
   items: T[];
   rowHeight: number;
@@ -27,10 +29,14 @@ export function VirtualList<T>({
   onEndReached?: () => void;
   /** When this value changes the scroll position resets to the top. */
   scrollKey?: string;
+  /** Mobile pull-to-refresh callback (fires after the list is pulled down). */
+  onPullRefresh?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportH, setViewportH] = useState(0);
+  const [pull, setPull] = useState(0);
+  const pullRef = useRef({ start: 0, active: false });
 
   useEffect(() => {
     const el = containerRef.current;
@@ -56,7 +62,9 @@ export function VirtualList<T>({
   // Fire onEndReached once whenever the tail of the list becomes visible.
   const nearEnd = end >= items.length && items.length > 0;
   const onEndReachedRef = useRef(onEndReached);
-  onEndReachedRef.current = onEndReached;
+  useEffect(() => {
+    onEndReachedRef.current = onEndReached;
+  }, [onEndReached]);
   useEffect(() => {
     if (nearEnd) onEndReachedRef.current?.();
   }, [nearEnd, items.length]);
@@ -65,8 +73,34 @@ export function VirtualList<T>({
     <div
       ref={containerRef}
       onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
-      className={cn("mail-scroll overflow-y-auto", className)}
+      onTouchStart={(e) => {
+        if (!onPullRefresh || !containerRef.current || containerRef.current.scrollTop > 0) return;
+        pullRef.current = { start: e.touches[0].clientY, active: true };
+      }}
+      onTouchMove={(e) => {
+        if (!pullRef.current.active) return;
+        const dy = e.touches[0].clientY - pullRef.current.start;
+        if (dy > 0) {
+          if (dy > 8) e.preventDefault();
+          setPull(Math.min(dy * 0.5, 110));
+        } else {
+          setPull(0);
+        }
+      }}
+      onTouchEnd={() => {
+        if (pullRef.current.active && pull > 70) onPullRefresh?.();
+        pullRef.current.active = false;
+        setPull(0);
+      }}
+      className={cn("mail-scroll relative overflow-y-auto", className)}
+      style={pull > 0 ? { transform: `translateY(${pull}px)` } : undefined}
     >
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center pt-2"
+        style={{ opacity: Math.min(pull / 70, 1) }}
+      >
+        <RefreshCw className={cn("size-4 text-primary", pull > 70 && "rotate-180")} />
+      </div>
       <div
         style={{
           height: items.length * rowHeight,

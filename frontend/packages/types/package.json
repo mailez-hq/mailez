@@ -1,0 +1,8 @@
+{
+  "name": "@mailez/types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared API contract types consumed by the admin and webmail apps. The source of truth will move to types generated from the backend OpenAPI spec.",
+  "types": "./src/index.ts",
+  "main": "./src/index.ts"
+}

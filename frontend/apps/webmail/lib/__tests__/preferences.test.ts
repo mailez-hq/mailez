@@ -1,0 +1,32 @@
+import { beforeEach, describe, expect, it } from "vitest";
+
+import { DEFAULT_PREFS, readPreferences, writePreferences } from "@/lib/preferences";
+
+describe("preferences", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("returns defaults when nothing is stored", () => {
+    expect(readPreferences()).toEqual(DEFAULT_PREFS);
+  });
+
+  it("round-trips valid values", () => {
+    writePreferences({ ...DEFAULT_PREFS, theme: "dark", density: "compact", undoSendSeconds: 20 });
+    const p = readPreferences();
+    expect(p.theme).toBe("dark");
+    expect(p.density).toBe("compact");
+    expect(p.undoSendSeconds).toBe(20);
+  });
+
+  it("falls back to defaults on invalid values", () => {
+    window.localStorage.setItem(
+      "mailez.prefs",
+      JSON.stringify({ theme: "neon", density: "huge", undoSendSeconds: 99 }),
+    );
+    const p = readPreferences();
+    expect(p.theme).toBe("system");
+    expect(p.density).toBe("cozy");
+    expect(p.undoSendSeconds).toBe(5);
+  });
+});

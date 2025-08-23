@@ -4,6 +4,7 @@ import { Archive, Paperclip, Star, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { MailMessage } from "@/lib/api";
 import type { Density } from "@/lib/preferences";
+import { Highlight } from "@/components/mailbox/highlight";
 import { cn } from "@/lib/utils";
 
 export const ROW_HEIGHTS: Record<Density, number> = {
@@ -41,6 +42,7 @@ export function MessageRow({
   message,
   index,
   density,
+  category,
   selected,
   selectedInBulk,
   cursorActive,
@@ -49,10 +51,13 @@ export function MessageRow({
   onDelete,
   onArchive,
   onStar,
+  highlightTerms,
+  onContextMenu,
 }: {
   message: MailMessage;
   index: number;
   density: Density;
+  category?: string;
   selected: boolean;
   selectedInBulk: boolean;
   cursorActive: boolean;
@@ -61,6 +66,8 @@ export function MessageRow({
   onDelete: () => void;
   onArchive: () => void;
   onStar: () => void;
+  highlightTerms?: string[];
+  onContextMenu?: (e: React.MouseEvent, message: MailMessage) => void;
 }) {
   const t = useTranslations("mail");
   const unread = !message.flags.includes("\\Seen");
@@ -72,6 +79,12 @@ export function MessageRow({
     <div
       role="button"
       tabIndex={0}
+      draggable
+      onContextMenu={(e) => onContextMenu?.(e, message)}
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", String(message.uid));
+        e.dataTransfer.effectAllowed = "move";
+      }}
       onClick={onOpen}
       onKeyDown={(e) => {
         e.stopPropagation();
@@ -92,7 +105,7 @@ export function MessageRow({
         checked={selectedInBulk}
         onClick={(e) => e.stopPropagation()}
         onChange={onToggleSelect}
-        className="size-3.5 shrink-0 accent-[var(--primary)]"
+        className="size-4 shrink-0 accent-[var(--primary)] sm:size-3.5"
         title={t("select")}
       />
       <span
@@ -112,7 +125,7 @@ export function MessageRow({
               unread ? "font-semibold text-foreground" : "font-normal text-foreground/85",
             )}
           >
-            {sender}
+            <Highlight text={sender} terms={highlightTerms} />
           </span>
           <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
             {fmtTime(message.date)}
@@ -125,8 +138,30 @@ export function MessageRow({
               unread ? "font-medium text-foreground" : "text-muted-foreground",
             )}
           >
-            {message.subject || t("noSubject")}
+            {message.subject ? (
+              <Highlight text={message.subject} terms={highlightTerms} />
+            ) : (
+              t("noSubject")
+            )}
           </span>
+          {category && (
+            <span className="shrink-0 rounded-full bg-muted px-1.5 py-px text-[10px] font-medium text-muted-foreground">
+              {t.has(`category${category.charAt(0).toUpperCase()}${category.slice(1)}`)
+                ? t(`category${category.charAt(0).toUpperCase()}${category.slice(1)}`)
+                : category}
+            </span>
+          )}
+          {message.flags
+            .filter((f) => !f.startsWith("\\") && f !== category)
+            .slice(0, 2)
+            .map((f) => (
+              <span
+                key={f}
+                className="shrink-0 rounded-full bg-primary/10 px-1.5 py-px text-[10px] font-medium text-primary"
+              >
+                {f}
+              </span>
+            ))}
           {message.thread_count && message.thread_count > 1 && (
             <span
               title={t("threadCount", { count: message.thread_count })}
