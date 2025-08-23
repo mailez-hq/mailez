@@ -188,7 +188,7 @@ func (s *Server) health(c *fiber.Ctx) error {
 
 func connectDB(cfg core.Config) *gorm.DB {
 	// Pure-Go sqlite driver (no cgo) for local dev; mysql driver lands later.
-	// SingularTable keeps table names aligned with the reference schema.
+	// SingularTable keeps table names aligned with the model names.
 	level := gormlogger.Warn
 	if cfg.LogLevel == "debug" || cfg.LogLevel == "trace" {
 		level = gormlogger.Info
