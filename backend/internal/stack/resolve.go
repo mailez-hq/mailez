@@ -29,7 +29,7 @@ func (h *Handler) realDomain(domain string) string {
 }
 
 // resolveDestination computes delivery targets for localpart@domain, mirroring
-// the reference implementation's Email.resolve_destination: users (with forwarding), then aliases
+// the the mail stack's Email.resolve_destination: users (with forwarding), then aliases
 // (exact, wildcard, recipient-delimiter aware).
 func (h *Handler) resolveDestination(localpart, domain string, ignoreForwardKeep bool) []string {
 	stripped := h.stripDelimiter(localpart)
@@ -162,3 +162,4 @@ func splitCSV(s string) []string {
 	}
 	return out
 }
+

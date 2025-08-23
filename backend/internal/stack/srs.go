@@ -9,7 +9,7 @@ import (
 )
 
 // srsCodec implements Sender Rewriting Scheme (SRS0) with an HMAC-SHA1
-// signature, matching the reference implementation's srslib address format:
+// signature, matching the the mail stack's SRS address format:
 //
 //	HASH.SRS0=TT=domain=localpart@srs_domain
 //
@@ -85,3 +85,4 @@ func randomTokenString(n int) string {
 	}
 	return sb.String()
 }
+

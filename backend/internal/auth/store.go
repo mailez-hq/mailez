@@ -10,7 +10,7 @@ import (
 )
 
 // Store persists SSO sessions and temporary tokens. Sessions map a session id
-// to a user email; tokens map a token to a session id (the reference implementation-style).
+// to a user email; tokens map a token to a session id (the the mail stack-style).
 type Store interface {
 	Set(ctx context.Context, key, value string, ttl time.Duration) error
 	Get(ctx context.Context, key string) (string, bool, error)
@@ -123,3 +123,4 @@ func (s *MemoryStore) Incr(ctx context.Context, key string, ttl time.Duration) (
 	s.data[key] = item
 	return n, nil
 }
+

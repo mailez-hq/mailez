@@ -11,13 +11,13 @@ import (
 )
 
 func runOletools() error {
-	addr := os.Getenv("OLEFY_BINDADDRESS")
-	port := os.Getenv("OLEFY_BINDPORT")
+	addr := os.Getenv("MAILEZ_SCANNER_BINDADDRESS")
+	port := os.Getenv("MAILEZ_SCANNER_BINDPORT")
 	if port == "" {
 		port = "11343"
 	}
 	minLength := 300
-	if v := os.Getenv("OLEFY_MINLENGTH"); v != "" {
+	if v := os.Getenv("MAILEZ_SCANNER_MINLENGTH"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
 			minLength = n
 		}

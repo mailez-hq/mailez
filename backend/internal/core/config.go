@@ -7,7 +7,7 @@ import (
 )
 
 // Config holds all runtime settings, loaded from environment variables in the
-// reference implementation image style. Every field has a sane default for
+// the mail stack image style. Every field has a sane default for
 // local dev.
 type Config struct {
 	Port               string
@@ -105,3 +105,4 @@ func envBool(key string, fallback bool) bool {
 	}
 	return fallback
 }
+

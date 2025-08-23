@@ -60,7 +60,7 @@ func TestDovecotRender(t *testing.T) {
 	}
 }
 
-func TestPodopDictProtocol(t *testing.T) {
+func TestDictProtocol(t *testing.T) {
 	var gotPath, gotPost string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
@@ -181,3 +181,4 @@ func TestTabEscapeRoundTrip(t *testing.T) {
 		t.Fatalf("roundtrip mismatch: %q != %q", got, in)
 	}
 }
+

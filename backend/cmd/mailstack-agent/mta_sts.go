@@ -100,7 +100,7 @@ func serveMTASTS(ctx context.Context, configPath string) error {
 		client: &http.Client{
 			Timeout: time.Duration(cfg.DefaultZone.Timeout) * time.Second,
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return http.ErrUseLastResponse // no redirects, like the Python daemon
+				return http.ErrUseLastResponse // no redirects, like the legacy daemon
 			},
 		},
 		cache: make(map[string]stsCacheEntry, 10000),
@@ -322,7 +322,7 @@ func parseSTSFields(rec string) map[string]string {
 }
 
 // parseSTSPolicy parses the "key: value" policy file. Duplicate mx keys
-// accumulate (the Python parser appends to mx, overwrites other keys).
+// accumulate (the legacy parser appends to mx, overwrites other keys).
 func parseSTSPolicy(text string) stsPolicy {
 	p := stsPolicy{Mode: "none", MaxAge: -1}
 	for _, line := range strings.Split(text, "\n") {
@@ -379,3 +379,4 @@ func (d *stsDaemon) cacheSet(domain string, e stsCacheEntry) {
 	}
 	d.cache[domain] = e
 }
+

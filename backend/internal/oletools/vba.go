@@ -1,5 +1,5 @@
 // Package oletools scans MS Office documents for VBA macros, a Go port of the
-// olefy/oletools service used by rspamd. It speaks the OLEFY/1.0 TCP protocol
+// oletools scanner service used by rspamd. It speaks the OLEFY/1.0 TCP protocol
 // and returns olevba-compatible JSON so rspamd's oletools plugin works
 // unchanged.
 package oletools
