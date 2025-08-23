@@ -20,6 +20,12 @@ type MailIdentity struct {
 // mailIdentities lists the addresses the current user may send from: their own
 // address plus every non-disabled alias that delivers to them (or that they
 // own as an anonymous alias). DKIM health is reported per hosting domain.
+// mailIdentities lists addresses the caller may send from, with DKIM health.
+// @Summary Send-as identities
+// @Tags mail
+// @Produce json
+// @Success 200 {array} MailIdentity
+// @Router /mail/identities [get]
 func (h *Handler) mailIdentities(c *fiber.Ctx) error {
 	user := currentUser(c)
 

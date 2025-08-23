@@ -79,7 +79,7 @@ func (n *Notifier) pollOnce(ctx context.Context) {
 			log.Printf("push: unseen for %s: %v", s.UserEmail, err)
 			continue
 		}
-		total := counts["INBOX"]
+		total := counts["Inbox"]
 		n.mu.Lock()
 		prev, ok := n.last[s.UserEmail]
 		n.last[s.UserEmail] = total

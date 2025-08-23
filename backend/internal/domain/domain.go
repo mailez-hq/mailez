@@ -15,6 +15,13 @@ func (h *Handler) registerDomains(r fiber.Router, mw fiber.Handler) {
 	r.Delete("/domains/:name", mw, h.deleteDomain)
 }
 
+// listDomains returns all domains (admin).
+// @Summary List domains
+// @Tags domains
+// @Produce json
+// @Success 200 {array} models.Domain
+// @Failure 403 {object} models.APIError
+// @Router /domains [get]
 func (h *Handler) listDomains(c *fiber.Ctx) error {
 	var domains []models.Domain
 	if err := h.DB.Find(&domains).Error; err != nil {
@@ -23,6 +30,13 @@ func (h *Handler) listDomains(c *fiber.Ctx) error {
 	return c.JSON(domains)
 }
 
+// getDomain returns one domain.
+// @Summary Get domain
+// @Tags domains
+// @Produce json
+// @Param name path string true "domain name"
+// @Success 200 {object} models.Domain
+// @Router /domains/{name} [get]
 func (h *Handler) getDomain(c *fiber.Ctx) error {
 	var d models.Domain
 	if err := h.DB.First(&d, "name = ?", c.Params("name")).Error; err != nil {
@@ -31,6 +45,14 @@ func (h *Handler) getDomain(c *fiber.Ctx) error {
 	return c.JSON(d)
 }
 
+// createDomain adds a domain.
+// @Summary Create domain
+// @Tags domains
+// @Accept json
+// @Produce json
+// @Success 201 {object} models.Domain
+// @Failure 400 {object} models.APIError
+// @Router /domains [post]
 func (h *Handler) createDomain(c *fiber.Ctx) error {
 	var d models.Domain
 	if err := c.BodyParser(&d); err != nil {
@@ -45,6 +67,13 @@ func (h *Handler) createDomain(c *fiber.Ctx) error {
 	return c.Status(201).JSON(d)
 }
 
+// updateDomain updates a domain.
+// @Summary Update domain
+// @Tags domains
+// @Accept json
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /domains/{name} [put]
 func (h *Handler) updateDomain(c *fiber.Ctx) error {
 	var d models.Domain
 	if err := h.DB.First(&d, "name = ?", c.Params("name")).Error; err != nil {
@@ -85,6 +114,13 @@ func (h *Handler) updateDomain(c *fiber.Ctx) error {
 	return c.JSON(d)
 }
 
+// deleteDomain removes a domain.
+// @Summary Delete domain
+// @Tags domains
+// @Param name path string true "domain name"
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /domains/{name} [delete]
 func (h *Handler) deleteDomain(c *fiber.Ctx) error {
 	if err := h.DB.Delete(&models.Domain{}, "name = ?", c.Params("name")).Error; err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})

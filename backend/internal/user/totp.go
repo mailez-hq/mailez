@@ -18,6 +18,12 @@ func (h *Handler) registerTotp(r fiber.Router) {
 	r.Delete("/me/totp", h.totpDisable)
 }
 
+// totpStatus returns whether TOTP is enabled and, when not, the enrollment secret.
+// @Summary TOTP status
+// @Tags me
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /me/totp [get]
 func (h *Handler) totpStatus(c *fiber.Ctx) error {
 	u := currentUser(c)
 	if u.TOTPEnabled {
@@ -41,6 +47,13 @@ func (h *Handler) totpStatus(c *fiber.Ctx) error {
 	})
 }
 
+// totpEnable verifies a code and enables TOTP for the user.
+// @Summary Enable TOTP
+// @Tags me
+// @Accept json
+// @Success 204
+// @Failure 400 {object} map[string]interface{}
+// @Router /me/totp/enable [post]
 func (h *Handler) totpEnable(c *fiber.Ctx) error {
 	u := currentUser(c)
 	var in struct {
@@ -61,6 +74,13 @@ func (h *Handler) totpEnable(c *fiber.Ctx) error {
 	return c.SendStatus(204)
 }
 
+// totpDisable disables TOTP after verifying the current code.
+// @Summary Disable TOTP
+// @Tags me
+// @Accept json
+// @Success 204
+// @Failure 400 {object} map[string]interface{}
+// @Router /me/totp [delete]
 func (h *Handler) totpDisable(c *fiber.Ctx) error {
 	u := currentUser(c)
 	var in struct {

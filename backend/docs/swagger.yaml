@@ -1,0 +1,1910 @@
+basePath: /api/v1
+definitions:
+  internal_alias.MailIdentity:
+    properties:
+      dkim_enabled:
+        type: boolean
+      email:
+        type: string
+      name:
+        type: string
+      signature:
+        type: string
+    type: object
+  internal_auth.MeResponse:
+    properties:
+      displayed_name:
+        type: string
+      email:
+        type: string
+      enabled:
+        type: boolean
+      global_admin:
+        type: boolean
+      manager:
+        type: boolean
+    type: object
+  internal_auth.loginRequest:
+    properties:
+      email:
+        type: string
+      pw:
+        type: string
+    type: object
+  mailez_backend_internal_core_models.APIError:
+    properties:
+      code:
+        example: rate_limited
+        type: string
+      error:
+        example: something went wrong
+        type: string
+    type: object
+  mailez_backend_internal_core_models.Alias:
+    properties:
+      comment:
+        type: string
+      created_at:
+        type: string
+      destination:
+        type: string
+      disabled:
+        type: boolean
+      domain_name:
+        type: string
+      email:
+        type: string
+      hostname:
+        description: Anonymous Email Service metadata
+        type: string
+      localpart:
+        type: string
+      owner_email:
+        type: string
+      updated_at:
+        type: string
+      wildcard:
+        type: boolean
+    type: object
+  mailez_backend_internal_core_models.Alternative:
+    properties:
+      comment:
+        type: string
+      created_at:
+        type: string
+      domain_name:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  mailez_backend_internal_core_models.AuditLog:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      ip:
+        type: string
+      method:
+        type: string
+      path:
+        type: string
+      status:
+        type: integer
+      user:
+        type: string
+    type: object
+  mailez_backend_internal_core_models.Contact:
+    properties:
+      comment:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      user_email:
+        type: string
+    type: object
+  mailez_backend_internal_core_models.Domain:
+    properties:
+      anonmail_enabled:
+        type: boolean
+      comment:
+        type: string
+      created_at:
+        type: string
+      max_aliases:
+        type: integer
+      max_quota_bytes:
+        type: integer
+      max_users:
+        type: integer
+      name:
+        type: string
+      signup_enabled:
+        type: boolean
+      updated_at:
+        type: string
+    type: object
+  mailez_backend_internal_core_models.Fetch:
+    properties:
+      error:
+        type: string
+      folders:
+        type: string
+      host:
+        type: string
+      id:
+        type: integer
+      invisible:
+        type: boolean
+      keep:
+        type: boolean
+      last_check:
+        type: string
+      port:
+        type: integer
+      protocol:
+        type: string
+      scan:
+        type: boolean
+      tls:
+        type: boolean
+      user_email:
+        type: string
+      username:
+        type: string
+    type: object
+  mailez_backend_internal_core_models.Relay:
+    properties:
+      comment:
+        type: string
+      created_at:
+        type: string
+      name:
+        type: string
+      smtp:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  mailez_backend_internal_core_models.Token:
+    properties:
+      id:
+        type: integer
+      ip:
+        type: string
+      user_email:
+        type: string
+    type: object
+  mailez_backend_internal_core_models.User:
+    properties:
+      allow_spoofing:
+        type: boolean
+      blacklist:
+        type: string
+      change_pw_next_login:
+        type: boolean
+      comment:
+        type: string
+      created_at:
+        type: string
+      displayed_name:
+        type: string
+      domain_name:
+        type: string
+      email:
+        type: string
+      enable_imap:
+        type: boolean
+      enable_pop:
+        type: boolean
+      enabled:
+        type: boolean
+      forward_destination:
+        type: string
+      forward_enabled:
+        type: boolean
+      forward_keep:
+        type: boolean
+      global_admin:
+        type: boolean
+      localpart:
+        type: string
+      pgp_fingerprint:
+        type: string
+      pgp_public_key:
+        type: string
+      quota_bytes:
+        type: integer
+      quota_bytes_used:
+        type: integer
+      reply_body:
+        type: string
+      reply_enabled:
+        type: boolean
+      reply_enddate:
+        type: string
+      reply_startdate:
+        type: string
+      reply_subject:
+        type: string
+      signature:
+        type: string
+      spam_enabled:
+        type: boolean
+      spam_mark_as_read:
+        type: boolean
+      spam_threshold:
+        type: integer
+      totp_enabled:
+        type: boolean
+      updated_at:
+        type: string
+      whitelist:
+        type: string
+    type: object
+  mailez_backend_internal_mail.Address:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+    type: object
+  mailez_backend_internal_mail.Attachment:
+    properties:
+      content_type:
+        type: string
+      data:
+        type: string
+      filename:
+        type: string
+      size:
+        type: integer
+    type: object
+  mailez_backend_internal_mail.Message:
+    properties:
+      attachments:
+        items:
+          $ref: '#/definitions/mailez_backend_internal_mail.Attachment'
+        type: array
+      cc:
+        items:
+          $ref: '#/definitions/mailez_backend_internal_mail.Address'
+        type: array
+      date:
+        type: string
+      flags:
+        items:
+          type: string
+        type: array
+      folder:
+        type: string
+      from:
+        items:
+          $ref: '#/definitions/mailez_backend_internal_mail.Address'
+        type: array
+      has_attachment:
+        type: boolean
+      html_body:
+        type: string
+      id:
+        type: string
+      seq:
+        type: integer
+      subject:
+        type: string
+      text_body:
+        type: string
+      thread_count:
+        type: integer
+      thread_id:
+        type: string
+      thread_latest:
+        type: boolean
+      to:
+        items:
+          $ref: '#/definitions/mailez_backend_internal_mail.Address'
+        type: array
+      uid:
+        type: integer
+    type: object
+info:
+  contact: {}
+  description: Self-hosted mail platform — REST API for the admin console and webmail.
+  title: mailez API
+  version: 0.1.0
+paths:
+  /ai/draft:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Draft reply
+      tags:
+      - ai
+  /ai/prioritize:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Prioritize inbox
+      tags:
+      - ai
+  /ai/search:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_mail.Message'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: AI search
+      tags:
+      - ai
+  /ai/status:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: AI status
+      tags:
+      - ai
+  /ai/summarize:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Summarize email
+      tags:
+      - ai
+  /aliases:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_core_models.Alias'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: List aliases
+      tags:
+      - aliases
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.Alias'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Create alias
+      tags:
+      - aliases
+  /aliases/{email}:
+    delete:
+      parameters:
+      - description: alias address
+        in: path
+        name: email
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Delete alias
+      tags:
+      - aliases
+    get:
+      parameters:
+      - description: alias address
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.Alias'
+      summary: Get alias
+      tags:
+      - aliases
+    put:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Update alias
+      tags:
+      - aliases
+  /alternatives:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_core_models.Alternative'
+            type: array
+      summary: List alternatives
+      tags:
+      - domains
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.Alternative'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Create alternative
+      tags:
+      - domains
+  /alternatives/{name}:
+    delete:
+      parameters:
+      - description: alternative name
+        in: path
+        name: name
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Delete alternative
+      tags:
+      - domains
+  /anon-aliases:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_core_models.Alias'
+            type: array
+      summary: List anonymous aliases
+      tags:
+      - aliases
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.Alias'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Create anonymous alias
+      tags:
+      - aliases
+  /anon-aliases/{email}:
+    delete:
+      parameters:
+      - description: alias address
+        in: path
+        name: email
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Delete anonymous alias
+      tags:
+      - aliases
+  /anon-aliases/domains:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_core_models.Domain'
+            type: array
+      summary: Anonymous-alias domains
+      tags:
+      - aliases
+  /audit:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_core_models.AuditLog'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Audit log
+      tags:
+      - admin
+  /config/export:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Export configuration
+      tags:
+      - admin
+  /config/import:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: import stats
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Import configuration
+      tags:
+      - admin
+  /contacts:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_core_models.Contact'
+            type: array
+      summary: List contacts
+      tags:
+      - contacts
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.Contact'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Create contact
+      tags:
+      - contacts
+  /contacts/{id}:
+    delete:
+      parameters:
+      - description: contact id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Delete contact
+      tags:
+      - contacts
+    put:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Update contact
+      tags:
+      - contacts
+  /domains:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_core_models.Domain'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: List domains
+      tags:
+      - domains
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.Domain'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Create domain
+      tags:
+      - domains
+  /domains/{name}:
+    delete:
+      parameters:
+      - description: domain name
+        in: path
+        name: name
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Delete domain
+      tags:
+      - domains
+    get:
+      parameters:
+      - description: domain name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.Domain'
+      summary: Get domain
+      tags:
+      - domains
+    put:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Update domain
+      tags:
+      - domains
+  /domains/{name}/dkim:
+    get:
+      parameters:
+      - description: domain name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: DKIM status
+      tags:
+      - domains
+    post:
+      parameters:
+      - description: domain name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Generate DKIM key
+      tags:
+      - domains
+  /domains/{name}/managers:
+    get:
+      parameters:
+      - description: domain name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_core_models.User'
+            type: array
+      summary: List domain managers
+      tags:
+      - domains
+    post:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Add domain manager
+      tags:
+      - domains
+  /domains/{name}/managers/{email}:
+    delete:
+      parameters:
+      - description: domain name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: manager email
+        in: path
+        name: email
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Remove domain manager
+      tags:
+      - domains
+  /fetches:
+    get:
+      parameters:
+      - description: filter by user email
+        in: query
+        name: user
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_core_models.Fetch'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: List fetch accounts
+      tags:
+      - fetch
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.Fetch'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Create fetch account
+      tags:
+      - fetch
+  /fetches/{id}:
+    delete:
+      parameters:
+      - description: fetch id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Delete fetch account
+      tags:
+      - fetch
+    put:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Update fetch account
+      tags:
+      - fetch
+  /mail/delete:
+    post:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete message
+      tags:
+      - mail
+  /mail/draft:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: uid
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Save draft
+      tags:
+      - mail
+  /mail/flag:
+    post:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Set message flag
+      tags:
+      - mail
+  /mail/folders:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+      summary: List folders
+      tags:
+      - mail
+  /mail/identities:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_alias.MailIdentity'
+            type: array
+      summary: Send-as identities
+      tags:
+      - mail
+  /mail/message:
+    get:
+      parameters:
+      - description: mailbox
+        in: query
+        name: folder
+        required: true
+        type: string
+      - description: message uid
+        in: query
+        name: uid
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_mail.Message'
+      summary: Get message
+      tags:
+      - mail
+  /mail/messages:
+    get:
+      parameters:
+      - default: INBOX
+        description: mailbox name
+        in: query
+        name: folder
+        type: string
+      - default: 0
+        description: page (0-based)
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_mail.Message'
+            type: array
+      summary: List messages
+      tags:
+      - mail
+  /mail/move:
+    post:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Move messages
+      tags:
+      - mail
+  /mail/pgp/decrypt:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Decrypt message
+      tags:
+      - pgp
+  /mail/pgp/encrypt:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Encrypt message
+      tags:
+      - pgp
+  /mail/pgp/sign:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Sign message
+      tags:
+      - pgp
+  /mail/pgp/verify:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Verify signature
+      tags:
+      - pgp
+  /mail/raw:
+    get:
+      parameters:
+      - description: mailbox
+        in: query
+        name: folder
+        required: true
+        type: string
+      - description: message uid
+        in: query
+        name: uid
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Raw message
+      tags:
+      - mail
+  /mail/search:
+    get:
+      parameters:
+      - default: INBOX
+        description: mailbox or all
+        in: query
+        name: folder
+        type: string
+      - description: search expression
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_mail.Message'
+            type: array
+      summary: Search messages
+      tags:
+      - mail
+  /mail/send:
+    post:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Send message
+      tags:
+      - mail
+  /mail/thread:
+    get:
+      parameters:
+      - description: mailbox
+        in: query
+        name: folder
+        required: true
+        type: string
+      - description: thread id
+        in: query
+        name: thread_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Message thread
+      tags:
+      - mail
+  /mail/unseen:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+      summary: Unseen counts
+      tags:
+      - mail
+  /me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Current user settings
+      tags:
+      - me
+  /me/password:
+    put:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Change password
+      tags:
+      - me
+  /me/pgp:
+    delete:
+      responses:
+        "204":
+          description: No Content
+      summary: Delete PGP key
+      tags:
+      - me
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: PGP status
+      tags:
+      - me
+  /me/pgp/generate:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Generate PGP key
+      tags:
+      - me
+  /me/settings:
+    put:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update settings
+      tags:
+      - me
+  /me/totp:
+    delete:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Disable TOTP
+      tags:
+      - me
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: TOTP status
+      tags:
+      - me
+  /me/totp/enable:
+    post:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Enable TOTP
+      tags:
+      - me
+  /pgp/key:
+    get:
+      parameters:
+      - description: address
+        in: query
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Lookup public key
+      tags:
+      - pgp
+  /push/subscribe:
+    delete:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Unsubscribe from push
+      tags:
+      - push
+    post:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Subscribe to push
+      tags:
+      - push
+  /push/vapid:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: VAPID public key
+      tags:
+      - push
+  /relays:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_core_models.Relay'
+            type: array
+      summary: List relays
+      tags:
+      - domains
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.Relay'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Create relay
+      tags:
+      - domains
+  /relays/{name}:
+    delete:
+      parameters:
+      - description: relay name
+        in: path
+        name: name
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Delete relay
+      tags:
+      - domains
+    put:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Update relay
+      tags:
+      - domains
+  /sieve:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      summary: List Sieve scripts
+      tags:
+      - sieve
+  /sieve/{name}:
+    delete:
+      parameters:
+      - description: script name
+        in: path
+        name: name
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete Sieve script
+      tags:
+      - sieve
+    get:
+      parameters:
+      - description: script name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get Sieve script
+      tags:
+      - sieve
+    put:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Save Sieve script
+      tags:
+      - sieve
+  /sieve/{name}/activate:
+    post:
+      parameters:
+      - description: script name
+        in: path
+        name: name
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Activate Sieve script
+      tags:
+      - sieve
+  /signup:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Self-register
+      tags:
+      - signup
+  /signup/domains:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_core_models.Domain'
+            type: array
+      summary: Signup domains
+      tags:
+      - signup
+  /sso/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: email + password
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: email
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+        "429":
+          description: rate_limited
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Log in
+      tags:
+      - auth
+  /sso/login/totp:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: pending_token + code
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: email
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+        "429":
+          description: rate_limited
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Complete 2FA login
+      tags:
+      - auth
+  /sso/logout:
+    post:
+      responses:
+        "204":
+          description: No Content
+      summary: Log out
+      tags:
+      - auth
+  /sso/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_auth.MeResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Current profile
+      tags:
+      - auth
+  /tokens:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_core_models.Token'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: List app tokens
+      tags:
+      - tokens
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Create app token
+      tags:
+      - tokens
+  /tokens/{id}:
+    delete:
+      parameters:
+      - description: token id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Delete app token
+      tags:
+      - tokens
+  /users:
+    get:
+      parameters:
+      - description: filter by domain
+        in: query
+        name: domain
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mailez_backend_internal_core_models.User'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: List users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Create user
+      tags:
+      - users
+  /users/{email}:
+    delete:
+      parameters:
+      - description: user email
+        in: path
+        name: email
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Delete user
+      tags:
+      - users
+    get:
+      parameters:
+      - description: user email
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.User'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Get user
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/mailez_backend_internal_core_models.APIError'
+      summary: Update user
+      tags:
+      - users
+securityDefinitions:
+  SessionCookie:
+    in: cookie
+    name: mailez_session
+    type: apiKey
+swagger: "2.0"

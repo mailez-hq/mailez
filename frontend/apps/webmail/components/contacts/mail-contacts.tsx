@@ -212,8 +212,8 @@ function ContactDetail({
     let cancelled = false;
     setLoading(true);
     Promise.all([
-      mailSearch("INBOX", `from:${contact.email}`),
-      mailSearch("INBOX", `to:${contact.email}`),
+      mailSearch("Inbox", `from:${contact.email}`),
+      mailSearch("Inbox", `to:${contact.email}`),
     ])
       .then(([from, to]) => {
         if (cancelled) return;
@@ -285,7 +285,7 @@ function ContactDetail({
               <button
                 key={m.uid}
                 type="button"
-                onClick={() => onOpenMessage(m, "INBOX")}
+                onClick={() => onOpenMessage(m, "Inbox")}
                 className="flex w-full items-center gap-2 px-2.5 py-2 text-left text-xs transition-colors hover:bg-muted/60"
               >
                 <span className="min-w-0 flex-1 truncate">

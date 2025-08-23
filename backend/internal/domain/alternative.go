@@ -15,6 +15,12 @@ func (h *Handler) registerAlternatives(r fiber.Router, mw fiber.Handler) {
 
 // listAlternatives returns alternative domain names, optionally filtered by
 // ?domain=name.
+// listAlternatives returns alternative domains.
+// @Summary List alternatives
+// @Tags domains
+// @Produce json
+// @Success 200 {array} models.Alternative
+// @Router /alternatives [get]
 func (h *Handler) listAlternatives(c *fiber.Ctx) error {
 	q := h.DB.Order("name")
 	if domain := c.Query("domain"); domain != "" {
@@ -27,6 +33,14 @@ func (h *Handler) listAlternatives(c *fiber.Ctx) error {
 	return c.JSON(alternatives)
 }
 
+// createAlternative adds an alternative domain.
+// @Summary Create alternative
+// @Tags domains
+// @Accept json
+// @Produce json
+// @Success 201 {object} models.Alternative
+// @Failure 400 {object} models.APIError
+// @Router /alternatives [post]
 func (h *Handler) createAlternative(c *fiber.Ctx) error {
 	var in struct {
 		Name       string `json:"name"`
@@ -49,6 +63,13 @@ func (h *Handler) createAlternative(c *fiber.Ctx) error {
 	return c.Status(201).JSON(a)
 }
 
+// deleteAlternative removes an alternative domain.
+// @Summary Delete alternative
+// @Tags domains
+// @Param name path string true "alternative name"
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /alternatives/{name} [delete]
 func (h *Handler) deleteAlternative(c *fiber.Ctx) error {
 	if err := h.DB.Delete(&models.Alternative{}, "name = ?", c.Params("name")).Error; err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})

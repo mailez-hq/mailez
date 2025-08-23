@@ -31,6 +31,13 @@ type configBackup struct {
 }
 
 // exportConfig dumps all management data as JSON for backup or migration.
+// exportConfig dumps all management data as JSON for backup/migration.
+// @Summary Export configuration
+// @Tags admin
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 403 {object} models.APIError
+// @Router /config/export [get]
 func (h *Handler) exportConfig(c *fiber.Ctx) error {
 	backup := configBackup{}
 	if err := h.DB.Find(&backup.Domains).Error; err != nil {
@@ -63,6 +70,14 @@ func (h *Handler) exportConfig(c *fiber.Ctx) error {
 
 // importConfig restores a backup in a transaction. Each entity is upserted by
 // its natural key so the endpoint is idempotent.
+// importConfig restores a configuration backup (idempotent).
+// @Summary Import configuration
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "import stats"
+// @Failure 400 {object} models.APIError
+// @Router /config/import [post]
 func (h *Handler) importConfig(c *fiber.Ctx) error {
 	var in configBackup
 	if err := c.BodyParser(&in); err != nil {

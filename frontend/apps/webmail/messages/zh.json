@@ -8,7 +8,8 @@
     "submitting": "登录中...",
     "totp": "验证码",
     "verify": "验证",
-    "error": "登录失败"
+    "error": "登录失败",
+    "rateLimited": "尝试次数过多，请稍等片刻再试。"
   },
   "mail": {
     "write": "写邮件",

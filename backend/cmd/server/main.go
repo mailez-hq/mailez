@@ -12,6 +12,13 @@ import (
 	"mailez/backend/internal/server"
 )
 
+// @title mailez API
+// @version 0.1.0
+// @description Self-hosted mail platform — REST API for the admin console and webmail.
+// @BasePath /api/v1
+// @securityDefinitions.apikey SessionCookie
+// @in cookie
+// @name mailez_session
 func main() {
 	cfg := core.Load()
 	srv := server.New(cfg)
