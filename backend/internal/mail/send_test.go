@@ -6,7 +6,7 @@ import (
 )
 
 func TestBuildMessagePlain(t *testing.T) {
-	msg := buildMessage("a@x.test", "b@x.test", "hi", "hello world", "")
+	msg := buildMessage("a@x.test", []string{"b@x.test"}, nil, "hi", "hello world", "", nil)
 	for _, want := range []string{
 		"From: a@x.test\r\n",
 		"To: b@x.test\r\n",
@@ -24,7 +24,7 @@ func TestBuildMessagePlain(t *testing.T) {
 }
 
 func TestBuildMessageMultipartAlternative(t *testing.T) {
-	msg := buildMessage("a@x.test", "b@x.test", "hi", "plain body", "<p>html body</p>")
+	msg := buildMessage("a@x.test", []string{"b@x.test"}, nil, "hi", "plain body", "<p>html body</p>", nil)
 	body := msg[strings.Index(msg, "\r\n\r\n")+4:]
 	if !strings.Contains(msg, "Content-Type: multipart/alternative; boundary=") {
 		t.Errorf("missing multipart/alternative header in:\n%s", msg)
@@ -46,8 +46,39 @@ func TestBuildMessageMultipartAlternative(t *testing.T) {
 }
 
 func TestBuildMessageCustomFrom(t *testing.T) {
-	msg := buildMessage("team@x.test", "b@x.test", "hi", "hello", "")
+	msg := buildMessage("team@x.test", []string{"b@x.test"}, nil, "hi", "hello", "", nil)
 	if !strings.Contains(msg, "From: team@x.test\r\n") {
 		t.Errorf("message must carry the selected From header:\n%s", msg)
+	}
+}
+
+func TestBuildMessageAttachmentsAndRecipients(t *testing.T) {
+	msg := buildMessage(
+		"a@x.test",
+		[]string{"b@x.test"},
+		[]string{"c@x.test"},
+		"hi",
+		"plain body",
+		"<p>html body</p>",
+		[]Attachment{
+			{Filename: "报告.txt", ContentType: "text/plain", Data: "5L2g5aW9"},
+			{Filename: "pic.png", ContentType: "image/png", Data: "aGVsbG8="},
+		},
+	)
+	for _, want := range []string{
+		"To: b@x.test\r\n",
+		"Cc: c@x.test\r\n",
+		"Date: ",
+		"Message-ID: <",
+		"Content-Type: multipart/mixed; boundary=",
+		"Content-Disposition: attachment; filename*=UTF-8''%E6%8A%A5%E5%91%8A.txt",
+		"Content-Disposition: attachment; filename=\"pic.png\"",
+	} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("message missing %q in:\n%s", want, msg)
+		}
+	}
+	if strings.Contains(msg, "Bcc:") {
+		t.Error("bcc must never appear in message headers")
 	}
 }

@@ -3,52 +3,124 @@ package server
 import (
 	"context"
 	"log"
+	"net/http"
 	"time"
 
+	glebarezsqlite "github.com/glebarez/sqlite"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
-	glebarezsqlite "github.com/glebarez/sqlite"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
-	"mailez/backend/internal/api"
+
+	"mailez/backend/internal/admin"
+	"mailez/backend/internal/ai"
+	"mailez/backend/internal/alias"
 	"mailez/backend/internal/auth"
-	"mailez/backend/internal/config"
+	"mailez/backend/internal/compose"
+	"mailez/backend/internal/contacts"
+	"mailez/backend/internal/core"
+	"mailez/backend/internal/core/models"
+	"mailez/backend/internal/domain"
 	"mailez/backend/internal/fetch"
-	"mailez/backend/internal/internalapi"
-	"mailez/backend/internal/models"
+	"mailez/backend/internal/mailbox"
+	"mailez/backend/internal/push"
+	"mailez/backend/internal/sieve"
+	"mailez/backend/internal/stack"
+	"mailez/backend/internal/user"
 )
+
+const defaultSecret = "dev-secret-change-me"
 
 // Server bundles the Fiber app and its dependencies.
 type Server struct {
-	App     *fiber.App
-	DB      *gorm.DB
-	Redis   *redis.Client
-	Cfg     config.Config
-	Auth    *auth.Manager
-	internal *internalapi.Handler
+	App      *fiber.App
+	DB       *gorm.DB
+	Redis    *redis.Client
+	Cfg      core.Config
+	Auth     *auth.Manager
+	internal *stack.Handler
+
+	bgCtx    context.Context
+	bgCancel context.CancelFunc
 }
 
-// New builds the Fiber app and initializes connections.
-func New(cfg config.Config) *Server {
+// New builds the Fiber app, applies migrations and starts background workers.
+func New(cfg core.Config) *Server {
+	if cfg.Env == "production" && cfg.SecretKey == defaultSecret {
+		log.Fatal("refusing to start in production with the default SECRET_KEY; set a strong secret")
+	}
 	db := connectDB(cfg)
 	rdb := connectRedis(cfg)
 
 	app := fiber.New(fiber.Config{
-		AppName: "mailez",
+		AppName:      "mailez",
+		BodyLimit:    64 * 1024 * 1024, // aligned with the 20MB attachment cap + base64 overhead
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	})
 	app.Use(recover.New())
-	app.Use(cors.New())
+	app.Use(requestid.New())
+	app.Use(logger.New(logger.Config{
+		Format: "${time} ${status} ${method} ${path} ${latency} ${ip}\n",
+		Next: func(c *fiber.Ctx) bool {
+			p := c.Path()
+			return p == "/health" || p == "/metrics" || p == "/api/v1/health"
+		},
+	}))
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     cfg.CORSOrigins,
+		AllowCredentials: true,
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Request-ID",
+	}))
+	app.Use(metricsMiddleware)
 
-	s := &Server{App: app, DB: db, Redis: rdb, Cfg: cfg}
+	bgCtx, bgCancel := context.WithCancel(context.Background())
+	s := &Server{App: app, DB: db, Redis: rdb, Cfg: cfg, bgCtx: bgCtx, bgCancel: bgCancel}
 	s.Auth = auth.NewManager(db, newStore(rdb), "mailez_session", time.Duration(cfg.SessionLifetime)*time.Second)
-	s.internal = internalapi.New(db, s.Auth, cfg, rdb)
+	s.Auth.SetCookieSecure(cfg.CookieSecure)
+	s.Auth.SetLoginLimits(cfg.LoginRateLimit, cfg.LoginFailLimit)
+	s.internal = stack.New(db, s.Auth, cfg, rdb)
 	s.routes()
-	// Start the external mailbox poller (fetchmail equivalent).
-	fetcher := fetch.New(db, cfg.MtaAddress+":25", cfg.SecretKey, time.Duration(cfg.FetchInterval)*time.Second)
-	go fetcher.Run(context.Background())
+
+	// External mailbox poller (fetchmail equivalent).
+	fetcher := fetch.New(db, cfg.MtaAddress+":25", cfg.SecretKey, cfg.FetchInsecure, time.Duration(cfg.FetchInterval)*time.Second)
+	go fetcher.Run(bgCtx)
+	// Push notifier (new-mail notifications for subscribed clients).
+	if cfg.PushInterval > 0 {
+		notifier := push.NewNotifier(db, cfg)
+		go notifier.Run(bgCtx)
+	}
+	if cfg.MetricsAddr != "" {
+		startMetricsServer(cfg.MetricsAddr)
+	}
 	return s
+}
+
+// Shutdown cancels background workers and gracefully stops the HTTP server.
+func (s *Server) Shutdown(ctx context.Context) error {
+	s.bgCancel()
+	return s.App.ShutdownWithContext(ctx)
+}
+
+// startMetricsServer exposes Prometheus metrics on a dedicated port, keeping
+// the public API surface free of operational endpoints.
+func startMetricsServer(addr string) {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	go func() {
+		log.Printf("metrics listening on %s", addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("metrics server: %v", err)
+		}
+	}()
 }
 
 // newStore prefers Redis and falls back to memory for local dev.
@@ -63,35 +135,56 @@ func (s *Server) routes() {
 	v1 := s.App.Group("/api/v1")
 	v1.Get("/health", s.health)
 	s.Auth.RegisterSSO(v1)
-	apiHandler := api.New(s.DB, s.Auth, s.Cfg)
-	apiHandler.Register(v1.Group(""))
+
+	app := core.New(s.DB, s.Auth, s.Cfg)
+	aiMgr := ai.New(s.Cfg)
+	user.RegisterPublic(v1, app)
+	authed := v1.Group("", app.RequireAuth, app.Audit)
+
+	user.New(app).Register(authed)
+	domain.New(app).Register(authed)
+	alias.New(app).Register(authed)
+	mailbox.New(app).Register(authed)
+	compose.New(app).Register(authed)
+	contacts.New(app).Register(authed)
+	sieve.New(app).Register(authed)
+	admin.New(app).Register(authed)
+	fetch.RegisterAPI(authed, app)
+	ai.RegisterAPI(authed, app, aiMgr)
+	push.RegisterAPI(authed, app)
+
 	s.internal.Register(s.App.Group("/internal"))
 }
 
 func (s *Server) health(c *fiber.Ctx) error {
 	sqlDB, _ := s.DB.DB()
 	if err := sqlDB.Ping(); err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "db": err.Error()})
+		return c.Status(500).JSON(fiber.Map{"status": "error", "db": "unavailable"})
 	}
 	return c.JSON(fiber.Map{"status": "ok"})
 }
 
-func connectDB(cfg config.Config) *gorm.DB {
-	// Pure-Go sqlite driver (no cgo) for local dev; mysql driver lands with phase 1.
-	// SingularTable keeps table names aligned with the reference implementation's schema for migration.
+func connectDB(cfg core.Config) *gorm.DB {
+	// Pure-Go sqlite driver (no cgo) for local dev; mysql driver lands later.
+	// SingularTable keeps table names aligned with the reference schema.
+	level := gormlogger.Warn
+	if cfg.LogLevel == "debug" || cfg.LogLevel == "trace" {
+		level = gormlogger.Info
+	}
 	db, err := gorm.Open(glebarezsqlite.Open(cfg.DBDSN), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{SingularTable: true},
+		Logger:         gormlogger.Default.LogMode(level),
 	})
 	if err != nil {
 		log.Fatalf("db connect: %v", err)
 	}
-	if err := models.AutoMigrate(db); err != nil {
+	if err := models.Migrate(db); err != nil {
 		log.Fatalf("db migrate: %v", err)
 	}
 	return db
 }
 
-func connectRedis(cfg config.Config) *redis.Client {
+func connectRedis(cfg core.Config) *redis.Client {
 	rdb := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr})
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
 		// Redis is not critical for the scaffold; log and continue.

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"mailez/backend/internal/config"
+	"mailez/backend/internal/core"
 )
 
 // OpenAI is an OpenAI-compatible chat completions provider. Any server that
@@ -22,7 +22,7 @@ type OpenAI struct {
 }
 
 // NewOpenAI creates the provider from configuration.
-func NewOpenAI(cfg config.Config) *OpenAI {
+func NewOpenAI(cfg core.Config) *OpenAI {
 	return &OpenAI{
 		baseURL: strings.TrimRight(cfg.AIBaseURL, "/"),
 		apiKey:  cfg.AIAPIKey,
@@ -33,10 +33,10 @@ func NewOpenAI(cfg config.Config) *OpenAI {
 func (o *OpenAI) Name() string { return "openai" }
 
 type chatRequest struct {
-	Model       string            `json:"model"`
-	Messages    []chatMessage     `json:"messages"`
-	Temperature float64           `json:"temperature"`
-	MaxTokens   int               `json:"max_tokens,omitempty"`
+	Model       string        `json:"model"`
+	Messages    []chatMessage `json:"messages"`
+	Temperature float64       `json:"temperature"`
+	MaxTokens   int           `json:"max_tokens,omitempty"`
 }
 
 type chatMessage struct {

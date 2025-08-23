@@ -13,29 +13,35 @@ func (f fakeProvider) Chat(_ context.Context, _, _ string) (string, error) {
 }
 
 func TestPrioritizeParsesScores(t *testing.T) {
-	m := &Manager{provider: fakeProvider{out: `{"1": 5, "2": 2, "3": 7}`}}
-	scores, err := m.Prioritize(context.Background(), []PriorityItem{
+	m := &Manager{provider: fakeProvider{out: `{"1": {"score": 5, "category": "work"}, "2": {"score": 2, "category": "newsletter"}, "3": {"score": 7, "category": "other"}}`}}
+	res, err := m.Prioritize(context.Background(), []PriorityItem{
 		{UID: 1}, {UID: 2}, {UID: 3},
 	})
 	if err != nil {
 		t.Fatalf("prioritize: %v", err)
 	}
-	if scores[1] != 5 || scores[2] != 2 {
-		t.Errorf("scores: %v", scores)
+	if res.Scores[1] != 5 || res.Scores[2] != 2 {
+		t.Errorf("scores: %v", res.Scores)
 	}
-	if scores[3] != 5 {
-		t.Errorf("score must clamp to 5, got %d", scores[3])
+	if res.Scores[3] != 5 {
+		t.Errorf("score must clamp to 5, got %d", res.Scores[3])
+	}
+	if res.Categories[1] != "work" || res.Categories[2] != "newsletter" {
+		t.Errorf("categories: %v", res.Categories)
 	}
 }
 
 func TestPrioritizeToleratesFences(t *testing.T) {
-	m := &Manager{provider: fakeProvider{out: "```json\n{\"7\": 4}\n```"}}
-	scores, err := m.Prioritize(context.Background(), []PriorityItem{{UID: 7}})
+	m := &Manager{provider: fakeProvider{out: "```json\n{\"7\": {\"score\": 4, \"category\": \"finance\"}}\n```"}}
+	res, err := m.Prioritize(context.Background(), []PriorityItem{{UID: 7}})
 	if err != nil {
 		t.Fatalf("prioritize: %v", err)
 	}
-	if scores[7] != 4 {
-		t.Errorf("scores: %v", scores)
+	if res.Scores[7] != 4 {
+		t.Errorf("scores: %v", res.Scores)
+	}
+	if res.Categories[7] != "finance" {
+		t.Errorf("categories: %v", res.Categories)
 	}
 }
 
