@@ -4,6 +4,9 @@ export type Me = {
   global_admin: boolean;
   manager: boolean;
   enabled: boolean;
+  quota_bytes?: number;
+  quota_bytes_used?: number;
+  signature?: string;
 };
 
 export type LoginResult = {
