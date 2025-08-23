@@ -46,6 +46,22 @@ export type MailMessage = {
 
 export type MailPage = { messages: MailMessage[]; total: number };
 
+// MailSearchSpec is the structured form of an advanced search: the visual
+// search builder produces this directly, and the client POSTs it to
+// /mail/search without any syntax-string round-trip. Dates are RFC 3339.
+export type MailSearchSpec = {
+  text?: string[];
+  from?: string[];
+  to?: string[];
+  subject?: string[];
+  hasAttachment?: boolean;
+  unseen?: boolean;
+  flagged?: boolean;
+  labels?: string[];
+  before?: string | null;
+  after?: string | null;
+};
+
 export type SnoozedMessage = MailMessage & { until: string };
 
 // MailLabel is a user-defined tag: messages carry the name as an IMAP

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Archive, Bookmark, FolderSearch, Inbox, Menu, RefreshCw, Search, SearchX, SlidersHorizontal, Sparkles, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePreferences } from "@/components/preferences-provider";
-import type { MailMessage } from "@/lib/api";
+  import type { MailMessage, MailSearchSpec } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { MessageRow, ROW_HEIGHTS } from "@/components/mailbox/message-row";
 import { SearchBuilderDialog } from "@/components/mailbox/search-builder-dialog";
@@ -21,7 +21,9 @@ export function MessageListPanel({
   searching,
   loading,
   query,
+  searchSpec,
   onQueryChange,
+  onApplySpec,
   onSearch,
   onClearSearch,
   selectedUids,
@@ -69,7 +71,9 @@ export function MessageListPanel({
   searching: boolean;
   loading: boolean;
   query: string;
+  searchSpec: MailSearchSpec | null;
   onQueryChange: (q: string) => void;
+  onApplySpec: (spec: MailSearchSpec) => void;
   onSearch: (q?: string) => void;
   onClearSearch: () => void;
   selectedUids: Set<number>;
@@ -115,6 +119,12 @@ export function MessageListPanel({
   const { density } = usePreferences();
   const rowHeight = ROW_HEIGHTS[density];
   const [builderOpen, setBuilderOpen] = useState(false);
+  const activeFilterCount = useMemo(() => {
+    if (!searchSpec) return 0;
+    return Object.values(searchSpec).filter((v) =>
+      Array.isArray(v) ? v.length > 0 : Boolean(v),
+    ).length;
+  }, [searchSpec]);
   // Category pills filter the loaded page client-side (the backend still
   // returns every row; classification is a lightweight per-row tag).
   const filtered = category ? messages.filter((m) => m.category === category) : messages;
@@ -184,9 +194,14 @@ export function MessageListPanel({
             size="icon-sm"
             onClick={() => setBuilderOpen(true)}
             title={t("advancedSearch")}
-            className="shrink-0"
+            className={cn("relative shrink-0", activeFilterCount > 0 && "text-primary")}
           >
             <SlidersHorizontal className="size-4" />
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-semibold text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            )}
           </Button>
           <Button
             variant="ghost"
@@ -405,10 +420,7 @@ export function MessageListPanel({
       <SearchBuilderDialog
         open={builderOpen}
         onOpenChange={setBuilderOpen}
-        onApply={(q) => {
-          onQueryChange(q);
-          onSearch(q);
-        }}
+        onApply={onApplySpec}
       />
     </div>
   );
