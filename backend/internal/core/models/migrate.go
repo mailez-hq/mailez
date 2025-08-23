@@ -25,6 +25,12 @@ var migrations = []migration{
 		ID: "20260823_initial_schema",
 		Up: func(db *gorm.DB) error { return AutoMigrate(db) },
 	},
+	{
+		// Fetch deduplication cursor columns (LastUID, UIDValidity, SeenUIDLs)
+		// that stop the poller from re-delivering already-fetched mail.
+		ID: "20260823_fetch_dedup_cursor",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Fetch{}) },
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

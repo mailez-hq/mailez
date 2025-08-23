@@ -54,7 +54,7 @@ func TestUserCRUD(t *testing.T) {
 	body := `{"email":"amy@t.example","password":"secret-pass","quota_bytes":1000}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/users", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Test(req)
+	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestUserCRUD(t *testing.T) {
 		t.Fatalf("created user = %s", string(b))
 	}
 
-	listResp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/users?domain=t.example", nil))
+	listResp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/users?domain=t.example", nil), -1)
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestUserCRUD(t *testing.T) {
 	}
 
 	del := httptest.NewRequest(http.MethodDelete, "/api/v1/users/amy@t.example", nil)
-	if resp, _ := app.Test(del); resp.StatusCode != http.StatusNoContent {
+	if resp, _ := app.Test(del, -1); resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("delete status = %d, want 204", resp.StatusCode)
 	}
 }

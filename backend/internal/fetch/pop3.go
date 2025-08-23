@@ -109,19 +109,31 @@ func (p *pop3Conn) stat() (int, error) {
 	return strconv.Atoi(parts[1])
 }
 
-func (p *pop3Conn) uidl() ([]string, error) {
+// uidl returns the message-number → unique-id listing in ascending order.
+func (p *pop3Conn) uidl() ([]uidlEntry, error) {
 	_, lines, err := p.multiline("UIDL")
 	if err != nil {
 		return nil, err
 	}
-	var ids []string
+	var out []uidlEntry
 	for _, l := range lines {
 		fields := strings.Fields(l)
-		if len(fields) >= 2 {
-			ids = append(ids, fields[1])
+		if len(fields) < 2 {
+			continue
 		}
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			continue
+		}
+		out = append(out, uidlEntry{Num: n, UIDL: fields[1]})
 	}
-	return ids, nil
+	return out, nil
+}
+
+// uidlEntry pairs a POP3 message number with its stable unique id.
+type uidlEntry struct {
+	Num int
+	UIDL string
 }
 
 // retr downloads one message; lines are rejoined with CRLF.

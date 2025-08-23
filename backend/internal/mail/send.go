@@ -74,19 +74,29 @@ func (c *Client) Send(email, token, from string, to, cc, bcc []string, subject, 
 	return conn.Quit()
 }
 
+// headerValue keeps the first line of a user-controlled header field so CR/LF
+// cannot inject extra headers (SMTP header splitting). Anything after the
+// first newline — including a fake "injected body" — is dropped entirely.
+func headerValue(s string) string {
+	if i := strings.IndexAny(s, "\r\n"); i >= 0 {
+		s = s[:i]
+	}
+	return s
+}
+
 // buildMessage renders an RFC 5322 message with Date and Message-ID headers.
 // Attachments (base64 data on the wire) are embedded as multipart/mixed parts;
 // the text/html body, when present, is a nested multipart/alternative part.
 func buildMessage(from string, to, cc []string, subject, text, html string, attachments []Attachment) string {
 	var b strings.Builder
-	b.WriteString("From: " + from + "\r\n")
+	b.WriteString("From: " + headerValue(from) + "\r\n")
 	if len(to) > 0 {
-		b.WriteString("To: " + strings.Join(to, ", ") + "\r\n")
+		b.WriteString("To: " + headerValue(strings.Join(to, ", ")) + "\r\n")
 	}
 	if len(cc) > 0 {
-		b.WriteString("Cc: " + strings.Join(cc, ", ") + "\r\n")
+		b.WriteString("Cc: " + headerValue(strings.Join(cc, ", ")) + "\r\n")
 	}
-	b.WriteString("Subject: " + subject + "\r\n")
+	b.WriteString("Subject: " + headerValue(subject) + "\r\n")
 	b.WriteString("Date: " + time.Now().Format(time.RFC1123Z) + "\r\n")
 	b.WriteString("Message-ID: <" + newMessageID(from) + ">\r\n")
 	b.WriteString("MIME-Version: 1.0\r\n")
@@ -140,7 +150,7 @@ func writePart(b *strings.Builder, boundary, contentType, body string) {
 }
 
 func writeAttachmentPart(b *strings.Builder, boundary string, a Attachment) {
-	ct := a.ContentType
+	ct := headerValue(a.ContentType)
 	if ct == "" {
 		ct = "application/octet-stream"
 	}

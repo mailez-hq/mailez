@@ -82,3 +82,25 @@ func TestBuildMessageAttachmentsAndRecipients(t *testing.T) {
 		t.Error("bcc must never appear in message headers")
 	}
 }
+
+func TestBuildMessageHeaderInjection(t *testing.T) {
+	injected := "hi\r\nBcc: victim@evil.test\r\n\r\ninjected body"
+	msg := buildMessage(
+		"a@x.test",
+		[]string{"b@x.test\r\nBcc: victim@evil.test"},
+		[]string{"c@x.test\nBcc: victim2@evil.test"},
+		injected,
+		"hello",
+		"",
+		[]Attachment{{Filename: "f.txt", ContentType: "text/plain\r\nBcc: victim3@evil.test", Data: "aGk="}},
+	)
+	if strings.Contains(msg, "\r\nBcc") || strings.Contains(msg, "\nBcc") {
+		t.Errorf("header splitting survived (a Bcc header line can be created):\n%s", msg)
+	}
+	if strings.Contains(msg, "injected body") {
+		t.Errorf("injected body part survived:\n%s", msg)
+	}
+	if !strings.Contains(msg, "Subject: hi") {
+		t.Errorf("subject must keep its first line:\n%s", msg)
+	}
+}
