@@ -15,7 +15,7 @@ import (
 
 // webmailPorts are the internal ports reserved for webmail traffic; temp
 // tokens are only accepted on these ports.
-var webmailPorts = map[string]bool{"14190": true, "10143": true, "10025": true}
+var webmailPorts = map[string]bool{"11490": true, "1143": true, "1587": true}
 
 // statuses maps error kinds to per-protocol error messages/codes.
 var statuses = map[string]map[string]string{
@@ -169,13 +169,13 @@ func (h *Handler) serverFor(protocol string, authenticated bool) (string, string
 	case "smtp":
 		if authenticated {
 			host = smtpAddr
-			return resolveHostname(host), "10025"
+			return resolveHostname(host), "1587"
 		}
 		host = smtpAddr
 		return resolveHostname(host), "25"
 	case "submission":
 		host = smtpAddr
-		return resolveHostname(host), "10025"
+		return resolveHostname(host), "1587"
 	case "lmtp":
 		host = imapAddr
 		return resolveHostname(host), "2525"

@@ -36,7 +36,7 @@ func (c *Client) Send(email, token, from string, to, cc, bcc []string, subject, 
 	if tlsErr == nil {
 		auth = smtp.PlainAuth("", email, token, serverHost)
 	} else {
-		// TLS_FLAVOR=notls deployments accept plaintext on the internal
+		// MAILEZ_TLS=off deployments accept plaintext on the internal
 		// submission port; net/smtp refuses PlainAuth over plaintext, so use
 		// the explicit AUTH PLAIN form.
 		auth = NewPlainAuth(email, token)

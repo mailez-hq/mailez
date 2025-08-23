@@ -46,8 +46,8 @@ func runDovecot() error {
 	defer stop()
 
 	// mailez: legacy IMAP dict proxy -> control plane internal API.
-	backend := agent.Getenv("BACKEND_ADDRESS", "backend")
-	base := "http://" + backend + ":8080/internal/legacy IMAP/"
+	backend := agent.Getenv("MAILEZ_BACKEND_ADDRESS", "backend")
+	base := "http://" + backend + ":8080/stack/legacy-imap/"
 	handler := agent.NewDictHandler(map[string]string{
 		"quota": base + "{}",
 		"auth":  base + "{}",

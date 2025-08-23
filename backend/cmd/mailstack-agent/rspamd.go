@@ -53,7 +53,7 @@ func runRspamd() error {
 	// Wait for the control plane: the admin may not be up just yet. The
 	// original retried every second forever; we use capped exponential backoff.
 	backend := cfg.BackendAddress
-	healthURL := "http://" + backend + ":8080/internal/rspamd/local_domains"
+	healthURL := "http://" + backend + ":8080/stack/rspamd/local_domains"
 	client := &http.Client{Timeout: 2 * time.Second}
 	delay := time.Second
 	for {

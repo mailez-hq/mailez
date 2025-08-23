@@ -5,7 +5,7 @@
 smtp      inet  n       -       n       -       -       smtpd
 
 # Internal SMTP service
-10025     inet  n       -       n       -       -       smtpd
+1587      inet  n       -       n       -       -       smtpd
   -o smtpd_sasl_auth_enable=yes
   -o smtpd_discard_ehlo_keywords=pipelining,silent-discard
   -o smtpd_client_restrictions=$check_ratelimit,reject_unlisted_sender,reject_authenticated_sender_login_mismatch,permit
@@ -53,4 +53,3 @@ lmtp      unix  -       -       n       -       -       lmtp
 anvil     unix  -       -       n       -       1       anvil
 scache    unix  -       -       n       -       1       scache
 postlog   unix-dgram n  -       n       -       1       postlogd
-

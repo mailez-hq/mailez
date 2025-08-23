@@ -10,7 +10,7 @@ import (
 	"mailez/backend/internal/agent"
 )
 
-// TLSPaths mirrors the TLS dict built by the legacy config.py.
+// TLSPaths holds the certificate paths rendered into the TLS configs.
 type TLSPaths struct {
 	Cert    string
 	Key     string
@@ -53,19 +53,10 @@ type NginxConfig struct {
 	TLS465               bool
 	BackendAddress       string
 	MailFilterAddress    string
-	WebmailAddress       string
-	WebdavAddress        string
 	MessageSizeLimit     int
 	MessageSizeLimitPlus int
 	CPUCount             int
-	Admin                bool
 	API                  bool
-	Webmail              string
-	Webdav               string
-	WebWebmail           string
-	WebAdmin             string
-	WebAPI               string
-	WebrootRedirect      string
 	Postmaster           string
 	Domain               string
 	MtaAddress           string
@@ -81,32 +72,23 @@ var (
 
 func loadNginxConfig() (NginxConfig, error) {
 	cfg := NginxConfig{
-		BackendAddress:     agent.Getenv("BACKEND_ADDRESS", "backend"),
+		BackendAddress:     agent.Getenv("MAILEZ_BACKEND_ADDRESS", "backend"),
 		MailFilterAddress:  agent.Getenv("MAIL_FILTER_ADDRESS", "mail-filter"),
-		WebmailAddress:     agent.Getenv("WEBMAIL_ADDRESS", "webmail"),
-		WebdavAddress:      agent.Getenv("WEBDAV_ADDRESS", ""),
 		MtaAddress:         agent.Getenv("MTA_ADDRESS", "mta"),
-		RecipientDelimiter: agent.Getenv("RECIPIENT_DELIMITER", "+"),
+		RecipientDelimiter: agent.Getenv("MAILEZ_RECIPIENT_DELIMITER", "+"),
 		RealIPHeader:       os.Getenv("REAL_IP_HEADER"),
 		RealIPFrom:         os.Getenv("REAL_IP_FROM"),
-		TLSFlavor:          agent.Getenv("TLS_FLAVOR", "notls"),
+		TLSFlavor:          agent.Getenv("MAILEZ_TLS", "off"),
 		TLSPermissive:      envBool("TLS_PERMISSIVE", false),
-		WebWebmail:         agent.Getenv("WEB_WEBMAIL", "/"),
-		WebAdmin:           agent.Getenv("WEB_ADMIN", "/admin"),
-		WebAPI:             os.Getenv("WEB_API"),
-		WebrootRedirect:    os.Getenv("WEBROOT_REDIRECT"),
-		Webmail:            agent.Getenv("WEBMAIL", "none"),
-		Webdav:             agent.Getenv("WEBDAV", "none"),
-		Admin:              envBool("ADMIN", false),
-		API:                envBool("API", true),
-		Postmaster:         agent.Getenv("POSTMASTER", "postmaster"),
-		Domain:             agent.Getenv("DOMAIN", "example.com"),
-		Subnet6:            os.Getenv("SUBNET6") != "",
+		API:                envBool("MAILEZ_API", true),
+		Postmaster:         agent.Getenv("MAILEZ_POSTMASTER", "postmaster"),
+		Domain:             agent.Getenv("MAILEZ_DOMAIN", "example.com"),
+		Subnet6:            os.Getenv("MAILEZ_SUBNET6") != "",
 	}
 
-	hostnames := agent.Getenv("HOSTNAMES", "")
+	hostnames := agent.Getenv("MAILEZ_HOSTNAMES", "")
 	if hostnames == "" {
-		return cfg, fmt.Errorf("HOSTNAMES is required")
+		return cfg, fmt.Errorf("MAILEZ_HOSTNAMES is required")
 	}
 	cfg.Hostname = strings.TrimSpace(strings.Split(hostnames, ",")[0])
 
@@ -119,8 +101,8 @@ func loadNginxConfig() (NginxConfig, error) {
 	}
 
 	var err error
-	if cfg.MessageSizeLimit, err = strconv.Atoi(agent.Getenv("MESSAGE_SIZE_LIMIT", "50000000")); err != nil {
-		return cfg, fmt.Errorf("MESSAGE_SIZE_LIMIT: %w", err)
+	if cfg.MessageSizeLimit, err = strconv.Atoi(agent.Getenv("MAILEZ_MESSAGE_SIZE_LIMIT", "50000000")); err != nil {
+		return cfg, fmt.Errorf("MAILEZ_MESSAGE_SIZE_LIMIT: %w", err)
 	}
 	cfg.MessageSizeLimitPlus = cfg.MessageSizeLimit + 8388608
 
@@ -129,7 +111,7 @@ func loadNginxConfig() (NginxConfig, error) {
 	}
 
 	cfg.CPUCount = runtime.NumCPU()
-	if v := os.Getenv("CPU_COUNT"); v != "" {
+	if v := os.Getenv("MAILEZ_CPU_COUNT"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			cfg.CPUCount = n
 		}
@@ -173,7 +155,7 @@ func applyProxyProtocol(cfg *NginxConfig) {
 			set(p, true)
 		}
 	}
-	for _, item := range strings.Split(os.Getenv("PROXY_PROTOCOL"), ",") {
+	for _, item := range strings.Split(os.Getenv("MAILEZ_PROXY_PROTOCOL"), ",") {
 		switch strings.TrimSpace(item) {
 		case "mail":
 			all(protoMail)
@@ -190,9 +172,9 @@ func applyProxyProtocol(cfg *NginxConfig) {
 	}
 }
 
-// applyPorts reproduces the PORTS handling from clean_env().
+// applyPorts reproduces the port selection from the environment.
 func applyPorts(cfg *NginxConfig) {
-	notls := cfg.TLSFlavor == "notls"
+	plain := cfg.TLSFlavor == "off"
 	setPort := func(port string) {
 		switch port {
 		case "80":
@@ -209,18 +191,18 @@ func applyPorts(cfg *NginxConfig) {
 			cfg.Port995 = true
 		}
 	}
-	for _, item := range strings.Split(agent.Getenv("PORTS", defaultPorts), ",") {
+	for _, item := range strings.Split(agent.Getenv("MAILEZ_PORTS", defaultPorts), ",") {
 		item = strings.TrimSpace(item)
 		if !isPort(item) {
 			continue
 		}
-		if notls && contains(portsRequiringTLS, item) {
+		if plain && contains(portsRequiringTLS, item) {
 			continue
 		}
 		setPort(item)
 	}
-	if cfg.TLSFlavor != "notls" {
-		for _, item := range strings.Split(agent.Getenv("TLS", defaultTLS), ",") {
+	if cfg.TLSFlavor != "off" {
+		for _, item := range strings.Split(agent.Getenv("MAILEZ_TLS_PORTS", defaultTLS), ",") {
 			item = strings.TrimSpace(item)
 			if !isPort(item) || !contains(portsRequiringTLS, item) {
 				continue
@@ -239,21 +221,21 @@ func applyPorts(cfg *NginxConfig) {
 	}
 }
 
-// applyTLS reproduces the TLS dict + TLS_ERROR logic from config.py.
+// applyTLS builds the TLS paths and the TLS_ERROR state.
 func applyTLS(cfg *NginxConfig) {
 	switch cfg.TLSFlavor {
-	case "cert", "mail":
-		cert := agent.Getenv("TLS_CERT_FILENAME", "cert.pem")
-		key := agent.Getenv("TLS_KEYPAIR_FILENAME", "key.pem")
+	case "cert":
+		cert := agent.Getenv("MAILEZ_TLS_CERT_FILE", "cert.pem")
+		key := agent.Getenv("MAILEZ_TLS_KEY_FILE", "key.pem")
 		cfg.TLS = &TLSPaths{Cert: "/certs/" + cert, Key: "/certs/" + key}
-	case "letsencrypt", "mail-letsencrypt":
+	case "letsencrypt":
 		cfg.TLS = &TLSPaths{
 			Cert:    "/certs/letsencrypt/live/mailez/nginx-chain.pem",
 			Key:     "/certs/letsencrypt/live/mailez/privkey.pem",
 			AltCert: "/certs/letsencrypt/live/mailez-ecdsa/nginx-chain.pem",
 			AltKey:  "/certs/letsencrypt/live/mailez-ecdsa/privkey.pem",
 		}
-	case "notls":
+	case "off":
 		cfg.TLS = nil
 	default:
 		cfg.TLSError = true
@@ -287,10 +269,10 @@ func firstNameserver(path string) (string, error) {
 	return "", fmt.Errorf("no nameserver found in %s", path)
 }
 
-// resolverAddress prefers the explicit RESOLVER_ADDRESS env (e.g. the unbound
+// resolverAddress prefers the explicit MAILEZ_RESOLVER_ADDRESS env (e.g. the unbound
 // container) and otherwise falls back to the container's first nameserver.
 func resolverAddress() (string, error) {
-	if v := os.Getenv("RESOLVER_ADDRESS"); v != "" {
+	if v := os.Getenv("MAILEZ_RESOLVER_ADDRESS"); v != "" {
 		if strings.Contains(v, ":") && !strings.HasPrefix(v, "[") {
 			v = "[" + v + "]"
 		}

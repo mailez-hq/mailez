@@ -34,52 +34,52 @@ type DovecotConfig struct {
 
 func loadDovecotConfig() (DovecotConfig, error) {
 	cfg := DovecotConfig{
-		Postmaster:            agent.Getenv("POSTMASTER", "postmaster"),
-		Domain:                agent.Getenv("DOMAIN", "example.com"),
-		GatewayAddress:        agent.Getenv("GATEWAY_ADDRESS", "gateway"),
-		Subnet:                agent.Getenv("SUBNET", "192.168.206.0/24"),
-		RecipientDelimiter:    agent.Getenv("RECIPIENT_DELIMITER", "+"),
+		Postmaster:            agent.Getenv("MAILEZ_POSTMASTER", "postmaster"),
+		Domain:                agent.Getenv("MAILEZ_DOMAIN", "example.com"),
+		GatewayAddress:        agent.Getenv("MAILEZ_GATEWAY_ADDRESS", "gateway"),
+		Subnet:                agent.Getenv("MAILEZ_SUBNET", "192.168.206.0/24"),
+		RecipientDelimiter:    agent.Getenv("MAILEZ_RECIPIENT_DELIMITER", "+"),
 		DefaultMailboxes:      []string{"Trash", "Drafts", "Sent", "Junk"},
-		Compression:           os.Getenv("COMPRESSION"),
-		CompressionLevel:      os.Getenv("COMPRESSION_LEVEL"),
-		FTSAttachmentsAddress: agent.Getenv("FTS_ATTACHMENTS_ADDRESS", "tika"),
+		Compression:           os.Getenv("MAILEZ_COMPRESSION"),
+		CompressionLevel:      os.Getenv("MAILEZ_COMPRESSION_LEVEL"),
+		FTSAttachmentsAddress: agent.Getenv("MAILEZ_FTS_ATTACHMENTS_ADDRESS", "tika"),
 	}
 
-	hostnames := agent.Getenv("HOSTNAMES", "")
+	hostnames := agent.Getenv("MAILEZ_HOSTNAMES", "")
 	if hostnames == "" {
-		return cfg, errRequired("HOSTNAMES")
+		return cfg, errRequired("MAILEZ_HOSTNAMES")
 	}
 	cfg.Hostname = strings.TrimSpace(strings.Split(hostnames, ",")[0])
 
-	if v := os.Getenv("SUBNET6"); v != "" {
+	if v := os.Getenv("MAILEZ_SUBNET6"); v != "" {
 		cfg.Subnet6 = true
 		cfg.Subnet += " " + v
 	}
-	if v := os.Getenv("PROXY_PROTOCOL"); strings.Contains(v, "25") || v == "mail" || v == "all-but-http" || v == "all" {
+	if v := os.Getenv("MAILEZ_PROXY_PROTOCOL"); strings.Contains(v, "25") || v == "all-but-http" || v == "all" {
 		cfg.ProxyProtocol25 = true
 	}
 
 	cfg.CPUCount = runtime.NumCPU()
-	if v := os.Getenv("CPU_COUNT"); v != "" {
+	if v := os.Getenv("MAILEZ_CPU_COUNT"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			cfg.CPUCount = n
 		}
 	}
 
-	fts := strings.ToLower(os.Getenv("FULL_TEXT_SEARCH"))
+	fts := strings.ToLower(os.Getenv("MAILEZ_FTS"))
 	cfg.FTSEnabled = fts != "" && fts != "off" && fts != "false" && fts != "0"
 	if cfg.FTSEnabled {
 		if fts == "" {
 			cfg.FTSLanguages = "en"
 		} else {
-			fields := strings.Split(os.Getenv("FULL_TEXT_SEARCH"), ",")
+			fields := strings.Split(os.Getenv("MAILEZ_FTS"), ",")
 			for i := range fields {
 				fields[i] = strings.TrimSpace(fields[i])
 			}
 			cfg.FTSLanguages = strings.Join(fields, " ")
 		}
 	}
-	cfg.FTSTika = cfg.FTSEnabled && envTruthy(os.Getenv("FULL_TEXT_SEARCH_ATTACHMENTS"))
+	cfg.FTSTika = cfg.FTSEnabled && envTruthy(os.Getenv("MAILEZ_FTS_ATTACHMENTS"))
 
 	switch cfg.Compression {
 	case "gz", "bz2", "lz4", "zstd":

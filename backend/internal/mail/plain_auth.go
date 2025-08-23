@@ -4,7 +4,7 @@ import "net/smtp"
 
 // PlainAuth is an smtp.Auth that always issues AUTH PLAIN, even on an
 // unencrypted link. It is only for the trusted internal submission port
-// (TLS_FLAVOR=notls); net/smtp's own PlainAuth refuses plaintext.
+// (MAILEZ_TLS=off); net/smtp's own PlainAuth refuses plaintext.
 type PlainAuth struct {
 	identity, username, password string
 }

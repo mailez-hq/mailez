@@ -32,7 +32,7 @@ Common options: `--host`, `--api-port` (default 8081), `--smtp-port`
 `--admin-password`, `--domain`, `--user`, `--alias <localpart>`, `--lenient`
 (report DKIM/spam header issues without failing).
 
-The command exits non-zero on any failed check. With `TLS_FLAVOR=notls`,
+The command exits non-zero on any failed check. With `MAILEZ_TLS=off`,
 STARTTLS is attempted first and plaintext is used as fallback, so both dev and
 TLS-enabled deployments are covered.
 

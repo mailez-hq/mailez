@@ -1,6 +1,6 @@
 ssl_certificate {{ .TLS.Cert }};
 ssl_certificate_key {{ .TLS.Key }};
-{{ if or (eq .TLSFlavor "letsencrypt") (eq .TLSFlavor "mail-letsencrypt") }}ssl_certificate {{ .TLS.AltCert }};
+{{ if eq .TLSFlavor "letsencrypt" }}ssl_certificate {{ .TLS.AltCert }};
 ssl_certificate_key {{ .TLS.AltKey }};
 ssl_trusted_certificate /etc/ssl/certs/ca-cert-ISRG_Root_X1.pem;
 {{ end }}ssl_session_timeout 1d;
