@@ -31,6 +31,17 @@ var migrations = []migration{
 		ID: "20260823_fetch_dedup_cursor",
 		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Fetch{}) },
 	},
+	{
+		// Outbox table backing send-undo: parked messages are delivered by a
+		// background worker once their undo window elapses.
+		ID: "20260824_outbox_undo_send",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Outbox{}) },
+	},
+	{
+		// Label definitions (IMAP keyword + color) powering the tag UI.
+		ID: "20260824_label_colors",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Label{}) },
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

@@ -21,6 +21,11 @@ func (h *Handler) registerMail(r fiber.Router) {
 	r.Post("/mail/flag", h.mailFlag)
 	r.Post("/mail/move", h.mailMove)
 	r.Post("/mail/delete", h.mailDelete)
+	r.Post("/mail/unsubscribe", h.mailUnsubscribe)
+	r.Get("/mail/labels", h.mailLabels)
+	r.Post("/mail/labels", h.mailLabelSave)
+	r.Post("/mail/labels/rename", h.mailLabelRename)
+	r.Delete("/mail/labels", h.mailLabelDelete)
 }
 
 // mailFlag adds or removes an IMAP flag on a message.

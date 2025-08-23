@@ -39,6 +39,11 @@ type Message struct {
 	TextBody      string       `json:"text_body,omitempty"`
 	HTMLBody      string       `json:"html_body,omitempty"`
 	Attachments   []Attachment `json:"attachments,omitempty"`
+	// List-Unsubscribe (RFC 2369) as exposed by the sender: an https URL the
+	// backend can call on the user's behalf, or a mailto: the client turns
+	// into a pre-filled compose. UnsubscribePost marks RFC 8058 one-click.
+	UnsubscribeURL  string `json:"unsubscribe_url,omitempty"`
+	UnsubscribePost bool   `json:"unsubscribe_post,omitempty"`
 }
 
 // Attachment is one file embedded in a message, base64-encoded for download.
@@ -227,13 +232,41 @@ func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, 
 	out := envelopeToMessage(msg)
 	out.ThreadID = threadID(out.Subject)
 	if body := msg.GetBody(section); body != nil {
-		if textBody, htmlBody, attachments, err := extractBody(body); err == nil {
-			out.TextBody = textBody
-			out.HTMLBody = htmlBody
-			out.Attachments = attachments
+		raw, err := io.ReadAll(body)
+		if err == nil {
+			out.UnsubscribeURL, out.UnsubscribePost = parseUnsubscribe(raw)
+			if textBody, htmlBody, attachments, err := extractBody(bytes.NewReader(raw)); err == nil {
+				out.TextBody = textBody
+				out.HTMLBody = htmlBody
+				out.Attachments = attachments
+			}
 		}
 	}
 	return &out, nil
+}
+
+// parseUnsubscribe reads the List-Unsubscribe / List-Unsubscribe-Post headers
+// (RFC 2369 / RFC 8058) from a raw message. Angle-bracketed URLs may be comma
+// separated; an https entry wins over mailto because the backend can trigger
+// it server-side without a mail round-trip.
+func parseUnsubscribe(raw []byte) (url string, post bool) {
+	msg, err := mail.ReadMessage(bytes.NewReader(raw))
+	if err != nil {
+		return "", false
+	}
+	for _, candidate := range strings.Split(msg.Header.Get("List-Unsubscribe"), ",") {
+		candidate = strings.TrimSpace(candidate)
+		candidate = strings.TrimSuffix(strings.TrimPrefix(candidate, "<"), ">")
+		switch {
+		case strings.HasPrefix(candidate, "https://"):
+			if url == "" || !strings.HasPrefix(url, "https://") {
+				url = candidate
+			}
+		case strings.HasPrefix(candidate, "mailto:") && url == "":
+			url = candidate
+		}
+	}
+	return url, strings.EqualFold(strings.TrimSpace(msg.Header.Get("List-Unsubscribe-Post")), "One-Click")
 }
 
 // GetRaw returns the full RFC 822 source of a message, for the "view raw"

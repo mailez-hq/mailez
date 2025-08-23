@@ -97,6 +97,44 @@ func (c *Client) EnsureMailbox(email, token, name string) error {
 	return cli.Create(name)
 }
 
+// ReplaceKeyword renames an IMAP keyword across every mailbox: messages
+// carrying oldKw get newKw added (when non-empty) and oldKw removed. Label
+// rename/delete use this so tag state stays consistent everywhere.
+func (c *Client) ReplaceKeyword(email, token, oldKw, newKw string) error {
+	folders, err := c.ListFolders(email, token)
+	if err != nil {
+		return err
+	}
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return err
+	}
+	defer cli.Logout()
+
+	for _, f := range folders {
+		if _, err := cli.Select(inboxName(f), false); err != nil {
+			continue // unreadable mailbox: skip rather than abort the sweep
+		}
+		uids, err := cli.UidSearch(&imap.SearchCriteria{WithFlags: []string{oldKw}})
+		if err != nil || len(uids) == 0 {
+			continue
+		}
+		seqset := new(imap.SeqSet)
+		for _, uid := range uids {
+			seqset.AddNum(uid)
+		}
+		if newKw != "" {
+			if err := cli.UidStore(seqset, imap.AddFlags, []interface{}{imap.RawString(newKw)}, nil); err != nil {
+				return fmt.Errorf("imap store %q: %w", newKw, err)
+			}
+		}
+		if err := cli.UidStore(seqset, imap.RemoveFlags, []interface{}{imap.RawString(oldKw)}, nil); err != nil {
+			return fmt.Errorf("imap store %q: %w", oldKw, err)
+		}
+	}
+	return nil
+}
+
 // UnseenCounts returns the number of unseen messages per mailbox, for the
 // sidebar badges. Folders that fail STATUS are skipped.
 func (c *Client) UnseenCounts(email, token string) (map[string]int, error) {
@@ -160,7 +198,7 @@ func (c *Client) SaveDraft(email, token string, to, cc []string, subject, text, 
 		}
 	}
 
-	msg := buildMessage(email, to, cc, subject, text, html, attachments)
+	msg := BuildMessage(email, to, cc, subject, text, html, attachments)
 	if err := cli.Append("Drafts", []string{"\\Draft"}, time.Now(), appendLiteral{strings.NewReader(msg)}); err != nil {
 		return 0, fmt.Errorf("imap append draft: %w", err)
 	}

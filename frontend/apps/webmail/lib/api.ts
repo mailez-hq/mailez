@@ -5,9 +5,9 @@ import type {
   LoginResult,
   MailAttachment,
   MailIdentity,
+  MailLabel,
   MailMessage,
   MailPage,
-  MailThread,
   Me,
   MeSettings,
   OutboundAttachment,
@@ -26,6 +26,7 @@ export type {
   LoginResult,
   MailAttachment,
   MailIdentity,
+  MailLabel,
   MailMessage,
   MailPage,
   MailThread,
@@ -139,6 +140,8 @@ export const mailThread = (folder: string, threadId: string) =>
     `/mail/thread?folder=${encodeURIComponent(folder)}&thread_id=${encodeURIComponent(threadId)}`,
   );
 
+// mailSend submits a message. With undoSeconds > 0 the backend parks it in the
+// outbox for that window and returns its id, so the caller can offer undo.
 export const mailSend = (
   to: string[],
   cc: string[],
@@ -148,8 +151,21 @@ export const mailSend = (
   html?: string,
   from?: string,
   attachments?: OutboundAttachment[],
+  undoSeconds = 0,
 ) =>
-  apiPost("/mail/send", { to, cc, bcc, subject, body, html, from, attachments });
+  api<{ queued?: boolean; outbox_id?: number; undo_seconds?: number }>("/mail/send", {
+    method: "POST",
+    body: JSON.stringify({ to, cc, bcc, subject, body, html, from, attachments, undo_seconds: undoSeconds }),
+  });
+
+// mailUndoSend cancels a parked message within its undo window.
+export const mailUndoSend = (outboxId: number) =>
+  api<void>(`/mail/outbox/${outboxId}`, { method: "DELETE" });
+
+// mailUnsubscribe triggers a sender's List-Unsubscribe URL through the
+// backend (avoids CORS and hides the user's IP from the sender).
+export const mailUnsubscribe = (url: string, post: boolean) =>
+  apiPost("/mail/unsubscribe", { url, post });
 
 export const mailSaveDraft = (
   subject: string,
@@ -167,6 +183,18 @@ export const mailSaveDraft = (
 
 export const mailFlag = (folder: string, uid: number, flag: string, value: boolean) =>
   apiPost("/mail/flag", { folder, uid, flag, value });
+
+// Label definitions (name + color) persisted per account.
+export const mailLabels = () => api<MailLabel[]>("/mail/labels");
+
+export const mailLabelSave = (name: string, color: string) =>
+  apiPost<MailLabel>("/mail/labels", { name, color });
+
+export const mailLabelRename = (from: string, to: string) =>
+  apiPost("/mail/labels/rename", { from, to });
+
+export const mailLabelDelete = (name: string) =>
+  api(`/mail/labels?name=${encodeURIComponent(name)}`, { method: "DELETE" });
 
 export const mailDelete = (folder: string, uid: number) =>
   apiPost("/mail/delete", { folder, uid });

@@ -29,6 +29,9 @@ export function MailView() {
     folders,
     unseen,
     knownLabels,
+    labelColors,
+    labelManagerOpen,
+    setLabelManagerOpen,
     activeLabel,
     savedSearches,
     folder,
@@ -159,6 +162,7 @@ export function MailView() {
     replyAllFrom,
     toggleRead,
     spamMessage,
+    unsubscribeAction,
     toast,
     setToast,
   } = useMailStore();
@@ -273,13 +277,16 @@ export function MailView() {
             onArchive={() => archiveMessage(detail)}
             onDelete={() => removeMessage(detail)}
             onStar={() => toggleStar(detail)}
+            onSpam={() => spamMessage(detail)}
             onBack={backToList}
             folder={folder}
             folders={folders}
             onMoveToFolder={moveDetailTo}
             showNotSpam={/^(junk|spam)$/i.test(folder)}
             onNotSpam={() => detail && reportNotSpam(detail)}
+            onUnsubscribe={() => detail && unsubscribeAction(detail)}
             labels={knownLabels}
+            labelColors={labelColors}
             onToggleLabel={(l) => detail && toggleLabel(detail, l)}
             thread={thread}
             threadOpen={threadOpen}
@@ -383,6 +390,8 @@ export function MailView() {
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
 
       <SieveEditor open={sieveOpen} onOpenChange={setSieveOpen} />
+
+      <LabelManager open={labelManagerOpen} onOpenChange={setLabelManagerOpen} />
 
       {ctxMenu && (() => {
         const m = ctxMenu.message;

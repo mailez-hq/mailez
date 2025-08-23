@@ -16,10 +16,10 @@ import {
   aiDraft, aiStatus, aiSummarize,
   aiPrioritize, aiSearch,
   contacts, mailFlag, mailMove, mailIdentities,
-  mailFolders, mailMessage, mailMessages, mailSaveDraft, mailSearch, mailSend, mailThread, mailUnseen,
+  mailFolders, mailLabelDelete, mailLabelRename, mailLabelSave, mailLabels, mailMessage, mailMessages, mailSaveDraft, mailSearch, mailSend, mailThread, mailUnseen, mailUndoSend, mailUnsubscribe,
   meProfile, updateMeSettings,
   pgpEncrypt, pgpLookup, pgpSign,
-  type Contact, type DraftTone, type MailIdentity, type MailMessage, type MailThread, type Me,
+  type Contact, type DraftTone, type MailIdentity, type MailLabel, type MailMessage, type MailThread, type Me,
   type OutboundAttachment,
 } from "@/lib/api";
 import {
@@ -96,7 +96,11 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [priorityCategories, setPriorityCategories] = useState<Record<string, string>>({});
   const [activeView, setActiveView] = useState("all");
   const [activeLabel, setActiveLabel] = useState("");
-  const [knownLabels, setKnownLabels] = useState<string[]>([]);
+  // Label definitions (name + color) persisted server-side; flagLabels are
+  // keywords seen on loaded messages. The union is what the UI offers.
+  const [labelDefs, setLabelDefs] = useState<MailLabel[]>([]);
+  const [flagLabels, setFlagLabels] = useState<string[]>([]);
+  const [labelManagerOpen, setLabelManagerOpen] = useState(false);
   const [savedSearches, setSavedSearches] = useState<string[]>([]);
   const [searchAll, setSearchAll] = useState(false);
   const [baseMessages, setBaseMessages] = useState<MailMessage[] | null>(null);
@@ -255,7 +259,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   // opens that message (optimistically from the current list row, then the
   // full detail).
   const pathname = usePathname();
-  const segs = pathname.split("/").filter(Boolean);
+  const segs = (pathname ?? "").split("/").filter(Boolean);
   const pathFolder = segs[1] || "Inbox";
   const pathId = segs.length > 2 ? segs[2] : null;
 
@@ -315,9 +319,10 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   }, [folders]);
 
   // Collect user labels (custom IMAP keywords) from loaded messages so the
-  // sidebar and reader can offer them for quick tagging/filtering.
+  // sidebar and reader can offer them for quick tagging/filtering; the list
+  // is merged with the server-side definitions in knownLabels below.
   useEffect(() => {
-    setKnownLabels((prev) => {
+    setFlagLabels((prev) => {
       const set = new Set(prev);
       messages.forEach((m) =>
         m.flags.forEach((f) => {
@@ -328,9 +333,36 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     });
   }, [messages]);
 
+  const knownLabels = useMemo(() => {
+    const set = new Set<string>(labelDefs.map((d) => d.name));
+    flagLabels.forEach((f) => set.add(f));
+    return [...set];
+  }, [labelDefs, flagLabels]);
+
+  const labelColors = useMemo(() => {
+    const out: Record<string, string> = {};
+    labelDefs.forEach((d) => {
+      if (d.color) out[d.name] = d.color;
+    });
+    return out;
+  }, [labelDefs]);
+
+  // Load label definitions once so the sidebar lists labels even when no
+  // currently loaded message carries the keyword.
+  useEffect(() => {
+    mailLabels().then(setLabelDefs).catch(() => {});
+  }, []);
+
   async function toggleLabel(m: MailMessage, label: string) {
     const has = m.flags.includes(label);
     setError("");
+    // Applying a brand-new tag creates its definition so it stays listed and
+    // gets a stable color; the palette fallback covers races.
+    if (!has && !labelDefs.some((d) => d.name === label)) {
+      mailLabelSave(label, "")
+        .then((saved) => setLabelDefs((ds) => [...ds, saved]))
+        .catch(() => {});
+    }
     try {
       await mailFlag(folder, m.uid, label, !has);
       setMessages((ms) =>
@@ -348,6 +380,41 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     } catch (e) {
       setError(e instanceof Error ? e.message : "label failed");
     }
+  }
+
+  // saveLabel creates/updates a label definition (name + color).
+  async function saveLabel(name: string, color: string) {
+    const saved = await mailLabelSave(name, color);
+    setLabelDefs((ds) => {
+      const i = ds.findIndex((d) => d.name === name);
+      if (i < 0) return [...ds, saved];
+      const copy = [...ds];
+      copy[i] = saved;
+      return copy;
+    });
+  }
+
+  // renameLabel renames the keyword on every message (server-side) and
+  // updates the local definitions and flags optimistically.
+  async function renameLabel(from: string, to: string) {
+    await mailLabelRename(from, to);
+    setLabelDefs((ds) => ds.map((d) => (d.name === from ? { ...d, name: to } : d)));
+    const swap = (flags: string[]) => flags.map((f) => (f === from ? to : f));
+    setMessages((ms) => ms.map((x) => (x.flags.includes(from) ? { ...x, flags: swap(x.flags) } : x)));
+    setDetail((d) => (d && d.flags.includes(from) ? { ...d, flags: swap(d.flags) } : d));
+    setFlagLabels((fs) => fs.map((f) => (f === from ? to : f)));
+    if (activeLabel === from) selectLabel(to);
+  }
+
+  // deleteLabel strips the keyword from every message (server-side) and
+  // removes the definition plus the local flag occurrences.
+  async function deleteLabel(name: string) {
+    await mailLabelDelete(name);
+    setLabelDefs((ds) => ds.filter((d) => d.name !== name));
+    setFlagLabels((fs) => fs.filter((f) => f !== name));
+    setMessages((ms) => ms.map((x) => ({ ...x, flags: x.flags.filter((f) => f !== name) })));
+    setDetail((d) => (d ? { ...d, flags: d.flags.filter((f) => f !== name) } : d));
+    if (activeLabel === name) selectLabel("");
   }
 
   // clamp cursor when the list shrinks
@@ -462,6 +529,25 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       await moveTo([m.uid], "Inbox", t("toastNotSpam"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "not spam failed");
+    }
+  }
+
+  // unsubscribeAction follows the sender's List-Unsubscribe header: mailto
+  // opens a pre-filled compose, https is triggered server-side.
+  async function unsubscribeAction(m: MailMessage) {
+    const url = m.unsubscribe_url;
+    if (!url) return;
+    if (url.startsWith("mailto:")) {
+      const addr = url.slice("mailto:".length).split("?")[0];
+      openCompose(addr, "Unsubscribe", "", "", "editor");
+      return;
+    }
+    setError("");
+    try {
+      await mailUnsubscribe(url, !!m.unsubscribe_post);
+      showToast(t("toastUnsubscribed"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("toastUnsubscribeFailed"));
     }
   }
 
@@ -1059,31 +1145,15 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
         return;
       }
 
-      // Park the mail as a draft so an undo within the window aborts the send.
-      let draftUid = 0;
-      try {
-        const d = await mailSaveDraft(finalSubject, finalText, finalHtml, 0, finalTo, finalCc, finalAttachments);
-        draftUid = d.uid || 0;
-      } catch {
-        // sending can proceed without a parked draft
-      }
+      // Server-side undo window: the backend parks the message in its outbox
+      // and delivers it when the window elapses, so closing the tab no longer
+      // loses the send.
+      const res = await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, delay);
+      const outboxId = res.outbox_id;
       resetCompose();
 
-      let cancelled = false;
-      const timer = setTimeout(async () => {
-        if (cancelled) return;
-        try {
-          await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments);
-          if (draftUid) mailMove("Drafts", [draftUid], "Trash").catch(() => {});
-          loadMessages(folder);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "send failed");
-        }
-      }, delay * 1000);
       showToast(t("sending"), () => {
-        cancelled = true;
-        clearTimeout(timer);
-        if (draftUid) mailMove("Drafts", [draftUid], "Trash").catch(() => {});
+        if (outboxId) mailUndoSend(outboxId).catch(() => {});
       }, delay * 1000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "send failed");
@@ -1298,6 +1368,13 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     folders,
     unseen,
     knownLabels,
+    labelDefs,
+    labelColors,
+    labelManagerOpen,
+    setLabelManagerOpen,
+    saveLabel,
+    renameLabel,
+    deleteLabel,
     activeLabel,
     savedSearches,
     folder,
@@ -1367,6 +1444,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     backToList,
     moveDetailTo,
     reportNotSpam,
+    unsubscribeAction,
     toggleLabel,
     thread,
     threadOpen,
