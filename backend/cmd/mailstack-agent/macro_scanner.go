@@ -7,10 +7,10 @@ import (
 	"os/signal"
 	"strconv"
 
-	"mailez/backend/internal/oletools"
+	"mailez/backend/internal/macro"
 )
 
-func runOletools() error {
+func runMacroScanner() error {
 	addr := os.Getenv("MAILEZ_SCANNER_BINDADDRESS")
 	port := os.Getenv("MAILEZ_SCANNER_BINDPORT")
 	if port == "" {
@@ -22,10 +22,10 @@ func runOletools() error {
 			minLength = n
 		}
 	}
-	srv := &oletools.Server{MinLength: minLength}
+	srv := &macro.Server{MinLength: minLength}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	fmt.Fprintf(os.Stderr, "oletools: serving on :%s (min length %d)\n", port, minLength)
+	fmt.Fprintf(os.Stderr, "macro-scanner: serving on :%s (min length %d)\n", port, minLength)
 	return srv.Serve(ctx, netJoin(addr, port))
 }
 
