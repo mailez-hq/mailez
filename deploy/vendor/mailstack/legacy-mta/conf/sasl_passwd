@@ -1,2 +1,0 @@
-{{ RELAYHOST }} {{ RELAYUSER }}:{{ RELAYPASSWORD }}
-
