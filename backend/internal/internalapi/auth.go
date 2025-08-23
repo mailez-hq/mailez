@@ -2,6 +2,7 @@ package internalapi
 
 import (
 	"encoding/base64"
+	"net"
 	"net/url"
 	"strings"
 
@@ -150,27 +151,59 @@ func (h *Handler) checkCredentials(u *models.User, pw, ip, protocol, authPort st
 	return password.Verify(u.Password, pw)
 }
 
-// serverFor resolves the backend host:port for a protocol (mirrors the reference implementation's
-// get_server). Hosts come from env, defaulting to the compose service names.
+// serverFor resolves the backend host:port for a protocol (mirrors the reference
+// implementation's get_server). Hosts come from env, defaulting to the compose
+// service names; the hostname is resolved to an IP because nginx's mail auth
+// module (ngx_parse_addr) only accepts IP literals in Auth-Server.
 func (h *Handler) serverFor(protocol string, authenticated bool) (string, string) {
 	imapAddr := h.Cfg.ImapAddress
 	smtpAddr := h.Cfg.SmtpAddress
+	var host string
 	switch protocol {
 	case "imap":
-		return imapAddr, "143"
+		host = imapAddr
+		return resolveHostname(host), "143"
 	case "pop3":
-		return imapAddr, "110"
+		host = imapAddr
+		return resolveHostname(host), "110"
 	case "smtp":
 		if authenticated {
-			return smtpAddr, "10025"
+			host = smtpAddr
+			return resolveHostname(host), "10025"
 		}
-		return smtpAddr, "25"
+		host = smtpAddr
+		return resolveHostname(host), "25"
 	case "submission":
-		return smtpAddr, "10025"
+		host = smtpAddr
+		return resolveHostname(host), "10025"
 	case "lmtp":
-		return imapAddr, "2525"
+		host = imapAddr
+		return resolveHostname(host), "2525"
 	case "sieve":
-		return imapAddr, "4190"
+		host = imapAddr
+		return resolveHostname(host), "4190"
 	}
-	return imapAddr, "143"
+	return resolveHostname(imapAddr), "143"
+}
+
+// resolveHostname mirrors the reference implementation's resolve_hostname
+// (socrate/system.py): IP literals pass through, hostnames are resolved with
+// the system DNS (Docker's embedded DNS in containers, /etc/hosts on the
+// host), preferring IPv4 like the Python original's family-sorted getaddrinfo.
+// If resolution fails the raw value is returned so callers still see a
+// meaningful address instead of an empty one.
+func resolveHostname(hostname string) string {
+	if ip := net.ParseIP(hostname); ip != nil {
+		return hostname
+	}
+	ips, err := net.LookupHost(hostname)
+	if err != nil || len(ips) == 0 {
+		return hostname
+	}
+	for _, ip := range ips {
+		if strings.Contains(ip, ".") {
+			return ip
+		}
+	}
+	return ips[0]
 }

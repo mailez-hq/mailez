@@ -1,6 +1,6 @@
 # 工程：Go 重写邮件栈容器代理（去 Python）
 
-> 状态：**M1 unbound ✅ / M2 nginx ✅ / M3 legacy IMAP 代码完成待验证**（2026-08-23）· 优先级：高
+> 状态：**M1 unbound ✅ / M2 nginx ✅ / M3 legacy IMAP ✅（e2e 10/10）**（2026-08-23）· 优先级：高
 
 ## 背景与目标
 
@@ -104,14 +104,32 @@ Python：每个容器 `CMD /start.py`，依赖 vendor 进来的 `podop`（内部
       notls 渲染/端口派生/证书链裁剪；镜像多阶段构建（含静态资源与
       dhparam），e2e 10/10 验证通过（容器 COMMAND 已是
       `/mailstack-agent nginx`）
-- [x] **M3 legacy IMAP agent（代码完成）**：passdb/userdb/quota/sieve 关联；
+- [x] **M3 legacy IMAP agent（已验证）**：passdb/userdb/quota/sieve 关联；
       Go 实现 podop legacy IMAP dict 协议（H/L/B/S/C + tabescape，转发
       `/internal/legacy IMAP/`）；dovecot.conf 模板转换 + ham/spam 脚本渲染；
-      单测 9/9（含协议回环测试）；待镜像构建 + e2e 验证
+      单测 12/12 + e2e 10/10（含别名投递）
 - [ ] **M4 legacy MTA agent**：main.cf/master.cf 生成、别名/中继查询
 - [ ] **M5 rspamd agent**：配置渲染（替代 Jinja）、DKIM vault 关联
 - [ ] **M6 去 Python**：base 镜像移除 python3/pip/venv/requirements，镜像
       体积与启动时间对比，更新构建脚本
+
+## M3 验证时修掉的三个协议坑（记录在案）
+
+1. **dict 回复格式**：legacy IMAP 官方协议是 `O<value>\n`（无 tab），vendored
+   podop 的 `O\t<value>` 在 alpine legacy IMAP 2.3.21.1 上会把 value 解析为空，
+   报 `Missing '}'`。Go 实现按官方格式回复。
+2. **Auth-Server 必须是 IP**：nginx 1.26+ 的 mail auth 模块用
+   `ngx_parse_addr` 解析响应头，只接受 IP 字面量（mainstream suite 的 `get_server`
+   会先 `resolve_hostname`，Go 移植版漏了这步）。`serverFor` 现已补上
+   主机名→IP 解析；开发模式下后端在宿主机，`IMAP_ADDRESS`/`SMTP_ADDRESS`
+   需指向 compose 里固定的容器 IP（192.168.206.5/.4），见
+   `backend/scripts/dev-server.ps1`。
+3. **sieve data 键带引号**：pigeonhole 的 dict 存储用 JSON 编码的脚本名做
+   data 键（`priv/sieve/data/"default"` 带字面引号），后端路由是
+   `sieve/data/default/<user>`；Go agent 的 `dictKey` 做引号规范化后才拼
+   URL。同时 dev 的 nginx `RESOLVER_ADDRESS` 不再指向 unbound（会 NXDOMAIN
+   掉 host.docker.internal/内部服务名），改由 Docker 内嵌 DNS 127.0.0.11
+   解析。
 
 ## 验证方式（每阶段）
 

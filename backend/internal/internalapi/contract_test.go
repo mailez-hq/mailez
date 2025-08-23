@@ -65,8 +65,8 @@ func newContractHarness(t *testing.T) (*Handler, *fiber.App) {
 		Domain:             "example.com",
 		MessageRateLimit:   200,
 		DkimSelector:       "dkim",
-		ImapAddress:        "imap",
-		SmtpAddress:        "smtp",
+		ImapAddress:        "127.0.0.1",
+		SmtpAddress:        "127.0.0.1",
 	}
 	mgr := auth.NewManager(db, auth.NewMemoryStore(), "mailez_session", time.Hour)
 	h := New(db, mgr, cfg, nil)
@@ -282,7 +282,7 @@ func TestAuthContract(t *testing.T) {
 		"Auth-User": "alice@example.com", "Auth-Pass": "secret123",
 	}))
 	if code != 200 || headers.Get("Auth-Status") != "OK" ||
-		headers.Get("Auth-Server") != "smtp" || headers.Get("Auth-Port") != "10025" {
+		headers.Get("Auth-Server") != "127.0.0.1" || headers.Get("Auth-Port") != "10025" {
 		t.Fatalf("auth/email ok: got %d %q server=%q port=%q", code,
 			headers.Get("Auth-Status"), headers.Get("Auth-Server"), headers.Get("Auth-Port"))
 	}
