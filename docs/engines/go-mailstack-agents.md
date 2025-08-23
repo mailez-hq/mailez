@@ -22,7 +22,7 @@ macro-scanner / resolver）都由**同一个静态 Go 二进制**（`mailstack-a
 | mta（legacy MTA） | 渲染 main.cf / master.cf；实现 socketmap 查询代理；运行 MTA-STS 策略守护 |
 | mail-keeper（legacy IMAP） | 渲染 dovecot.conf；实现 dict 代理（passdb/userdb/quota/sieve 回源到控制面） |
 | mail-filter（rspamd） | 渲染 `/conf` 模板到 `/etc/rspamd/local.d`；等待控制面就绪 |
-| macro-scanner（oletools） | 实现 OLEFY/1.0 扫描协议，供 rspamd 调用 |
+| macro-scanner | 实现 OLEFY/1.0 扫描协议，供 rspamd 调用 |
 | resolver（unbound） | 渲染 unbound.conf；拉取 root hints / 信任锚 |
 
 ## 协议契约

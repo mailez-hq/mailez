@@ -100,7 +100,7 @@ services:
       - gateway
 
   macro-scanner:
-    image: mailez/oletools:local
+    image: mailez/macro-scanner:local
     pull_policy: missing
     hostname: macro-scanner
     restart: always

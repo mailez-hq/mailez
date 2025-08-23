@@ -36,7 +36,7 @@ function Build-Image([string]$name, [string]$dir) {
   if ($LASTEXITCODE -ne 0) { throw "build failed: mailez/$name" }
 }
 
-foreach ($component in @('nginx','legacy IMAP','legacy MTA','rspamd','oletools','unbound')) {
+foreach ($component in @('nginx','legacy IMAP','legacy MTA','rspamd','macro-scanner','unbound')) {
   Build-Image $component (Join-Path $vendor $component)
 }
 
