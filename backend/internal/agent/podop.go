@@ -148,16 +148,13 @@ func (h *DictHandler) handle(conn net.Conn) {
 	}
 }
 
-// dictKey converts a dict-protocol key into an API path segment, replicating
-// podop's UrlTable semantics: "type/rest" drops the type prefix, and only
-// "priv/*" keys append the user namespace.
+// dictKey converts a dict-protocol key into an API path segment. The mailez
+// control-plane contract keeps the type prefix in the path (passdb/<email>,
+// userdb/<email>, quota/<ns>/<email>, sieve/...); only "priv/*" keys append
+// the user namespace.
 func dictKey(key, user string) string {
-	if i := strings.IndexByte(key, '/'); i >= 0 {
-		typ, rest := key[:i], key[i+1:]
-		if typ == "priv" {
-			return rest + "/" + user
-		}
-		return rest
+	if strings.HasPrefix(key, "priv/") {
+		return key[len("priv/"):] + "/" + user
 	}
 	return key
 }
