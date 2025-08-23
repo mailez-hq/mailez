@@ -14,7 +14,7 @@ func (h *Handler) registerRspamd(r fiber.Router) {
 	r.Get("/rspamd/local_domains", h.rspamdLocalDomains)
 }
 
-// rspamdDkimKey mirrors the reference implementation's /internal/rspamd/vault/v1/dkim/<domain>.
+// rspamdDkimKey mirrors the the mail stack's /internal/rspamd/vault/v1/dkim/<domain>.
 // Always 200: selectors stay empty unless the queried domain (or an
 // alternative's canonical domain) carries a DKIM key. Alternatives inherit the
 // key and advertise the queried (alternative) name.
@@ -46,7 +46,7 @@ func (h *Handler) rspamdDkimKey(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"data": fiber.Map{"selectors": selectors}})
 }
 
-// rspamdLocalDomains mirrors the reference implementation: a plain-text, newline-separated list of
+// rspamdLocalDomains mirrors the the mail stack: a plain-text, newline-separated list of
 // served domains and alternatives (not JSON).
 func (h *Handler) rspamdLocalDomains(c *fiber.Ctx) error {
 	var names []string
@@ -60,3 +60,4 @@ func (h *Handler) rspamdLocalDomains(c *fiber.Ctx) error {
 	names = append(names, alts...)
 	return c.Type("text/plain").SendString(strings.Join(names, "\n"))
 }
+

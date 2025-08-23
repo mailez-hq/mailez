@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile-upstream:1.4.3
 
-# legacy MTA image: static Go agent (no Python runtime).
+# legacy MTA image: static Go agent.
 FROM golang:1.26-alpine AS build
 ENV GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0
 WORKDIR /src

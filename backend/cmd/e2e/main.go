@@ -1,5 +1,5 @@
 // Command e2e runs an end-to-end smoke test against a running mailez +
-// the reference implementation mail stack: backend health, admin SSO login, domain/user provisioning,
+// the the mail stack mail stack: backend health, admin SSO login, domain/user provisioning,
 // DKIM key generation, authenticated SMTP submission, IMAP delivery, and the
 // DKIM-Signature / rspamd X-Spam headers on the delivered copy.
 //
@@ -402,3 +402,4 @@ func orDefault(ok bool, yes, no string) string {
 	}
 	return no
 }
+

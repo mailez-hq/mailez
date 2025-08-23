@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile-upstream:1.4.3
 
-# Build the static mailstack-agent (M1 unbound pilot, replaces start.py).
+# Build the static mailstack-agent for the resolver.
 FROM golang:1.26-alpine AS build
 ENV GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0
 WORKDIR /src
@@ -11,7 +11,7 @@ COPY backend/internal/oletools ./internal/oletools
 COPY backend/cmd/mailstack-agent ./cmd/mailstack-agent
 RUN go build -trimpath -ldflags="-s -w" -o /out/mailstack-agent ./cmd/mailstack-agent
 
-# resolver image (no Python runtime)
+# resolver image (single static agent binary)
 FROM alpine:3.21
 
 ARG VERSION=local

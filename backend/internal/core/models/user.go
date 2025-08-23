@@ -43,7 +43,7 @@ type User struct {
 }
 
 // Destination returns the comma-separated delivery destinations, honouring
-// forwarding settings (mirrors the reference implementation's User.destination).
+// forwarding settings (mirrors the the mail stack's User.destination).
 func (u *User) Destination() string {
 	if !u.ForwardEnabled {
 		return u.Email
@@ -63,3 +63,4 @@ func (u *User) ReplyActive() bool {
 	now := time.Now()
 	return !now.Before(u.ReplyStartdate) && !now.After(u.ReplyEnddate)
 }
+

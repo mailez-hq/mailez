@@ -6,7 +6,7 @@
 #   powershell -ExecutionPolicy Bypass -File deploy/scripts/build-images.ps1
 #
 # Every component is a standalone multi-stage build (Go agent -> slim alpine
-# runtime), so no shared Python base image is needed anymore.
+# runtime), so the images stay minimal and self-contained.
 
 $ErrorActionPreference = 'Stop'
 $root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
