@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Generates the gateway favicon set from branding/mailez-icon.svg into
-// deploy/vendor/mailstack/nginx/static. Run from the repo root:
+// deploy/images/gateway/static. Run from the repo root:
 //
 //   node deploy/scripts/generate-favicons.mjs
 //
@@ -15,7 +15,7 @@ const sharp = require("../../frontend/node_modules/sharp");
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const src = resolve(root, "branding/mailez-icon.svg");
-const outDir = resolve(root, "deploy/vendor/mailstack/nginx/static");
+const outDir = resolve(root, "deploy/images/gateway/static");
 const svg = await readFile(src);
 
 const pngTargets = {

@@ -1,12 +1,12 @@
 #!/usr/bin/env pwsh
 # Starts the mailez backend in dev mode (host-run, control plane on :8080).
-# Prerequisite: the mail stack is up, e.g.
+# Prerequisite: the mail services are up, e.g.
 #   cd deploy; docker compose -f docker-compose.dev.yml up -d
 #
 # MAIL_KEEPER_ADDRESS / MTA_ADDRESS must be the *fixed container IPs* declared in
 # docker-compose.dev.yml: the internal API returns them as Auth-Server and
 # nginx's mail auth module only accepts IP literals. MAIL_*_ADDR are the
-# host-mapped proxy ports the backend itself uses to reach the mail stack.
+# host-mapped proxy ports the backend itself uses to reach the mail services.
 $ErrorActionPreference = 'Stop'
 $root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 
