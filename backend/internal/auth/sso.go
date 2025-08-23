@@ -88,7 +88,7 @@ func (m *Manager) ssoLoginTotp(c *fiber.Ctx) error {
 	if !m.checkLoginAttempt(c.Context(), c.IP()) {
 		return c.Status(fiber.StatusTooManyRequests).JSON(models.APIError{Error: "too many login attempts, try again later", Code: "rate_limited"})
 	}
-	email, ok := m.ConsumePending2FA(c.Context(), in.PendingToken)
+	email, ok := m.PeekPending2FA(c.Context(), in.PendingToken)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "2fa session expired"})
 	}
@@ -97,8 +97,16 @@ func (m *Manager) ssoLoginTotp(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "2fa not configured"})
 	}
 	if !totp.Valid(user.TOTPSecret, in.Code, time.Now()) {
+		burned := m.FailTotpAttempt(c.Context(), in.PendingToken)
+		if burned {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "2fa session expired"})
+		}
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid verification code"})
 	}
+	if _, ok := m.ConsumePending2FA(c.Context(), in.PendingToken); !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "2fa session expired"})
+	}
+	_ = m.Store.Delete(c.Context(), totpFailPrefix+in.PendingToken)
 	sid, err := m.CreateSession(c.Context(), user.Email)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "session failed"})

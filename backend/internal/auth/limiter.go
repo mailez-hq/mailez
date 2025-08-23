@@ -2,11 +2,10 @@ package auth
 
 import (
 	"context"
-	"strconv"
 	"time"
 )
 
-// checkLoginAttempt enforces a per-IP attempt limit over a sliding window so
+// checkLoginAttempt enforces a per-IP attempt limit over a fixed window so
 // the web login endpoint cannot be brute-forced (the SMTP path has its own
 // limiter in the stack package).
 func (m *Manager) checkLoginAttempt(ctx context.Context, ip string) bool {
@@ -30,17 +29,12 @@ func (m *Manager) loginSucceeded(ctx context.Context, email string) {
 	_ = m.Store.Delete(ctx, "mailez:login:fail:"+email)
 }
 
-// incr bumps a counter key and returns its new value.
+// incr bumps a counter key atomically (Store.Incr) and returns its new value.
+// A store error fails open (0), matching the pre-existing behavior.
 func (m *Manager) incr(ctx context.Context, key string, ttl time.Duration) int {
-	v, ok, err := m.Store.Get(ctx, key)
+	n, err := m.Store.Incr(ctx, key, ttl)
 	if err != nil {
 		return 0
 	}
-	n := 0
-	if ok {
-		n, _ = strconv.Atoi(v)
-	}
-	n++
-	_ = m.Store.Set(ctx, key, strconv.Itoa(n), ttl)
 	return n
 }

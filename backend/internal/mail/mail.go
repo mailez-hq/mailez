@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime"
 	"mime/multipart"
 	"mime/quotedprintable"
@@ -85,6 +86,8 @@ func (c *Client) openIMAP(email, token string) (*client.Client, error) {
 	if err := cli.StartTLS(c.tlsConfig()); err != nil {
 		// TLS_FLAVOR=notls deployments serve plaintext on the internal proxy
 		// port; fall back to the trusted internal link without encryption.
+		// Log the miss so a misconfigured gateway is visible in operations.
+		log.Printf("imap %s: STARTTLS unavailable, continuing in plaintext: %v", c.IMAPAddr, err)
 	}
 	if err := cli.Login(email, token); err != nil {
 		_ = cli.Logout()

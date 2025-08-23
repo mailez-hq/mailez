@@ -29,6 +29,7 @@ type Manager struct {
 const sessionKeyPrefix = "mailez:session:"
 const tokenKeyPrefix = "mailez:token:"
 const pending2faPrefix = "mailez:pending2fa:"
+const totpFailPrefix = "mailez:totpfail:"
 
 // NewManager wires the auth manager. store may be nil (disabled sessions).
 func NewManager(db *gorm.DB, store Store, sessionName string, ttl time.Duration) *Manager {
@@ -140,6 +141,37 @@ func (m *Manager) ConsumePending2FA(ctx context.Context, token string) (string, 
 	}
 	_ = m.Store.Delete(ctx, pending2faPrefix+token)
 	return email, true
+}
+
+// PeekPending2FA reads a pending token without consuming it, so a mistyped
+// TOTP code does not force the user back to the password step.
+func (m *Manager) PeekPending2FA(ctx context.Context, token string) (string, bool) {
+	email, ok, err := m.Store.Get(ctx, pending2faPrefix+token)
+	if err != nil || !ok {
+		return "", false
+	}
+	return email, true
+}
+
+// totpMaxAttempts bounds how many codes may be tried against one pending
+// token before the 2FA step is burned and the password must be re-entered.
+const totpMaxAttempts = 5
+
+// FailTotpAttempt records a wrong TOTP code against the pending token and
+// consumes the token once the attempt budget is spent.
+func (m *Manager) FailTotpAttempt(ctx context.Context, token string) bool {
+	n, err := m.Store.Incr(ctx, totpFailPrefix+token, 5*time.Minute)
+	if err != nil {
+		// Fail closed: without a counter we cannot bound guessing.
+		_ = m.Store.Delete(ctx, pending2faPrefix+token)
+		return true
+	}
+	if n >= totpMaxAttempts {
+		_ = m.Store.Delete(ctx, pending2faPrefix+token)
+		_ = m.Store.Delete(ctx, totpFailPrefix+token)
+		return true
+	}
+	return false
 }
 
 // VerifyTempToken checks a token-* credential against a user.
