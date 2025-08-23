@@ -1,0 +1,16 @@
+{
+  "name": "mailez-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:webmail": "npm run dev -w apps/webmail -- -p 3001",
+    "dev:admin": "npm run dev -w apps/admin -- -p 3000",
+    "typecheck": "npm run typecheck -w apps/webmail && npm run typecheck -w apps/admin",
+    "lint": "npm run lint -w apps/webmail && npm run lint -w apps/admin",
+    "test": "npm run test -w apps/webmail && npm run test -w apps/admin"
+  }
+}

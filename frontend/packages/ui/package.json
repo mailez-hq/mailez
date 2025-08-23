@@ -1,0 +1,23 @@
+{
+  "name": "@mailez/ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared shadcn-style UI kit for the mailez admin and webmail apps.",
+  "types": "./src/index.ts",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.tsx"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.7.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.33.0",
+    "tailwind-merge": "^3.6.0"
+  }
+}
