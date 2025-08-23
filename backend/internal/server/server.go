@@ -62,6 +62,16 @@ func New(cfg core.Config) *Server {
 	if cfg.Env == "production" && weakSecrets[cfg.SecretKey] {
 		log.Fatal("refusing to start in production with a placeholder SECRET_KEY; set a strong secret")
 	}
+	knownEngine := false
+	for _, e := range core.SupportedMailEngines {
+		if cfg.MailEngine == e {
+			knownEngine = true
+			break
+		}
+	}
+	if !knownEngine {
+		log.Fatalf("unsupported MAILEZ_MAIL_ENGINE %q (supported: %v)", cfg.MailEngine, core.SupportedMailEngines)
+	}
 	db := connectDB(cfg)
 	rdb := connectRedis(cfg)
 
@@ -104,7 +114,7 @@ func New(cfg core.Config) *Server {
 	fetcher := fetch.New(db, cfg.MtaAddress+":25", cfg.SecretKey, cfg.FetchInsecure, time.Duration(cfg.FetchInterval)*time.Second)
 	go fetcher.Run(bgCtx)
 	// Send-undo queue: delivers parked messages once their window elapses.
-	go compose.NewOutboxWorker(db, cfg.MtaAddress+":25").Run(bgCtx)
+	go compose.NewOutboxWorker(db, cfg.MtaAddress+":25", cfg.SecretKey).Run(bgCtx)
 	// Push notifier (new-mail notifications for subscribed clients).
 	if cfg.PushInterval > 0 {
 		notifier := push.NewNotifier(db, cfg)
