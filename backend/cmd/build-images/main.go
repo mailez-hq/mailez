@@ -19,16 +19,18 @@ import (
 )
 
 // imageName maps component directory names to docker image names.
-// Directory names describe the component's role (gateway, mta, ...) while
-// image names are the stable compose contract (mailez/nginx, mailez/legacy MTA,
-// ...) and must not change without updating the compose files.
+// Shared infrastructure directories describe the component's role (gateway,
+// mail-filter, ...) while engine directories use the software name directly
+// (legacy MTA, legacy IMAP). Image names are the stable compose contract
+// (mailez/nginx, mailez/legacy MTA, ...) and must not change without updating
+// the compose files.
 var imageName = map[string]string{
 	"gateway":       "nginx",
 	"mail-filter":   "rspamd",
 	"resolver":      "unbound",
 	"macro-scanner": "macro-scanner",
-	"mta":           "legacy MTA",
-	"mail-keeper":   "legacy IMAP",
+	"legacy MTA":       "legacy MTA",
+	"legacy IMAP":       "legacy IMAP",
 }
 
 // component describes one buildable image.
