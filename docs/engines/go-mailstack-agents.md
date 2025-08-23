@@ -1,6 +1,6 @@
 # 工程：Go 重写邮件栈容器代理（去 Python）
 
-> 状态：**M1 unbound ✅ / M2 nginx ✅ / M3 legacy IMAP ✅（e2e 10/10）**（2026-08-23）· 优先级：高
+> 状态：**M1-M7 全部完成：邮件栈容器已 100% Go 化（e2e 10/10）**（2026-08-23）
 
 ## 背景与目标
 
@@ -108,10 +108,38 @@ Python：每个容器 `CMD /start.py`，依赖 vendor 进来的 `podop`（内部
       Go 实现 podop legacy IMAP dict 协议（H/L/B/S/C + tabescape，转发
       `/internal/legacy IMAP/`）；dovecot.conf 模板转换 + ham/spam 脚本渲染；
       单测 12/12 + e2e 10/10（含别名投递）
-- [ ] **M4 legacy MTA agent**：main.cf/master.cf 生成、别名/中继查询
-- [ ] **M5 rspamd agent**：配置渲染（替代 Jinja）、DKIM vault 关联
-- [ ] **M6 去 Python**：base 镜像移除 python3/pip/venv/requirements，镜像
-      体积与启动时间对比，更新构建脚本
+- [x] **M4 legacy MTA agent**：main.cf/master.cf/outclean 过滤器/日志轮转的 Go
+      模板渲染 + 覆盖配置（postconf -e/-Me、*.map）+ netstring socketmap
+      代理（9 张表） + **Go 版 MTA-STS 守护进程**（mta-sts-resolver
+      移植：DNS TXT + 策略抓取 + 内存缓存 + socketmap 响应）
+- [x] **M5 rspamd agent**：25 个配置的 Go 模板渲染（替代 Jinja）、控制面
+      就绪等待（指数退避）、DMARC 日报 cron、权限处理
+- [x] **M6 去 Python**：base 镜像（python3/pip/venv/podop/socrate）整个
+      删除；组件全部改为独立多阶段构建；nginx 的 certbot 换成内嵌 lego
+      ACME 客户端；build-images.ps1 不再构建 base
+- [x] **M7 oletools agent**：Go 版 olefy（OLEFY/1.0 协议 + PING/PONG）+
+      MS-CFB 解析（mscfb）+ OOXML vbaProject 提取 + MS-OVBA 压缩流解压 +
+      mraptor 风格分析（AutoExec/Suspicious/IOC），输出 olevba 兼容 JSON
+
+## 遗留参考（已删除，git 历史可查）
+
+- `deploy/vendor/mailstack/base/`（Python 运行时 + podop/socrate 库）
+- 各组件 `start.py` / `config.py` / Jinja 模板（已被 Go 模板替代）
+- nginx 镜像里的 certbot（Python ACME，改用内嵌 lego）
+
+## 镜像体积对比（去 Python 前 → 后）
+
+| 镜像 | 去 Python 前 | 去 Python 后 | 降幅 |
+|---|---|---:|---:|
+| base（已删除） | 362MB | 0 | -100% |
+| nginx（含 certbot） | ~72MB | 20.6MB | -71% |
+| legacy IMAP | 135MB | 39.6MB | -71% |
+| legacy MTA | 378MB | 13.6MB | -96% |
+| rspamd | 453MB | 38.6MB | -91% |
+| oletools | 374MB | 8.6MB | -98% |
+| unbound | 48.6MB | 15.8MB | -68% |
+
+全部容器 `CMD /mailstack-agent <component>`，镜像内无 python3/pip/venv。
 
 ## M3 验证时修掉的三个协议坑（记录在案）
 

@@ -7,6 +7,7 @@ WORKDIR /src
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/internal/agent ./internal/agent
+COPY backend/internal/oletools ./internal/oletools
 COPY backend/cmd/mailstack-agent ./cmd/mailstack-agent
 RUN go build -trimpath -ldflags="-s -w" -o /out/mailstack-agent ./cmd/mailstack-agent
 
@@ -15,8 +16,10 @@ FROM alpine:3.21
 
 ARG VERSION=local
 LABEL version=$VERSION
+ARG APK_MIRROR="mirrors.aliyun.com"
 
 RUN set -euxo pipefail \
+  ; sed -i "s|dl-cdn.alpinelinux.org|${APK_MIRROR}|g" /etc/apk/repositories \
   ; apk add --no-cache ca-certificates curl bind-tools unbound \
   ; curl -so /etc/unbound/root.hints https://www.internic.net/domain/named.cache \
   ; chown root:unbound /etc/unbound \

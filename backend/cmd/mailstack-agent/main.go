@@ -20,8 +20,14 @@ func main() {
 		err = runNginx()
 	case "legacy IMAP":
 		err = runDovecot()
+	case "legacy MTA":
+		err = runPostfix()
+	case "rspamd":
+		err = runRspamd()
+	case "oletools":
+		err = runOletools()
 	case "version":
-		fmt.Println("mailez mailstack-agent (unbound + nginx + legacy IMAP)")
+		fmt.Println("mailez mailstack-agent (unbound + nginx + legacy IMAP + legacy MTA + rspamd + oletools)")
 		return
 	default:
 		usage()
@@ -35,5 +41,5 @@ func main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: mailstack-agent <component>")
-	fmt.Fprintln(os.Stderr, "components: unbound nginx legacy IMAP")
+	fmt.Fprintln(os.Stderr, "components: unbound nginx legacy IMAP legacy MTA rspamd oletools")
 }
