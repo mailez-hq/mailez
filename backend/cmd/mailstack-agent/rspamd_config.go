@@ -53,4 +53,3 @@ func loadRspamdConfig() (RspamdConfig, error) {
 	}
 	return cfg, nil
 }
-

@@ -59,4 +59,3 @@ func (l *rateLimiter) hit(key string) bool {
 	l.mem[key]++
 	return l.mem[key] > l.limit
 }
-

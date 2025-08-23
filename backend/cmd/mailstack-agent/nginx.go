@@ -77,4 +77,3 @@ func regenerateChains() error {
 	}
 	return nil
 }
-

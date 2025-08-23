@@ -135,4 +135,3 @@ func lookupIDs(u *user.User) (int, int) {
 	fmt.Sscanf(u.Gid, "%d", &gid)
 	return uid, gid
 }
-

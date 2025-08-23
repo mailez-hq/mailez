@@ -114,5 +114,3 @@ func envTrue(key string, def bool) bool {
 	}
 	return def
 }
-
-

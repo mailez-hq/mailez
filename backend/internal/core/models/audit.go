@@ -13,4 +13,3 @@ type AuditLog struct {
 	Path      string    `gorm:"size:255;not null" json:"path"`
 	Status    int       `gorm:"not null" json:"status"`
 }
-

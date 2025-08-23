@@ -207,5 +207,3 @@ func resolveHostname(hostname string) string {
 	}
 	return ips[0]
 }
-
-

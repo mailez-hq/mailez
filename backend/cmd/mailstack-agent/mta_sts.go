@@ -379,4 +379,3 @@ func (d *stsDaemon) cacheSet(domain string, e stsCacheEntry) {
 	}
 	d.cache[domain] = e
 }
-

@@ -21,4 +21,3 @@ func flockRemoveStaleMasterPID() {
 	}
 	_ = os.Remove("/queue/pid/master.pid")
 }
-

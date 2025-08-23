@@ -84,4 +84,3 @@ func (h *Handler) fetchDone(c *fiber.Ctx) error {
 	}
 	return c.SendStatus(fiber.StatusOK)
 }
-

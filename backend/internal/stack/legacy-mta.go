@@ -233,4 +233,3 @@ func relayTransport(relay models.Relay) (string, error) {
 func unsupportedAddress(address string) bool {
 	return strings.Count(address, "@") > 1 || strings.HasPrefix(address, `"`)
 }
-

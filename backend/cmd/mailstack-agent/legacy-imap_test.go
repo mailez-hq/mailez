@@ -181,4 +181,3 @@ func TestTabEscapeRoundTrip(t *testing.T) {
 		t.Fatalf("roundtrip mismatch: %q != %q", got, in)
 	}
 }
-

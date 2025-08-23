@@ -44,4 +44,3 @@ func (h *Handler) Register(r fiber.Router) {
 	h.registerFetch(r)
 	h.registerAutoconfig(r)
 }
-

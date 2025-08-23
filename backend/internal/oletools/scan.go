@@ -257,4 +257,3 @@ func ErrorProtocol() []byte {
 func ErrorMethod() []byte {
 	return mustJSON([]any{map[string]any{"error": "Protocol error: Method header not found"}})
 }
-

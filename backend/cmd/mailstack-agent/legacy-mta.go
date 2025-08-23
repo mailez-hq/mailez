@@ -203,4 +203,3 @@ func escapePath(p string) string {
 	e := url.PathEscape(p)
 	return strings.ReplaceAll(e, "%2F", "/")
 }
-

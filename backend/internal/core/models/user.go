@@ -63,4 +63,3 @@ func (u *User) ReplyActive() bool {
 	now := time.Now()
 	return !now.Before(u.ReplyStartdate) && !now.After(u.ReplyEnddate)
 }
-
