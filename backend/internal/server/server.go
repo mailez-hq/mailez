@@ -175,7 +175,7 @@ func (s *Server) routes() {
 	ai.RegisterAPI(authed, app, aiMgr)
 	push.RegisterAPI(authed, app)
 
-	s.internal.Register(s.App.Group("/internal"))
+	s.internal.Register(s.App.Group("/stack"))
 }
 
 func (s *Server) health(c *fiber.Ctx) error {

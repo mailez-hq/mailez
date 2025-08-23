@@ -29,12 +29,12 @@ macro-scanner / resolver）都由**同一个静态 Go 二进制**（`mailstack-a
 
 内部协议在实现时以**行为契约**为准，并用单测钉死：
 
-- **nginx 邮件认证**：`auth_http` 回源 `/internal/auth/email`；`Auth-Server`
+- **nginx 邮件认证**：`auth_http` 回源 `/stack/auth/email`；`Auth-Server`
   必须返回 IP 字面量（解析后的地址），不能返回主机名。
 - **legacy IMAP dict**：回复格式为 `O<value>\n`；sieve data 键带引号；
   quota 通过 unix socket 代理回源控制面。
 - **legacy MTA socketmap**：走 netstring 协议；`${mailez}xxx` 映射全部回源
-  控制面 `/internal/*`。
+  控制面 `/stack/*`。
 - **rspamd 宏扫描**：OLEFY/1.0 TCP 协议（`Method: oletools`），返回
   olevba 风格 JSON 数组。
 - **MTA-STS**：独立策略守护（socketmap），按域查询并缓存策略。

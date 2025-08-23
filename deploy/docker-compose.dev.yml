@@ -10,7 +10,7 @@
 #   copy mailez.env.example mailez.env   （改 SECRET_KEY / DOMAIN 等）
 #   docker compose -f docker-compose.dev.yml up -d
 #
-# 宿主机后端必须监听 8080（镜像通过 BACKEND_ADDRESS:8080 访问内部 API），
+# 宿主机后端必须监听 8080（镜像通过 MAILEZ_BACKEND_ADDRESS:8080 访问内部 API），
 # 详见 docs/dev-setup.md。
 
 name: mailez
@@ -35,9 +35,9 @@ services:
     restart: always
     env_file: mailez.env
     environment:
-      # 覆盖 mailez.env 里的 BACKEND_ADDRESS=backend：开发模式下后端在宿主机，
+      # 覆盖 mailez.env 里的 MAILEZ_BACKEND_ADDRESS=backend：开发模式下后端在宿主机，
       # 镜像通过 host.docker.internal 访问它（端口固定 8080）。
-      - BACKEND_ADDRESS=host.docker.internal
+      - MAILEZ_BACKEND_ADDRESS=host.docker.internal
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -53,8 +53,8 @@ services:
       - "127.0.0.1:993:993"
       - "127.0.0.1:4190:4190"
       # 容器网络内 backend 用的内部代理端口，映射出来供宿主机后端连接
-      - "127.0.0.1:10143:10143"
-      - "127.0.0.1:10025:10025"
+      - "127.0.0.1:1143:1143"
+      - "127.0.0.1:1587:1587"
     volumes:
       - "./certs:/certs"
       - "./overrides/nginx-dev:/overrides"
@@ -65,9 +65,9 @@ services:
     restart: always
     env_file: mailez.env
     environment:
-      # Images reach the control plane at BACKEND_ADDRESS:8080; in dev the
+      # Images reach the control plane at MAILEZ_BACKEND_ADDRESS:8080; in dev the
       # backend runs on the host.
-      - BACKEND_ADDRESS=host.docker.internal
+      - MAILEZ_BACKEND_ADDRESS=host.docker.internal
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -87,7 +87,7 @@ services:
     restart: always
     env_file: mailez.env
     environment:
-      - BACKEND_ADDRESS=host.docker.internal
+      - MAILEZ_BACKEND_ADDRESS=host.docker.internal
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -105,7 +105,7 @@ services:
     hostname: macro-scanner
     restart: always
     networks:
-      - noinet
+      - no-egress
 
   mail-filter:
     image: mailez/rspamd:local
@@ -113,12 +113,14 @@ services:
     restart: always
     env_file: mailez.env
     environment:
-      - BACKEND_ADDRESS=host.docker.internal
+      - MAILEZ_BACKEND_ADDRESS=host.docker.internal
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - default
-      - noinet
+      default:
+        # Fixed IP: keep it out of mta's reserved .4 (IPAM race on recreate).
+        ipv4_address: 192.168.206.6
+      no-egress: {}
     volumes:
       - "./data/filter:/var/lib/rspamd"
       - "./data/dkim:/dkim"
@@ -142,6 +144,6 @@ networks:
       driver: default
       config:
         - subnet: 192.168.206.0/24
-  noinet:
+  no-egress:
     driver: bridge
     internal: true

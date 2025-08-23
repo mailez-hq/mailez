@@ -299,7 +299,7 @@ func smtpSend(host string, port int, user, pw, to, msg string) error {
 	if err := c.Hello(host); err != nil {
 		return err
 	}
-	// STARTTLS when offered; plaintext fallback for TLS_FLAVOR=notls.
+	// STARTTLS when offered; plaintext fallback for MAILEZ_TLS=off.
 	var auth smtp.Auth
 	if err := c.StartTLS(&tls.Config{ServerName: host, InsecureSkipVerify: true}); err == nil {
 		auth = smtp.PlainAuth("", user, pw, host)

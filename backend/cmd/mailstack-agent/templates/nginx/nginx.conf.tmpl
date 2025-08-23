@@ -59,7 +59,7 @@ http {
       # Listen over HTTP
       listen 80{{ if .ProxyProtocol80 }} proxy_protocol{{ end }};
 {{ if .Subnet6 }}      listen [::]:80{{ if .ProxyProtocol80 }} proxy_protocol{{ end }};
-{{ end }}      {{ if or (eq .TLSFlavor "letsencrypt") (eq .TLSFlavor "mail-letsencrypt") }}      location ^~ /.well-known/acme-challenge/testing {
+{{ end }}      {{ if eq .TLSFlavor "letsencrypt" }}      location ^~ /.well-known/acme-challenge/testing {
           return 204;
       }
       location ^~ /.well-known/acme-challenge/ {
@@ -82,14 +82,11 @@ http {
       root /static;
       # Variables for proxifying
       set $backend {{ .BackendAddress }}:8080;
-      set $mailfilter {{ .MailFilterAddress }}:11334;
-      {{ if .WebmailAddress }}set $webmail {{ .WebmailAddress }};
-      {{ end }}{{ if .WebdavAddress }}set $webdav {{ .WebdavAddress }}:5232;
-      {{ end }}client_max_body_size {{ .MessageSizeLimitPlus }};
+      client_max_body_size {{ .MessageSizeLimitPlus }};
       http2 on;
 
       # Listen on HTTP only in kubernetes or behind reverse proxy
-      {{ if or (eq .TLSFlavor "mail-letsencrypt") (eq .TLSFlavor "notls") (eq .TLSFlavor "mail") }}      listen 80{{ if .ProxyProtocol80 }} proxy_protocol{{ end }};
+      {{ if eq .TLSFlavor "off" }}      listen 80{{ if .ProxyProtocol80 }} proxy_protocol{{ end }};
 {{ if .Subnet6 }}      listen [::]:80{{ if .ProxyProtocol80 }} proxy_protocol{{ end }};
 {{ end }}      {{ end }}
 
@@ -101,10 +98,10 @@ http {
       ssl_session_cache shared:SSLHTTP:3m;
       add_header Strict-Transport-Security 'max-age=31536000';
 
-      {{ if not (or (eq .TLSFlavor "mail") (eq .TLSFlavor "mail-letsencrypt")) }}      if ($proxy_x_forwarded_proto = http) {
+      if ($proxy_x_forwarded_proto = http) {
         return 301 https://$host$request_uri;
       }
-      {{ end }}{{ end }}
+      {{ end }}
 
       # Remove headers to prevent duplication and information disclosure
       proxy_hide_header X-XSS-Protection;
@@ -117,29 +114,29 @@ http {
 
       # mozilla autoconfiguration
       location ~ ^/(\.well\-known/autoconfig/)?mail/config\-v1\.1\.xml {
-        rewrite ^ /internal/autoconfig/mozilla break;
+        rewrite ^ /stack/autoconfig/mozilla break;
         include /etc/nginx/proxy.conf;
         proxy_pass http://$backend;
       }
       # microsoft autoconfiguration
       location ~* ^/Autodiscover/Autodiscover.json {
-        rewrite ^ /internal/autoconfig/microsoft.json break;
+        rewrite ^ /stack/autoconfig/microsoft.json break;
         include /etc/nginx/proxy.conf;
         proxy_pass http://$backend;
       }
       location ~* ^/Autodiscover/Autodiscover.xml {
-        rewrite ^ /internal/autoconfig/microsoft break;
+        rewrite ^ /stack/autoconfig/microsoft break;
         include /etc/nginx/proxy.conf;
         proxy_pass http://$backend;
       }
       # apple mobileconfig
       location ~ ^/(apple\.)?mobileconfig {
-        rewrite ^ /internal/autoconfig/apple break;
+        rewrite ^ /stack/autoconfig/apple break;
         include /etc/nginx/proxy.conf;
         proxy_pass http://$backend;
       }
 
-      {{ if or (eq .TLSFlavor "letsencrypt") (eq .TLSFlavor "mail-letsencrypt") }}      location ^~ /.well-known/acme-challenge/testing {
+      {{ if eq .TLSFlavor "letsencrypt" }}      location ^~ /.well-known/acme-challenge/testing {
           return 204;
       }
       location ^~ /.well-known/acme-challenge/ {
@@ -147,91 +144,26 @@ http {
       }
       {{ end }}
 
-      # If TLS is failing, prevent access to anything except certbot
-      {{ if and .TLSError (not (or (eq .TLSFlavor "mail-letsencrypt") (eq .TLSFlavor "mail"))) }}      location / {
+      # If TLS is failing, prevent access to anything except ACME
+      {{ if .TLSError }}      location / {
         return 403;
       }
       {{ else }}      include /overrides/*.conf;
 
       # Actual logic
-      {{ if or .Admin (ne .Webmail "none") }}      location ~ ^/(sso|static)/ {
-        include /etc/nginx/proxy.conf;
-        proxy_pass http://$backend;
-      }
-      {{ end }}
-
-      location @sso_login {
-        return 302 /sso/login?url=$request_uri;
-      }
-
-      {{ if and (ne .WebWebmail "/") (ne .WebrootRedirect "none") }}      location / {
+      location / {
         expires $expires;
-      {{ if .WebrootRedirect }}        try_files $uri {{ .WebrootRedirect }}?homepage;
-      {{ else }}        try_files $uri =404;
-      {{ end }}      }
-      {{ end }}
-
-      {{ if ne .Webmail "none" }}      location {{ .WebWebmail }} {
-        {{ if ne .WebWebmail "/" }}        rewrite ^({{ .WebWebmail }})$ $1/ permanent;
-        rewrite ^{{ .WebWebmail }}/(.*) /$1 break;
-        {{ end }}        include /etc/nginx/proxy.conf;
-        auth_request /internal/auth/user;
-        error_page 403 @sso_login;
-        proxy_pass http://$webmail;
-      }
-
-      {{ if eq .WebWebmail "/" }}      location /sso.php {
-      {{ else }}      location {{ .WebWebmail }}/sso.php {
-      {{ end }}        {{ if ne .WebWebmail "/" }}        rewrite ^({{ .WebWebmail }})$ $1/ permanent;
-        rewrite ^{{ .WebWebmail }}/(.*) /$1 break;
-        {{ end }}        include /etc/nginx/proxy.conf;
-        auth_request /internal/auth/user;
-        auth_request_set $user $upstream_http_x_user;
-        auth_request_set $token $upstream_http_x_user_token;
-        proxy_set_header X-Remote-User $user;
-        proxy_set_header X-Remote-User-Token $token;
-        error_page 403 @sso_login;
-        proxy_pass http://$webmail;
-      }
-      {{ end }}{{ if .Admin }}       location {{ .WebAdmin }} {
-         include /etc/nginx/proxy.conf;
-         proxy_pass http://$backend;
-         expires $expires;
-       }
-
-      location {{ .WebAdmin }}/antispam {
-        rewrite ^{{ .WebAdmin }}/antispam/(.*) /$1 break;
-        auth_request /internal/auth/admin;
-        proxy_set_header X-Real-IP "";
-        proxy_set_header X-Forwarded-For "";
-        proxy_set_header X-Forwarded-By: "";
-        proxy_pass http://$mailfilter;
-        error_page 403 @sso_login;
+        try_files $uri =404;
       }
       {{ end }}
 
-      {{ if ne .Webdav "none" }}      location /webdav {
-        rewrite ^/webdav/(.*) /$1 break;
-        auth_request /internal/auth/basic;
-        auth_request_set $user $upstream_http_x_user;
-        include /etc/nginx/proxy.conf;
-        proxy_set_header X-Remote-User $user;
-        proxy_set_header X-Script-Name /webdav;
-        proxy_pass http://$webdav;
-      }
-
-      location ~ ^/.well-known/(carddav|caldav) {
-        return 301 /webdav/;
-      }
-      {{ end }}{{ end }}
-
-      {{ if .API }}      location {{ if .WebAPI }}{{ .WebAPI }}{{ else }}/api{{ end }} {
+      {{ if .API }}      location /api {
         include /etc/nginx/proxy.conf;
         proxy_pass http://$backend;
       }
       {{ end }}
 
-      location /internal {
+      location /stack {
         internal;
 
         proxy_set_header X-Real-IP $remote_addr;
@@ -254,7 +186,7 @@ http {
       listen 127.0.0.1:8000;
 
       location / {
-        proxy_pass http://$backend/internal$request_uri;
+        proxy_pass http://$backend/stack$request_uri;
       }
     }
 
@@ -290,9 +222,7 @@ mail {
     server {
       listen 25{{ if .ProxyProtocol25 }} proxy_protocol{{ end }};
 {{ if .Subnet6 }}      listen [::]:25{{ if .ProxyProtocol25 }} proxy_protocol{{ end }};
-{{ end }}      {{ if and .TLS (not .TLSError) }}      {{ if or (eq .TLSFlavor "letsencrypt") (eq .TLSFlavor "mail-letsencrypt") }}      ssl_certificate /certs/letsencrypt/live/mailez/DANE-chain.pem;
-      ssl_certificate /certs/letsencrypt/live/mailez-ecdsa/DANE-chain.pem;
-      {{ end }}      {{ if .TLSPermissive }}      ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
+{{ end }}      {{ if and .TLS (not .TLSError) }}      {{ if .TLSPermissive }}      ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
       ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA256:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA;
       ssl_prefer_server_ciphers on;
       {{ end }}      starttls on;

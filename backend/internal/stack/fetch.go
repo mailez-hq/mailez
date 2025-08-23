@@ -17,7 +17,7 @@ func (h *Handler) registerFetch(r fiber.Router) {
 	r.Post("/fetch/:id", h.fetchDone)
 }
 
-// fetchList serves the fetchmail poller (/internal/fetch): it reads the full
+// fetchList serves the fetchmail poller (/stack/fetch): it reads the full
 // account list, with passwords decrypted for runtime use.
 func (h *Handler) fetchList(c *fiber.Ctx) error {
 	var fetches []models.Fetch
@@ -56,7 +56,7 @@ func decryptFetchPassword(secret, stored string) string {
 	return stored
 }
 
-// fetchDone is the POST /internal/fetch/<id> handler: the poller reports the
+// fetchDone is the POST /stack/fetch/<id> handler: the poller reports the
 // run outcome; the JSON body is persisted as the error message together with
 // the check timestamp.
 func (h *Handler) fetchDone(c *fiber.Ctx) error {

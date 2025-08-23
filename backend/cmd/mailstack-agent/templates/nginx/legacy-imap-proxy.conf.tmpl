@@ -10,7 +10,7 @@ postmaster_address = {{ .Postmaster }}@{{ .Domain }}
 hostname = {{ .Hostname }}
 submission_host = {{ .MtaAddress }}
 submission_relay_host = {{ .MtaAddress }}
-submission_relay_port = 10025
+submission_relay_port = 1587
 submission_relay_trusted = yes
 submission_relay_ssl = no
 submission_max_mail_size = {{ .MessageSizeLimit }}
@@ -43,7 +43,7 @@ auth_mechanisms = plain login
 ssl = required
 ssl_cert = <{{ .TLS.Cert }}
 ssl_key = <{{ .TLS.Key }}
-{{- if or (eq .TLSFlavor "letsencrypt") (eq .TLSFlavor "mail-letsencrypt") }}
+{{- if eq .TLSFlavor "letsencrypt" }}
 ssl_alt_cert = <{{ .TLS.AltCert }}
 ssl_alt_key = <{{ .TLS.AltKey }}
 {{ end }}
@@ -85,7 +85,7 @@ service managesieve-login {
 {{ end }}
   }
   inet_listener sieve-webmail {
-    port = 14190
+    port = 11490
   }
   service_count = 0
   client_limit = 25000
@@ -117,7 +117,7 @@ service imap-login {
   }
 {{ end }}
   inet_listener imap-webmail {
-   port = 10143
+   port = 1143
   }
   service_count = 0
   client_limit = 25000
@@ -174,7 +174,7 @@ service submission-login {
    }
 {{ end }}
    inet_listener submission-webmail {
-    port = 10025
+    port = 1587
    }
   service_count = 0
   client_limit = 25000

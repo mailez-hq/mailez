@@ -6,9 +6,8 @@ import (
 	"strings"
 )
 
-// Config holds all runtime settings, loaded from environment variables in the
-// the mail stack image style. Every field has a sane default for
-// local dev.
+// Config holds all runtime settings, loaded from environment variables.
+// Every field has a sane default for local dev.
 type Config struct {
 	Port               string
 	Env                string
@@ -52,23 +51,23 @@ func Load() Config {
 		DBDriver:           env("DB_DRIVER", "sqlite"),
 		DBDSN:              env("DB_DSN", "mailez.db"),
 		RedisAddr:          env("REDIS_ADDR", "localhost:6379"),
-		SecretKey:          env("SECRET_KEY", "dev-secret-change-me"),
-		CookieSecure:       envBool("COOKIE_SECURE", false),
+		SecretKey:          env("MAILEZ_SECRET_KEY", "dev-secret-change-me"),
+		CookieSecure:       envBool("MAILEZ_COOKIE_SECURE", false),
 		SessionLifetime:    envInt("SESSION_LIFETIME", 3600),
 		MailKeeperAddress:  env("MAIL_KEEPER_ADDRESS", "mail-keeper"),
 		MtaAddress:         env("MTA_ADDRESS", "mta"),
-		RecipientDelimiter: env("RECIPIENT_DELIMITER", ""),
-		Subnet:             env("SUBNET", "192.168.206.0/24"),
-		Domain:             env("DOMAIN", "example.com"),
-		Hostname:           env("HOSTNAME", "localhost"),
-		MailImapAddr:       env("MAIL_IMAP_ADDR", "gateway:10143"),
-		MailSmtpAddr:       env("MAIL_SMTP_ADDR", "gateway:10025"),
+		RecipientDelimiter: env("MAILEZ_RECIPIENT_DELIMITER", ""),
+		Subnet:             env("MAILEZ_SUBNET", "192.168.206.0/24"),
+		Domain:             env("MAILEZ_DOMAIN", "example.com"),
+		Hostname:           env("MAILEZ_HOSTNAME", "localhost"),
+		MailImapAddr:       env("MAIL_IMAP_ADDR", "gateway:1143"),
+		MailSmtpAddr:       env("MAIL_SMTP_ADDR", "gateway:1587"),
 		MailSieveAddr:      env("MAIL_SIEVE_ADDR", "gateway:4190"),
 		AIProvider:         env("AI_PROVIDER", "none"),
 		AIBaseURL:          env("AI_BASE_URL", "https://api.openai.com/v1"),
 		AIAPIKey:           env("AI_API_KEY", ""),
 		AIModel:            env("AI_MODEL", "gpt-4o-mini"),
-		MessageRateLimit:   envInt("MESSAGE_RATELIMIT", 200),
+		MessageRateLimit:   envInt("MAILEZ_MESSAGE_RATELIMIT", 200),
 		FetchInterval:      envInt("FETCH_INTERVAL", 300),
 		PushInterval:       envInt("PUSH_INTERVAL", 60),
 		LoginRateLimit:     envInt("LOGIN_RATELIMIT", 30),
@@ -76,7 +75,7 @@ func Load() Config {
 		CORSOrigins:        env("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001"),
 		LogLevel:           env("LOG_LEVEL", "info"),
 		FetchInsecure:      envBool("FETCH_INSECURE", false),
-		DkimSelector:       env("DKIM_SELECTOR", "dkim"),
+		DkimSelector:       env("MAILEZ_DKIM_SELECTOR", "dkim"),
 	}
 }
 
