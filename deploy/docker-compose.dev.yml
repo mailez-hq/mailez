@@ -13,6 +13,8 @@
 # 宿主机后端必须监听 8080（镜像通过 BACKEND_ADDRESS:8080 访问内部 API），
 # 详见 docs/dev-setup.md。
 
+name: mailez
+
 services:
 
   redis:

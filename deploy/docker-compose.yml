@@ -4,6 +4,8 @@
 # serves its internal API at http://backend:8080 (the port is hardcoded to
 # 8080 inside the images).
 
+name: mailez
+
 services:
 
   redis:
