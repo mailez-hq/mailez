@@ -8,10 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { login, loginTotp } from "@/lib/api";
+import { ApiError, login, loginTotp } from "@/lib/api";
 
 export function LoginForm() {
   const t = useTranslations("login");
+  const loginError = (err: unknown) =>
+    err instanceof ApiError && err.code === "rate_limited"
+      ? t("rateLimited")
+      : err instanceof Error
+        ? err.message
+        : t("error");
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -33,7 +39,7 @@ export function LoginForm() {
         router.refresh();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(loginError(err));
     } finally {
       setLoading(false);
     }
@@ -48,7 +54,7 @@ export function LoginForm() {
       router.push("/domains");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(loginError(err));
     } finally {
       setLoading(false);
     }

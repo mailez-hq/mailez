@@ -22,6 +22,12 @@ func (h *Handler) sieveAuth(c *fiber.Ctx) (email, token string, err error) {
 	return user.Email, token, nil
 }
 
+// sieveList returns the user's Sieve scripts.
+// @Summary List Sieve scripts
+// @Tags sieve
+// @Produce json
+// @Success 200 {array} map[string]interface{}
+// @Router /sieve [get]
 func (h *Handler) sieveList(c *fiber.Ctx) error {
 	email, token, err := h.sieveAuth(c)
 	if err != nil {
@@ -34,6 +40,13 @@ func (h *Handler) sieveList(c *fiber.Ctx) error {
 	return c.JSON(scripts)
 }
 
+// sieveGet returns one Sieve script's content.
+// @Summary Get Sieve script
+// @Tags sieve
+// @Produce json
+// @Param name path string true "script name"
+// @Success 200 {object} map[string]interface{}
+// @Router /sieve/{name} [get]
 func (h *Handler) sieveGet(c *fiber.Ctx) error {
 	email, token, err := h.sieveAuth(c)
 	if err != nil {
@@ -46,6 +59,13 @@ func (h *Handler) sieveGet(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"name": c.Params("name"), "content": content})
 }
 
+// sievePut saves a Sieve script, optionally activating it.
+// @Summary Save Sieve script
+// @Tags sieve
+// @Accept json
+// @Success 204
+// @Failure 400 {object} map[string]interface{}
+// @Router /sieve/{name} [put]
 func (h *Handler) sievePut(c *fiber.Ctx) error {
 	email, token, err := h.sieveAuth(c)
 	if err != nil {
@@ -64,6 +84,13 @@ func (h *Handler) sievePut(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+// sieveDelete removes a Sieve script.
+// @Summary Delete Sieve script
+// @Tags sieve
+// @Param name path string true "script name"
+// @Success 204
+// @Failure 400 {object} map[string]interface{}
+// @Router /sieve/{name} [delete]
 func (h *Handler) sieveDelete(c *fiber.Ctx) error {
 	email, token, err := h.sieveAuth(c)
 	if err != nil {
@@ -75,6 +102,13 @@ func (h *Handler) sieveDelete(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+// sieveActivate makes a script the active filter.
+// @Summary Activate Sieve script
+// @Tags sieve
+// @Param name path string true "script name"
+// @Success 204
+// @Failure 400 {object} map[string]interface{}
+// @Router /sieve/{name}/activate [post]
 func (h *Handler) sieveActivate(c *fiber.Ctx) error {
 	email, token, err := h.sieveAuth(c)
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	"mime/multipart"
 	"mime/quotedprintable"
 	"net/mail"
+	"strconv"
 	"strings"
 	"time"
 
@@ -59,6 +60,11 @@ type Client struct {
 	IMAPAddr  string // host:port, e.g. gateway:10143
 	SMTPAddr  string // host:port, e.g. gateway:10025
 	SieveAddr string // host:port, e.g. gateway:4190
+
+	// msgIDToUID caches the most recent (folder, Message-ID → UID) resolutions so
+	// the reverse lookup served by UIDByMessageID is O(1) for hot messages
+	// instead of scanning the whole mailbox every time.
+	msgIDToUID msgIDCache
 }
 
 // New creates a mail gateway client.
@@ -100,8 +106,16 @@ func (c *Client) ListFolders(email, token string) ([]string, error) {
 	go func() { done <- cli.List("", "*", mailboxes) }()
 
 	var folders []string
+	// Canonicalize the protocol-reserved INBOX to the display-friendly
+	// "Inbox" so the mailbox list, URL paths and UI share one spelling that
+	// matches the other folders' Title-case names. Every IMAP call later
+	// normalizes back via inboxName().
 	for m := range mailboxes {
-		folders = append(folders, m.Name)
+		name := m.Name
+		if strings.EqualFold(name, "inbox") {
+			name = "Inbox"
+		}
+		folders = append(folders, name)
 	}
 	if err := <-done; err != nil {
 		return nil, fmt.Errorf("imap list: %w", err)
@@ -115,6 +129,7 @@ const PageSize = 50
 // ListMessages returns a page of the most recent messages of a folder (envelope
 // only). Page is zero-based; the total message count is returned alongside.
 func (c *Client) ListMessages(email, token, folder string, page int) ([]Message, int, error) {
+	folder = inboxName(folder)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return nil, 0, err
@@ -175,6 +190,7 @@ func (c *Client) ListMessages(email, token, folder string, page int) ([]Message,
 
 // GetMessage returns a full message body by UID.
 func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, error) {
+	folder = inboxName(folder)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return nil, err
@@ -221,6 +237,7 @@ func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, 
 // feature. Fetching the whole body works through the same BodySectionName the
 // detail view uses.
 func (c *Client) GetRaw(email, token, folder string, uid uint32) (string, error) {
+	folder = inboxName(folder)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return "", err
@@ -269,6 +286,13 @@ func envelopeToMessage(msg *imap.Message) Message {
 		out.To = addresses(msg.Envelope.To)
 		out.Cc = addresses(msg.Envelope.Cc)
 		out.ID = EncodeMessageID(msg.Envelope.MessageId)
+	}
+	// A mail without a Message-ID header has no stable key to derive the
+	// routable id from. Fall back to the numeric UID so the row still gets a
+	// valid (non-degenerate) id that the frontend can route by; the uid is
+	// guessed directly by the uid fetch path and needs no reverse lookup.
+	if out.ID == "." {
+		out.ID = strconv.FormatUint(uint64(msg.Uid), 10)
 	}
 	if msg.BodyStructure != nil {
 		out.HasAttachment = hasAttachments(msg.BodyStructure)

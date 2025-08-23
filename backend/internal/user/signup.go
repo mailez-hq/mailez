@@ -19,6 +19,12 @@ func (h *Handler) registerSignup(r fiber.Router) {
 
 // signupDomains lists domains that accept self-registration, with the number
 // of existing users so the form can disable full domains.
+// signupDomains lists domains that accept self-registration.
+// @Summary Signup domains
+// @Tags signup
+// @Produce json
+// @Success 200 {array} models.Domain
+// @Router /signup/domains [get]
 func (h *Handler) signupDomains(c *fiber.Ctx) error {
 	var domains []models.Domain
 	if err := h.DB.Where("signup_enabled = ?", true).Order("name").Find(&domains).Error; err != nil {
@@ -43,6 +49,14 @@ func (h *Handler) signupDomains(c *fiber.Ctx) error {
 }
 
 // signup creates a user account on a domain with self-registration enabled.
+// signup registers a new user on a signup-enabled domain.
+// @Summary Self-register
+// @Tags signup
+// @Accept json
+// @Produce json
+// @Success 201 {object} models.User
+// @Failure 400 {object} models.APIError
+// @Router /signup [post]
 func (h *Handler) signup(c *fiber.Ctx) error {
 	var in struct {
 		Email         string `json:"email"`

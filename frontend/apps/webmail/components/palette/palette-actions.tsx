@@ -45,7 +45,7 @@ export function usePaletteActions(o: UsePaletteOptions): PaletteAction[] {
       label: t("folderInbox"),
       icon: <InboxIcon className="size-4" />,
       keywords: "inbox",
-      run: () => o.selectFolder("INBOX"),
+      run: () => o.selectFolder("Inbox"),
     },
     {
       id: "sent",

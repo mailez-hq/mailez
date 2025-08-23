@@ -17,6 +17,13 @@ func (h *Handler) registerAliases(r fiber.Router, mw fiber.Handler) {
 	r.Delete("/aliases/:email", mw, h.deleteAlias)
 }
 
+// listAliases returns aliases (manager/admin).
+// @Summary List aliases
+// @Tags aliases
+// @Produce json
+// @Success 200 {array} models.Alias
+// @Failure 403 {object} models.APIError
+// @Router /aliases [get]
 func (h *Handler) listAliases(c *fiber.Ctx) error {
 	q := h.DB
 	if u := currentUser(c); !u.GlobalAdmin {
@@ -29,6 +36,13 @@ func (h *Handler) listAliases(c *fiber.Ctx) error {
 	return c.JSON(aliases)
 }
 
+// getAlias returns one alias.
+// @Summary Get alias
+// @Tags aliases
+// @Produce json
+// @Param email path string true "alias address"
+// @Success 200 {object} models.Alias
+// @Router /aliases/{email} [get]
 func (h *Handler) getAlias(c *fiber.Ctx) error {
 	var a models.Alias
 	if err := h.DB.First(&a, "email = ?", c.Params("email")).Error; err != nil {
@@ -40,6 +54,14 @@ func (h *Handler) getAlias(c *fiber.Ctx) error {
 	return c.JSON(a)
 }
 
+// createAlias adds an alias.
+// @Summary Create alias
+// @Tags aliases
+// @Accept json
+// @Produce json
+// @Success 201 {object} models.Alias
+// @Failure 400 {object} models.APIError
+// @Router /aliases [post]
 func (h *Handler) createAlias(c *fiber.Ctx) error {
 	var in struct {
 		Email       string `json:"email"`
@@ -73,6 +95,13 @@ func (h *Handler) createAlias(c *fiber.Ctx) error {
 	return c.Status(201).JSON(a)
 }
 
+// updateAlias updates an alias.
+// @Summary Update alias
+// @Tags aliases
+// @Accept json
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /aliases/{email} [put]
 func (h *Handler) updateAlias(c *fiber.Ctx) error {
 	var a models.Alias
 	if err := h.DB.First(&a, "email = ?", c.Params("email")).Error; err != nil {
@@ -104,6 +133,13 @@ func (h *Handler) updateAlias(c *fiber.Ctx) error {
 	return c.JSON(a)
 }
 
+// deleteAlias removes an alias.
+// @Summary Delete alias
+// @Tags aliases
+// @Param email path string true "alias address"
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /aliases/{email} [delete]
 func (h *Handler) deleteAlias(c *fiber.Ctx) error {
 	var a models.Alias
 	if err := h.DB.First(&a, "email = ?", c.Params("email")).Error; err != nil {

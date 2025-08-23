@@ -5,6 +5,19 @@ export type { Me, LoginResult };
 
 const API = "/api/v1";
 
+// ApiError carries the HTTP status and the backend's machine-readable code.
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -12,7 +25,8 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error || res.statusText);
+    const err = body as { error?: string; code?: string };
+    throw new ApiError(err.error || res.statusText, res.status, err.code);
   }
   if (res.status === 204) return undefined as T;
   const text = await res.text();

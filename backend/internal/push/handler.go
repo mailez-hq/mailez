@@ -32,6 +32,12 @@ func (h *Handler) registerPush(r fiber.Router) {
 
 // pushVapid returns the application-server key the browser must pass to
 // pushManager.subscribe().
+// pushVapid returns the application-server VAPID public key.
+// @Summary VAPID public key
+// @Tags push
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /push/vapid [get]
 func (h *Handler) pushVapid(c *fiber.Ctx) error {
 	key, err := EnsureVAPID(h.DB)
 	if err != nil {
@@ -47,6 +53,13 @@ type pushKeys struct {
 
 // pushSubscribe stores (or refreshes) a Web Push endpoint for the current
 // user and provisions the encrypted notifier token on first use.
+// pushSubscribe stores a Web Push endpoint for the current user.
+// @Summary Subscribe to push
+// @Tags push
+// @Accept json
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /push/subscribe [post]
 func (h *Handler) pushSubscribe(c *fiber.Ctx) error {
 	user := currentUser(c)
 	var in struct {
@@ -113,6 +126,13 @@ func (h *Handler) pushSubscribe(c *fiber.Ctx) error {
 
 // pushUnsubscribe removes an endpoint and drops the notifier token once the
 // user's last subscription is gone.
+// pushUnsubscribe removes a Web Push endpoint.
+// @Summary Unsubscribe from push
+// @Tags push
+// @Accept json
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /push/subscribe [delete]
 func (h *Handler) pushUnsubscribe(c *fiber.Ctx) error {
 	user := currentUser(c)
 	var in struct {

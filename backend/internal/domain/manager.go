@@ -16,6 +16,13 @@ func (h *Handler) registerManagers(r fiber.Router, mw fiber.Handler) {
 }
 
 // listDomainManagers returns the users that administrate a domain.
+// listDomainManagers returns the managers of a domain.
+// @Summary List domain managers
+// @Tags domains
+// @Produce json
+// @Param name path string true "domain name"
+// @Success 200 {array} models.User
+// @Router /domains/{name}/managers [get]
 func (h *Handler) listDomainManagers(c *fiber.Ctx) error {
 	var d models.Domain
 	if err := h.DB.First(&d, "name = ?", c.Params("name")).Error; err != nil {
@@ -28,6 +35,13 @@ func (h *Handler) listDomainManagers(c *fiber.Ctx) error {
 	return c.JSON(managers)
 }
 
+// addDomainManager grants a user manager rights over a domain.
+// @Summary Add domain manager
+// @Tags domains
+// @Accept json
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /domains/{name}/managers [post]
 func (h *Handler) addDomainManager(c *fiber.Ctx) error {
 	var d models.Domain
 	if err := h.DB.First(&d, "name = ?", c.Params("name")).Error; err != nil {
@@ -49,6 +63,14 @@ func (h *Handler) addDomainManager(c *fiber.Ctx) error {
 	return c.SendStatus(204)
 }
 
+// removeDomainManager revokes a manager grant.
+// @Summary Remove domain manager
+// @Tags domains
+// @Param name path string true "domain name"
+// @Param email path string true "manager email"
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /domains/{name}/managers/{email} [delete]
 func (h *Handler) removeDomainManager(c *fiber.Ctx) error {
 	var d models.Domain
 	if err := h.DB.First(&d, "name = ?", c.Params("name")).Error; err != nil {

@@ -23,6 +23,13 @@ func (h *Handler) registerMail(r fiber.Router) {
 	r.Post("/mail/delete", h.mailDelete)
 }
 
+// mailFlag adds or removes an IMAP flag on a message.
+// @Summary Set message flag
+// @Tags mail
+// @Accept json
+// @Success 204
+// @Failure 400 {object} map[string]interface{}
+// @Router /mail/flag [post]
 func (h *Handler) mailFlag(c *fiber.Ctx) error {
 	user := currentUser(c)
 	token, err := h.mailToken(c)
@@ -44,6 +51,13 @@ func (h *Handler) mailFlag(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+// mailMove moves messages to another folder.
+// @Summary Move messages
+// @Tags mail
+// @Accept json
+// @Success 204
+// @Failure 400 {object} map[string]interface{}
+// @Router /mail/move [post]
 func (h *Handler) mailMove(c *fiber.Ctx) error {
 	user := currentUser(c)
 	token, err := h.mailToken(c)
@@ -72,6 +86,13 @@ func (h *Handler) mailMove(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+// mailDelete moves a message to Trash.
+// @Summary Delete message
+// @Tags mail
+// @Accept json
+// @Success 204
+// @Failure 400 {object} map[string]interface{}
+// @Router /mail/delete [post]
 func (h *Handler) mailDelete(c *fiber.Ctx) error {
 	user := currentUser(c)
 	token, err := h.mailToken(c)
@@ -99,6 +120,12 @@ func (h *Handler) mailToken(c *fiber.Ctx) (string, error) {
 	return h.Auth.CreateTempToken(c.Context(), user.Email, sid)
 }
 
+// mailFolders lists the user's IMAP folders.
+// @Summary List folders
+// @Tags mail
+// @Produce json
+// @Success 200 {array} string
+// @Router /mail/folders [get]
 func (h *Handler) mailFolders(c *fiber.Ctx) error {
 	user := currentUser(c)
 	token, err := h.mailToken(c)
@@ -113,6 +140,12 @@ func (h *Handler) mailFolders(c *fiber.Ctx) error {
 }
 
 // mailUnseen returns the unseen count per mailbox for the sidebar badges.
+// mailUnseen returns the unseen count per folder.
+// @Summary Unseen counts
+// @Tags mail
+// @Produce json
+// @Success 200 {object} map[string]int
+// @Router /mail/unseen [get]
 func (h *Handler) mailUnseen(c *fiber.Ctx) error {
 	user := currentUser(c)
 	token, err := h.mailToken(c)
@@ -126,6 +159,14 @@ func (h *Handler) mailUnseen(c *fiber.Ctx) error {
 	return c.JSON(counts)
 }
 
+// mailMessages returns a page of messages; the total is in X-Total-Messages.
+// @Summary List messages
+// @Tags mail
+// @Produce json
+// @Param folder query string false "mailbox name" default(INBOX)
+// @Param page query int false "page (0-based)" default(0)
+// @Success 200 {array} mail.Message
+// @Router /mail/messages [get]
 func (h *Handler) mailMessages(c *fiber.Ctx) error {
 	user := currentUser(c)
 	token, err := h.mailToken(c)
@@ -145,6 +186,14 @@ func (h *Handler) mailMessages(c *fiber.Ctx) error {
 	return c.JSON(messages)
 }
 
+// mailSearch searches messages in a folder or all folders.
+// @Summary Search messages
+// @Tags mail
+// @Produce json
+// @Param folder query string false "mailbox or all" default(INBOX)
+// @Param q query string true "search expression"
+// @Success 200 {array} mail.Message
+// @Router /mail/search [get]
 func (h *Handler) mailSearch(c *fiber.Ctx) error {
 	user := currentUser(c)
 	token, err := h.mailToken(c)
@@ -170,6 +219,14 @@ func (h *Handler) mailSearch(c *fiber.Ctx) error {
 	return c.JSON(messages)
 }
 
+// mailThread returns every message in a conversation.
+// @Summary Message thread
+// @Tags mail
+// @Produce json
+// @Param folder query string true "mailbox"
+// @Param thread_id query string true "thread id"
+// @Success 200 {object} map[string]interface{}
+// @Router /mail/thread [get]
 func (h *Handler) mailThread(c *fiber.Ctx) error {
 	user := currentUser(c)
 	token, err := h.mailToken(c)
@@ -193,6 +250,14 @@ func (h *Handler) mailThread(c *fiber.Ctx) error {
 }
 
 // mailRaw returns the raw RFC 822 source of a message.
+// mailRaw returns the raw RFC 822 source of a message.
+// @Summary Raw message
+// @Tags mail
+// @Produce json
+// @Param folder query string true "mailbox"
+// @Param uid query int true "message uid"
+// @Success 200 {object} map[string]interface{}
+// @Router /mail/raw [get]
 func (h *Handler) mailRaw(c *fiber.Ctx) error {
 	user := currentUser(c)
 	token, err := h.mailToken(c)
@@ -211,6 +276,14 @@ func (h *Handler) mailRaw(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"raw": raw})
 }
 
+// mailMessage returns one full message.
+// @Summary Get message
+// @Tags mail
+// @Produce json
+// @Param folder query string true "mailbox"
+// @Param uid query int true "message uid"
+// @Success 200 {object} mail.Message
+// @Router /mail/message [get]
 func (h *Handler) mailMessage(c *fiber.Ctx) error {
 	user := currentUser(c)
 	token, err := h.mailToken(c)

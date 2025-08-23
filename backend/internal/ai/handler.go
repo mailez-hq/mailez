@@ -36,6 +36,12 @@ func (h *Handler) registerAI(r fiber.Router) {
 }
 
 // aiStatus tells the UI whether AI features are available.
+// aiStatus reports whether an AI provider is configured.
+// @Summary AI status
+// @Tags ai
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /ai/status [get]
 func (h *Handler) aiStatus(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"enabled":  h.AI.Enabled(),
@@ -44,6 +50,14 @@ func (h *Handler) aiStatus(c *fiber.Ctx) error {
 }
 
 // aiSummarize summarizes an email body.
+// aiSummarize produces a summary of an email.
+// @Summary Summarize email
+// @Tags ai
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} models.APIError
+// @Router /ai/summarize [post]
 func (h *Handler) aiSummarize(c *fiber.Ctx) error {
 	if !h.AI.Enabled() {
 		return c.Status(400).JSON(fiber.Map{"error": "ai is disabled"})
@@ -63,6 +77,14 @@ func (h *Handler) aiSummarize(c *fiber.Ctx) error {
 
 // aiDraft writes a reply draft from email context. An optional tone selects
 // the writing style; see ai.DraftTone.
+// aiDraft writes a reply draft in a chosen tone.
+// @Summary Draft reply
+// @Tags ai
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} models.APIError
+// @Router /ai/draft [post]
 func (h *Handler) aiDraft(c *fiber.Ctx) error {
 	if !h.AI.Enabled() {
 		return c.Status(400).JSON(fiber.Map{"error": "ai is disabled"})
@@ -82,6 +104,14 @@ func (h *Handler) aiDraft(c *fiber.Ctx) error {
 }
 
 // aiPrioritize scores a batch of emails by importance.
+// aiPrioritize scores a batch of emails by importance.
+// @Summary Prioritize inbox
+// @Tags ai
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} models.APIError
+// @Router /ai/prioritize [post]
 func (h *Handler) aiPrioritize(c *fiber.Ctx) error {
 	if !h.AI.Enabled() {
 		return c.Status(400).JSON(fiber.Map{"error": "ai is disabled"})
@@ -109,6 +139,14 @@ func (h *Handler) aiPrioritize(c *fiber.Ctx) error {
 
 // aiSearch interprets a natural-language query and runs an IMAP search with
 // the extracted criteria.
+// aiSearch interprets a natural-language query and runs an IMAP search.
+// @Summary AI search
+// @Tags ai
+// @Accept json
+// @Produce json
+// @Success 200 {array} mail.Message
+// @Failure 400 {object} models.APIError
+// @Router /ai/search [post]
 func (h *Handler) aiSearch(c *fiber.Ctx) error {
 	if !h.AI.Enabled() {
 		return c.Status(400).JSON(fiber.Map{"error": "ai is disabled"})
