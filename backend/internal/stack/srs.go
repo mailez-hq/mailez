@@ -9,7 +9,7 @@ import (
 )
 
 // srsCodec implements Sender Rewriting Scheme (SRS0) with an HMAC-SHA1
-// signature, matching the the mail stack's SRS address format:
+// signature, matching the SRS0 address format:
 //
 //	HASH.SRS0=TT=domain=localpart@srs_domain
 //

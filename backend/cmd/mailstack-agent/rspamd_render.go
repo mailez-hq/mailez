@@ -16,8 +16,7 @@ import (
 var rspamdTemplates embed.FS
 
 // renderRspamdAll renders every embedded rspamd template into
-// /etc/rspamd/local.d/<name>, mirroring the legacy launcher's
-// conf.jinja(/conf/* -> local.d/*).
+// /etc/rspamd/local.d/<name>.
 func renderRspamdAll(cfg RspamdConfig) (map[string][]byte, error) {
 	entries, err := fs.Glob(rspamdTemplates, "templates/rspamd/*.tmpl")
 	if err != nil {

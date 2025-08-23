@@ -141,8 +141,8 @@ func loadNginxConfig() (NginxConfig, error) {
 	return cfg, nil
 }
 
-// applyProxyProtocol reproduces the PROXY_PROTOCOL handling from
-// the legacy launcher's env cleanup.
+// applyProxyProtocol reproduces the PROXY_PROTOCOL handling from the
+// environment (per-port proxy-protocol flags).
 func applyProxyProtocol(cfg *NginxConfig) {
 	set := func(port string, v bool) {
 		switch port {

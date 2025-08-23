@@ -1,5 +1,5 @@
 #!/bin/sh
-# Build the mailez mail-stack images from deploy/vendor/the mail-stack reference and tag them as
+# Build the mailez mail-stack images from deploy/vendor/mailstack and tag them as
 # mailez/<component>:local. Run from the repository root.
 set -e
 

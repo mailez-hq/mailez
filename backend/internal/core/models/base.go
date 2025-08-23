@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-// Base holds columns shared by all models, mirroring the the mail stack's Base class.
+// Base holds columns shared by all models.
 type Base struct {
 	CreatedAt time.Time  `gorm:"type:date;not null" json:"created_at"`
 	UpdatedAt *time.Time `gorm:"type:date" json:"updated_at"`

@@ -68,7 +68,7 @@ $env:MTA_ADDRESS='192.168.206.4'          # 与 docker-compose.dev.yml 的静态
 $env:MAIL_IMAP_ADDR='127.0.0.1:10143'
 $env:MAIL_SMTP_ADDR='127.0.0.1:10025'
 $env:MAIL_SIEVE_ADDR='127.0.0.1:4190'
-$env:DB_DSN='D:\code\mailess\backend\mailez.db'   # 建议绝对路径，避免工作目录歧义
+$env:DB_DSN='D:\code\mailez\backend\mailez.db'   # 建议绝对路径，避免工作目录歧义
 go run ./cmd/server
 ```
 

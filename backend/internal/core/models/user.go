@@ -43,7 +43,7 @@ type User struct {
 }
 
 // Destination returns the comma-separated delivery destinations, honouring
-// forwarding settings (mirrors the the mail stack's User.destination).
+// forwarding settings.
 func (u *User) Destination() string {
 	if !u.ForwardEnabled {
 		return u.Email

@@ -28,8 +28,8 @@ func (h *Handler) realDomain(domain string) string {
 	return domain
 }
 
-// resolveDestination computes delivery targets for localpart@domain, mirroring
-// the the mail stack's Email.resolve_destination: users (with forwarding), then aliases
+// resolveDestination computes delivery targets for localpart@domain: users
+// (with forwarding), then aliases
 // (exact, wildcard, recipient-delimiter aware).
 func (h *Handler) resolveDestination(localpart, domain string, ignoreForwardKeep bool) []string {
 	stripped := h.stripDelimiter(localpart)

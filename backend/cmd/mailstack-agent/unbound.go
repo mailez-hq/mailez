@@ -14,8 +14,7 @@ import (
 
 const unboundConfPath = "/etc/unbound/unbound.conf"
 
-// unboundConfig mirrors the variables consumed by the legacy Jinja template
-// (deploy/vendor/mailstack/unbound/unbound.conf).
+// unboundConfig holds the settings rendered into unbound.conf.
 type unboundConfig struct {
 	subnet  string
 	subnet6 string
@@ -38,10 +37,8 @@ func loadUnboundConfig() (unboundConfig, error) {
 	return cfg, nil
 }
 
-// render produces the unbound.conf content. Semantics match the vendored
-// Jinja template, with one deliberate fix: the template's whitespace control
-// (`{{-`) collapses the IPv6 interface line onto the IPv4 one when SUBNET6 is
-// set, producing an invalid config; we always emit them on separate lines.
+// render produces the unbound.conf content. The IPv6 interface line is always
+// emitted on its own line (a collapsed form would be invalid).
 func (c unboundConfig) render() []byte {
 	var b bytes.Buffer
 	b.WriteString("server:\n")

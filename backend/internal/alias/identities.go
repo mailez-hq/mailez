@@ -95,7 +95,7 @@ func userAliases(db *gorm.DB, user *models.User) []models.Alias {
 }
 
 // MaySendAs reports whether from is the user's own address or one of their
-// aliases (the same rule the the mail stack applies for spoofing protection).
+// aliases (the same rule the mail stack applies for spoofing protection).
 func MaySendAs(app *core.App, user *models.User, from string) bool {
 	from = strings.ToLower(strings.TrimSpace(from))
 	if from == "" || strings.EqualFold(from, user.Email) {
