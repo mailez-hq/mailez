@@ -54,7 +54,7 @@ func (s *sieve) handshake(email, token string) error {
 	if statusOf(greeting) != "OK" {
 		return fmt.Errorf("sieve greeting: %s", greeting)
 	}
-	// Try STARTTLS; the internal link may be plaintext behind the front proxy,
+	// Try STARTTLS; the internal link may be plaintext behind the gateway proxy,
 	// in which case we continue unencrypted.
 	if err := s.startTLS(); err == nil {
 		// upgraded

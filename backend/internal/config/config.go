@@ -14,7 +14,7 @@ type Config struct {
 	RedisAddr          string
 	SecretKey          string
 	SessionLifetime    int // seconds
-	MailStoreAddress   string
+	MailKeeperAddress  string
 	MtaAddress         string
 	RecipientDelimiter string
 	Subnet             string
@@ -41,15 +41,15 @@ func Load() Config {
 		RedisAddr:          env("REDIS_ADDR", "localhost:6379"),
 		SecretKey:          env("SECRET_KEY", "dev-secret-change-me"),
 		SessionLifetime:    envInt("SESSION_LIFETIME", 3600),
-		MailStoreAddress:   env("MAIL_STORE_ADDRESS", "mail-store"),
+		MailKeeperAddress:  env("MAIL_KEEPER_ADDRESS", "mail-keeper"),
 		MtaAddress:         env("MTA_ADDRESS", "mta"),
 		RecipientDelimiter: env("RECIPIENT_DELIMITER", ""),
 		Subnet:             env("SUBNET", "192.168.206.0/24"),
 		Domain:             env("DOMAIN", "example.com"),
 		Hostname:           env("HOSTNAME", "localhost"),
-		MailImapAddr:       env("MAIL_IMAP_ADDR", "front:10143"),
-		MailSmtpAddr:       env("MAIL_SMTP_ADDR", "front:10025"),
-		MailSieveAddr:      env("MAIL_SIEVE_ADDR", "front:4190"),
+		MailImapAddr:       env("MAIL_IMAP_ADDR", "gateway:10143"),
+		MailSmtpAddr:       env("MAIL_SMTP_ADDR", "gateway:10025"),
+		MailSieveAddr:      env("MAIL_SIEVE_ADDR", "gateway:4190"),
 		AIProvider:         env("AI_PROVIDER", "none"),
 		AIBaseURL:          env("AI_BASE_URL", "https://api.openai.com/v1"),
 		AIAPIKey:           env("AI_API_KEY", ""),
