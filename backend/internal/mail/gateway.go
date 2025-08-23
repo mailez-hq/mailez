@@ -20,6 +20,7 @@ type Gateway interface {
 	SearchMessagesSpec(email, token, folder string, sel SearchQuery) ([]Message, error)
 	SearchAllMessages(email, token, query string) ([]Message, error)
 	SetFlag(email, token, folder string, uid uint32, flag string, value bool) error
+	ReplaceKeyword(email, token, oldKw, newKw string) error
 	MoveMany(email, token, folder string, uids []uint32, destination string) error
 	Delete(email, token, folder string, uid uint32) error
 

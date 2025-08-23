@@ -14,6 +14,7 @@ import {
   Folder as FolderIcon,
   PenLine,
   Settings,
+  Settings2,
   Users,
   X,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
+import { labelColor } from "@/components/mailbox/mail-utils";
 import { cn } from "@/lib/utils";
 
 // The admin console lives behind the same nginx front in deployments (/admin);
@@ -61,6 +63,7 @@ export function FolderNav({
   folders,
   unseen,
   labels,
+  labelColors,
   activeLabel,
   savedSearches,
   current,
@@ -70,6 +73,7 @@ export function FolderNav({
   open,
   onSelect,
   onSelectLabel,
+  onManageLabels,
   onSelectSavedSearch,
   onRemoveSavedSearch,
   onMoveToFolder,
@@ -82,6 +86,7 @@ export function FolderNav({
   folders: string[];
   unseen?: Record<string, number>;
   labels?: string[];
+  labelColors?: Record<string, string>;
   activeLabel?: string;
   savedSearches?: string[];
   current: string;
@@ -91,6 +96,7 @@ export function FolderNav({
   open: boolean;
   onSelect: (folder: string) => void;
   onSelectLabel: (label: string) => void;
+  onManageLabels?: () => void;
   onSelectSavedSearch: (query: string) => void;
   onRemoveSavedSearch: (query: string) => void;
   onMoveToFolder: (folder: string, uid: number) => void;
@@ -192,11 +198,22 @@ export function FolderNav({
               </button>
             );
           })}
-          {labels && labels.length > 0 && (
+          {labels && (
             <div className="mt-3 border-t border-sidebar-border pt-2">
-              <p className="px-2.5 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
-                {t("labels")}
-              </p>
+              <div className="flex items-center justify-between pr-1">
+                <p className="px-2.5 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                  {t("labels")}
+                </p>
+                {onManageLabels && (
+                  <button
+                    onClick={onManageLabels}
+                    title={t("manageLabels")}
+                    className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <Settings2 className="size-3.5" />
+                  </button>
+                )}
+              </div>
               {labels.map((label) => (
                 <button
                   key={label}
@@ -211,10 +228,22 @@ export function FolderNav({
                       : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
                   )}
                 >
-                  <span className="size-2 shrink-0 rounded-full bg-primary/60" />
+                  <span
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: labelColor(label, labelColors?.[label]) }}
+                  />
                   <span className="truncate">{label}</span>
                 </button>
               ))}
+              {labels.length === 0 && onManageLabels && (
+                <button
+                  onClick={onManageLabels}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground"
+                >
+                  <span className="size-2 shrink-0 rounded-full border border-border" />
+                  {t("newLabel")}
+                </button>
+              )}
             </div>
           )}
           {savedSearches && savedSearches.length > 0 && (

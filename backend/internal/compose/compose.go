@@ -68,6 +68,7 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 		Body        string            `json:"body"`
 		HTML        string            `json:"html"`
 		Attachments []mail.Attachment `json:"attachments"`
+		UndoSeconds int               `json:"undo_seconds"`
 	}
 	if err := c.BodyParser(&in); err != nil || len(in.To) == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "to is required"})
@@ -78,6 +79,18 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 	}
 	if !alias.MaySendAs(h.App, user, from) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "cannot send as this identity"})
+	}
+	// An undo window parks the message in the outbox instead of submitting it
+	// right away; a worker delivers it once the window elapses.
+	if in.UndoSeconds > 0 {
+		if in.UndoSeconds > maxUndoSeconds {
+			in.UndoSeconds = maxUndoSeconds
+		}
+		id, err := h.enqueue(user.Email, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments, in.UndoSeconds)
+		if err != nil {
+			return core.Fail(c, 500, err, "outbox error")
+		}
+		return c.JSON(fiber.Map{"queued": true, "outbox_id": id, "undo_seconds": in.UndoSeconds})
 	}
 	if err := h.Mail.Send(user.Email, token, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments); err != nil {
 		return core.Fail(c, 502, err, "mail service error")

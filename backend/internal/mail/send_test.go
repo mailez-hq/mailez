@@ -1,4 +1,4 @@
-package mail
+﻿package mail
 
 import (
 	"strings"
@@ -6,7 +6,7 @@ import (
 )
 
 func TestBuildMessagePlain(t *testing.T) {
-	msg := buildMessage("a@x.test", []string{"b@x.test"}, nil, "hi", "hello world", "", nil)
+	msg := BuildMessage("a@x.test", []string{"b@x.test"}, nil, "hi", "hello world", "", nil)
 	for _, want := range []string{
 		"From: a@x.test\r\n",
 		"To: b@x.test\r\n",
@@ -24,7 +24,7 @@ func TestBuildMessagePlain(t *testing.T) {
 }
 
 func TestBuildMessageMultipartAlternative(t *testing.T) {
-	msg := buildMessage("a@x.test", []string{"b@x.test"}, nil, "hi", "plain body", "<p>html body</p>", nil)
+	msg := BuildMessage("a@x.test", []string{"b@x.test"}, nil, "hi", "plain body", "<p>html body</p>", nil)
 	body := msg[strings.Index(msg, "\r\n\r\n")+4:]
 	if !strings.Contains(msg, "Content-Type: multipart/alternative; boundary=") {
 		t.Errorf("missing multipart/alternative header in:\n%s", msg)
@@ -46,14 +46,14 @@ func TestBuildMessageMultipartAlternative(t *testing.T) {
 }
 
 func TestBuildMessageCustomFrom(t *testing.T) {
-	msg := buildMessage("team@x.test", []string{"b@x.test"}, nil, "hi", "hello", "", nil)
+	msg := BuildMessage("team@x.test", []string{"b@x.test"}, nil, "hi", "hello", "", nil)
 	if !strings.Contains(msg, "From: team@x.test\r\n") {
 		t.Errorf("message must carry the selected From header:\n%s", msg)
 	}
 }
 
 func TestBuildMessageAttachmentsAndRecipients(t *testing.T) {
-	msg := buildMessage(
+	msg := BuildMessage(
 		"a@x.test",
 		[]string{"b@x.test"},
 		[]string{"c@x.test"},
@@ -85,7 +85,7 @@ func TestBuildMessageAttachmentsAndRecipients(t *testing.T) {
 
 func TestBuildMessageHeaderInjection(t *testing.T) {
 	injected := "hi\r\nBcc: victim@evil.test\r\n\r\ninjected body"
-	msg := buildMessage(
+	msg := BuildMessage(
 		"a@x.test",
 		[]string{"b@x.test\r\nBcc: victim@evil.test"},
 		[]string{"c@x.test\nBcc: victim2@evil.test"},

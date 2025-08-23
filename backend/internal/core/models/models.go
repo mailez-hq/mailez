@@ -22,6 +22,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&Contact{},
 		&PushSubscription{},
 		&VapidKey{},
+		&Outbox{},
+		&Label{},
 		&SchemaMigration{},
 	)
 }

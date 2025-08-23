@@ -70,6 +70,7 @@ export function MessageRow({
   onContextMenu?: (e: React.MouseEvent, message: MailMessage) => void;
 }) {
   const t = useTranslations("mail");
+  const { labelColors } = useMailStore();
   const unread = !message.flags.includes("\\Seen");
   const starred = message.flags.includes("\\Flagged");
   const sender = message.from[0]?.name || message.from[0]?.email || "?";
@@ -154,14 +155,18 @@ export function MessageRow({
           {message.flags
             .filter((f) => !f.startsWith("\\") && f !== category)
             .slice(0, 2)
-            .map((f) => (
-              <span
-                key={f}
-                className="shrink-0 rounded-full bg-primary/10 px-1.5 py-px text-[10px] font-medium text-primary"
-              >
-                {f}
-              </span>
-            ))}
+            .map((f) => {
+              const color = labelColor(f, labelColors?.[f]);
+              return (
+                <span
+                  key={f}
+                  className="shrink-0 rounded-full px-1.5 py-px text-[10px] font-medium"
+                  style={{ backgroundColor: `${color}1f`, color }}
+                >
+                  {f}
+                </span>
+              );
+            })}
           {message.thread_count && message.thread_count > 1 && (
             <span
               title={t("threadCount", { count: message.thread_count })}

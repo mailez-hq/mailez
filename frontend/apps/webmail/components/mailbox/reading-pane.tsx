@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Archive,
   ArrowLeft,
+  Ban,
   ChevronDown,
   ChevronUp,
   Download,
@@ -36,6 +37,7 @@ import type { MailAttachment, MailMessage, MailThread } from "@/lib/api";
 import { AttachmentCard } from "@/components/mailbox/reader/attachment-card";
 import { QuoteBlock } from "@/components/mailbox/reader/quote-block";
 import { useMounted } from "@/components/mailbox/reader/use-mounted";
+import { labelColor } from "@/components/mailbox/mail-utils";
 import {
   blockRemoteImages, hasRemoteImages, rememberedRemoteSenders, rememberRemoteSender,
 } from "@/components/mailbox/reader/remote-images";
@@ -284,13 +286,16 @@ export function ReadingPane({
   onArchive,
   onDelete,
   onStar,
+  onSpam,
   onBack,
   folder,
   folders,
   onMoveToFolder,
   showNotSpam,
   onNotSpam,
+  onUnsubscribe,
   labels,
+  labelColors,
   onToggleLabel,
   thread,
   threadOpen,
@@ -311,13 +316,16 @@ export function ReadingPane({
   onArchive: () => void;
   onDelete: () => void;
   onStar: () => void;
+  onSpam: () => void;
   onBack: () => void;
   folder: string;
   folders: string[];
   onMoveToFolder: (destination: string) => void;
   showNotSpam: boolean;
   onNotSpam: () => void;
+  onUnsubscribe: () => void;
   labels: string[];
+  labelColors?: Record<string, string>;
   onToggleLabel: (label: string) => void;
   thread: MailThread | null;
   threadOpen: boolean;
@@ -493,6 +501,17 @@ export function ReadingPane({
             >
               <Archive className="size-4" />
             </Button>
+            {!showNotSpam && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onSpam}
+                title={t("spam")}
+                className="size-8 text-muted-foreground hover:text-destructive"
+              >
+                <Ban className="size-4" />
+              </Button>
+            )}
             <Button
               size="sm"
               variant="ghost"
@@ -508,14 +527,22 @@ export function ReadingPane({
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
           {labels
             .filter((l) => detail.flags.includes(l))
-            .map((l) => (
-              <span
-                key={l}
-                className="inline-flex items-center rounded-full border border-primary/30 bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground"
-              >
-                {l}
-              </span>
-            ))}
+            .map((l) => {
+              const color = labelColor(l, labelColors?.[l]);
+              return (
+                <span
+                  key={l}
+                  className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium"
+                  style={{
+                    backgroundColor: `${color}1f`,
+                    borderColor: `${color}59`,
+                    color,
+                  }}
+                >
+                  {l}
+                </span>
+              );
+            })}
           <div className="relative">
             <Button
               size="sm"
@@ -537,12 +564,24 @@ export function ReadingPane({
                         type="button"
                         onClick={() => onToggleLabel(l)}
                         className={cn(
-                          "rounded-full border px-2 py-0.5 text-[11px] transition-colors",
+                          "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] transition-colors",
                           has
-                            ? "border-primary bg-accent font-medium text-accent-foreground"
+                            ? "border-transparent font-medium"
                             : "border-border text-muted-foreground hover:bg-muted",
                         )}
+                        style={
+                          has
+                            ? {
+                                backgroundColor: `${labelColor(l, labelColors?.[l])}1f`,
+                                color: labelColor(l, labelColors?.[l]),
+                              }
+                            : undefined
+                        }
                       >
+                        <span
+                          className="size-1.5 rounded-full"
+                          style={{ backgroundColor: labelColor(l, labelColors?.[l]) }}
+                        />
                         {l}
                       </button>
                     );
@@ -671,6 +710,12 @@ export function ReadingPane({
                 <Button size="sm" variant="outline" onClick={onNotSpam}>
                   <ShieldCheck className="size-3.5" />
                   {t("notSpam")}
+                </Button>
+              )}
+              {detail.unsubscribe_url && (
+                <Button size="sm" variant="outline" onClick={onUnsubscribe} title={detail.unsubscribe_url}>
+                  <X className="size-3.5" />
+                  {t("unsubscribe")}
                 </Button>
               )}
               <Button size="sm" variant="outline" onClick={onReply}>
