@@ -1,4 +1,4 @@
-.PHONY: backend-verify frontend-verify verify e2e format fmt-backend fmt-frontend
+.PHONY: backend-verify frontend-verify verify e2e images format fmt-backend fmt-frontend
 
 ## backend-verify: gofmt / vet / tidy / tests for the Go backend
 backend-verify:
@@ -15,6 +15,10 @@ verify: backend-verify frontend-verify
 ## e2e: end-to-end smoke against a running stack (dev compose + backend on 8080)
 e2e:
 	cd backend && go run ./cmd/e2e -api-port 8080 -smtp-port 25 -imap-port 1143 --domain e2e.example.com --alias team
+
+## images: build all mail images (shared + engines) with the Go builder
+images:
+	cd backend && go run ./cmd/build-images
 
 fmt-backend:
 	cd backend && gofmt -w .

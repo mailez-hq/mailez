@@ -2,14 +2,14 @@
 
 ## 定位
 
-mailez 的每个邮件栈容器（gateway / mta / mail-keeper / mail-filter /
-macro-scanner / resolver）都由**同一个静态 Go 二进制**（`mailstack-agent`）
+mailez 的每个邮件容器（gateway / mta / mail-keeper / mail-filter /
+macro-scanner / resolver）都由**同一个静态 Go 二进制**（`mailez-agent`）
 驱动：读取环境变量 → 渲染配置 → 拉起对应服务 → 代理内部协议。配置模板
 通过 `go:embed` 编译进二进制，镜像内不携带任何脚本解释器或运行时依赖。
 
 ```
 容器
-├── /mailstack-agent <component>   （唯一进程入口）
+├── /mailez-agent <component>      （唯一进程入口）
 ├── /etc/<component>/*             （agent 渲染出的配置）
 └── /conf 模板（嵌入二进制，可在 /overrides 覆盖）
 ```
@@ -55,8 +55,11 @@ macro-scanner / resolver）都由**同一个静态 Go 二进制**（`mailstack-a
 
 ## 目录约定
 
-- `backend/cmd/mailstack-agent/`：agent 入口与各组件驱动
-- `backend/cmd/mailstack-agent/templates/`：嵌入的配置模板
+- `backend/cmd/mailez-agent/`：agent 入口与各组件驱动
+- `backend/cmd/mailez-agent/templates/`：嵌入的配置模板
 - `backend/internal/agent/`：共享运行时（socketmap、dict、原子写、降权）
-- `deploy/vendor/mailstack/`：各组件 Dockerfile 与静态配置
-- `deploy/scripts/build-images.ps1`：本地构建全部镜像
+- `backend/cmd/build-images/`：镜像构建命令（Go，跨平台）
+- `deploy/images/`：共享基础设施镜像（gateway / mail-filter / resolver /
+  macro-scanner）
+- `deploy/engines/postdove/`：引擎 A 镜像（mta / mail-keeper）
+- `deploy/engines/reference/`：引擎 B（占位，集成时落位）

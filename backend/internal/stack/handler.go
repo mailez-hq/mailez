@@ -10,8 +10,8 @@ import (
 )
 
 // Handler implements the internal API consumed by nginx (auth_request) and the
-// mail stack (nginx mail proxy auth). Its response contract must stay
-// byte-compatible with the internal API the mail-stack agents consume.
+// mail images (nginx mail proxy auth). Its response contract must stay
+// byte-compatible with the internal API the container agents consume.
 type Handler struct {
 	DB    *gorm.DB
 	Auth  *auth.Manager

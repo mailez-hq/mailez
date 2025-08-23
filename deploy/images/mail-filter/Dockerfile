@@ -8,8 +8,8 @@ COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/internal/agent ./internal/agent
 COPY backend/internal/macro ./internal/macro
-COPY backend/cmd/mailstack-agent ./cmd/mailstack-agent
-RUN go build -trimpath -ldflags="-s -w" -o /out/mailstack-agent ./cmd/mailstack-agent
+COPY backend/cmd/mailez-agent ./cmd/mailez-agent
+RUN go build -trimpath -ldflags="-s -w" -o /out/mailez-agent ./cmd/mailez-agent
 
 FROM alpine:3.21
 
@@ -23,7 +23,7 @@ RUN set -euxo pipefail \
   ; mkdir /run/rspamd \
   ; mkdir /overrides
 
-COPY --from=build /out/mailstack-agent /mailstack-agent
+COPY --from=build /out/mailez-agent /mailez-agent
 
 RUN echo $VERSION >/version
 
@@ -32,4 +32,4 @@ HEALTHCHECK --start-period=350s CMD curl -m3 -skfLo /dev/null http://localhost:1
 
 VOLUME ["/var/lib/rspamd"]
 
-CMD ["/mailstack-agent", "rspamd"]
+CMD ["/mailez-agent", "rspamd"]

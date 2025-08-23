@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile-upstream:1.4.3
 
-# Build the static mailstack-agent for the resolver.
+# Build the static mailez-agent for the resolver.
 FROM golang:1.26-alpine AS build
 ENV GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0
 WORKDIR /src
@@ -8,8 +8,8 @@ COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/internal/agent ./internal/agent
 COPY backend/internal/macro ./internal/macro
-COPY backend/cmd/mailstack-agent ./cmd/mailstack-agent
-RUN go build -trimpath -ldflags="-s -w" -o /out/mailstack-agent ./cmd/mailstack-agent
+COPY backend/cmd/mailez-agent ./cmd/mailez-agent
+RUN go build -trimpath -ldflags="-s -w" -o /out/mailez-agent ./cmd/mailez-agent
 
 # resolver image (single static agent binary)
 FROM alpine:3.21
@@ -26,11 +26,11 @@ RUN set -euxo pipefail \
   ; chmod 775 /etc/unbound \
   ; /usr/sbin/unbound-anchor -a /etc/unbound/trusted-key.key || true
 
-COPY --from=build /out/mailstack-agent /mailstack-agent
+COPY --from=build /out/mailez-agent /mailez-agent
 
 RUN echo $VERSION >/version
 
 #EXPOSE 53/udp 53/tcp
 HEALTHCHECK CMD dig @127.0.0.1 || exit 1
 
-CMD ["/mailstack-agent", "unbound"]
+CMD ["/mailez-agent", "unbound"]
