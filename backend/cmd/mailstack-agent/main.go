@@ -18,8 +18,10 @@ func main() {
 		err = runUnbound()
 	case "nginx":
 		err = runNginx()
+	case "legacy IMAP":
+		err = runDovecot()
 	case "version":
-		fmt.Println("mailez mailstack-agent (unbound + nginx)")
+		fmt.Println("mailez mailstack-agent (unbound + nginx + legacy IMAP)")
 		return
 	default:
 		usage()
@@ -33,5 +35,5 @@ func main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: mailstack-agent <component>")
-	fmt.Fprintln(os.Stderr, "components: unbound nginx")
+	fmt.Fprintln(os.Stderr, "components: unbound nginx legacy IMAP")
 }
