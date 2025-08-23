@@ -48,10 +48,10 @@ func TestDovecotRender(t *testing.T) {
 		"postmaster_address = postmaster@example.com",
 		"hostname = mail.example.com",
 		"mail_location = maildir:/mail/%u",
-		"quota_clone_dict = proxy:/tmp/podop.socket:quota",
+		"quota_clone_dict = proxy:/tmp/mailez.socket:quota",
 		"mailbox Trash {", "special_use = \\Trash",
 		"fts_languages = en fr", "zlib_save = zstd",
-		"sieve_before = dict:proxy:/tmp/podop.socket:sieve",
+		"sieve_before = dict:proxy:/tmp/mailez.socket:sieve",
 		"!include_try /overrides/dovecot.conf",
 	} {
 		if !strings.Contains(conf, want) {
@@ -84,7 +84,7 @@ func TestPodopDictProtocol(t *testing.T) {
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	sock := filepath.Join(t.TempDir(), "podop.socket")
+	sock := filepath.Join(t.TempDir(), "mailez.socket")
 	go handler.Serve(ctx, sock)
 
 	deadline := time.Now().Add(3 * time.Second)
@@ -93,7 +93,7 @@ func TestPodopDictProtocol(t *testing.T) {
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatal("podop socket not created")
+			t.Fatal("mailez socket not created")
 		}
 		time.Sleep(10 * time.Millisecond)
 	}

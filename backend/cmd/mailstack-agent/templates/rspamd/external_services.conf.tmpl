@@ -1,6 +1,6 @@
 {{if .ScanMacros}}oletools {
   # default olefy settings
-  servers = "{{ .OletoolsAddress }}:11343";
+  servers = "{{ .MacroScannerAddress }}:11343";
 
   # needs to be set explicitly for Rspamd < 1.9.5
   scan_mime_parts = true;

@@ -2,7 +2,7 @@ try_fallback = false;
 use_esld = false;
 allow_username_mismatch = true;
 use_vault = true;
-vault_url = "http://{{ .AdminAddress }}:8080/internal/rspamd/vault";
+vault_url = "http://{{ .BackendAddress }}:8080/internal/rspamd/vault";
 vault_token = "mailez";
 .include(try=true,priority=1,duplicate=merge) "/overrides/arc.conf"
 

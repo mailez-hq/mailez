@@ -1,8 +1,8 @@
 #!/bin/bash
-RSPAMD_HOST="$(getent hosts {{ ANTISPAM_ADDRESS }}|cut -d\  -f1):11334"
+RSPAMD_HOST="$(getent hosts {{ MAIL_FILTER_ADDRESS }}|cut -d\  -f1):11334"
 if [[ $? -ne 0 ]]
 then
-	echo "Failed to lookup {{ ANTISPAM_ADDRESS }}" >&2
+	echo "Failed to lookup {{ MAIL_FILTER_ADDRESS }}" >&2
 	exit 1
 fi
 

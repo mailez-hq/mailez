@@ -16,7 +16,7 @@ type DovecotConfig struct {
 	Domain               string
 	Hostname             string
 	ProxyProtocol25      bool
-	FrontAddress         string
+	GatewayAddress       string
 	Subnet6              bool
 	Subnet               string
 	CPUCount             int
@@ -36,7 +36,7 @@ func loadDovecotConfig() (DovecotConfig, error) {
 	cfg := DovecotConfig{
 		Postmaster:           agent.Getenv("POSTMASTER", "postmaster"),
 		Domain:               agent.Getenv("DOMAIN", "example.com"),
-		FrontAddress:         agent.Getenv("FRONT_ADDRESS", "front"),
+		GatewayAddress:       agent.Getenv("GATEWAY_ADDRESS", "gateway"),
 		Subnet:               agent.Getenv("SUBNET", "192.168.206.0/24"),
 		RecipientDelimiter:   agent.Getenv("RECIPIENT_DELIMITER", "+"),
 		DefaultMailboxes:     []string{"Trash", "Drafts", "Sent", "Junk"},
