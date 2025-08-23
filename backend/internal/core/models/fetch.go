@@ -18,4 +18,11 @@ type Fetch struct {
 	Folders   string     `gorm:"size:4096" json:"folders"`
 	LastCheck *time.Time `json:"last_check"`
 	Error     string     `gorm:"size:1023" json:"error"`
+
+	// Deduplication cursor: LastUID is the highest delivered IMAP UID
+	// (UIDVALIDITY guards against remote mailbox recreation resetting UIDs);
+	// SeenUIDLs is the JSON list of delivered POP3 UIDLs (Keep mode only).
+	LastUID     uint32 `gorm:"not null;default:0" json:"-"`
+	UIDValidity uint32 `gorm:"not null;default:0" json:"-"`
+	SeenUIDLs   string `gorm:"type:text" json:"-"`
 }

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"time"
 
@@ -14,6 +15,10 @@ type Store interface {
 	Set(ctx context.Context, key, value string, ttl time.Duration) error
 	Get(ctx context.Context, key string) (string, bool, error)
 	Delete(ctx context.Context, key string) error
+	// Incr atomically bumps a counter key and returns the new value. The ttl
+	// applies from the first increment (fixed window); implementations must
+	// be race-free because counters gate login rate limiting.
+	Incr(ctx context.Context, key string, ttl time.Duration) (int, error)
 }
 
 // RedisStore backs sessions with Redis.
@@ -42,6 +47,21 @@ func (s *RedisStore) Get(ctx context.Context, key string) (string, bool, error) 
 
 func (s *RedisStore) Delete(ctx context.Context, key string) error {
 	return s.rdb.Del(ctx, key).Err()
+}
+
+// Incr counts atomically with Redis INCR; the TTL is set once, on the first
+// increment, so the window is anchored at the first attempt.
+func (s *RedisStore) Incr(ctx context.Context, key string, ttl time.Duration) (int, error) {
+	n, err := s.rdb.Incr(ctx, key).Result()
+	if err != nil {
+		return 0, err
+	}
+	if n == 1 {
+		if err := s.rdb.Expire(ctx, key, ttl).Err(); err != nil {
+			return int(n), err
+		}
+	}
+	return int(n), nil
 }
 
 // MemoryStore is a dev fallback when Redis is unavailable. Not for production.
@@ -85,4 +105,21 @@ func (s *MemoryStore) Delete(ctx context.Context, key string) error {
 	defer s.mu.Unlock()
 	delete(s.data, key)
 	return nil
+}
+
+// Incr mirrors RedisStore.Incr under the store lock: the TTL anchors at the
+// first increment and expired counters restart at 1.
+func (s *MemoryStore) Incr(ctx context.Context, key string, ttl time.Duration) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	item, ok := s.data[key]
+	if !ok || time.Now().After(item.exp) {
+		s.data[key] = memoryItem{value: "1", exp: time.Now().Add(ttl)}
+		return 1, nil
+	}
+	n, _ := strconv.Atoi(item.value)
+	n++
+	item.value = strconv.Itoa(n)
+	s.data[key] = item
+	return n, nil
 }

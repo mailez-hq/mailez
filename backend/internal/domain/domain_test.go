@@ -51,7 +51,7 @@ func TestDomainCRUD(t *testing.T) {
 	body := `{"name":"new.example","max_users":5,"max_aliases":5}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/domains", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Test(req)
+	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestDomainCRUD(t *testing.T) {
 	}
 
 	del := httptest.NewRequest(http.MethodDelete, "/api/v1/domains/new.example", nil)
-	if resp, _ := app.Test(del); resp.StatusCode != http.StatusNoContent {
+	if resp, _ := app.Test(del, -1); resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("delete status = %d, want 204", resp.StatusCode)
 	}
 }

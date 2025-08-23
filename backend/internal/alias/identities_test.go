@@ -126,3 +126,35 @@ func TestUserMaySendAs(t *testing.T) {
 		}
 	}
 }
+
+func TestMaySendAsRequiresExactDestination(t *testing.T) {
+	// user "a@example.com" must not match a destination "anna@example.com":
+	// substring matching would let them spoof that alias.
+	user := &models.User{
+		Email:      "a@example.com",
+		Localpart:  "a",
+		DomainName: "example.com",
+	}
+	h, _ := newIdentitiesTestHandler(t, user)
+	if err := h.DB.Create(&models.Domain{Name: "example.com"}).Error; err != nil {
+		t.Fatalf("seed domain: %v", err)
+	}
+	if err := h.DB.Create(&models.Alias{
+		Email: "team@example.com", Localpart: "team", DomainName: "example.com",
+		Destination: "anna@example.com",
+	}).Error; err != nil {
+		t.Fatalf("seed alias: %v", err)
+	}
+	if MaySendAs(h.App, user, "team@example.com") {
+		t.Error("substring destination match must not grant send-as")
+	}
+	// An exact destination entry in a multi-address CSV still grants it.
+	if err := h.DB.Model(&models.Alias{}).
+		Where("email = ?", "team@example.com").
+		Update("destination", "other@example.com, a@example.com").Error; err != nil {
+		t.Fatalf("update alias: %v", err)
+	}
+	if !MaySendAs(h.App, user, "team@example.com") {
+		t.Error("exact destination entry must grant send-as")
+	}
+}

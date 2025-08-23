@@ -51,7 +51,7 @@ func newDkimTestHandler(t *testing.T) (*Handler, *fiber.App) {
 func dkimDo(t *testing.T, app *fiber.App, method, path string) (int, map[string]any) {
 	t.Helper()
 	req := httptest.NewRequest(method, path, nil)
-	resp, err := app.Test(req)
+	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("%s %s: %v", method, path, err)
 	}
