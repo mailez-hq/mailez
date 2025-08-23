@@ -42,6 +42,26 @@ var migrations = []migration{
 		ID: "20260824_label_colors",
 		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Label{}) },
 	},
+	{
+		// Outbox Subject column backing the scheduled-send list display.
+		ID: "20260824_outbox_subject",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Outbox{}) },
+	},
+	{
+		// Webhook table backing external event callbacks (new mail, etc.).
+		ID: "20260824_webhooks",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Webhook{}) },
+	},
+	{
+		// S/MIME: own certificate columns on users + imported-cert keyring.
+		ID: "20260824_smime",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&User{}, &SmimeCert{}) },
+	},
+	{
+		// External (aggregated) IMAP/SMTP accounts.
+		ID: "20260824_accounts",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Account{}) },
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

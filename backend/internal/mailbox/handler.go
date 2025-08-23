@@ -21,4 +21,5 @@ func currentUser(c *fiber.Ctx) *models.User { return core.CurrentUser(c) }
 // Register mounts the mailbox routes.
 func (h *Handler) Register(r fiber.Router) {
 	h.registerMail(r)
+	h.registerAccount(r)
 }

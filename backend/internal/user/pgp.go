@@ -1,6 +1,7 @@
 package user
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -19,6 +20,9 @@ func (h *Handler) registerPGP(r fiber.Router) {
 	r.Post("/me/pgp/generate", h.pgpGenerate)
 	r.Delete("/me/pgp", h.pgpDelete)
 	r.Get("/pgp/key", h.pgpLookup)
+	r.Get("/me/pgp/keys", h.pgpKeys)
+	r.Post("/me/pgp/keys", h.pgpImportKey)
+	r.Delete("/me/pgp/keys/:id", h.pgpDeleteKey)
 	r.Post("/mail/pgp/encrypt", h.pgpEncrypt)
 	r.Post("/mail/pgp/decrypt", h.pgpDecrypt)
 	r.Post("/mail/pgp/sign", h.pgpSign)
@@ -96,7 +100,8 @@ func (h *Handler) pgpDelete(c *fiber.Ctx) error {
 }
 
 // pgpLookup returns the public key of another local user, so the composer can
-// encrypt to a colleague automatically.
+// encrypt to a colleague automatically. When the address has no key in the
+// users table, the caller's imported keyring is consulted next.
 // pgpLookup returns a public key for an email address.
 // @Summary Lookup public key
 // @Tags pgp
@@ -106,20 +111,109 @@ func (h *Handler) pgpDelete(c *fiber.Ctx) error {
 // @Failure 404 {object} models.APIError
 // @Router /pgp/key [get]
 func (h *Handler) pgpLookup(c *fiber.Ctx) error {
-	email := strings.TrimSpace(c.Query("email"))
+	email := strings.ToLower(strings.TrimSpace(c.Query("email")))
 	if email == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "email is required"})
 	}
 	var u struct {
-		PGPPublicKey string
+		PGPPublicKey   string
+		PGPFingerprint string
 	}
-	if err := h.DB.Model(&models.User{}).Select("pgp_public_key").Where("email = ?", email).Scan(&u).Error; err != nil {
+	if err := h.DB.Model(&models.User{}).Select("pgp_public_key, pgp_fingerprint").Where("lower(email) = ?", email).Scan(&u).Error; err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
-	if u.PGPPublicKey == "" {
-		return c.Status(404).JSON(fiber.Map{"error": "no public key for this address"})
+	if u.PGPPublicKey != "" {
+		return c.JSON(fiber.Map{"public_key": u.PGPPublicKey, "fingerprint": u.PGPFingerprint, "source": "user"})
 	}
-	return c.JSON(fiber.Map{"public_key": u.PGPPublicKey})
+	// Fall back to the caller's imported keyring for external addresses.
+	var key models.PGPKey
+	if err := h.DB.Where("user_email = ? AND email = ?", currentUser(c).Email, email).Order("id desc").First(&key).Error; err == nil {
+		return c.JSON(fiber.Map{"public_key": key.PublicKey, "fingerprint": key.Fingerprint, "source": "keyring"})
+	}
+	return c.Status(404).JSON(fiber.Map{"error": "no public key for this address"})
+}
+
+// pgpKeys lists the current user's imported keyring entries.
+// @Summary List keyring
+// @Tags pgp
+// @Produce json
+// @Success 200 {array} models.PGPKey
+// @Router /me/pgp/keys [get]
+func (h *Handler) pgpKeys(c *fiber.Ctx) error {
+	var keys []models.PGPKey
+	if err := h.DB.Where("user_email = ?", currentUser(c).Email).Order("created_at desc").Find(&keys).Error; err != nil {
+		return core.Fail(c, 500, err, "internal error")
+	}
+	return c.JSON(keys)
+}
+
+// pgpImportKey stores an armored public key in the current user's keyring.
+// @Summary Import public key
+// @Tags pgp
+// @Accept json
+// @Produce json
+// @Success 201 {object} models.PGPKey
+// @Failure 400 {object} models.APIError
+// @Router /me/pgp/keys [post]
+func (h *Handler) pgpImportKey(c *fiber.Ctx) error {
+	var in struct {
+		Email     string `json:"email"`
+		PublicKey string `json:"public_key"`
+	}
+	if err := c.BodyParser(&in); err != nil || strings.TrimSpace(in.PublicKey) == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "public_key is required"})
+	}
+	info, err := pgp.ParsePublicKey(in.PublicKey)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+	email := strings.ToLower(strings.TrimSpace(in.Email))
+	if email == "" {
+		if len(info.Emails) > 0 {
+			email = info.Emails[0]
+		} else {
+			return c.Status(400).JSON(fiber.Map{"error": "email is required"})
+		}
+	}
+	var count int64
+	if err := h.DB.Model(&models.PGPKey{}).
+		Where("user_email = ? AND email = ? AND fingerprint = ?", currentUser(c).Email, email, info.Fingerprint).
+		Count(&count).Error; err != nil {
+		return core.Fail(c, 500, err, "internal error")
+	}
+	if count > 0 {
+		return c.Status(409).JSON(fiber.Map{"error": "key already imported"})
+	}
+	key := models.PGPKey{
+		UserEmail:   currentUser(c).Email,
+		Email:       email,
+		PublicKey:   in.PublicKey,
+		Fingerprint: info.Fingerprint,
+	}
+	if err := h.DB.Create(&key).Error; err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.Status(201).JSON(key)
+}
+
+// pgpDeleteKey removes an imported key from the keyring.
+// @Summary Remove keyring entry
+// @Tags pgp
+// @Success 204
+// @Router /me/pgp/keys/{id} [delete]
+func (h *Handler) pgpDeleteKey(c *fiber.Ctx) error {
+	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
+	}
+	res := h.DB.Where("id = ? AND user_email = ?", uint(id), currentUser(c).Email).Delete(&models.PGPKey{})
+	if res.Error != nil {
+		return core.Fail(c, 500, res.Error, "internal error")
+	}
+	if res.RowsAffected == 0 {
+		return c.Status(404).JSON(fiber.Map{"error": "not found"})
+	}
+	return c.SendStatus(204)
 }
 
 // pgpEncrypt seals text for an armored public key.

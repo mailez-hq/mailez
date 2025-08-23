@@ -37,6 +37,11 @@ type User struct {
 	PGPPublicKey       string    `gorm:"type:text" json:"pgp_public_key"`
 	PGPPrivateKey      string    `gorm:"type:text" json:"-"` // armored, encrypted at rest with SECRET_KEY
 	PGPFingerprint     string    `gorm:"size:64" json:"pgp_fingerprint"`
+	SmimeCert          string    `gorm:"type:text" json:"smime_cert"` // own X.509 certificate (PEM)
+	SmimePrivateKey    string    `gorm:"type:text" json:"-"`          // PEM, encrypted at rest with SECRET_KEY
+	SmimeFingerprint   string    `gorm:"size:64" json:"smime_fingerprint"`
+	SmimeEmail         string    `gorm:"size:255" json:"smime_email"`
+	SmimeNotAfter      time.Time `json:"smime_not_after"`
 
 	Tokens  []Token `gorm:"foreignKey:UserEmail" json:"-"`
 	Fetches []Fetch `gorm:"foreignKey:UserEmail" json:"-"`

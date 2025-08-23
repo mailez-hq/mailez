@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Loader2, Mail, MessageSquare, PenLine, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Loader2, Mail, MessageSquare, PenLine, Trash2, Upload, Download,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  contacts, createContact, deleteContact, mailSearch,
+  contacts, createContact, updateContact, deleteContact, exportContacts, importContacts,
+  mailSearch,
   type Contact, type MailMessage,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -31,6 +34,47 @@ function fmtShort(d: string) {
   });
 }
 
+function Avatar({ contact, className }: { contact: Contact; className?: string }) {
+  if (contact.avatar) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={contact.avatar}
+        alt=""
+        referrerPolicy="no-referrer"
+        className={cn("shrink-0 rounded-full object-cover", className)}
+      />
+    );
+  }
+  return (
+    <span
+      className={cn(
+        "flex shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+        className,
+      )}
+    >
+      {(contact.name || contact.email).charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
+function GroupBadges({ groups }: { groups: string }) {
+  const items = groups.split(",").map((g) => g.trim()).filter(Boolean);
+  if (items.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {items.map((g, i) => (
+        <span
+          key={i}
+          className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-accent-foreground"
+        >
+          {g}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function MailContacts({
   open,
   onOpenChange,
@@ -47,8 +91,12 @@ export function MailContacts({
   const [list, setList] = useState<Contact[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [groups, setGroups] = useState("");
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     try {
@@ -61,6 +109,7 @@ export function MailContacts({
   useEffect(() => {
     if (open) {
       setError("");
+      setInfo("");
       load();
     }
   }, [open, load]);
@@ -68,10 +117,12 @@ export function MailContacts({
   async function add(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setInfo("");
     try {
-      await createContact(name, email);
+      await createContact(name, email, "", groups);
       setName("");
       setEmail("");
+      setGroups("");
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "create failed");
@@ -88,6 +139,41 @@ export function MailContacts({
     }
   }
 
+  async function handleExport() {
+    try {
+      const data = await exportContacts();
+      const blob = new Blob([data], { type: "text/vcard" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "contacts.vcf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "export failed");
+    }
+  }
+
+  async function handleImportFile(f: File) {
+    setImporting(true);
+    setError("");
+    setInfo("");
+    try {
+      const result = await importContacts(await f.text());
+      if (result.added === 0) {
+        setInfo(t("importEmpty"));
+      } else {
+        setInfo(t("importResult", { added: String(result.added), total: String(result.total) }));
+      }
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("importFailed"));
+    } finally {
+      setImporting(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
   function pick(c: Contact) {
     onPick(c.email);
     onOpenChange(false);
@@ -97,9 +183,39 @@ export function MailContacts({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-2xl">
-        <DialogHeader><DialogTitle>{t("title")}</DialogTitle></DialogHeader>
+      <DialogContent className="max-h-[85vh] sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {t("title")}
+            <span className="flex-1" />
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".vcf,.vcard,text/vcard,text/x-vcard"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleImportFile(f);
+              }}
+            />
+            <Button
+              size="xs"
+              variant="ghost"
+              className="gap-1"
+              disabled={importing}
+              onClick={() => fileRef.current?.click()}
+            >
+              {importing ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
+              {t("import")}
+            </Button>
+            <Button size="xs" variant="ghost" className="gap-1" onClick={handleExport}>
+              <Download className="size-3.5" />
+              {t("export")}
+            </Button>
+          </DialogTitle>
+        </DialogHeader>
         {error && <p className="text-sm text-destructive">{error}</p>}
+        {info && <p className="text-sm text-muted-foreground">{info}</p>}
         <div className="grid gap-4 md:grid-cols-[230px_1fr]">
           {/* left: add + list */}
           <div className="min-w-0">
@@ -123,8 +239,14 @@ export function MailContacts({
                 className="h-8"
                 required
               />
+              <Input
+                value={groups}
+                onChange={(e) => setGroups(e.target.value)}
+                placeholder={t("groupsPlaceholder")}
+                className="h-8"
+              />
             </form>
-            <ScrollArea className="mt-2 max-h-80">
+            <ScrollArea className="mt-2 max-h-72">
               <div className="space-y-1 pr-1">
                 {list.map((c) => (
                   <button
@@ -138,23 +260,18 @@ export function MailContacts({
                         : "hover:bg-muted",
                     )}
                   >
-                    <span
+                    <Avatar
+                      contact={c}
                       className={cn(
-                        "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                        selectedId === c.id
-                          ? "bg-primary/20 text-primary"
-                          : "bg-muted text-muted-foreground",
+                        "size-7",
+                        selectedId === c.id ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground",
                       )}
-                    >
-                      {(c.name || c.email).charAt(0).toUpperCase()}
-                    </span>
+                    />
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium">{c.name || c.email}</span>
-                      {c.name && (
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {c.email}
-                        </span>
-                      )}
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {c.name ? c.email : c.groups || ""}
+                      </span>
                     </span>
                   </button>
                 ))}
@@ -174,6 +291,10 @@ export function MailContacts({
                 onPick={() => pick(selected)}
                 onDelete={() => remove(selected.id)}
                 onOpenMessage={onOpenMessage}
+                onSaved={(c) => {
+                  setList((prev) => prev.map((x) => (x.id === c.id ? c : x)));
+                  setInfo(t("saved"));
+                }}
               />
             ) : (
               <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
@@ -194,17 +315,25 @@ function ContactDetail({
   onPick,
   onDelete,
   onOpenMessage,
+  onSaved,
 }: {
   contact: Contact;
   onPick: () => void;
   onDelete: () => void;
   onOpenMessage: (m: MailMessage, folder: string) => void;
+  onSaved: (c: Contact) => void;
 }) {
   const t = useTranslations("contacts");
   const tm = useTranslations("mail");
   const [history, setHistory] = useState<MailMessage[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [saveErr, setSaveErr] = useState("");
+  const [comment, setComment] = useState(contact.comment);
+  const [groups, setGroups] = useState(contact.groups);
+  const [avatar, setAvatar] = useState(contact.avatar);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     setHistory(null);
@@ -239,30 +368,99 @@ function ContactDetail({
     };
   }, [contact.email]);
 
+  useEffect(() => {
+    setComment(contact.comment);
+    setGroups(contact.groups);
+    setAvatar(contact.avatar);
+    setDirty(false);
+  }, [contact]);
+
+  async function save() {
+    setSaving(true);
+    setSaveErr("");
+    try {
+      const updated = await updateContact(contact.id, { comment, groups, avatar });
+      setDirty(false);
+      onSaved(updated);
+    } catch (e) {
+      setSaveErr(e instanceof Error ? e.message : "save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const display = { ...contact, comment, groups, avatar };
+
   return (
     <div className="rounded-lg border border-border p-3">
       <div className="flex items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
-          {(contact.name || contact.email).charAt(0).toUpperCase()}
-        </span>
+        <Avatar
+          contact={display}
+          className="size-10 bg-accent text-sm font-semibold text-accent-foreground"
+        />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{contact.name || contact.email}</p>
           <p className="truncate text-xs text-muted-foreground">{contact.email}</p>
-          {contact.comment && (
-            <p className="mt-1 text-xs text-muted-foreground">{contact.comment}</p>
-          )}
+          <div className="mt-1">
+            <GroupBadges groups={groups} />
+          </div>
         </div>
       </div>
+
+      <div className="mt-3 space-y-2">
+        <div>
+          <Label className="text-xs text-muted-foreground">{t("groups")}</Label>
+          <Input
+            value={groups}
+            onChange={(e) => {
+              setGroups(e.target.value);
+              setDirty(true);
+            }}
+            placeholder={t("groupsPlaceholder")}
+            className="mt-1 h-8"
+          />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">{t("avatar")}</Label>
+          <Input
+            value={avatar}
+            onChange={(e) => {
+              setAvatar(e.target.value);
+              setDirty(true);
+            }}
+            className="mt-1 h-8"
+          />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">{t("comment")}</Label>
+          <Input
+            value={comment}
+            onChange={(e) => {
+              setComment(e.target.value);
+              setDirty(true);
+            }}
+            className="mt-1 h-8"
+          />
+        </div>
+      </div>
+
       <div className="mt-3 flex flex-wrap gap-1">
         <Button size="sm" onClick={onPick}>
           <PenLine className="size-3.5" />
           {t("writeEmail")}
         </Button>
+        {dirty && (
+          <Button size="sm" variant="secondary" disabled={saving} onClick={save}>
+            {saving && <Loader2 className="mr-1 size-3.5 animate-spin" />}
+            {t("save")}
+          </Button>
+        )}
         <Button size="sm" variant="ghost" onClick={onDelete} className="text-muted-foreground hover:text-destructive">
           <Trash2 className="size-3.5" />
           {t("delete")}
         </Button>
       </div>
+      {saveErr && <p className="mt-2 text-xs text-destructive">{saveErr}</p>}
 
       <div className="mt-4">
         <p className="mb-1.5 flex items-center gap-1 text-xs font-medium text-muted-foreground">

@@ -27,6 +27,8 @@ type fakeGateway struct {
 	deleted string
 }
 
+func (f *fakeGateway) With(dial mail.Dial) mail.Gateway { return f }
+
 func (f *fakeGateway) SieveListScripts(email, token string) ([]mail.SieveScript, error) {
 	return f.scripts, nil
 }

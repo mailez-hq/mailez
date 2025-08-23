@@ -67,6 +67,37 @@ func Fingerprint(publicKeyArmored string) (string, error) {
 	return strings.ToUpper(hex.EncodeToString(ring[0].PrimaryKey.Fingerprint)), nil
 }
 
+// KeyInfo describes a parsed armored public key: its fingerprint and the email
+// addresses declared on it.
+type KeyInfo struct {
+	Fingerprint string
+	Emails      []string
+}
+
+// ParsePublicKey reads an armored public key and extracts its fingerprint and
+// declared identity addresses, for storing in a user's keyring.
+func ParsePublicKey(armored string) (KeyInfo, error) {
+	ring, err := openpgp.ReadArmoredKeyRing(strings.NewReader(armored))
+	if err != nil {
+		return KeyInfo{}, fmt.Errorf("pgp read key: %w", err)
+	}
+	if len(ring) == 0 || ring[0].PrimaryKey == nil {
+		return KeyInfo{}, errors.New("pgp key: no primary key")
+	}
+	info := KeyInfo{
+		Fingerprint: strings.ToUpper(hex.EncodeToString(ring[0].PrimaryKey.Fingerprint)),
+	}
+	seen := map[string]bool{}
+	for _, id := range ring[0].Identities {
+		e := strings.ToLower(strings.TrimSpace(id.UserId.Email))
+		if e != "" && !seen[e] {
+			seen[e] = true
+			info.Emails = append(info.Emails, e)
+		}
+	}
+	return info, nil
+}
+
 // Encrypt seals plaintext for the given armored public key and returns an
 // armored OpenPGP message.
 func Encrypt(publicKeyArmored, plaintext string) (string, error) {

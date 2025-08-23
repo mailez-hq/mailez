@@ -1,6 +1,9 @@
 package compose
 
 import (
+	"strings"
+	"time"
+
 	"github.com/gofiber/fiber/v2"
 
 	"mailez/backend/internal/alias"
@@ -19,8 +22,7 @@ import (
 // @Failure 400 {object} map[string]interface{}
 // @Router /mail/draft [post]
 func (h *Handler) mailSaveDraft(c *fiber.Ctx) error {
-	user := currentUser(c)
-	token, err := h.mailToken(c)
+	d, err := h.MailDial(c)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "token error"})
 	}
@@ -36,7 +38,7 @@ func (h *Handler) mailSaveDraft(c *fiber.Ctx) error {
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
 	}
-	uid, err := h.Mail.SaveDraft(user.Email, token, in.To, in.Cc, in.Subject, in.Text, in.HTML, in.Attachments, in.ReplaceUID)
+	uid, err := h.Mail.With(d).SaveDraft(d.Email, d.Token, in.To, in.Cc, in.Subject, in.Text, in.HTML, in.Attachments, in.ReplaceUID)
 	if err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}
@@ -55,7 +57,7 @@ func (h *Handler) mailSaveDraft(c *fiber.Ctx) error {
 // @Router /mail/send [post]
 func (h *Handler) mailSend(c *fiber.Ctx) error {
 	user := currentUser(c)
-	token, err := h.mailToken(c)
+	d, err := h.MailDial(c)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "token error"})
 	}
@@ -69,30 +71,52 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 		HTML        string            `json:"html"`
 		Attachments []mail.Attachment `json:"attachments"`
 		UndoSeconds int               `json:"undo_seconds"`
+		SendAt      string            `json:"send_at"` // RFC3339; future value schedules the send
 	}
 	if err := c.BodyParser(&in); err != nil || len(in.To) == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "to is required"})
 	}
 	from := in.From
 	if from == "" {
-		from = user.Email
+		from = d.Email
 	}
-	if !alias.MaySendAs(h.App, user, from) {
+	// Identity policy: an external aggregated account may only send as its own
+	// address; the internal account may send as itself or one of its aliases.
+	if d.External {
+		if !strings.EqualFold(from, d.Email) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "cannot send as this identity"})
+		}
+	} else if !alias.MaySendAs(h.App, user, from) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "cannot send as this identity"})
 	}
-	// An undo window parks the message in the outbox instead of submitting it
-	// right away; a worker delivers it once the window elapses.
+	// A future send_at parks the message in the outbox until that moment
+	// (scheduled send); an undo window parks it for a few seconds instead.
+	// The two are mutually exclusive: scheduling disables undo.
+	if in.SendAt != "" {
+		sendAt, err := time.Parse(time.RFC3339, in.SendAt)
+		if err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "invalid send_at"})
+		}
+		if !sendAt.After(time.Now()) {
+			return c.Status(400).JSON(fiber.Map{"error": "send_at must be in the future"})
+		}
+		id, err := h.enqueue(user.Email, d.AccountID, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments, sendAt)
+		if err != nil {
+			return core.Fail(c, 500, err, "outbox error")
+		}
+		return c.JSON(fiber.Map{"scheduled": true, "outbox_id": id})
+	}
 	if in.UndoSeconds > 0 {
 		if in.UndoSeconds > maxUndoSeconds {
 			in.UndoSeconds = maxUndoSeconds
 		}
-		id, err := h.enqueue(user.Email, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments, in.UndoSeconds)
+		id, err := h.enqueue(user.Email, d.AccountID, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments, time.Now().Add(time.Duration(in.UndoSeconds)*time.Second))
 		if err != nil {
 			return core.Fail(c, 500, err, "outbox error")
 		}
 		return c.JSON(fiber.Map{"queued": true, "outbox_id": id, "undo_seconds": in.UndoSeconds})
 	}
-	if err := h.Mail.Send(user.Email, token, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments); err != nil {
+	if err := h.Mail.With(d).Send(d.Email, d.Token, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments); err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}
 	return c.SendStatus(fiber.StatusNoContent)

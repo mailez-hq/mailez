@@ -1,6 +1,7 @@
 "use client";
 
-import { Archive, Bookmark, FolderSearch, Inbox, Menu, RefreshCw, Search, SearchX, Sparkles, Trash2, X } from "lucide-react";
+import { useState } from "react";
+import { Archive, Bookmark, FolderSearch, Inbox, Menu, RefreshCw, Search, SearchX, SlidersHorizontal, Sparkles, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { usePreferences } from "@/components/preferences-provider";
 import type { MailMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { MessageRow, ROW_HEIGHTS } from "@/components/mailbox/message-row";
+import { SearchBuilderDialog } from "@/components/mailbox/search-builder-dialog";
 import { VirtualList } from "@/components/mailbox/virtual-list";
 
 const SKELETON_ROWS = 8;
@@ -46,6 +48,8 @@ export function MessageListPanel({
   onToggleSearchAll,
   activeView,
   onSelectView,
+  category,
+  onCategoryChange,
   aiSearchEnabled,
   aiPriorityEnabled,
   prioritizing,
@@ -66,7 +70,7 @@ export function MessageListPanel({
   loading: boolean;
   query: string;
   onQueryChange: (q: string) => void;
-  onSearch: () => void;
+  onSearch: (q?: string) => void;
   onClearSearch: () => void;
   selectedUids: Set<number>;
   cursor: number;
@@ -92,6 +96,8 @@ export function MessageListPanel({
   onToggleSearchAll: () => void;
   activeView: string;
   onSelectView: (view: string) => void;
+  category: string;
+  onCategoryChange: (category: string) => void;
   aiSearchEnabled: boolean;
   aiPriorityEnabled: boolean;
   prioritizing: boolean;
@@ -108,13 +114,18 @@ export function MessageListPanel({
   const t = useTranslations("mail");
   const { density } = usePreferences();
   const rowHeight = ROW_HEIGHTS[density];
+  const [builderOpen, setBuilderOpen] = useState(false);
+  // Category pills filter the loaded page client-side (the backend still
+  // returns every row; classification is a lightweight per-row tag).
+  const filtered = category ? messages.filter((m) => m.category === category) : messages;
+  const shown = filtered;
   const folderLabel = (name: string) => {
     const key = `folder${name.charAt(0).toUpperCase()}${name.slice(1).toLowerCase()}`;
     return t.has(key) ? t(key) : name;
   };
 
   return (
-    <div className={cn("flex min-w-0 flex-col border-r border-border bg-card", className)}>
+    <div className={cn("flex min-h-0 min-w-0 flex-col border-r border-border bg-card", className)}>
       <div className="border-b border-border p-2">
         <div className="flex items-center gap-1.5">
           <Button variant="ghost" size="icon-sm" className="shrink-0 md:hidden" onClick={onMenu}>
@@ -171,6 +182,15 @@ export function MessageListPanel({
           <Button
             variant="ghost"
             size="icon-sm"
+            onClick={() => setBuilderOpen(true)}
+            title={t("advancedSearch")}
+            className="shrink-0"
+          >
+            <SlidersHorizontal className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={onToggleSearchAll}
             title={t("searchAll")}
             className={cn("shrink-0", searchAll && "text-primary")}
@@ -218,13 +238,35 @@ export function MessageListPanel({
           ))}
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
+          {["", "work", "social", "newsletter", "shopping", "finance"].map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => onCategoryChange(c)}
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[11px] transition-colors",
+                category === c
+                  ? "bg-accent font-medium text-accent-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              {c === "" ? t("categoryAll") : t(`category${c.charAt(0).toUpperCase()}${c.slice(1)}`)}
+            </button>
+          ))}
+        </div>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1">
           <span className="hidden text-[10px] text-muted-foreground sm:inline">{t("syntaxHint")}</span>
           <div className="flex flex-wrap items-center gap-1">
             {["from:", "to:", "subject:", "has:attachment", "before:", "after:"].map((s) => (
               <button
                 key={s}
                 type="button"
-                onClick={() => onQueryChange(query ? `${query} ${s}` : s)}
+                onClick={() => {
+                  // Appending the same token again (e.g. has:attachment twice)
+                  // would duplicate the filter; skip when it is already present.
+                  if (query.split(/\s+/).some((t) => t.startsWith(s))) return;
+                  onQueryChange(query ? `${query} ${s}` : s);
+                }}
                 className="rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 {s}
@@ -307,13 +349,13 @@ export function MessageListPanel({
             </div>
           ))}
         </div>
-      ) : messages.length === 0 ? (
+      ) : shown.length === 0 ? (
         <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
-          {searching ? t("noMatches") : t("noMessages")}
+          {searching || category ? t("noMatches") : t("noMessages")}
         </div>
       ) : (
         <VirtualList
-          items={messages}
+          items={shown}
           rowHeight={rowHeight}
           scrollKey={`${folder}-${searching}`}
           onEndReached={onLoadMore}
@@ -325,7 +367,7 @@ export function MessageListPanel({
               message={m}
               index={i}
               density={density}
-              category={categories?.[String(m.uid)]}
+              category={categories?.[String(m.uid)] ?? m.category}
               selected={m.id === openId && !!openId}
               selectedInBulk={selectedUids.has(m.uid)}
               cursorActive={i === cursor && !searching}
@@ -359,6 +401,15 @@ export function MessageListPanel({
           {t("search")} ✕
         </button>
       )}
+
+      <SearchBuilderDialog
+        open={builderOpen}
+        onOpenChange={setBuilderOpen}
+        onApply={(q) => {
+          onQueryChange(q);
+          onSearch(q);
+        }}
+      />
     </div>
   );
 }

@@ -89,6 +89,11 @@ func (n *Notifier) pollOnce(ctx context.Context) {
 			if err := Notify(n.DB, key, s.UserEmail, "mailez", body, "/", n.Cfg.Domain); err != nil {
 				log.Printf("push: notify %s: %v", s.UserEmail, err)
 			}
+			DispatchWebhooks(n.DB, s.UserEmail, "mail.received", map[string]any{
+				"folder":       "Inbox",
+				"new_count":    total - prev,
+				"unseen_total": total,
+			})
 		}
 	}
 }

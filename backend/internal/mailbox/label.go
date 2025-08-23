@@ -92,11 +92,11 @@ func (h *Handler) mailLabelRename(c *fiber.Ctx) error {
 	if err := c.BodyParser(&in); err != nil || !validLabelName(in.From) || !validLabelName(in.To) {
 		return c.Status(400).JSON(fiber.Map{"error": "valid from and to names are required"})
 	}
-	token, err := h.mailToken(c)
+	d, err := h.MailDial(c)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "token error"})
 	}
-	if err := h.Mail.ReplaceKeyword(user.Email, token, in.From, in.To); err != nil {
+	if err := h.Mail.With(d).ReplaceKeyword(d.Email, d.Token, in.From, in.To); err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}
 	if err := h.DB.Model(&models.Label{}).
@@ -120,11 +120,11 @@ func (h *Handler) mailLabelDelete(c *fiber.Ctx) error {
 	if !validLabelName(name) {
 		return c.Status(400).JSON(fiber.Map{"error": "valid label name is required"})
 	}
-	token, err := h.mailToken(c)
+	d, err := h.MailDial(c)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "token error"})
 	}
-	if err := h.Mail.ReplaceKeyword(user.Email, token, name, ""); err != nil {
+	if err := h.Mail.With(d).ReplaceKeyword(d.Email, d.Token, name, ""); err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}
 	if err := h.DB.Where("user_email = ? AND name = ?", user.Email, name).

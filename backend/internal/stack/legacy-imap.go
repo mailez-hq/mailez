@@ -89,7 +89,7 @@ func (h *Handler) dovecotSieveData(c *fiber.Ctx) error {
 }
 
 var sieveTemplate = template.Must(template.New("default.sieve").
-	Funcs(template.FuncMap{"sieveQuote": sieveQuote}).
+	Funcs(template.FuncMap{"sieveQuote": sieveQuote, "sieveAddressTests": sieveAddressTests}).
 	Parse(`require "variables";
 require "vacation";
 require "fileinto";
@@ -109,7 +109,17 @@ if header :index 2 :matches "Received" "from * by * for <*>; *"
   deleteheader "Delivered-To";
   addheader "Delivered-To" "<${3}>";
 }
-{{if .SpamEnabled}}
+{{if .Whitelist}}if {{sieveAddressTests .Whitelist}}
+{
+  keep;
+  stop;
+}
+{{end}}{{if .Blacklist}}if {{sieveAddressTests .Blacklist}}
+{
+  fileinto :create "Junk";
+  stop;
+}
+{{end}}{{if .SpamEnabled}}
 if spamtest :percent :value "gt" :comparator "i;ascii-numeric" "{{.SpamThreshold}}"
 {
 {{if .SpamMarkAsRead}}  setflag "\seen";
@@ -129,4 +139,26 @@ func int64Str(n int64) string {
 // sieveQuote escapes a value for embedding in a quoted sieve string.
 func sieveQuote(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(s)
+}
+
+// sieveAddressTests renders an anyof(...) test for whitelist/blacklist CSV
+// entries: bare domains match via :domain, full addresses via :is.
+func sieveAddressTests(csv string) string {
+	parts := make([]string, 0, 4)
+	for _, raw := range strings.Split(csv, ",") {
+		e := strings.TrimSpace(raw)
+		if e == "" {
+			continue
+		}
+		quoted := sieveQuote(e)
+		if strings.Contains(e, "@") {
+			parts = append(parts, `address :is "From" "`+quoted+`"`)
+		} else {
+			parts = append(parts, `address :domain :is "From" "`+quoted+`"`)
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return "anyof (\n  " + strings.Join(parts, ",\n  ") + "\n)"
 }

@@ -23,6 +23,7 @@ func (h *Handler) Register(r fiber.Router) {
 	r.Post("/mail/send", h.mailSend)
 	r.Post("/mail/draft", h.mailSaveDraft)
 	r.Delete("/mail/outbox/:id", h.outboxCancel)
+	r.Get("/mail/scheduled", h.outboxList)
 }
 
 func (h *Handler) mailToken(c *fiber.Ctx) (string, error) { return h.App.MailToken(c) }
