@@ -97,8 +97,14 @@ func findDocker() (string, error) {
 	}
 	if runtime.GOOS == "windows" {
 		candidates := []string{
-			`C:\Users\admin\AppData\Local\Programs\DockerDesktop\resources\bin\docker.exe`,
 			`C:\Program Files\Docker\Docker\resources\bin\docker.exe`,
+		}
+		if local := os.Getenv("LOCALAPPDATA"); local != "" {
+			// Docker Desktop's per-user install lives under %LOCALAPPDATA%,
+			// which avoids hardcoding a Windows user name.
+			candidates = append(candidates,
+				filepath.Join(local, "Programs", "DockerDesktop", "resources", "bin", "docker.exe"),
+			)
 		}
 		for _, c := range candidates {
 			if _, err := os.Stat(c); err == nil {
