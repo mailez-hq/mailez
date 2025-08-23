@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -18,10 +19,14 @@ export function CommandPalette({
   open,
   onOpenChange,
   actions,
+  aiSearchEnabled = false,
+  onAiSearch,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   actions: PaletteAction[];
+  aiSearchEnabled?: boolean;
+  onAiSearch?: (query: string) => void;
 }) {
   const t = useTranslations("palette");
   const [query, setQuery] = useState("");
@@ -34,15 +39,29 @@ export function CommandPalette({
     }
   }, [open]);
 
+  // When the user types free text, pin a "semantic search" entry on top so
+  // natural-language queries (spec 6.4) can be run straight from the palette.
+  const aiItem: PaletteAction | null =
+    aiSearchEnabled && onAiSearch && query.trim()
+      ? {
+          id: "ai-search",
+          label: `${t("aiSearch")}: ${query.trim()}`,
+          icon: <Sparkles className="size-4" />,
+          run: () => onAiSearch(query.trim()),
+        }
+      : null;
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return actions;
-    return actions.filter(
-      (a) =>
-        a.label.toLowerCase().includes(q) ||
-        (a.keywords || "").toLowerCase().includes(q),
-    );
-  }, [query, actions]);
+    const base = q
+      ? actions.filter(
+          (a) =>
+            a.label.toLowerCase().includes(q) ||
+            (a.keywords || "").toLowerCase().includes(q),
+        )
+      : actions;
+    return aiItem ? [aiItem, ...base] : base;
+  }, [query, actions, aiItem]);
 
   function run(action: PaletteAction | undefined) {
     if (!action) return;
