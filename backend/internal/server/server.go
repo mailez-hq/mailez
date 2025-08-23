@@ -37,7 +37,12 @@ import (
 	"mailez/backend/internal/user"
 )
 
-const defaultSecret = "dev-secret-change-me"
+// weakSecrets are known placeholder values that must never reach production;
+// they ship as defaults or in the example env file and are trivially guessable.
+var weakSecrets = map[string]bool{
+	"dev-secret-change-me":      true, // core.Config fallback
+	"change-me-please-16-bytes": true, // deploy/mailez.env.example
+}
 
 // Server bundles the Fiber app and its dependencies.
 type Server struct {
@@ -54,8 +59,8 @@ type Server struct {
 
 // New builds the Fiber app, applies migrations and starts background workers.
 func New(cfg core.Config) *Server {
-	if cfg.Env == "production" && cfg.SecretKey == defaultSecret {
-		log.Fatal("refusing to start in production with the default SECRET_KEY; set a strong secret")
+	if cfg.Env == "production" && weakSecrets[cfg.SecretKey] {
+		log.Fatal("refusing to start in production with a placeholder SECRET_KEY; set a strong secret")
 	}
 	db := connectDB(cfg)
 	rdb := connectRedis(cfg)
@@ -89,7 +94,7 @@ func New(cfg core.Config) *Server {
 
 	bgCtx, bgCancel := context.WithCancel(context.Background())
 	s := &Server{App: app, DB: db, Redis: rdb, Cfg: cfg, bgCtx: bgCtx, bgCancel: bgCancel}
-	s.Auth = auth.NewManager(db, newStore(rdb), "mailez_session", time.Duration(cfg.SessionLifetime)*time.Second)
+	s.Auth = auth.NewManager(db, newStore(rdb, cfg.Env), "mailez_session", time.Duration(cfg.SessionLifetime)*time.Second)
 	s.Auth.SetCookieSecure(cfg.CookieSecure)
 	s.Auth.SetLoginLimits(cfg.LoginRateLimit, cfg.LoginFailLimit)
 	s.internal = stack.New(db, s.Auth, cfg, rdb)
@@ -130,9 +135,15 @@ func startMetricsServer(addr string) {
 }
 
 // newStore prefers Redis and falls back to memory for local dev.
-func newStore(rdb *redis.Client) auth.Store {
-	if err := rdb.Ping(context.Background()).Err(); err == nil {
+func newStore(rdb *redis.Client, env string) auth.Store {
+	err := rdb.Ping(context.Background()).Err()
+	if err == nil {
 		return auth.NewRedisStore(rdb)
+	}
+	if env == "production" {
+		log.Printf("WARNING: redis unavailable (%v); session store degraded to in-memory. Sessions are lost on restart and rate limits reset — fix redis before relying on this deployment", err)
+	} else {
+		log.Printf("redis unavailable (%v); using in-memory session store for local dev", err)
 	}
 	return auth.NewMemoryStore()
 }
