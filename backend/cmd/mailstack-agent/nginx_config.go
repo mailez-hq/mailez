@@ -51,8 +51,8 @@ type NginxConfig struct {
 	TLS993             bool
 	TLS995             bool
 	TLS465             bool
-	AdminAddress       string
-	AntispamAddress    string
+	BackendAddress     string
+	MailFilterAddress  string
 	WebmailAddress     string
 	WebdavAddress      string
 	MessageSizeLimit   int
@@ -68,7 +68,7 @@ type NginxConfig struct {
 	WebrootRedirect    string
 	Postmaster         string
 	Domain             string
-	SMTPAddress        string
+	MtaAddress         string
 	RecipientDelimiter string
 }
 
@@ -81,11 +81,11 @@ var (
 
 func loadNginxConfig() (NginxConfig, error) {
 	cfg := NginxConfig{
-		AdminAddress:       agent.Getenv("ADMIN_ADDRESS", "admin"),
-		AntispamAddress:    agent.Getenv("ANTISPAM_ADDRESS", "antispam"),
+		BackendAddress:     agent.Getenv("BACKEND_ADDRESS", "backend"),
+		MailFilterAddress:  agent.Getenv("MAIL_FILTER_ADDRESS", "mail-filter"),
 		WebmailAddress:     agent.Getenv("WEBMAIL_ADDRESS", "webmail"),
 		WebdavAddress:      agent.Getenv("WEBDAV_ADDRESS", ""),
-		SMTPAddress:        agent.Getenv("SMTP_ADDRESS", "smtp"),
+		MtaAddress:         agent.Getenv("MTA_ADDRESS", "mta"),
 		RecipientDelimiter: agent.Getenv("RECIPIENT_DELIMITER", "+"),
 		RealIPHeader:       os.Getenv("REAL_IP_HEADER"),
 		RealIPFrom:         os.Getenv("REAL_IP_FROM"),

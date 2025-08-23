@@ -46,7 +46,7 @@ func New(cfg config.Config) *Server {
 	s.internal = internalapi.New(db, s.Auth, cfg, rdb)
 	s.routes()
 	// Start the external mailbox poller (fetchmail equivalent).
-	fetcher := fetch.New(db, cfg.SmtpAddress+":25", cfg.SecretKey, time.Duration(cfg.FetchInterval)*time.Second)
+	fetcher := fetch.New(db, cfg.MtaAddress+":25", cfg.SecretKey, time.Duration(cfg.FetchInterval)*time.Second)
 	go fetcher.Run(context.Background())
 	return s
 }

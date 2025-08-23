@@ -156,8 +156,8 @@ func (h *Handler) checkCredentials(u *models.User, pw, ip, protocol, authPort st
 // service names; the hostname is resolved to an IP because nginx's mail auth
 // module (ngx_parse_addr) only accepts IP literals in Auth-Server.
 func (h *Handler) serverFor(protocol string, authenticated bool) (string, string) {
-	imapAddr := h.Cfg.ImapAddress
-	smtpAddr := h.Cfg.SmtpAddress
+	imapAddr := h.Cfg.MailStoreAddress
+	smtpAddr := h.Cfg.MtaAddress
 	var host string
 	switch protocol {
 	case "imap":

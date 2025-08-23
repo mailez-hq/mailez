@@ -16,14 +16,14 @@ type RspamdConfig struct {
 	Antivirus        string
 	AntivirusAction  string
 	AntivirusAddress string
-	OletoolsAddress  string
+	MacroScannerAddress string
 	RedisAddress     string
-	AdminAddress     string
+	BackendAddress   string
 	Postmaster       string
 	Domain           string
 	Sitename         string
 	DmarcSendReports bool
-	SmtpAddress      string
+	MtaAddress       string
 }
 
 func loadRspamdConfig() (RspamdConfig, error) {
@@ -35,14 +35,14 @@ func loadRspamdConfig() (RspamdConfig, error) {
 		Antivirus:        agent.Getenv("ANTIVIRUS", "none"),
 		AntivirusAction:  agent.Getenv("ANTIVIRUS_ACTION", "discard"),
 		AntivirusAddress: agent.Getenv("ANTIVIRUS_ADDRESS", "antivirus"),
-		OletoolsAddress:  agent.Getenv("OLETOOLS_ADDRESS", "oletools"),
+		MacroScannerAddress: agent.Getenv("MACRO_SCANNER_ADDRESS", "macro-scanner"),
 		RedisAddress:     agent.Getenv("REDIS_ADDRESS", "redis"),
-		AdminAddress:     agent.Getenv("ADMIN_ADDRESS", "admin"),
+		BackendAddress:   agent.Getenv("BACKEND_ADDRESS", "backend"),
 		Postmaster:       agent.Getenv("POSTMASTER", "postmaster"),
 		Domain:           agent.Getenv("DOMAIN", "example.com"),
 		Sitename:         agent.Getenv("SITENAME", ""),
 		DmarcSendReports: envTrue("DMARC_SEND_REPORTS", false),
-		SmtpAddress:      agent.Getenv("SMTP_ADDRESS", "smtp"),
+		MtaAddress:       agent.Getenv("MTA_ADDRESS", "mta"),
 	}
 	if cfg.Subnet == "" {
 		var err error

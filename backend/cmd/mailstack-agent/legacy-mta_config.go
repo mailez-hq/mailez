@@ -22,9 +22,9 @@ type PostfixConfig struct {
 	OutboundTLSLevel        string
 	DefersOnTLSError        bool
 	RejectUnlistedRecipient string
-	FrontAddress            string
-	AntispamAddress         string
-	AdminAddress            string
+	GatewayAddress          string
+	MailFilterAddress       string
+	BackendAddress          string
 	AuthorizedXclient       string
 	PostfixLogFile          string
 }
@@ -41,9 +41,9 @@ func loadPostfixConfig() (PostfixConfig, error) {
 		OutboundTLSLevel:        agent.Getenv("OUTBOUND_TLS_LEVEL", "dane"),
 		DefersOnTLSError:        envTrue("DEFER_ON_TLS_ERROR", true),
 		RejectUnlistedRecipient: agent.Getenv("REJECT_UNLISTED_RECIPIENT", "no"),
-		FrontAddress:            agent.Getenv("FRONT_ADDRESS", "front"),
-		AntispamAddress:         agent.Getenv("ANTISPAM_ADDRESS", "antispam"),
-		AdminAddress:            agent.Getenv("ADMIN_ADDRESS", "admin"),
+		GatewayAddress:          agent.Getenv("GATEWAY_ADDRESS", "gateway"),
+		MailFilterAddress:       agent.Getenv("MAIL_FILTER_ADDRESS", "mail-filter"),
+		BackendAddress:          agent.Getenv("BACKEND_ADDRESS", "backend"),
 		PostfixLogFile:          os.Getenv("POSTFIX_LOG_FILE"),
 	}
 
