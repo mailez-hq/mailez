@@ -9,6 +9,7 @@ import type {
   MailLabel,
   MailMessage,
   MailPage,
+  MailSearchSpec,
   MailThread,
   Me,
   MeSettings,
@@ -36,6 +37,7 @@ export type {
   MailLabel,
   MailMessage,
   MailPage,
+  MailSearchSpec,
   MailThread,
   Me,
   MeSettings,
@@ -161,6 +163,13 @@ export async function mailMessages(folder: string, page = 0): Promise<MailPage> 
 
 export const mailSearch = (folder: string, q: string) =>
   api<MailMessage[]>(`/mail/search?folder=${encodeURIComponent(folder)}&q=${encodeURIComponent(q)}`);
+
+// mailSearchSpec runs a structured search (built visually, no syntax parsing).
+export const mailSearchSpec = (folder: string, spec: MailSearchSpec) =>
+  api<MailMessage[]>("/mail/search", {
+    method: "POST",
+    body: JSON.stringify({ folder, query: spec }),
+  });
 
 // mailMessage fetches a single message. It is addressed by its stable routable
 // id (preferred, survives mailbox moves) or, as a fallback, by its IMAP uid.
