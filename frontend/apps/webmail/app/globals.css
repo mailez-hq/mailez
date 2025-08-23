@@ -57,7 +57,7 @@
 }
 
 :root {
-  --background: #ffffff;
+  --background: #fafafa;
   --foreground: #18181b;
   --card: #ffffff;
   --card-foreground: #18181b;
@@ -83,7 +83,7 @@
   --chart-4: #c9a227;
   --chart-5: #5b8c5a;
   --radius: 0.625rem;
-  --sidebar: #fafafa;
+  --sidebar: #f6f6f7;
   --sidebar-foreground: #52525b;
   --sidebar-primary: #2f8e6c;
   --sidebar-primary-foreground: #ffffff;
