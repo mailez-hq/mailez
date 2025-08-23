@@ -65,7 +65,7 @@ func newContractHarness(t *testing.T) (*Handler, *fiber.App) {
 		Domain:             "example.com",
 		MessageRateLimit:   200,
 		DkimSelector:       "dkim",
-		MailStoreAddress:   "127.0.0.1",
+		MailKeeperAddress:  "127.0.0.1",
 		MtaAddress:         "127.0.0.1",
 	}
 	mgr := auth.NewManager(db, auth.NewMemoryStore(), "mailez_session", time.Hour)

@@ -1,6 +1,6 @@
 # TLS certificates
 
-The mailez `front` (nginx) container reads TLS material from `./certs` (mounted
+The mailez `gateway` (nginx) container reads TLS material from `./certs` (mounted
 at `/certs`). Two files are expected:
 
 - `cert.pem` — the server certificate (fullchain for production)
@@ -20,7 +20,7 @@ or on Windows:
 .\scripts\generate-certs.ps1 -Hostname mail.example.com
 ```
 
-Then switch `TLS_FLAVOR=cert` in `deploy/mailez.env` and restart `front`.
+Then switch `TLS_FLAVOR=cert` in `deploy/mailez.env` and restart `gateway`.
 
 ## Production
 

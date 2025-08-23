@@ -149,7 +149,7 @@ Python：每个容器 `CMD /start.py`，依赖 vendor 进来的 `podop`（内部
 2. **Auth-Server 必须是 IP**：nginx 1.26+ 的 mail auth 模块用
    `ngx_parse_addr` 解析响应头，只接受 IP 字面量（mainstream suite 的 `get_server`
    会先 `resolve_hostname`，Go 移植版漏了这步）。`serverFor` 现已补上
-   主机名→IP 解析；开发模式下后端在宿主机，`MAIL_STORE_ADDRESS`/`MTA_ADDRESS`
+   主机名→IP 解析；开发模式下后端在宿主机，`MAIL_KEEPER_ADDRESS`/`MTA_ADDRESS`
    需指向 compose 里固定的容器 IP（192.168.206.5/.4），见
    `backend/scripts/dev-server.ps1`。
 3. **sieve data 键带引号**：pigeonhole 的 dict 存储用 JSON 编码的脚本名做
