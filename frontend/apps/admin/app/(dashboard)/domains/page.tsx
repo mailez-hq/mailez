@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { Pagination } from "@/components/pagination";
 import { RowActions } from "@/components/row-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { api, apiDelete, apiPost, apiPut, domainDkim, generateDomainDkim } from "@/lib/api";
-import type { Alternative, DkimInfo, Domain } from "@/lib/types";
+import type { Alternative, DkimInfo, Domain, Page } from "@/lib/types";
 
 const fmtBytes = (n: number) =>
   n > 0 ? `${Math.round((n / 1e9) * 10) / 10} GB` : "unlimited";
@@ -29,6 +30,9 @@ export default function DomainsPage() {
   const t = useTranslations("domains");
   const ct = useTranslations("common");
   const [domains, setDomains] = useState<Domain[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
   const [editTarget, setEditTarget] = useState<Domain | null>(null);
@@ -49,11 +53,13 @@ export default function DomainsPage() {
 
   const load = useCallback(async () => {
     try {
-      setDomains(await api<Domain[]>("/domains"));
+      const res = await api<Page<Domain>>(`/domains?page=${page}&limit=${pageSize}`);
+      setDomains(res.data);
+      setTotal(res.total);
     } catch (e) {
       setError(e instanceof Error ? e.message : "load failed");
     }
-  }, []);
+  }, [page, pageSize]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -316,6 +322,13 @@ export default function DomainsPage() {
               )}
             </TableBody>
           </Table>
+          <Pagination
+            total={total}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => { setPage(1); setPageSize(s); }}
+          />
         </CardContent>
       </Card>
     </div>

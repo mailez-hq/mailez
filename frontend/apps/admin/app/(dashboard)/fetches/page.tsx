@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { Pagination } from "@/components/pagination";
 import { RowActions } from "@/components/row-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,12 +21,15 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { api, apiDelete, apiPost, apiPut } from "@/lib/api";
-import type { Fetch, User } from "@/lib/types";
+import type { Fetch, Page, User } from "@/lib/types";
 
 export default function FetchesPage() {
   const t = useTranslations("fetches");
   const ct = useTranslations("common");
   const [fetches, setFetches] = useState<Fetch[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
@@ -45,15 +49,17 @@ export default function FetchesPage() {
 
   const load = useCallback(async () => {
     try {
-      setFetches(await api<Fetch[]>("/fetches"));
+      const res = await api<Page<Fetch>>(`/fetches?page=${page}&limit=${pageSize}`);
+      setFetches(res.data);
+      setTotal(res.total);
     } catch (e) {
       setError(e instanceof Error ? e.message : "load failed");
     }
-  }, []);
+  }, [page, pageSize]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    api<User[]>("/users").then(setUsers).catch(() => {});
+    api<Page<User>>(`/users?page=1&limit=200`).then((r) => setUsers(r.data)).catch(() => {});
   }, []);
 
   function openEdit(f: Fetch) {
@@ -234,6 +240,13 @@ export default function FetchesPage() {
               )}
             </TableBody>
           </Table>
+          <Pagination
+            total={total}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => { setPage(1); setPageSize(s); }}
+          />
         </CardContent>
       </Card>
     </div>

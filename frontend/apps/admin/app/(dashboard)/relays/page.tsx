@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { Pagination } from "@/components/pagination";
 import { RowActions } from "@/components/row-actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,12 +19,15 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { api, apiDelete, apiPost, apiPut } from "@/lib/api";
-import type { Relay } from "@/lib/types";
+import type { Page, Relay } from "@/lib/types";
 
 export default function RelaysPage() {
   const t = useTranslations("relays");
   const ct = useTranslations("common");
   const [relays, setRelays] = useState<Relay[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Relay | null>(null);
@@ -32,11 +36,13 @@ export default function RelaysPage() {
 
   const load = useCallback(async () => {
     try {
-      setRelays(await api<Relay[]>("/relays"));
+      const res = await api<Page<Relay>>(`/relays?page=${page}&limit=${pageSize}`);
+      setRelays(res.data);
+      setTotal(res.total);
     } catch (e) {
       setError(e instanceof Error ? e.message : "load failed");
     }
-  }, []);
+  }, [page, pageSize]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -139,6 +145,13 @@ export default function RelaysPage() {
               )}
             </TableBody>
           </Table>
+          <Pagination
+            total={total}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => { setPage(1); setPageSize(s); }}
+          />
         </CardContent>
       </Card>
     </div>

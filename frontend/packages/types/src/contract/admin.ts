@@ -98,3 +98,11 @@ export type Alternative = {
   name: string;
   domain_name: string;
 };
+
+// Uniform pagination envelope returned by list endpoints.
+export type Page<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+};

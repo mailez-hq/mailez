@@ -18,19 +18,27 @@ func (h *Handler) registerTokens(r fiber.Router, mw fiber.Handler) {
 	r.Delete("/tokens/:id", mw, h.deleteToken)
 }
 
-// listTokens returns all application tokens (admin).
+// listTokens returns app tokens (admin), paginated.
 // @Summary List app tokens
 // @Tags tokens
 // @Produce json
-// @Success 200 {array} models.Token
+// @Param page query int false "page number, 1-based"
+// @Param limit query int false "page size"
+// @Success 200 {object} models.Page
 // @Failure 403 {object} models.APIError
 // @Router /tokens [get]
 func (h *Handler) listTokens(c *fiber.Ctx) error {
-	var tokens []models.Token
-	if err := h.DB.Order("id").Find(&tokens).Error; err != nil {
+	page, limit := core.PageParams(c)
+	var total int64
+	if err := h.DB.Model(&models.Token{}).Count(&total).Error; err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
-	return c.JSON(tokens)
+	var tokens []models.Token
+	offset := (page - 1) * limit
+	if err := h.DB.Order("id").Limit(limit).Offset(offset).Find(&tokens).Error; err != nil {
+		return core.Fail(c, 500, err, "internal error")
+	}
+	return core.Page(c, tokens, int(total), page, limit)
 }
 
 // createToken issues an app password. The plaintext secret is returned once;

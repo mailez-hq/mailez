@@ -60,7 +60,7 @@ export function readPreferences(): Preferences {
       },
       notifications: parsed.notifications !== false,
       undoSendSeconds: [0, 5, 10, 20, 30].includes(parsed.undoSendSeconds ?? 5)
-        ? (parsed.undoSendSeconds as number)
+        ? (parsed.undoSendSeconds ?? 5)
         : 5,
     };
   } catch {
