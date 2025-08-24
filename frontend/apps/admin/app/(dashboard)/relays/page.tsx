@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Plus } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { RowActions } from "@/components/row-actions";
 import { Button } from "@/components/ui/button";
 import {
   Card, CardContent, CardHeader, CardTitle,
@@ -73,10 +76,9 @@ export default function RelaysPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <PageHeader title={t("title")} description={t("desc")}>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button>{t("new")}</Button>} />
+          <DialogTrigger render={<Button><Plus />{t("new")}</Button>} />
           <DialogContent>
             <form onSubmit={create} className="space-y-4">
               <DialogHeader>
@@ -107,7 +109,7 @@ export default function RelaysPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       <Card>
         <CardHeader><CardTitle className="text-base">{t("served")}</CardTitle></CardHeader>
@@ -117,7 +119,7 @@ export default function RelaysPage() {
               <TableRow>
                 <TableHead>{t("name")}</TableHead>
                 <TableHead>{t("smtp")}</TableHead>
-                <TableHead className="w-28" />
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -125,17 +127,14 @@ export default function RelaysPage() {
                 <TableRow key={r.name}>
                   <TableCell className="font-medium">{r.name}</TableCell>
                   <TableCell>{r.smtp || t("smtpDefault")}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>{ct("edit")}</Button>
-                      <Button variant="ghost" size="sm" onClick={() => remove(r)}>{ct("delete")}</Button>
-                    </div>
+                  <TableCell className="w-10">
+                    <RowActions onEdit={() => openEdit(r)} onDelete={() => remove(r)} />
                   </TableCell>
                 </TableRow>
               ))}
               {relays.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-zinc-400">{ct("noItems")}</TableCell>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground">{ct("noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>

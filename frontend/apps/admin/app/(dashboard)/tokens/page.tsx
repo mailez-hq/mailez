@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Plus } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { RowActions } from "@/components/row-actions";
 import { Button } from "@/components/ui/button";
 import {
   Card, CardContent, CardHeader, CardTitle,
@@ -73,22 +76,21 @@ export default function TokensPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <PageHeader title={t("title")} description={t("desc")}>
         <Dialog
           open={open}
           onOpenChange={(v) => { setOpen(v); if (!v) setSecret(""); }}
         >
-          <DialogTrigger render={<Button>{t("new")}</Button>} />
+          <DialogTrigger render={<Button><Plus />{t("new")}</Button>} />
           <DialogContent>
             {secret ? (
               <div className="space-y-4">
                 <DialogHeader>
                   <DialogTitle>{t("copyTitle")}</DialogTitle>
                 </DialogHeader>
-                <p className="text-sm text-zinc-500">{t("copyHint")}</p>
+                <p className="text-sm text-muted-foreground">{t("copyHint")}</p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 break-all rounded-md bg-zinc-100 px-3 py-2 text-sm dark:bg-zinc-800">
+                  <code className="flex-1 break-all rounded-md bg-muted px-3 py-2 text-sm">
                     {secret}
                   </code>
                   <Button type="button" variant="outline" onClick={copySecret}>
@@ -111,7 +113,7 @@ export default function TokensPage() {
                   <select
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     required
                   >
                     <option value="" disabled>{t("selectUser")}</option>
@@ -132,7 +134,7 @@ export default function TokensPage() {
             )}
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       <Card>
         <CardHeader><CardTitle className="text-base">{t("accounts")}</CardTitle></CardHeader>
@@ -142,7 +144,7 @@ export default function TokensPage() {
               <TableRow>
                 <TableHead>{t("user")}</TableHead>
                 <TableHead>{t("ip")}</TableHead>
-                <TableHead className="w-20" />
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -150,14 +152,14 @@ export default function TokensPage() {
                 <TableRow key={tok.id}>
                   <TableCell className="font-medium">{tok.user_email}</TableCell>
                   <TableCell>{tok.ip || t("ipAny")}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => remove(tok)}>{ct("delete")}</Button>
+                  <TableCell className="w-10">
+                    <RowActions onDelete={() => remove(tok)} />
                   </TableCell>
                 </TableRow>
               ))}
               {tokens.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-zinc-400">{ct("noItems")}</TableCell>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground">{ct("noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>

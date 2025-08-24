@@ -18,7 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [router]);
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-zinc-500">Loading...</div>;
+    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading...</div>;
   }
 
   if (!user) return null;

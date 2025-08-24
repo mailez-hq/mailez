@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Plus } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { RowActions } from "@/components/row-actions";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card, CardContent, CardHeader, CardTitle,
@@ -100,14 +104,17 @@ export default function FetchesPage() {
   }
 
   const status = (f: Fetch) =>
-    f.error ? t("error") : f.last_check ? t("ok") : t("never");
+    f.error
+      ? { label: t("error"), variant: "destructive" as const }
+      : f.last_check
+        ? { label: t("ok"), variant: "default" as const }
+        : { label: t("never"), variant: "secondary" as const };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <PageHeader title={t("title")} description={t("desc")}>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button>{t("new")}</Button>} />
+          <DialogTrigger render={<Button><Plus />{t("new")}</Button>} />
           <DialogContent>
             <form onSubmit={create} className="space-y-4">
               <DialogHeader>
@@ -118,7 +125,7 @@ export default function FetchesPage() {
                 <select
                   value={userEmail}
                   onChange={(e) => setUserEmail(e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   required
                   disabled={!!editTarget}
                 >
@@ -138,7 +145,7 @@ export default function FetchesPage() {
                       setProtocol(p);
                       setPort(p === "pop3" ? 995 : 993);
                     }}
-                    className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
                     <option value="imap">IMAP</option>
                     <option value="pop3">POP3</option>
@@ -193,7 +200,7 @@ export default function FetchesPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       <Card>
         <CardHeader><CardTitle className="text-base">{t("accounts")}</CardTitle></CardHeader>
@@ -204,7 +211,7 @@ export default function FetchesPage() {
                 <TableHead>{t("source")}</TableHead>
                 <TableHead>{t("user")}</TableHead>
                 <TableHead>{t("status")}</TableHead>
-                <TableHead className="w-28" />
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -212,18 +219,17 @@ export default function FetchesPage() {
                 <TableRow key={f.id}>
                   <TableCell className="font-medium">{f.username}@{f.host}</TableCell>
                   <TableCell>{f.user_email}</TableCell>
-                  <TableCell>{status(f)}</TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(f)}>{ct("edit")}</Button>
-                      <Button variant="ghost" size="sm" onClick={() => remove(f)}>{ct("delete")}</Button>
-                    </div>
+                    <Badge variant={status(f).variant}>{status(f).label}</Badge>
+                  </TableCell>
+                  <TableCell className="w-10">
+                    <RowActions onEdit={() => openEdit(f)} onDelete={() => remove(f)} />
                   </TableCell>
                 </TableRow>
               ))}
               {fetches.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-zinc-400">{ct("noItems")}</TableCell>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">{ct("noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>

@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Download, Upload } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
@@ -64,7 +66,7 @@ export default function ConfigPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <PageHeader title={t("title")} description={t("desc")} />
       <Card className="max-w-xl">
         <CardHeader>
           <CardTitle className="text-base">{t("backup")}</CardTitle>
@@ -72,8 +74,12 @@ export default function ConfigPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-2">
-            <Button onClick={onExport} disabled={busy}>{t("export")}</Button>
+            <Button onClick={onExport} disabled={busy}>
+              <Download />
+              {t("export")}
+            </Button>
             <Button variant="outline" disabled={busy} onClick={() => fileRef.current?.click()}>
+              <Upload />
               {t("import")}
             </Button>
             <Input

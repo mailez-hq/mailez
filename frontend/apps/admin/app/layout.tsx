@@ -32,7 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang={locale} className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body className="min-h-screen bg-zinc-50 font-sans dark:bg-zinc-950 antialiased">
+      <body className="min-h-screen font-sans antialiased">
         <Providers locale={locale} messages={messages}>
           {children}
         </Providers>
