@@ -65,8 +65,11 @@ func TestDomainCRUD(t *testing.T) {
 	}
 	b, _ := io.ReadAll(listResp.Body)
 	listResp.Body.Close()
-	var domains []models.Domain
-	if err := json.Unmarshal(b, &domains); err != nil || len(domains) != 1 || domains[0].Name != "new.example" {
+	var page struct {
+		Data  []models.Domain `json:"data"`
+		Total int             `json:"total"`
+	}
+	if err := json.Unmarshal(b, &page); err != nil || page.Total != 1 || len(page.Data) != 1 || page.Data[0].Name != "new.example" {
 		t.Fatalf("list = %s", string(b))
 	}
 

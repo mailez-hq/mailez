@@ -68,8 +68,11 @@ func TestAliasCRUD(t *testing.T) {
 	}
 	b, _ := io.ReadAll(listResp.Body)
 	listResp.Body.Close()
-	var aliases []models.Alias
-	if err := json.Unmarshal(b, &aliases); err != nil || len(aliases) != 1 || aliases[0].Email != "team@t.example" {
+	var page struct {
+		Data  []models.Alias `json:"data"`
+		Total int            `json:"total"`
+	}
+	if err := json.Unmarshal(b, &page); err != nil || page.Total != 1 || len(page.Data) != 1 || page.Data[0].Email != "team@t.example" {
 		t.Fatalf("list = %s", string(b))
 	}
 
