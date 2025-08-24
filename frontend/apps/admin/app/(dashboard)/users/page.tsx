@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Plus } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { RowActions } from "@/components/row-actions";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card, CardContent, CardHeader, CardTitle,
@@ -137,10 +141,9 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <PageHeader title={t("title")} description={t("desc")}>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button>{t("new")}</Button>} />
+          <DialogTrigger render={<Button><Plus />{t("new")}</Button>} />
           <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
             <form onSubmit={save} className="space-y-4">
               <DialogHeader>
@@ -228,7 +231,7 @@ export default function UsersPage() {
                       value={replyBody}
                       onChange={(e) => setReplyBody(e.target.value)}
                       disabled={!replyEnabled}
-                      className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                       rows={3}
                     />
                   </div>
@@ -277,7 +280,7 @@ export default function UsersPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       <Card>
         <CardHeader><CardTitle className="text-base">{t("accounts")}</CardTitle></CardHeader>
@@ -290,7 +293,7 @@ export default function UsersPage() {
                 <TableHead>{t("quota")}</TableHead>
                 <TableHead>{t("role")}</TableHead>
                 <TableHead>{t("status")}</TableHead>
-                <TableHead className="w-28" />
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -299,19 +302,28 @@ export default function UsersPage() {
                   <TableCell className="font-medium">{u.email}</TableCell>
                   <TableCell>{u.displayed_name}</TableCell>
                   <TableCell>{fmtBytes(u.quota_bytes)}</TableCell>
-                  <TableCell>{u.global_admin ? t("admin") : t("user")}</TableCell>
-                  <TableCell>{u.enabled ? t("enabled") : t("disabled")}</TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(u)}>{ct("edit")}</Button>
-                      <Button variant="ghost" size="sm" onClick={() => remove(u)}>{ct("delete")}</Button>
-                    </div>
+                    {u.global_admin ? (
+                      <Badge variant="default">{t("admin")}</Badge>
+                    ) : (
+                      <Badge variant="secondary">{t("user")}</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {u.enabled ? (
+                      <Badge variant="outline">{t("enabled")}</Badge>
+                    ) : (
+                      <Badge variant="destructive">{t("disabled")}</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="w-10">
+                    <RowActions onEdit={() => openEdit(u)} onDelete={() => remove(u)} />
                   </TableCell>
                 </TableRow>
               ))}
               {users.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-zinc-400">{ct("noItems")}</TableCell>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">{ct("noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>

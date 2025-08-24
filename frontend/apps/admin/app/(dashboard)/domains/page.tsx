@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Plus } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { RowActions } from "@/components/row-actions";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card, CardContent, CardHeader, CardTitle,
@@ -163,10 +167,9 @@ export default function DomainsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <PageHeader title={t("title")} description={t("desc")}>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button>{t("new")}</Button>} />
+          <DialogTrigger render={<Button><Plus />{t("new")}</Button>} />
           <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
             <form onSubmit={save} className="space-y-4">
               <DialogHeader>
@@ -215,7 +218,7 @@ export default function DomainsPage() {
                         </div>
                       ))}
                       {alternatives.length === 0 && (
-                        <p className="text-sm text-zinc-400">{t("noAlternatives")}</p>
+                        <p className="text-sm text-muted-foreground">{t("noAlternatives")}</p>
                       )}
                       <form onSubmit={addAlternative} className="flex items-center gap-2">
                         <Input value={altName} onChange={(e) => setAltName(e.target.value)} placeholder="alt.example.com" required />
@@ -236,7 +239,7 @@ export default function DomainsPage() {
                           <div className="space-y-2">
                             <Label>{t("dkimRecord")}</Label>
                             <div className="flex items-center gap-2">
-                              <code className="flex-1 break-all rounded-md bg-zinc-100 px-3 py-2 text-xs dark:bg-zinc-800">
+                              <code className="flex-1 break-all rounded-md bg-muted px-3 py-2 text-xs">
                                 {dkim.record}
                               </code>
                               <Button type="button" variant="outline" size="sm" onClick={copyRecord}>
@@ -246,13 +249,13 @@ export default function DomainsPage() {
                           </div>
                           <div className="space-y-2">
                             <Label>{t("dkimPublicKey")}</Label>
-                            <code className="block break-all rounded-md bg-zinc-100 px-3 py-2 text-xs dark:bg-zinc-800">
+                            <code className="block break-all rounded-md bg-muted px-3 py-2 text-xs">
                               {dkim.public_key}
                             </code>
                           </div>
                         </>
                       ) : (
-                        <p className="text-sm text-zinc-500">{t("dkimHint")}</p>
+                        <p className="text-sm text-muted-foreground">{t("dkimHint")}</p>
                       )}
                       <div className="flex gap-2">
                         <Button type="button" variant="outline" size="sm" onClick={generateDkim}>
@@ -271,7 +274,7 @@ export default function DomainsPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       <Card>
         <CardHeader><CardTitle className="text-base">{t("served")}</CardTitle></CardHeader>
@@ -284,7 +287,7 @@ export default function DomainsPage() {
                 <TableHead>{t("maxAliases")}</TableHead>
                 <TableHead>{t("quota")}</TableHead>
                 <TableHead>{t("signup")}</TableHead>
-                <TableHead className="w-28" />
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -294,18 +297,21 @@ export default function DomainsPage() {
                   <TableCell>{d.max_users < 0 ? "∞" : d.max_users}</TableCell>
                   <TableCell>{d.max_aliases < 0 ? "∞" : d.max_aliases}</TableCell>
                   <TableCell>{fmtBytes(d.max_quota_bytes)}</TableCell>
-                  <TableCell>{d.signup_enabled ? t("open") : t("closed")}</TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(d)}>{ct("edit")}</Button>
-                      <Button variant="ghost" size="sm" onClick={() => remove(d)}>{ct("delete")}</Button>
-                    </div>
+                    {d.signup_enabled ? (
+                      <Badge variant="default">{t("open")}</Badge>
+                    ) : (
+                      <Badge variant="secondary">{t("closed")}</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="w-10">
+                    <RowActions onEdit={() => openEdit(d)} onDelete={() => remove(d)} />
                   </TableCell>
                 </TableRow>
               ))}
               {domains.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-zinc-400">{ct("noItems")}</TableCell>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">{ct("noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>

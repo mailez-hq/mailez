@@ -61,7 +61,7 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm shadow-sm">
       <CardHeader>
         <CardTitle className="text-xl">{t("title")}</CardTitle>
         <CardDescription>{t("description")}</CardDescription>

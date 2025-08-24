@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Plus } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { RowActions } from "@/components/row-actions";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card, CardContent, CardHeader, CardTitle,
@@ -63,10 +67,9 @@ export default function AliasesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <PageHeader title={t("title")} description={t("desc")}>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button>{t("new")}</Button>} />
+          <DialogTrigger render={<Button><Plus />{t("new")}</Button>} />
           <DialogContent>
             <form onSubmit={create} className="space-y-4">
               <DialogHeader><DialogTitle>{t("new")}</DialogTitle></DialogHeader>
@@ -87,7 +90,7 @@ export default function AliasesPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       <Card>
         <CardHeader><CardTitle className="text-base">{t("forwardingRules")}</CardTitle></CardHeader>
@@ -98,7 +101,7 @@ export default function AliasesPage() {
                 <TableHead>{t("alias")}</TableHead>
                 <TableHead>{t("destination")}</TableHead>
                 <TableHead>{t("wildcard")}</TableHead>
-                <TableHead className="w-20" />
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -106,15 +109,21 @@ export default function AliasesPage() {
                 <TableRow key={a.email}>
                   <TableCell className="font-medium">{a.email}</TableCell>
                   <TableCell>{a.destination}</TableCell>
-                  <TableCell>{a.wildcard ? t("yes") : t("no")}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => remove(a)}>{ct("delete")}</Button>
+                    {a.wildcard ? (
+                      <Badge variant="default">{t("yes")}</Badge>
+                    ) : (
+                      <Badge variant="secondary">{t("no")}</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="w-10">
+                    <RowActions onDelete={() => remove(a)} />
                   </TableCell>
                 </TableRow>
               ))}
               {aliases.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-zinc-400">{ct("noItems")}</TableCell>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">{ct("noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>

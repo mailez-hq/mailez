@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Logo } from "@/components/logo";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { signup, signupDomains } from "@/lib/api";
 import type { SignupDomain } from "@/lib/types";
@@ -48,8 +49,8 @@ export default function SignupPage() {
 
   if (done) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <Card className="w-full max-w-sm">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-background to-muted/50 p-4">
+        <Card className="w-full max-w-sm shadow-sm">
           <CardHeader>
             <CardTitle className="text-xl">{t("success")}</CardTitle>
           </CardHeader>
@@ -64,11 +65,20 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-background to-muted/50 p-4">
       <div className="absolute top-4 right-4">
         <LocaleSwitcher />
       </div>
-      <Card className="w-full max-w-sm">
+      <div className="mb-6 flex items-center gap-3">
+        <Logo className="size-11" />
+        <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+          mailez
+          <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
+            admin
+          </span>
+        </h1>
+      </div>
+      <Card className="w-full max-w-sm shadow-sm">
         <CardHeader>
           <CardTitle className="text-xl">{t("title")}</CardTitle>
           <CardDescription>{t("description")}</CardDescription>
@@ -78,13 +88,13 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label htmlFor="domain">{t("domain")}</Label>
               {domains.length === 0 ? (
-                <p className="text-sm text-zinc-500">{t("noOpenDomains")}</p>
+                <p className="text-sm text-muted-foreground">{t("noOpenDomains")}</p>
               ) : (
                 <select
                   id="domain"
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
-                  className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
                   {domains.map((d) => (
                     <option key={d.name} value={d.name}>
@@ -105,7 +115,7 @@ export default function SignupPage() {
                   required
                   disabled={domains.length === 0}
                 />
-                <span className="text-sm text-zinc-500">@{domain}</span>
+                <span className="text-sm text-muted-foreground">@{domain}</span>
               </div>
             </div>
             <div className="space-y-2">
@@ -123,7 +133,7 @@ export default function SignupPage() {
             <Button type="submit" className="w-full" disabled={busy || domains.length === 0}>
               {busy ? t("submitting") : t("submit")}
             </Button>
-            <p className="text-center text-sm text-zinc-500">
+            <p className="text-center text-sm text-muted-foreground">
               <Link href="/" className="hover:underline">
                 {t("goToSignin")}
               </Link>
