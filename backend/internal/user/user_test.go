@@ -74,8 +74,11 @@ func TestUserCRUD(t *testing.T) {
 	}
 	lb, _ := io.ReadAll(listResp.Body)
 	listResp.Body.Close()
-	var users []models.User
-	if err := json.Unmarshal(lb, &users); err != nil || len(users) != 1 {
+	var page struct {
+		Data  []models.User `json:"data"`
+		Total int           `json:"total"`
+	}
+	if err := json.Unmarshal(lb, &page); err != nil || page.Total != 1 || len(page.Data) != 1 {
 		t.Fatalf("list = %s", string(lb))
 	}
 

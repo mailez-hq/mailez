@@ -73,8 +73,11 @@ func TestFetchCRUD(t *testing.T) {
 	}
 	lb, _ := io.ReadAll(listResp.Body)
 	listResp.Body.Close()
-	var list []models.Fetch
-	if err := json.Unmarshal(lb, &list); err != nil || len(list) != 1 {
+	var page struct {
+		Data  []models.Fetch `json:"data"`
+		Total int            `json:"total"`
+	}
+	if err := json.Unmarshal(lb, &page); err != nil || page.Total != 1 || len(page.Data) != 1 {
 		t.Fatalf("list = %s", string(lb))
 	}
 
