@@ -1,5 +1,12 @@
 import type { Me } from "./auth";
 
+// Announcement banner shown in the webmail (admin-authored, global).
+export type MailAnnouncement = {
+  id: number;
+  subject: string;
+  body: string;
+};
+
 export type MailAttachment = {
   filename: string;
   content_type: string;

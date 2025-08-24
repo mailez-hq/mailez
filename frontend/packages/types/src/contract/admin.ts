@@ -106,3 +106,11 @@ export type Page<T> = {
   page: number;
   limit: number;
 };
+
+// Global announcement banner shown to every user (admin-authored).
+export type Announcement = {
+  id: number;
+  subject: string;
+  body: string;
+  enabled: boolean;
+};

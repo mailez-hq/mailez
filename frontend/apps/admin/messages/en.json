@@ -48,10 +48,26 @@
     "relays": "Relays",
     "fetches": "Fetches",
     "tokens": "Tokens",
+    "announcement": "Announcement",
     "anonAliases": "Anon aliases",
     "audit": "Audit",
     "config": "Config",
     "logout": "Logout"
+  },
+  "announcement": {
+    "title": "Announcement",
+    "desc": "Broadcast a notice shown to every user in the webmail.",
+    "formTitle": "Public announcement",
+    "formDesc": "The banner appears at the top of the webmail for all users until you clear it.",
+    "subject": "Subject",
+    "subjectPlaceholder": "e.g. Scheduled maintenance",
+    "body": "Body",
+    "bodyPlaceholder": "Optional details…",
+    "enabled": "Enabled",
+    "saving": "Saving…",
+    "saved": "Announcement saved",
+    "clear": "Clear",
+    "clearConfirm": "Remove the announcement? Users will no longer see it."
   },
   "domains": {
     "title": "Domains",

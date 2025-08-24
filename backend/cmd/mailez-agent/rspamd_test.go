@@ -25,8 +25,8 @@ func TestRspamdRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}
-	if len(files) != 25 {
-		t.Fatalf("expected 25 rendered files, got %d", len(files))
+	if len(files) != 26 {
+		t.Fatalf("expected 26 rendered files, got %d", len(files))
 	}
 
 	checks := map[string][]string{
@@ -43,6 +43,7 @@ func TestRspamdRender(t *testing.T) {
 		"/etc/rspamd/local.d/external_services.conf": {`servers = "macro-scanner:11343";`},
 		"/etc/rspamd/local.d/dmarc.conf":             {"enabled = false;"},
 		"/etc/rspamd/local.d/antivirus.conf":         {`.include(try=true,priority=1,duplicate=merge) "/overrides/antivirus.conf"`},
+		"/etc/rspamd/local.d/greylist.conf":          {`.include(try=true,priority=1,duplicate=merge) "/overrides/greylist.conf"`},
 	}
 	for file, wants := range checks {
 		data, ok := files[file]
@@ -68,6 +69,26 @@ func TestRspamdRender(t *testing.T) {
 	}
 	if !strings.Contains(string(files2["/etc/rspamd/local.d/composites.conf"]), ".include(try=true; priority=1; duplicate=merge)") {
 		t.Errorf("composites include missing")
+	}
+	if strings.Contains(string(files2["/etc/rspamd/local.d/greylist.conf"]), "greylist {") {
+		t.Errorf("greylist block should be absent when MAILEZ_GREYLISTING is off")
+	}
+}
+
+func TestRspamdRenderGreylisting(t *testing.T) {
+	t.Setenv("MAILEZ_SUBNET", "192.168.206.0/24")
+	t.Setenv("MAILEZ_GREYLISTING", "true")
+	cfg, err := loadRspamdConfig()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	files, err := renderRspamdAll(cfg)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	data := string(files["/etc/rspamd/local.d/greylist.conf"])
+	if !strings.Contains(data, "greylist {") || !strings.Contains(data, `key = "ip,from,to";`) {
+		t.Errorf("greylist block missing when MAILEZ_GREYLISTING=true:\n%s", data)
 	}
 }
 
