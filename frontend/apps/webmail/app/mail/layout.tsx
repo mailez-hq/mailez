@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { MailView } from "@/components/mailbox/mail-view";
 import { MailStoreProvider } from "@/components/mailbox/mail-store";
 import { me, type Me } from "@/lib/api";
+import { readLastFolder } from "@/lib/preferences";
 
 // MailLayout guards the /mail area and keeps MailView mounted across folder /
 // message transitions so the message list never rebuilds or flashes. The URL
@@ -16,8 +17,21 @@ export default function MailLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     me()
-      .then(setUser)
-      .catch(() => router.replace("/"))
+      .then((u) => {
+        setUser(u);
+        // A bare /mail visit restores the last-visited folder (or the inbox);
+        // explicit /mail/[folder] deep links are left untouched.
+        const segs = window.location.pathname.split("/").filter(Boolean);
+        if (segs.length <= 1) {
+          const last = readLastFolder();
+          router.replace(last ? `/mail/${encodeURIComponent(last)}` : "/mail/Inbox");
+        }
+      })
+      .catch(() => {
+        // Keep the deep link so a signed-out visitor returns to the folder or
+        // message they asked for after signing in.
+        router.replace(`/?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+      })
       .finally(() => setLoading(false));
   }, [router]);
 
