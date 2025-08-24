@@ -21,6 +21,7 @@ type TokenResult = Token & { token: string };
 
 export default function TokensPage() {
   const t = useTranslations("tokens");
+  const ct = useTranslations("common");
   const [tokens, setTokens] = useState<Token[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState("");
@@ -91,7 +92,7 @@ export default function TokensPage() {
                     {secret}
                   </code>
                   <Button type="button" variant="outline" onClick={copySecret}>
-                    {copied ? "✓" : t("common:copy")}
+                    {copied ? "✓" : ct("copy")}
                   </Button>
                 </div>
                 <DialogFooter>
@@ -125,7 +126,7 @@ export default function TokensPage() {
                 </div>
                 {error && <p className="text-sm text-red-600">{error}</p>}
                 <DialogFooter>
-                  <Button type="submit">{t("common:create")}</Button>
+                  <Button type="submit">{ct("create")}</Button>
                 </DialogFooter>
               </form>
             )}
@@ -150,13 +151,13 @@ export default function TokensPage() {
                   <TableCell className="font-medium">{tok.user_email}</TableCell>
                   <TableCell>{tok.ip || t("ipAny")}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => remove(tok)}>{t("common:delete")}</Button>
+                    <Button variant="ghost" size="sm" onClick={() => remove(tok)}>{ct("delete")}</Button>
                   </TableCell>
                 </TableRow>
               ))}
               {tokens.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-zinc-400">{t("common:noItems")}</TableCell>
+                  <TableCell colSpan={3} className="text-center text-zinc-400">{ct("noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>

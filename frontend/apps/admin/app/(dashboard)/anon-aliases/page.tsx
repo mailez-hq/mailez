@@ -21,6 +21,7 @@ import type { Alias } from "@/lib/types";
 
 export default function AnonAliasesPage() {
   const t = useTranslations("anonAliases");
+  const ct = useTranslations("common");
   const [aliases, setAliases] = useState<Alias[]>([]);
   const [domains, setDomains] = useState<string[]>([]);
   const [error, setError] = useState("");
@@ -106,7 +107,7 @@ export default function AnonAliasesPage() {
               </p>
               {error && <p className="text-sm text-red-600">{error}</p>}
               <DialogFooter>
-                <Button type="submit">{t("common:create")}</Button>
+                <Button type="submit">{ct("create")}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -132,13 +133,13 @@ export default function AnonAliasesPage() {
                   <TableCell>{a.destination}</TableCell>
                   <TableCell>{domainOf(a.email)}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => remove(a)}>{t("common:delete")}</Button>
+                    <Button variant="ghost" size="sm" onClick={() => remove(a)}>{ct("delete")}</Button>
                   </TableCell>
                 </TableRow>
               ))}
               {aliases.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-zinc-400">{t("common:noItems")}</TableCell>
+                  <TableCell colSpan={4} className="text-center text-zinc-400">{ct("noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>

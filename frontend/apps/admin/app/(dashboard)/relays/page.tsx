@@ -19,6 +19,7 @@ import type { Relay } from "@/lib/types";
 
 export default function RelaysPage() {
   const t = useTranslations("relays");
+  const ct = useTranslations("common");
   const [relays, setRelays] = useState<Relay[]>([]);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
@@ -101,7 +102,7 @@ export default function RelaysPage() {
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
               <DialogFooter>
-                <Button type="submit">{editTarget ? t("common:edit") : t("common:create")}</Button>
+                <Button type="submit">{editTarget ? ct("edit") : ct("create")}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -126,15 +127,15 @@ export default function RelaysPage() {
                   <TableCell>{r.smtp || t("smtpDefault")}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>{t("common:edit")}</Button>
-                      <Button variant="ghost" size="sm" onClick={() => remove(r)}>{t("common:delete")}</Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>{ct("edit")}</Button>
+                      <Button variant="ghost" size="sm" onClick={() => remove(r)}>{ct("delete")}</Button>
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
               {relays.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-zinc-400">{t("common:noItems")}</TableCell>
+                  <TableCell colSpan={3} className="text-center text-zinc-400">{ct("noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>
