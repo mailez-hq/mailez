@@ -12,6 +12,7 @@ import { usePaletteActions } from "@/components/palette/palette-actions";
 import { usePreferences } from "@/components/preferences-provider";
 import { useNewMailNotification } from "@/components/mailbox/use-new-mail-notification";
 import { setupPushSubscription, teardownPushSubscription } from "@/lib/push";
+import { writeLastFolder } from "@/lib/preferences";
 import {
   aiDraft, aiStatus, aiSummarize,
   aiPrioritize, aiSearch,
@@ -451,12 +452,20 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   // full detail).
   const pathname = usePathname();
   const segs = (pathname ?? "").split("/").filter(Boolean);
-  const pathFolder = segs[1] ? decodeURIComponent(segs[1]) : "Inbox";
+  // null when the URL has no folder segment (bare /mail, which MailLayout
+  // redirects to the last-visited folder); the inbox stays the fallback.
+  const pathFolder = segs[1] ? decodeURIComponent(segs[1]) : null;
   const pathId = segs.length > 2 ? decodeURIComponent(segs[2]) : null;
 
   useEffect(() => {
-    if (pathFolder !== folder) setFolder(pathFolder);
+    if (pathFolder && pathFolder !== folder) setFolder(pathFolder);
   }, [pathFolder, folder]);
+
+  // Remember the last-visited folder so login / re-open can restore the
+  // user's position instead of always landing in the inbox.
+  useEffect(() => {
+    if (folder) writeLastFolder(folder);
+  }, [folder]);
 
   useEffect(() => {
     if (!pathId) {
@@ -479,11 +488,14 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     // Message-ID header; routing it through the uid path avoids a pointless
     // (and error-prone) reverse lookup.
     const numericId = /^\d+$/.test(pathId);
+    // A pathId only exists when the URL carries a folder segment, so pathFolder
+    // is always set here; TS can't see the invariant, hence the assertion.
+    const pf = pathFolder!;
     const fetch = row
-      ? mailMessage(pathFolder, { uid: row.uid })
+      ? mailMessage(pf, { uid: row.uid })
       : numericId
-        ? mailMessage(pathFolder, { uid: Number(pathId) })
-        : mailMessage(pathFolder, { id: pathId });
+        ? mailMessage(pf, { uid: Number(pathId) })
+        : mailMessage(pf, { id: pathId });
     fetch
       .then((full) => {
         if (cancelled) return;
@@ -1499,7 +1511,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       // and delivers it when the window elapses, so closing the tab no longer
       // loses the send.
       const res = await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, delay);
-      const outboxId = res.outbox_id;
+      const outboxId = res?.outbox_id;
       resetCompose();
 
       showToast(t("sending"), () => {
