@@ -20,6 +20,7 @@ import type { Alias } from "@/lib/types";
 
 export default function AliasesPage() {
   const t = useTranslations("aliases");
+  const ct = useTranslations("common");
   const [aliases, setAliases] = useState<Alias[]>([]);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
@@ -82,7 +83,7 @@ export default function AliasesPage() {
                 <Switch checked={wildcard} onCheckedChange={setWildcard} />
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
-              <DialogFooter><Button type="submit">{t("common:create")}</Button></DialogFooter>
+              <DialogFooter><Button type="submit">{ct("create")}</Button></DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
@@ -107,13 +108,13 @@ export default function AliasesPage() {
                   <TableCell>{a.destination}</TableCell>
                   <TableCell>{a.wildcard ? t("yes") : t("no")}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => remove(a)}>{t("common:delete")}</Button>
+                    <Button variant="ghost" size="sm" onClick={() => remove(a)}>{ct("delete")}</Button>
                   </TableCell>
                 </TableRow>
               ))}
               {aliases.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-zinc-400">{t("common:noItems")}</TableCell>
+                  <TableCell colSpan={4} className="text-center text-zinc-400">{ct("noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>

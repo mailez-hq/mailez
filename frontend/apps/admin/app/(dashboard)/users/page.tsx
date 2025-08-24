@@ -25,6 +25,7 @@ const toDateInput = (s: string) => (s && !s.startsWith("0001") ? s.slice(0, 10) 
 
 export default function UsersPage() {
   const t = useTranslations("users");
+  const ct = useTranslations("common");
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
@@ -271,7 +272,7 @@ export default function UsersPage() {
 
               {error && <p className="text-sm text-red-600">{error}</p>}
               <DialogFooter>
-                <Button type="submit">{editTarget ? t("common:edit") : t("common:create")}</Button>
+                <Button type="submit">{editTarget ? ct("edit") : ct("create")}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -302,15 +303,15 @@ export default function UsersPage() {
                   <TableCell>{u.enabled ? t("enabled") : t("disabled")}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(u)}>{t("common:edit")}</Button>
-                      <Button variant="ghost" size="sm" onClick={() => remove(u)}>{t("common:delete")}</Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(u)}>{ct("edit")}</Button>
+                      <Button variant="ghost" size="sm" onClick={() => remove(u)}>{ct("delete")}</Button>
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
               {users.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-zinc-400">{t("common:noItems")}</TableCell>
+                  <TableCell colSpan={6} className="text-center text-zinc-400">{ct("noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>

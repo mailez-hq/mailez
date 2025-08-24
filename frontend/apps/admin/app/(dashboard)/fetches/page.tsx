@@ -20,6 +20,7 @@ import type { Fetch, User } from "@/lib/types";
 
 export default function FetchesPage() {
   const t = useTranslations("fetches");
+  const ct = useTranslations("common");
   const [fetches, setFetches] = useState<Fetch[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState("");
@@ -187,7 +188,7 @@ export default function FetchesPage() {
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
               <DialogFooter>
-                <Button type="submit">{editTarget ? t("common:edit") : t("common:create")}</Button>
+                <Button type="submit">{editTarget ? ct("edit") : ct("create")}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -214,15 +215,15 @@ export default function FetchesPage() {
                   <TableCell>{status(f)}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(f)}>{t("common:edit")}</Button>
-                      <Button variant="ghost" size="sm" onClick={() => remove(f)}>{t("common:delete")}</Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(f)}>{ct("edit")}</Button>
+                      <Button variant="ghost" size="sm" onClick={() => remove(f)}>{ct("delete")}</Button>
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
               {fetches.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-zinc-400">{t("common:noItems")}</TableCell>
+                  <TableCell colSpan={4} className="text-center text-zinc-400">{ct("noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>
