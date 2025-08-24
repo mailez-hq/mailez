@@ -62,6 +62,27 @@ var migrations = []migration{
 		ID: "20260824_accounts",
 		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Account{}) },
 	},
+	{
+		// Contact groups/avatar columns added with the address-book P1 work;
+		// existing databases need an explicit migration to gain the columns
+		// (AutoMigrate on a fresh DB already creates them via the initial
+		// schema).
+		ID: "20260824_contact_groups_avatar",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Contact{}) },
+	},
+	{
+		// PushSubscription gained the p256dh key column (Web Push ECDH key);
+		// older databases lack it and fail every subscribe/update otherwise.
+		ID: "20260824_push_subscription_p256dh",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&PushSubscription{}) },
+	},
+	{
+		// Outbox gained account_email/account_id columns (aggregated-account
+		// scheduling); older databases lack account_id and fail scheduled
+		// sends.
+		ID: "20260824_outbox_account_id",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Outbox{}) },
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

@@ -55,6 +55,7 @@ services:
       # 容器网络内 backend 用的内部代理端口，映射出来供宿主机后端连接
       - "127.0.0.1:1143:1143"
       - "127.0.0.1:1587:1587"
+      - "127.0.0.1:11490:11490"
     volumes:
       - "./certs:/certs"
       - "./overrides/nginx-dev:/overrides"

@@ -15,7 +15,7 @@ $env:MAILEZ_PORT = '8080'
 $env:DB_DSN = Join-Path $root 'backend\mailez.db'
 $env:MAIL_IMAP_ADDR = '127.0.0.1:1143'
 $env:MAIL_SMTP_ADDR = '127.0.0.1:1587'
-$env:MAIL_SIEVE_ADDR = '127.0.0.1:4190'
+$env:MAIL_SIEVE_ADDR = '127.0.0.1:11490'
 $env:DOVECOT_ADDRESS = '192.168.206.5'
 $env:POSTFIX_ADDRESS = '192.168.206.4'
 
