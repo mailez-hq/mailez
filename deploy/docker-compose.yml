@@ -58,7 +58,7 @@ services:
       - MAILEZ_DKIM_SELECTOR=dkim
       - MAIL_IMAP_ADDR=gateway:1143
       - MAIL_SMTP_ADDR=gateway:1587
-      - MAIL_SIEVE_ADDR=gateway:4190
+      - MAIL_SIEVE_ADDR=gateway:11490
       - FETCH_INTERVAL=300
       - AI_PROVIDER=none
     healthcheck:
