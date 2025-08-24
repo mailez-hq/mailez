@@ -29,6 +29,8 @@
     "noMessages": "暂无邮件",
     "noMatches": "无匹配结果",
     "selectMessage": "选择一封邮件",
+    "welcomeHint": "欢迎使用 mailez — 按 ? 查看快捷键",
+    "welcomeDismiss": "知道了",
     "newMessage": "新邮件",
     "to": "收件人",
     "cc": "抄送",

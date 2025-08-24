@@ -28,6 +28,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&Webhook{},
 		&SmimeCert{},
 		&Account{},
+		&Announcement{},
 		&SchemaMigration{},
 	)
 }

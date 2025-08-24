@@ -3,6 +3,7 @@ import type {
   Contact,
   DraftTone,
   LoginResult,
+  MailAnnouncement,
   MailAccount,
   MailAttachment,
   MailIdentity,
@@ -31,6 +32,7 @@ export type {
   Contact,
   DraftTone,
   LoginResult,
+  MailAnnouncement,
   MailAccount,
   MailAttachment,
   MailIdentity,
@@ -255,6 +257,9 @@ export const mailSnooze = (folder: string, uid: number, until: number | null) =>
   apiPost("/mail/snooze", { folder, uid, until: until ?? 0 });
 
 export const mailSnoozed = () => api<SnoozedMessage[]>("/mail/snoozed");
+
+// Global admin announcement banner (204/undefined when none is active).
+export const mailAnnouncement = () => api<MailAnnouncement | undefined>("/announcement");
 
 // Label definitions (name + color) persisted per account.
 export const mailLabels = () => api<MailLabel[]>("/mail/labels");

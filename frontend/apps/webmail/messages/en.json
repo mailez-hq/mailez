@@ -29,6 +29,8 @@
     "noMessages": "No messages",
     "noMatches": "No matches",
     "selectMessage": "Select a message",
+    "welcomeHint": "Welcome to mailez — press ? to see keyboard shortcuts",
+    "welcomeDismiss": "Got it",
     "newMessage": "New message",
     "to": "To",
     "cc": "Cc",

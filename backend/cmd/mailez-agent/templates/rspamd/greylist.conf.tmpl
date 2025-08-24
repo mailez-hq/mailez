@@ -1,0 +1,6 @@
+{{if .Greylisting}}greylist {
+  timeout = 1h;
+  expire = 48h;
+  key = "ip,from,to";
+}
+{{end}}.include(try=true,priority=1,duplicate=merge) "/overrides/greylist.conf"
