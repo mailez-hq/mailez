@@ -22,7 +22,7 @@ import {
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-// Sidebar navigation for the settings dialog, mirroring the FastMail layout:
+// Sidebar navigation for the settings dialog, with a two-column layout:
 // a section list on the left, the active section's form on the right.
 const SETTINGS_SECTIONS = [
   { id: "appearance", icon: Palette, label: "appearance" },
