@@ -3,7 +3,7 @@ export type Density = "compact" | "cozy" | "relaxed";
 
 // Accent is the brand color family applied via data-accent on <html>. The
 // default "blue" (stone cyan) is the default theme; "green" is the legacy
-// mailez brand teal. Alternatives mimic FastMail's theming.
+// mailez brand teal. Alternatives provide additional theme families.
 export type Accent = "blue" | "green" | "purple" | "orange" | "rose";
 
 // Per-feature AI toggles. A feature switch is only effective while the master
