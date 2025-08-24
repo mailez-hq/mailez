@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, SlidersHorizontal, X } from "lucide-react";
+import { Bookmark, Plus, SlidersHorizontal, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,15 +78,18 @@ export function SearchBuilderDialog({
   open,
   onOpenChange,
   onApply,
+  onSave,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onApply: (spec: MailSearchSpec) => void;
+  onSave: (name: string, spec: MailSearchSpec) => void;
 }) {
   const t = useTranslations("mail");
   const [conditions, setConditions] = useState<Condition[]>([]);
   const [editing, setEditing] = useState<Field | null>(null);
   const [draft, setDraft] = useState("");
+  const [saveName, setSaveName] = useState("");
 
   const fieldLabel = (f: Field) => t(`sb${f.charAt(0).toUpperCase()}${f.slice(1)}`);
   const activeCount = useMemo(() => conditions.length, [conditions]);
@@ -130,10 +133,20 @@ export function SearchBuilderDialog({
     setConditions([]);
     setEditing(null);
     setDraft("");
+    setSaveName("");
   };
 
   const apply = () => {
     onApply(toSpec(conditions));
+    onOpenChange(false);
+  };
+
+  // save persists the current conditions as a named quick entry in the
+  // sidebar; it also closes the dialog so the new entry is visible.
+  const save = () => {
+    if (!saveName.trim() || activeCount === 0) return;
+    onSave(saveName.trim(), toSpec(conditions));
+    setSaveName("");
     onOpenChange(false);
   };
 
@@ -219,13 +232,30 @@ export function SearchBuilderDialog({
         )}
 
         <DialogFooter className="flex items-center justify-between gap-2">
-          {activeCount > 0 ? (
-            <Button type="button" variant="ghost" size="sm" onClick={clearAll}>
-              {t("sbClear")}
-            </Button>
-          ) : (
-            <span />
-          )}
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            {activeCount > 0 ? (
+              <>
+                <Button type="button" variant="ghost" size="sm" onClick={clearAll}>
+                  {t("sbClear")}
+                </Button>
+                <Input
+                  value={saveName}
+                  onChange={(e) => setSaveName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && saveName.trim()) save();
+                  }}
+                  placeholder={t("saveSearchName")}
+                  className="h-8 min-w-24 flex-1 text-sm"
+                />
+                <Button type="button" size="sm" onClick={save} disabled={!saveName.trim()}>
+                  <Bookmark className="size-3.5" />
+                  {t("saveSearch")}
+                </Button>
+              </>
+            ) : (
+              <span />
+            )}
+          </div>
           <Button type="button" onClick={apply} disabled={activeCount === 0}>
             {t("sbApply")}
           </Button>
