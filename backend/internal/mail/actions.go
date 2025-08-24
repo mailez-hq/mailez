@@ -200,7 +200,9 @@ func (c *Client) UnseenCounts(email, token string) (map[string]int, error) {
 		if err != nil {
 			continue
 		}
-		out[inboxName(f)] = int(st.Unseen)
+		// Key by the display spelling so the sidebar badges line up with the
+		// folder tree, which uses the canonical "Inbox" prefix.
+		out[inboxPath(f)] = int(st.Unseen)
 	}
 	return out, nil
 }
