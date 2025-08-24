@@ -128,14 +128,12 @@ func (c *Client) ListFolders(email, token string) ([]string, error) {
 	var folders []string
 	// Canonicalize the protocol-reserved INBOX to the display-friendly
 	// "Inbox" so the mailbox list, URL paths and UI share one spelling that
-	// matches the other folders' Title-case names. Every IMAP call later
-	// normalizes back via inboxName().
+	// matches the other folders' Title-case names. The prefix of nested paths
+	// ("INBOX/Sub") is normalized too: without it the sidebar would build a
+	// separate "INBOX" tree node next to "Inbox" and show the inbox twice.
+	// Every IMAP call later normalizes back via inboxName().
 	for m := range mailboxes {
-		name := m.Name
-		if strings.EqualFold(name, "inbox") {
-			name = "Inbox"
-		}
-		folders = append(folders, name)
+		folders = append(folders, inboxPath(m.Name))
 	}
 	if err := <-done; err != nil {
 		return nil, fmt.Errorf("imap list: %w", err)

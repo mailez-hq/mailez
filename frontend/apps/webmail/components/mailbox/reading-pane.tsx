@@ -38,6 +38,7 @@ import { AttachmentCard } from "@/components/mailbox/reader/attachment-card";
 import { QuoteBlock } from "@/components/mailbox/reader/quote-block";
 import { useMounted } from "@/components/mailbox/reader/use-mounted";
 import { labelColor } from "@/components/mailbox/mail-utils";
+import { buildFolderTree, flattenTree, folderLabel } from "@/components/mailbox/folder-tree";
 import {
   blockRemoteImages, hasRemoteImages, rememberedRemoteSenders, rememberRemoteSender,
 } from "@/components/mailbox/reader/remote-images";
@@ -744,11 +745,11 @@ export function ReadingPane({
                   className="h-7 rounded-md border border-border bg-transparent px-1 text-xs text-muted-foreground outline-none focus-visible:border-ring"
                 >
                   <option value="">{t("moveTo")}…</option>
-                  {folders
-                    .filter((f) => !/^(trash|drafts)$/i.test(f))
-                    .map((f) => (
-                      <option key={f} value={f}>
-                        {f}
+                  {flattenTree(buildFolderTree(folders), (leaf) => folderLabel(t, leaf))
+                    .filter((o) => !/^(trash|drafts)$/i.test(o.value))
+                    .map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
                       </option>
                     ))}
                 </select>

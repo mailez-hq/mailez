@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { MessageRow, ROW_HEIGHTS } from "@/components/mailbox/message-row";
 import { SearchBuilderDialog } from "@/components/mailbox/search-builder-dialog";
 import { VirtualList } from "@/components/mailbox/virtual-list";
+import { buildFolderTree, flattenTree, folderLabel } from "@/components/mailbox/folder-tree";
 
 const SKELETON_ROWS = 8;
 
@@ -131,10 +132,6 @@ export function MessageListPanel({
   // returns every row; classification is a lightweight per-row tag).
   const filtered = category ? messages.filter((m) => m.category === category) : messages;
   const shown = filtered;
-  const folderLabel = (name: string) => {
-    const key = `folder${name.charAt(0).toUpperCase()}${name.slice(1).toLowerCase()}`;
-    return t.has(key) ? t(key) : name;
-  };
 
   return (
     <div className={cn("flex min-h-0 min-w-0 flex-col border-r border-border bg-card", className)}>
@@ -162,7 +159,7 @@ export function MessageListPanel({
                   e.currentTarget.blur();
                 }
               }}
-              placeholder={t("searchPlaceholder", { folder: folderLabel(folder) })}
+              placeholder={t("searchPlaceholder", { folder: folderLabel(t, folder) })}
               className="h-8 pl-8 pr-12"
             />
             {query.trim() !== "" ? (
@@ -325,11 +322,11 @@ export function MessageListPanel({
             className="h-6 rounded-md border border-border bg-transparent px-1 text-xs text-muted-foreground outline-none focus-visible:border-ring"
           >
             <option value="">{t("moveTo")}…</option>
-            {folders
-              .filter((f) => f !== folder && !/^(trash|drafts)$/i.test(f))
-              .map((f) => (
-                <option key={f} value={f}>
-                  {f}
+            {flattenTree(buildFolderTree(folders), (leaf) => folderLabel(t, leaf))
+              .filter((o) => o.value !== folder && !/^(trash|drafts)$/i.test(o.value))
+              .map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
                 </option>
               ))}
           </select>

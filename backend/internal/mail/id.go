@@ -72,12 +72,27 @@ func (mc *msgIDCache) put(key string, uid uint32) {
 // protocol-reserved "INBOX". Per RFC 3501, "INBOX" is case-insensitive, but
 // we normalize every spelling ("Inbox", "inbox") to the upper-case form so a
 // single identity flows into every IMAP call regardless of what the client
-// routing (URL, UI) happened to use.
+// routing (URL, UI) happened to use. The prefix of a nested path is
+// normalized too ("Inbox/Sub" -> "INBOX/Sub").
 func inboxName(folder string) string {
-	if strings.EqualFold(folder, "inbox") {
-		return "INBOX"
+	parts := strings.SplitN(folder, "/", 2)
+	if strings.EqualFold(parts[0], "inbox") {
+		parts[0] = "INBOX"
 	}
-	return folder
+	return strings.Join(parts, "/")
+}
+
+// inboxPath is the inverse of inboxName: it canonicalizes the protocol
+// reserved INBOX prefix of a (possibly nested) mailbox name reported by the
+// server (e.g. "INBOX/Sub") to the display-friendly "Inbox" spelling shared
+// by the UI, URL paths and the folder tree, so the sidebar never shows both
+// "Inbox" and "INBOX" as separate entries.
+func inboxPath(folder string) string {
+	parts := strings.SplitN(folder, "/", 2)
+	if strings.EqualFold(parts[0], "inbox") {
+		parts[0] = "Inbox"
+	}
+	return strings.Join(parts, "/")
 }
 
 // EncodeMessageID wraps the raw Message-ID (e.g. "<abc123@example.com>") into
