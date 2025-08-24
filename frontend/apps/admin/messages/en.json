@@ -10,7 +10,10 @@
     "copy": "Copy",
     "loading": "Loading...",
     "noItems": "No items",
-    "actions": "Actions"
+    "actions": "Actions",
+    "prev": "Previous",
+    "next": "Next",
+    "perPage": "Rows per page"
   },
   "login": {
     "title": "Sign in to mailez",
@@ -209,7 +212,7 @@
   "audit": {
     "title": "Audit log",
     "desc": "A record of admin and self-service activity.",
-    "recent": "Recent activity (last 200)",
+    "recent": "Recent activity",
     "time": "Time",
     "user": "User",
     "method": "Method",

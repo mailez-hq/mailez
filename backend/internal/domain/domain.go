@@ -15,19 +15,27 @@ func (h *Handler) registerDomains(r fiber.Router, mw fiber.Handler) {
 	r.Delete("/domains/:name", mw, h.deleteDomain)
 }
 
-// listDomains returns all domains (admin).
+// listDomains returns all domains (admin), paginated.
 // @Summary List domains
 // @Tags domains
 // @Produce json
-// @Success 200 {array} models.Domain
+// @Param page query int false "page number, 1-based"
+// @Param limit query int false "page size"
+// @Success 200 {object} models.Page
 // @Failure 403 {object} models.APIError
 // @Router /domains [get]
 func (h *Handler) listDomains(c *fiber.Ctx) error {
-	var domains []models.Domain
-	if err := h.DB.Find(&domains).Error; err != nil {
+	page, limit := core.PageParams(c)
+	var total int64
+	if err := h.DB.Model(&models.Domain{}).Count(&total).Error; err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
-	return c.JSON(domains)
+	var domains []models.Domain
+	offset := (page - 1) * limit
+	if err := h.DB.Order("name").Limit(limit).Offset(offset).Find(&domains).Error; err != nil {
+		return core.Fail(c, 500, err, "internal error")
+	}
+	return core.Page(c, domains, int(total), page, limit)
 }
 
 // getDomain returns one domain.

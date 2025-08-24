@@ -1,4 +1,4 @@
-import type { Alias, AuditLog, DkimInfo, LoginResult, Me, SignupDomain } from "@mailez/types";
+import type { Alias, AuditLog, DkimInfo, LoginResult, Me, Page, SignupDomain } from "@mailez/types";
 
 // Re-export the shared auth types for existing importers of @/lib/api.
 export type { Me, LoginResult };
@@ -88,7 +88,8 @@ export const generateDomainDkim = (name: string) =>
   api<DkimInfo>(`/domains/${encodeURIComponent(name)}/dkim`, { method: "POST" });
 
 // audit trail
-export const auditLogs = () => api<AuditLog[]>("/audit");
+export const auditLogs = (page = 1, limit = 50) =>
+  api<Page<AuditLog>>(`/audit?page=${page}&limit=${limit}`);
 
 // config backup
 export type ConfigBackup = {

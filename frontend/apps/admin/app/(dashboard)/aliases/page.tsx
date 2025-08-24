@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { Pagination } from "@/components/pagination";
 import { RowActions } from "@/components/row-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,12 +21,15 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { api, apiDelete, apiPost } from "@/lib/api";
-import type { Alias } from "@/lib/types";
+import type { Alias, Page } from "@/lib/types";
 
 export default function AliasesPage() {
   const t = useTranslations("aliases");
   const ct = useTranslations("common");
   const [aliases, setAliases] = useState<Alias[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
 
@@ -35,11 +39,13 @@ export default function AliasesPage() {
 
   const load = useCallback(async () => {
     try {
-      setAliases(await api<Alias[]>("/aliases"));
+      const res = await api<Page<Alias>>(`/aliases?page=${page}&limit=${pageSize}`);
+      setAliases(res.data);
+      setTotal(res.total);
     } catch (e) {
       setError(e instanceof Error ? e.message : "load failed");
     }
-  }, []);
+  }, [page, pageSize]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -128,6 +134,13 @@ export default function AliasesPage() {
               )}
             </TableBody>
           </Table>
+          <Pagination
+            total={total}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => { setPage(1); setPageSize(s); }}
+          />
         </CardContent>
       </Card>
     </div>

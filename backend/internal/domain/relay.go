@@ -14,18 +14,26 @@ func (h *Handler) registerRelays(r fiber.Router, mw fiber.Handler) {
 	r.Delete("/relays/:name", mw, h.deleteRelay)
 }
 
-// listRelays returns relay hosts.
+// listRelays returns relay hosts, paginated.
 // @Summary List relays
 // @Tags domains
 // @Produce json
-// @Success 200 {array} models.Relay
+// @Param page query int false "page number, 1-based"
+// @Param limit query int false "page size"
+// @Success 200 {object} models.Page
 // @Router /relays [get]
 func (h *Handler) listRelays(c *fiber.Ctx) error {
-	var relays []models.Relay
-	if err := h.DB.Order("name").Find(&relays).Error; err != nil {
+	page, limit := core.PageParams(c)
+	var total int64
+	if err := h.DB.Model(&models.Relay{}).Count(&total).Error; err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
-	return c.JSON(relays)
+	var relays []models.Relay
+	offset := (page - 1) * limit
+	if err := h.DB.Order("name").Limit(limit).Offset(offset).Find(&relays).Error; err != nil {
+		return core.Fail(c, 500, err, "internal error")
+	}
+	return core.Page(c, relays, int(total), page, limit)
 }
 
 // createRelay adds a relay host.
