@@ -14,8 +14,8 @@ type Outbox struct {
 	Subject      string    `gorm:"size:255" json:"subject"`
 	Recipients   string    `gorm:"type:text" json:"-"` // comma-separated envelope rcpt (to+cc+bcc)
 	RawMessage   string    `gorm:"type:text" json:"-"`
-	SendAfter    time.Time `gorm:"index" json:"send_after"`
-	Status       string    `gorm:"size:16;index;default:pending" json:"status"` // pending|sent|failed|cancelled
+	SendAfter    time.Time `gorm:"index;index:idx_outbox_status_send_after,priority:2" json:"send_after"`
+	Status       string    `gorm:"size:16;index;index:idx_outbox_status_send_after,priority:1;default:pending" json:"status"` // pending|sent|failed|cancelled
 	Error        string    `gorm:"size:255" json:"error,omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`

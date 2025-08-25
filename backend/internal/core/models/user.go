@@ -7,12 +7,12 @@ type User struct {
 	Base
 	Email              string    `gorm:"primaryKey;size:255;not null" json:"email"`
 	Localpart          string    `gorm:"size:80;not null" json:"localpart"`
-	DomainName         string    `gorm:"size:80;not null" json:"domain_name"`
+	DomainName         string    `gorm:"size:80;not null;index:idx_users_domain_name" json:"domain_name"`
 	Password           string    `gorm:"size:255;not null" json:"-"`
 	QuotaBytes         int64     `gorm:"not null;default:1000000000" json:"quota_bytes"`
 	QuotaBytesUsed     int64     `gorm:"not null;default:0" json:"quota_bytes_used"`
 	GlobalAdmin        bool      `gorm:"not null;default:false" json:"global_admin"`
-	Enabled            bool      `gorm:"not null;default:true" json:"enabled"`
+	Enabled            bool      `gorm:"not null;default:true;index:idx_users_enabled" json:"enabled"`
 	EnableImap         bool      `gorm:"not null;default:true" json:"enable_imap"`
 	EnablePop          bool      `gorm:"not null;default:true" json:"enable_pop"`
 	AllowSpoofing      bool      `gorm:"not null;default:false" json:"allow_spoofing"`
