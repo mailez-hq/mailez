@@ -20,18 +20,22 @@ func renderNginxAll(cfg NginxConfig) (map[string][]byte, error) {
 	type file struct{ tmpl, dest string }
 	files := []file{
 		{"templates/nginx/nginx.conf.tmpl", "/etc/nginx/nginx.conf"},
-		{"templates/nginx/proxy.conf.tmpl", "/etc/nginx/proxy.conf"},
 	}
-	// The legacy IMAP login proxy only exists in the postdove engine mode; the
-	// mailezine engine authenticates by itself.
 	if cfg.Engine != "mailezine" {
+		files = append(files, file{"templates/nginx/proxy.conf.tmpl", "/etc/nginx/proxy.conf"})
+		// The legacy IMAP login proxy only exists in the postdove engine mode;
+		// the mailezine engine authenticates by itself.
 		files = append(files,
 			file{"templates/nginx/legacy-imap-proxy.conf.tmpl", "/etc/legacy IMAP/proxy.conf"},
 			file{"templates/nginx/login.lua.tmpl", "/etc/legacy IMAP/login.lua"},
 		)
-	}
-	if cfg.TLS != nil {
-		files = append(files, file{"templates/nginx/tls.conf.tmpl", "/etc/nginx/tls.conf"})
+		if cfg.TLS != nil {
+			files = append(files, file{"templates/nginx/tls.conf.tmpl", "/etc/nginx/tls.conf"})
+		}
+	} else {
+		// mailezine mode: caddy owns HTTP/ACME; nginx only stream-forwards
+		// mail ports to the engine.
+		files = append(files, file{"templates/nginx/Caddyfile.tmpl", "/etc/caddy/Caddyfile"})
 	}
 	out := make(map[string][]byte, len(files))
 	for _, f := range files {
