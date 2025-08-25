@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	glebarezsqlite "github.com/glebarez/sqlite"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -16,8 +15,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	fiberSwagger "github.com/swaggo/fiber-swagger"
 	"gorm.io/gorm"
-	gormlogger "gorm.io/gorm/logger"
-	"gorm.io/gorm/schema"
 
 	_ "mailez/backend/docs"
 	"mailez/backend/internal/admin"
@@ -199,16 +196,7 @@ func (s *Server) health(c *fiber.Ctx) error {
 }
 
 func connectDB(cfg core.Config) *gorm.DB {
-	// Pure-Go sqlite driver (no cgo) for local dev; mysql driver lands later.
-	// SingularTable keeps table names aligned with the model names.
-	level := gormlogger.Warn
-	if cfg.LogLevel == "debug" || cfg.LogLevel == "trace" {
-		level = gormlogger.Info
-	}
-	db, err := gorm.Open(glebarezsqlite.Open(cfg.DBDSN), &gorm.Config{
-		NamingStrategy: schema.NamingStrategy{SingularTable: true},
-		Logger:         gormlogger.Default.LogMode(level),
-	})
+	db, err := core.OpenDB(cfg.DBDriver, cfg.DBDSN, cfg.LogLevel)
 	if err != nil {
 		log.Fatalf("db connect: %v", err)
 	}

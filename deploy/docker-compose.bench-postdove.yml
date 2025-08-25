@@ -97,6 +97,10 @@ services:
     image: redis:alpine
     pull_policy: missing
     restart: always
+    # Shared control-plane Redis: the host-run backend (REDIS_ADDR) and the
+    # mailezine phase (same backend) reach it through this published port.
+    ports:
+      - "127.0.0.1:16379:6379"
     networks:
       default:
         ipv4_address: 192.168.210.100
