@@ -4,6 +4,9 @@ import (
 	"encoding/base64"
 	"net"
 	"net/url"
+	"os"
+	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,6 +19,39 @@ import (
 // webmailPorts are the internal ports reserved for webmail traffic; temp
 // tokens are only accepted on these ports.
 var webmailPorts = map[string]bool{"11490": true, "1143": true, "1587": true}
+
+// bcryptGate caps concurrent password verifications. A cost-12 bcrypt check
+// burns a full core for ~300-500ms; a login burst would otherwise saturate
+// every CPU and blow tail latency into multi-second territory, making
+// clients (nginx login.lua, mailezine auth client) retry into the same pile.
+// Serializing through a GOMAXPROCS-sized gate keeps burst throughput
+// predictable and bounded. Size is overridable via MAILEZ_AUTH_WORKERS.
+var bcryptGate = make(chan struct{}, authWorkers())
+
+func authWorkers() int {
+	if v := os.Getenv("MAILEZ_AUTH_WORKERS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	n := runtime.GOMAXPROCS(0)
+	if n < 1 {
+		return 1
+	}
+	return n
+}
+
+// verifyPassword runs the bcrypt verification behind the gate, honouring
+// request cancellation while queued.
+func verifyPassword(ctx *fiber.Ctx, hash, pw string) bool {
+	select {
+	case bcryptGate <- struct{}{}:
+		defer func() { <-bcryptGate }()
+	case <-ctx.UserContext().Done():
+		return false
+	}
+	return password.Verify(hash, pw)
+}
 
 // statuses maps error kinds to per-protocol error messages/codes.
 var statuses = map[string]map[string]string{
@@ -148,7 +184,7 @@ func (h *Handler) checkCredentials(u *models.User, pw, ip, protocol, authPort st
 		}
 		return false
 	}
-	return password.Verify(u.Password, pw)
+	return verifyPassword(c, u.Password, pw)
 }
 
 // serverFor resolves the backend host:port for a protocol. Hosts come from
