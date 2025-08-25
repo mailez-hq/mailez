@@ -1,0 +1,42 @@
+# mailezine mode: HTTP/ACME is served by caddy; mail ports are
+# stream-forwarded by nginx to the engine (which terminates TLS itself).
+# Certificates come from the lego-based ACME loop (same /certs chain the
+# engine's implicit-TLS ports use), so switching engines keeps the same
+# certificate lifecycle.
+
+{{ if eq .TLSFlavor "off" }}http:// {
+{{ else }}https://{{ .Hostname }} {
+	tls /certs/letsencrypt/live/mailez/nginx-chain.pem /certs/letsencrypt/live/mailez/privkey.pem
+{{ end }}
+	root * /static
+	file_server
+
+	handle /health {
+		respond 204
+	}
+{{ if .API }}
+	handle /api/* {
+		reverse_proxy {{ .BackendAddress }}:8080
+	}
+{{ end }}
+	handle /mail/config-v1.1.xml {
+		rewrite * /stack/autoconfig/mozilla
+		reverse_proxy {{ .BackendAddress }}:8080
+	}
+	handle /.well-known/autoconfig/mail/config-v1.1.xml {
+		rewrite * /stack/autoconfig/mozilla
+		reverse_proxy {{ .BackendAddress }}:8080
+	}
+	handle /Autodiscover/Autodiscover.json {
+		rewrite * /stack/autoconfig/microsoft.json
+		reverse_proxy {{ .BackendAddress }}:8080
+	}
+	handle /Autodiscover/Autodiscover.xml {
+		rewrite * /stack/autoconfig/microsoft
+		reverse_proxy {{ .BackendAddress }}:8080
+	}
+	handle /apple.mobileconfig {
+		rewrite * /stack/autoconfig/apple
+		reverse_proxy {{ .BackendAddress }}:8080
+	}
+}
