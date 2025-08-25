@@ -26,6 +26,7 @@ import (
 // the compose files.
 var imageName = map[string]string{
 	"gateway":       "nginx",
+	"gateway-caddy": "caddy",
 	"mail-filter":   "rspamd",
 	"resolver":      "unbound",
 	"macro-scanner": "macro-scanner",

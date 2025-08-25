@@ -24,6 +24,7 @@ services:
   # gateway in mailezine mode: caddy only (HTTP/ACME). The engine publishes
   # the mail ports itself, so no mail ports are mapped here.
   gateway:
+    image: mailez/caddy:local
     environment:
       - MAILEZ_ENGINE=mailezine
     # Replace the base file's mail-port mappings (postdove proxy ports):
