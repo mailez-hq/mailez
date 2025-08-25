@@ -40,9 +40,13 @@ func runNginx() error {
 	// Stale pid cleanup.
 	_ = os.Remove("/var/run/nginx.pid")
 
-	// The legacy IMAP login proxy daemonizes itself; nginx runs in the foreground.
-	if err := exec.Command("/usr/sbin/legacy IMAP", "-c", "/etc/legacy IMAP/proxy.conf").Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "nginx: legacy IMAP proxy failed to start: %v\n", err)
+	// The legacy IMAP login proxy daemonizes itself; nginx runs in the
+	// foreground. In mailezine mode the engine authenticates by itself, so
+	// the proxy is not started.
+	if cfg.Engine != "mailezine" {
+		if err := exec.Command("/usr/sbin/legacy IMAP", "-c", "/etc/legacy IMAP/proxy.conf").Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "nginx: legacy IMAP proxy failed to start: %v\n", err)
+		}
 	}
 
 	if cfg.TLSFlavor == "letsencrypt" {
