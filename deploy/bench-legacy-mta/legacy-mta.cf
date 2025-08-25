@@ -1,0 +1,4 @@
+# Benchmark: disable the rspamd milter so the engine comparison isolates
+# legacy MTA/IMAP stack vs mailezine (rspamd is a shared component in real
+# deployments and is exercised separately).
+smtpd_milters =
