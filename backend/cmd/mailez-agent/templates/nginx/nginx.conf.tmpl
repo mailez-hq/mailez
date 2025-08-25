@@ -4,7 +4,9 @@ worker_processes auto;
 pcre_jit on;
 error_log /dev/stderr notice;
 pid /var/run/nginx.pid;
-load_module "modules/ngx_mail_module.so";
+{{ if ne .Engine "mailezine" }}load_module "modules/ngx_mail_module.so";
+{{ else }}load_module "modules/ngx_stream_module.so";
+{{ end }}
 
 events {
     worker_connections 1024;
@@ -201,7 +203,7 @@ http {
     include /etc/nginx/conf.d/*.conf;
 }
 
-mail {
+{{ if ne .Engine "mailezine" }}mail {
     server_name {{ .Hostname }};
     auth_http http://127.0.0.1:8000/auth/email;
     proxy_pass_error_message on;
@@ -232,3 +234,23 @@ mail {
       auth_http_header Client-Port $remote_port;
     }
 }
+{{ end }}
+
+{{ if eq .Engine "mailezine" }}
+# mailezine mode: the engine terminates TLS itself (RFC 8314 implicit ports)
+# and owns authentication, so the gateway only forwards mail ports and keeps
+# the backend's internal port contract (1143/1587/11490) unchanged.
+stream {
+    server { listen 25; proxy_pass {{ .EngineAddress }}:25; }
+    server { listen 465; proxy_pass {{ .EngineAddress }}:465; }
+    server { listen 587; proxy_pass {{ .EngineAddress }}:587; }
+    server { listen 143; proxy_pass {{ .EngineAddress }}:143; }
+    server { listen 993; proxy_pass {{ .EngineAddress }}:993; }
+    server { listen 110; proxy_pass {{ .EngineAddress }}:110; }
+    server { listen 995; proxy_pass {{ .EngineAddress }}:995; }
+    server { listen 4190; proxy_pass {{ .EngineAddress }}:4190; }
+    server { listen 1143; proxy_pass {{ .EngineAddress }}:143; }
+    server { listen 1587; proxy_pass {{ .EngineAddress }}:1587; }
+    server { listen 11490; proxy_pass {{ .EngineAddress }}:4190; }
+}
+{{ end }}
