@@ -4,19 +4,14 @@ import (
 	"log"
 	"os"
 
-	glebarezsqlite "github.com/glebarez/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/schema"
-
+	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/password"
 )
 
 // seed creates a dev admin user and domain. For local development only.
 func main() {
-	db, err := gorm.Open(glebarezsqlite.Open(dsn()), &gorm.Config{
-		NamingStrategy: schema.NamingStrategy{SingularTable: true},
-	})
+	db, err := core.OpenDB(driver(), dsn(), logLevel())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -65,4 +60,12 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func driver() string {
+	return envOr("DB_DRIVER", "sqlite")
+}
+
+func logLevel() string {
+	return envOr("LOG_LEVEL", "warn")
 }

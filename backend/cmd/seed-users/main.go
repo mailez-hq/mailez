@@ -1,7 +1,8 @@
 // seed-users bulk-creates bench users (N users on one domain) directly in
-// the SQLite database for load testing. All users share one password hash
-// (the auth verification path is identical; only hash generation cost is
-// avoided). For benchmark environments only.
+// the configured database (sqlite for dev, MySQL for production benchmarks)
+// for load testing. All users share one password hash (the auth verification
+// path is identical; only hash generation cost is avoided). For benchmark
+// environments only.
 package main
 
 import (
@@ -10,10 +11,7 @@ import (
 	"os"
 	"strconv"
 
-	glebarezsqlite "github.com/glebarez/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/schema"
-
+	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/password"
 )
@@ -24,9 +22,7 @@ func main() {
 	domainName := envOr("MAILEZ_DOMAIN", "example.com")
 	userPassword := envOr("BENCH_PASSWORD", "benchpass")
 
-	db, err := gorm.Open(glebarezsqlite.Open(dsn), &gorm.Config{
-		NamingStrategy: schema.NamingStrategy{SingularTable: true},
-	})
+	db, err := core.OpenDB(envOr("DB_DRIVER", "sqlite"), dsn, "warn")
 	if err != nil {
 		log.Fatal(err)
 	}

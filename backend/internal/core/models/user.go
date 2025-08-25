@@ -22,8 +22,8 @@ type User struct {
 	ReplyEnabled       bool      `gorm:"not null;default:false" json:"reply_enabled"`
 	ReplySubject       string    `gorm:"size:255" json:"reply_subject"`
 	ReplyBody          string    `gorm:"type:text" json:"reply_body"`
-	ReplyStartdate     time.Time `gorm:"type:date;not null" json:"reply_startdate"`
-	ReplyEnddate       time.Time `gorm:"type:date;not null" json:"reply_enddate"`
+	ReplyStartdate     *time.Time `gorm:"type:date" json:"reply_startdate"`
+	ReplyEnddate       *time.Time `gorm:"type:date" json:"reply_enddate"`
 	DisplayedName      string    `gorm:"size:160;not null;default:''" json:"displayed_name"`
 	SpamEnabled        bool      `gorm:"not null;default:true" json:"spam_enabled"`
 	SpamMarkAsRead     bool      `gorm:"not null;default:true" json:"spam_mark_as_read"`
@@ -41,7 +41,7 @@ type User struct {
 	SmimePrivateKey    string    `gorm:"type:text" json:"-"`          // PEM, encrypted at rest with SECRET_KEY
 	SmimeFingerprint   string    `gorm:"size:64" json:"smime_fingerprint"`
 	SmimeEmail         string    `gorm:"size:255" json:"smime_email"`
-	SmimeNotAfter      time.Time `json:"smime_not_after"`
+	SmimeNotAfter      *time.Time `gorm:"type:date" json:"smime_not_after"`
 
 	Tokens  []Token `gorm:"foreignKey:UserEmail" json:"-"`
 	Fetches []Fetch `gorm:"foreignKey:UserEmail" json:"-"`
@@ -65,6 +65,9 @@ func (u *User) ReplyActive() bool {
 	if !u.ReplyEnabled {
 		return false
 	}
+	if u.ReplyStartdate == nil || u.ReplyEnddate == nil {
+		return false
+	}
 	now := time.Now()
-	return !now.Before(u.ReplyStartdate) && !now.After(u.ReplyEnddate)
+	return !now.Before(*u.ReplyStartdate) && !now.After(*u.ReplyEnddate)
 }
