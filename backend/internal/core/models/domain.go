@@ -21,7 +21,7 @@ type Domain struct {
 type Alternative struct {
 	Base
 	Name       string `gorm:"primaryKey;size:80;not null" json:"name"`
-	DomainName string `gorm:"size:80;not null" json:"domain_name"`
+	DomainName string `gorm:"size:80;not null;index:idx_alternatives_domain_name" json:"domain_name"`
 }
 
 // Relay is a relayed mail domain, optionally via a specific SMTP host.

@@ -5,7 +5,7 @@ import "time"
 // Fetch is a remote POP/IMAP account fetched into a local account.
 type Fetch struct {
 	ID        uint       `gorm:"primaryKey" json:"id"`
-	UserEmail string     `gorm:"size:255;not null" json:"user_email"`
+	UserEmail string     `gorm:"size:255;not null;index:idx_fetches_user_email" json:"user_email"`
 	Protocol  string     `gorm:"size:16;not null" json:"protocol"`
 	Host      string     `gorm:"size:255;not null" json:"host"`
 	Port      int        `gorm:"not null" json:"port"`

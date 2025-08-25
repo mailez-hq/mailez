@@ -89,6 +89,18 @@ var migrations = []migration{
 		ID: "20260824_announcement",
 		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Announcement{}) },
 	},
+	{
+		// Hot-path query indexes: recipient resolution (users.domain_name,
+		// aliases(domain_name,disabled)), admin domain listing, app-token
+		// auth (tokens.user_email), fetch ownership (fetches.user_email),
+		// anonmail ownership (aliases.owner_email), alternative domains, and
+		// the outbox worker poll (status,send_after). AutoMigrate creates the
+		// missing named indexes on existing databases.
+		ID: "20260825_query_indexes",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&User{}, &Alias{}, &Alternative{}, &Token{}, &Fetch{}, &Outbox{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in
