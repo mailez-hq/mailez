@@ -91,30 +91,8 @@ func TestNginxRenderMailezineEngine(t *testing.T) {
 	if err != nil {
 		t.Fatalf("renderNginxAll: %v", err)
 	}
-	nginx := string(files["/etc/nginx/nginx.conf"])
-	for _, want := range []string{
-		"load_module \"modules/ngx_stream_module.so\"",
-		"stream {",
-		"resolver 127.0.0.11",
-		"set $engine mailezine",
-		"listen 465; set $engine mailezine; proxy_pass $engine:465;",
-		"listen 993; set $engine mailezine; proxy_pass $engine:993;",
-		"listen 995; set $engine mailezine; proxy_pass $engine:995;",
-		"listen 1143; set $engine mailezine; proxy_pass $engine:143;",
-		"listen 1587; set $engine mailezine; proxy_pass $engine:1587;",
-		"listen 11490; set $engine mailezine; proxy_pass $engine:4190;",
-	} {
-		if !strings.Contains(nginx, want) {
-			t.Errorf("mailezine nginx.conf missing %q:\n%s", want, nginx)
-		}
-	}
-	for _, banned := range []string{
-		"ngx_mail_module", "auth_http", "mail {", "smtp_auth", "starttls on",
-		"http {", "location /api",
-	} {
-		if strings.Contains(nginx, banned) {
-			t.Errorf("mailezine nginx.conf must not contain %q:\n%s", banned, nginx)
-		}
+	if _, ok := files["/etc/nginx/nginx.conf"]; ok {
+		t.Errorf("nginx.conf must not be rendered in mailezine mode")
 	}
 	caddy := string(files["/etc/caddy/Caddyfile"])
 	for _, want := range []string{
