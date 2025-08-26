@@ -1401,7 +1401,10 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   function replyAll() {
     if (!detail) return;
     const recipients = new Set<string>();
-    [...detail.from, ...detail.to].forEach((a) => {
+    // Reply All addresses every participant of the original message except
+    // the replier: sender, explicit recipients AND cc. (The row context-menu
+    // variant already included cc; this one was dropping it.)
+    [...detail.from, ...(detail.cc || []), ...detail.to].forEach((a) => {
       if (a.email && a.email.toLowerCase() !== me.email.toLowerCase()) recipients.add(a.email);
     });
     openCompose(
