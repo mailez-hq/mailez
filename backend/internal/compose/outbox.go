@@ -53,7 +53,11 @@ func (w *OutboxWorker) Run(ctx context.Context) {
 // flush delivers every pending entry whose undo window has elapsed.
 func (w *OutboxWorker) flush() {
 	var due []models.Outbox
-	if err := w.DB.Where("status = ? AND send_after <= ?", "pending", time.Now()).
+	// Compare against UTC: SQLite compares these DATETIME columns as strings,
+	// so the stored value and the query parameter must use the same zone
+	// offset. enqueue() stores UTC; a local-zone time.Now() here would make
+	// future scheduled sends compare as already-due and fire immediately.
+	if err := w.DB.Where("status = ? AND send_after <= ?", "pending", time.Now().UTC()).
 		Order("send_after").Limit(10).Find(&due).Error; err != nil {
 		return
 	}
@@ -161,7 +165,7 @@ func (h *Handler) outboxCancel(c *fiber.Ctx) error {
 func (h *Handler) outboxList(c *fiber.Ctx) error {
 	user := currentUser(c)
 	var entries []models.Outbox
-	if err := h.DB.Where("account_email = ? AND status = ? AND send_after > ?", user.Email, "pending", time.Now()).
+	if err := h.DB.Where("account_email = ? AND status = ? AND send_after > ?", user.Email, "pending", time.Now().UTC()).
 		Order("send_after").Find(&entries).Error; err != nil {
 		return core.Fail(c, 500, err, "outbox query failed")
 	}
@@ -194,7 +198,11 @@ func (h *Handler) enqueue(userEmail string, accountID uint, from string, to, cc,
 		Subject:      subject,
 		Recipients:   strings.Join(recipients, ","),
 		RawMessage:   raw,
-		SendAfter:    sendAt,
+		// Normalize to UTC so the worker/list comparisons (which happen as
+		// string comparisons in SQLite) are zone-consistent regardless of
+		// whether the caller passed a local time (undo) or a parsed RFC3339
+		// timestamp (scheduled send).
+		SendAfter:    sendAt.UTC(),
 		Status:       "pending",
 	}
 	if err := h.DB.Create(&entry).Error; err != nil {
