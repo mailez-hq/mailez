@@ -258,21 +258,22 @@ export function FolderNav({
       return (
         <Fragment key={node.name}>
           <div className="group relative flex w-full items-center rounded-lg transition-colors">
-            <div className="flex w-5 shrink-0 items-center justify-center">
-              {hasChildren && (
-                <button
-                  onClick={toggleFold}
-                  title={isFolded ? t("expandFolder") : t("collapseFolder")}
-                  className="flex size-4 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {isFolded ? (
-                    <ChevronRight className="size-3" />
-                  ) : (
-                    <ChevronDown className="size-3" />
-                  )}
-                </button>
-              )}
-            </div>
+            {/* No leading spacer on leaf rows: folders, labels and saved
+                searches all align flush with the section header. Only a
+                parent folder gets the expand/collapse chevron. */}
+            {hasChildren && (
+              <button
+                onClick={toggleFold}
+                title={isFolded ? t("expandFolder") : t("collapseFolder")}
+                className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {isFolded ? (
+                  <ChevronRight className="size-3" />
+                ) : (
+                  <ChevronDown className="size-3" />
+                )}
+              </button>
+            )}
             <button
               onClick={() => {
                 onSelect(node.name);
@@ -507,41 +508,34 @@ export function FolderNav({
                 )}
               </div>
               {labels.map((label) => (
-                <div key={label} className="flex w-full items-center">
-                  {/* Same leading spacer as folder rows, so labels line up
-                      with the folder list instead of the section header. */}
-                  <div className="w-5 shrink-0" />
-                  <button
-                    onClick={() => {
-                      onSelectLabel(label);
-                      onClose();
-                    }}
-                    className={cn(
-                      "flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
-                      activeLabel === label
-                        ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
-                    )}
-                  >
-                    <span
-                      className="size-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: labelColor(label, labelColors?.[label]) }}
-                    />
-                    <span className="truncate">{label}</span>
-                  </button>
-                </div>
+                <button
+                  key={label}
+                  onClick={() => {
+                    onSelectLabel(label);
+                    onClose();
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
+                    activeLabel === label
+                      ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                  )}
+                >
+                  <span
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: labelColor(label, labelColors?.[label]) }}
+                  />
+                  <span className="truncate">{label}</span>
+                </button>
               ))}
               {labels.length === 0 && onManageLabels && (
-                <div className="flex w-full items-center">
-                  <div className="w-5 shrink-0" />
-                  <button
-                    onClick={onManageLabels}
-                    className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground"
-                  >
-                    <span className="size-2 shrink-0 rounded-full border border-border" />
-                    {t("newLabel")}
-                  </button>
-                </div>
+                <button
+                  onClick={onManageLabels}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground"
+                >
+                  <span className="size-2 shrink-0 rounded-full border border-border" />
+                  {t("newLabel")}
+                </button>
               )}
             </div>
           )}
@@ -555,14 +549,12 @@ export function FolderNav({
                   key={item.id}
                   className="group flex w-full items-center gap-1 rounded-lg px-1 transition-colors hover:bg-sidebar-accent/60"
                 >
-                  {/* Same leading spacer as folder rows (see labels above). */}
-                  <div className="flex w-5 shrink-0 items-center justify-center" />
                   <button
                     onClick={() => {
                       onSelectSavedSearch(item);
                       onClose();
                     }}
-                    className="min-w-0 flex-1 rounded-lg py-1.5 pl-1.5 pr-1 text-left text-sm text-sidebar-foreground transition-colors hover:text-foreground"
+                    className="min-w-0 flex-1 rounded-lg px-1.5 py-1.5 text-left text-sm text-sidebar-foreground transition-colors hover:text-foreground"
                   >
                     <span className="flex items-center gap-2 truncate">
                       <Search className="size-3.5 shrink-0 opacity-60" />
