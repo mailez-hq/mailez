@@ -245,7 +245,20 @@
     "export": "导出 JSON",
     "import": "导入 JSON...",
     "exported": "备份包含 {domains} 个域名、{users} 个用户、{aliases} 个别名。",
-    "imported": "已导入：{domains} 个域名、{users} 个用户、{aliases} 个别名、{alternatives} 个替代域名、{relays} 个中继、{fetches} 个外部收件、{tokens} 个令牌。",
-    "importConfirm": "导入 {name}？具有相同键的已有条目将被覆盖。"
-  }
+  "imported": "已导入：{domains} 个域名、{users} 个用户、{aliases} 个别名、{alternatives} 个替代域名、{relays} 个中继、{fetches} 个外部收件、{tokens} 个令牌。",
+  "importConfirm": "导入 {name}？具有相同键的已有条目将被覆盖。",
+  "ai": "AI 模型",
+  "aiHint": "配置 webmail AI 功能（摘要、起草、优先级、搜索）使用的 LLM 后端，任何 OpenAI 兼容端点都可以。",
+  "aiEnabled": "启用 AI",
+  "aiBaseUrl": "接口地址",
+  "aiBaseUrlPlaceholder": "https://api.deepseek.com",
+  "aiApiKey": "API 密钥",
+  "aiApiKeyPlaceholder": "留空表示保留当前密钥",
+  "aiApiKeySet": "已保存密钥",
+  "aiModel": "模型",
+  "aiModelPlaceholder": "deepseek-chat",
+  "aiSave": "保存 AI 设置",
+  "aiSaved": "AI 设置已保存",
+  "aiFailed": "保存 AI 设置失败"
+}
 }

@@ -53,6 +53,11 @@ var migrations = []migration{
 		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Webhook{}) },
 	},
 	{
+		// AI provider settings configured through the admin console.
+		ID: "20260826_ai_config",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&AiConfig{}) },
+	},
+	{
 		// S/MIME: own certificate columns on users + imported-cert keyring.
 		ID: "20260824_smime",
 		Up: func(db *gorm.DB) error { return db.AutoMigrate(&User{}, &SmimeCert{}) },

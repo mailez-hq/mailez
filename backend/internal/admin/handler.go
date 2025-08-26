@@ -22,4 +22,5 @@ func currentUser(c *fiber.Ctx) *models.User { return core.CurrentUser(c) }
 func (h *Handler) Register(r fiber.Router) {
 	h.registerAudit(r, h.RequireGlobalAdmin)
 	h.registerConfig(r, h.RequireGlobalAdmin)
+	h.registerAI(r, h.RequireGlobalAdmin)
 }

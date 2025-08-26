@@ -167,7 +167,7 @@ func (s *Server) routes() {
 	s.Auth.RegisterSSO(v1)
 
 	app := core.New(s.DB, s.Auth, s.Cfg)
-	aiMgr := ai.New(s.Cfg)
+	aiMgr := ai.New(s.DB, s.Cfg)
 	user.RegisterPublic(v1, app)
 	authed := v1.Group("", app.RequireAuth, app.Audit)
 
