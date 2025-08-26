@@ -1,20 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="mailez EZ">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="mailez EZ mail">
   <defs>
     <linearGradient id="mz-bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#2F8E6C"/>
       <stop offset="1" stop-color="#2E6E8E"/>
     </linearGradient>
   </defs>
-  <!-- Rounded tile background (solid gradient, no stroke tricks). -->
+  <!-- Rounded tile background -->
   <rect x="24" y="24" width="464" height="464" rx="100" fill="url(#mz-bg)"/>
-  <!-- Subtle top highlight -->
-  <rect x="24" y="24" width="464" height="232" rx="100" fill="#FFFFFF" opacity="0.08"/>
-  <rect x="24" y="232" width="464" height="256" fill="#FFFFFF" opacity="0.08"/>
-  <!-- "EZ" wordmark: direct bold letters, unmistakable at any size. -->
-  <text x="256" y="330" text-anchor="middle" font-family="'Inter','Segoe UI',system-ui,sans-serif" font-size="240" font-weight="800" fill="#FFFFFF" letter-spacing="-8">EZ</text>
-  <!-- Envelope notch on the bottom-right corner to keep the mail identity. -->
-  <g stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <path d="M340 400 H440 V452 H340 Z" />
-    <path d="M340 400 L390 432 L440 400" />
+
+  <!--
+    Connected "EZ": E and Z share the middle bar, so the pair forms one
+    continuous letterform. All bars are 58px thick with 29px round caps.
+    E: spine x=128..186, arms at y=140 / 227 / 314.
+    Z: top arm = E middle arm extended right (y=227), diagonal from
+    (x=384,y=227) down to (x=314,y=314), bottom arm at y=314.
+  -->
+  <g fill="#FFFFFF">
+    <!-- E spine -->
+    <rect x="128" y="140" width="58" height="232" rx="29"/>
+    <!-- E top arm -->
+    <rect x="128" y="140" width="132" height="58" rx="29"/>
+    <!-- E middle arm + Z top arm (shared, full width) -->
+    <rect x="128" y="227" width="256" height="58" rx="29"/>
+    <!-- E bottom arm -->
+    <rect x="128" y="314" width="132" height="58" rx="29"/>
+    <!-- Z bottom arm -->
+    <rect x="256" y="314" width="128" height="58" rx="29"/>
+    <!-- Z diagonal: top-right (384,256) -> bottom-left (314,314) -->
+    <path d="M384 256 L314 314 A29 29 0 0 1 344 340 L430 268 A29 29 0 0 1 384 256 Z"/>
   </g>
+
+  <!-- Mail cues -->
+  <!-- envelope flap fold on the Z diagonal -->
+  <g fill="none" stroke="#2F8E6C" stroke-width="9" stroke-linecap="round" opacity="0.9">
+    <path d="M332 292 L376 236"/>
+  </g>
+  <!-- postmark dot -->
+  <circle cx="428" cy="252" r="12" fill="#FFD98A"/>
+  <!-- paper plane swoosh -->
+  <path d="M438 96 L494 62 L472 128 Z" fill="#FFD98A"/>
+  <path d="M494 62 L472 128 L456 112 Z" fill="#FFC96B"/>
 </svg>
