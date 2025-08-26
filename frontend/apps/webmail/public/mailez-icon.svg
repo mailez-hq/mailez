@@ -1,26 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="mailez">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="mailez EZ">
   <defs>
     <linearGradient id="mz-bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#2F8E6C"/>
       <stop offset="1" stop-color="#2E6E8E"/>
     </linearGradient>
-    <linearGradient id="mz-m" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="mz-ez" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#FFFFFF"/>
-      <stop offset="1" stop-color="#E8F5EE"/>
+      <stop offset="1" stop-color="#DFF2E9"/>
     </linearGradient>
   </defs>
-  <!-- Rounded tile, no perforated edge. -->
+  <!-- Rounded tile. -->
   <rect x="24" y="24" width="464" height="464" rx="104" fill="url(#mz-bg)"/>
-  <!-- Subtle inner highlight for depth on light backgrounds. -->
   <rect x="24" y="24" width="464" height="464" rx="104" fill="none" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="10"/>
-  <!-- Envelope: flap + body, drawn as clean strokes. -->
-  <g fill="none" stroke="url(#mz-m)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round">
-    <!-- envelope flap (V) -->
-    <path d="M142 196 L256 288 L370 196"/>
-    <!-- envelope body -->
-    <path d="M142 196 H370 V326 H142 Z"/>
+
+  <!--
+    The mark is the word "EZ" drawn as an envelope:
+      - E: vertical spine (x=138) + three bars (top/mid/bottom) on the left
+      - Z: top bar, diagonal flap, bottom bar on the right
+      - the diagonal is also the envelope flap, so mail + brand merge.
+  -->
+  <g fill="none" stroke="url(#mz-ez)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round">
+    <!-- E: spine + 3 bars -->
+    <path d="M138 170 V342"/>
+    <path d="M138 170 H252"/>
+    <path d="M138 256 H236"/>
+    <path d="M138 342 H252"/>
+    <!-- Z: top bar, diagonal (flap), bottom bar -->
+    <path d="M374 170 H252"/>
+    <path d="M374 170 L252 342"/>
+    <path d="M252 342 H374"/>
   </g>
-  <!-- Swoosh: paper plane leaving the envelope (speed + mail). -->
-  <path d="M406 130 L472 96 L446 164 Z" fill="#FFD98A"/>
-  <path d="M472 96 L446 164 L420 150 Z" fill="#FFC96B"/>
+  <!-- A small paper-plane swoosh at the top-right reinforces mail/send. -->
+  <path d="M426 92 L482 62 L462 126 Z" fill="#FFD98A"/>
+  <path d="M482 62 L462 126 L446 110 Z" fill="#FFC96B"/>
 </svg>
