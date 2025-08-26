@@ -504,6 +504,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   useEffect(() => {
     setQuery("");
     setSearching(false);
+    setSearchSpec(null);
+    lastSearchRef.current = "";
     setSelectedUids(new Set());
     setCursor(0);
     setSelected(null);
@@ -1576,6 +1578,14 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   }
 
   function selectFolder(f: string) {
+    // Clicking the folder that is already open (e.g. right after a saved
+    // search that kept the same URL) must drop the active search conditions
+    // and show the folder's full list; router.push to the identical path is
+    // a no-op and would leave the filtered results on screen.
+    if (f === folder && (searching || searchSpec || query.trim() || activeLabel)) {
+      clearSearch();
+      return;
+    }
     router.push(`/mail/${encodeURIComponent(f)}`);
   }
 
