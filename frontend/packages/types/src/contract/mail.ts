@@ -71,11 +71,14 @@ export type MailSearchSpec = {
 
 export type SnoozedMessage = MailMessage & { until: string };
 
-// MailLabel is a user-defined tag: messages carry the name as an IMAP
-// keyword while the definition row only stores presentation data (color).
+// MailLabel is a user-defined tag: messages carry the ASCII wire keyword
+// (possibly =XX-encoded for non-ASCII display names like Chinese) while the
+// API exposes the human-readable name. The keyword field is the IMAP atom;
+// clients that speak display names can ignore it.
 export type MailLabel = {
   id: number;
   name: string;
+  keyword?: string;
   color: string;
 };
 

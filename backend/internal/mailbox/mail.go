@@ -51,6 +51,7 @@ func (h *Handler) mailFlag(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "token error"})
 	}
+	user := currentUser(c)
 	var in struct {
 		Folder string `json:"folder"`
 		UID    uint32 `json:"uid"`
@@ -60,6 +61,9 @@ func (h *Handler) mailFlag(c *fiber.Ctx) error {
 	if err := c.BodyParser(&in); err != nil || in.Folder == "" || in.UID == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "folder and uid are required"})
 	}
+	// Labels arrive as display names (possibly Chinese); map to the ASCII
+	// keyword stored on the wire. System flags pass through unchanged.
+	in.Flag = h.labelKeywordByName(user.Email, in.Flag)
 	if err := h.Mail.With(d).SetFlag(d.Email, d.Token, in.Folder, in.UID, in.Flag, in.Value); err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}
@@ -111,6 +115,10 @@ func (h *Handler) mailSnoozed(c *fiber.Ctx) error {
 	msgs, err := h.Mail.With(d).SnoozedMessages(d.Email, d.Token)
 	if err != nil {
 		return core.Fail(c, 502, err, "mail service error")
+	}
+	names := h.labelNamesByKeyword(currentUser(c).Email)
+	for i := range msgs {
+		msgs[i].Flags = decodeLabelFlags(msgs[i].Flags, names)
 	}
 	return c.JSON(msgs)
 }
@@ -353,6 +361,7 @@ func (h *Handler) mailMessages(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "token error"})
 	}
+	user := currentUser(c)
 	folder := c.Query("folder", "INBOX")
 	page, err := strconv.Atoi(c.Query("page", "0"))
 	if err != nil || page < 0 {
@@ -363,7 +372,7 @@ func (h *Handler) mailMessages(c *fiber.Ctx) error {
 		return core.Fail(c, 502, err, "mail service error")
 	}
 	c.Set("X-Total-Messages", strconv.Itoa(total))
-	return c.JSON(messages)
+	return c.JSON(h.decodeMessages(user.Email, messages))
 }
 
 // mailSearch searches messages in a folder or all folders.
@@ -379,23 +388,26 @@ func (h *Handler) mailSearch(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "token error"})
 	}
+	user := currentUser(c)
 	folder := c.Query("folder", "INBOX")
 	query := c.Query("q")
 	if query == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "q is required"})
 	}
+	// label:<name> tokens carry display names; rewrite them to wire keywords.
+	query = h.rewriteLabelTokens(user.Email, query)
 	if strings.EqualFold(folder, "all") {
 		messages, err := h.Mail.With(d).SearchAllMessages(d.Email, d.Token, query)
 		if err != nil {
 			return core.Fail(c, 502, err, "mail service error")
 		}
-		return c.JSON(messages)
+		return c.JSON(h.decodeMessages(user.Email, messages))
 	}
 	messages, err := h.Mail.With(d).SearchMessages(d.Email, d.Token, folder, query)
 	if err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}
-	return c.JSON(messages)
+	return c.JSON(h.decodeMessages(user.Email, messages))
 }
 
 // mailSearchSpec runs a structured search query (no syntax parsing). The body
@@ -412,12 +424,17 @@ func (h *Handler) mailSearchSpec(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "token error"})
 	}
+	user := currentUser(c)
 	var in struct {
 		Folder string           `json:"folder"`
 		Query  mail.SearchQuery `json:"query"`
 	}
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid search body"})
+	}
+	// Structured label filters use display names; map to wire keywords.
+	for i := range in.Query.Labels {
+		in.Query.Labels[i] = h.labelKeywordByName(user.Email, in.Query.Labels[i])
 	}
 	if in.Folder == "" {
 		in.Folder = "INBOX"
@@ -427,13 +444,13 @@ func (h *Handler) mailSearchSpec(c *fiber.Ctx) error {
 		if err != nil {
 			return core.Fail(c, 502, err, "mail service error")
 		}
-		return c.JSON(messages)
+		return c.JSON(h.decodeMessages(user.Email, messages))
 	}
 	messages, err := h.Mail.With(d).SearchMessagesSpec(d.Email, d.Token, in.Folder, in.Query)
 	if err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}
-	return c.JSON(messages)
+	return c.JSON(h.decodeMessages(user.Email, messages))
 }
 
 // mailThread returns every message in a conversation.
@@ -449,6 +466,7 @@ func (h *Handler) mailThread(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "token error"})
 	}
+	user := currentUser(c)
 	folder := c.Query("folder", "INBOX")
 	tid := c.Query("thread_id")
 	if tid == "" {
@@ -458,6 +476,7 @@ func (h *Handler) mailThread(c *fiber.Ctx) error {
 	if err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}
+	messages = h.decodeMessages(user.Email, messages)
 	subject := ""
 	if len(messages) > 0 {
 		subject = messages[0].Subject
@@ -504,6 +523,7 @@ func (h *Handler) mailMessage(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "token error"})
 	}
+	user := currentUser(c)
 	folder := c.Query("folder", "INBOX")
 
 	// A message may be addressed by its routable id (stable across mailboxes)
@@ -528,6 +548,9 @@ func (h *Handler) mailMessage(c *fiber.Ctx) error {
 		if err != nil {
 			return core.Fail(c, 502, err, "mail service error")
 		}
+	}
+	if msg != nil {
+		msg.Flags = decodeLabelFlags(msg.Flags, h.labelNamesByKeyword(user.Email))
 	}
 	return c.JSON(msg)
 }
