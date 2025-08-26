@@ -43,16 +43,21 @@ export function ShortcutsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-80">
-          <div className="divide-y divide-border">
+          {/* Right padding keeps the shortcut keys clear of the overlay
+              scrollbar, which otherwise covers the last few pixels of every
+              kbd. */}
+          <div className="divide-y divide-border pr-4">
             {rows.map(([key, label]) => (
-              <div key={key} className="flex items-center justify-between gap-4 py-2">
-                <span className="text-sm text-muted-foreground">{label}</span>
-                <kbd className="rounded border border-border bg-muted px-2 py-0.5 font-mono text-xs">
+              <div key={key} className="flex min-w-0 items-center justify-between gap-4 py-2">
+                <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+                  {label}
+                </span>
+                <kbd className="shrink-0 rounded border border-border bg-muted px-2 py-0.5 font-mono text-xs">
                   {key}
                 </kbd>
               </div>
