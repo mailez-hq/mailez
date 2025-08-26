@@ -109,29 +109,28 @@ export function playChime() {
 
 // textToHtml converts a plain-text draft (reply quoting, AI drafts) into
 // sanitized HTML for the rich-text editor: "> " lines become blockquotes,
-// everything else becomes paragraphs.
+// everything else becomes paragraphs. Consecutive lines of a run are folded
+// into ONE <p> with <br> separators (blank lines become extra <br>s) so that
+// TipTap's plain-text readback (block separator "\n\n", hard break "\n")
+// round-trips the original newlines exactly — per-line <p>s with empty
+// <p><br></p> blocks would double every blank line on readback.
 export function textToHtml(text: string): string {
   const out: string[] = [];
-  let inQuote = false;
-  const closeQuote = () => {
-    if (inQuote) {
-      out.push("</blockquote>");
-      inQuote = false;
-    }
+  let run: {quote: boolean; lines: string[]} | null = null;
+  const flush = () => {
+    if (!run) return;
+    const inner = run.lines.map((l) => escHtml(l)).join("<br>") || "<br>";
+    const p = `<p>${inner}</p>`;
+    out.push(run.quote ? `<blockquote>${p}</blockquote>` : p);
+    run = null;
   };
   for (const raw of text.replace(/\r\n/g, "\n").split("\n")) {
     const m = raw.match(/^>\s?(.*)$/);
-    if (m) {
-      if (!inQuote) {
-        out.push("<blockquote>");
-        inQuote = true;
-      }
-      out.push(`<p>${escHtml(m[1]) || "<br>"}</p>`);
-    } else {
-      closeQuote();
-      out.push(`<p>${escHtml(raw) || "<br>"}</p>`);
-    }
+    const quote = !!m;
+    if (run && run.quote !== quote) flush();
+    if (!run) run = {quote, lines: []};
+    run.lines.push(quote ? m![1] : raw);
   }
-  closeQuote();
+  flush();
   return out.join("");
 }
