@@ -93,6 +93,7 @@ export function FolderNav({
   onSelect,
   onSelectLabel,
   onManageLabels,
+  onDeleteLabel,
   onSelectSavedSearch,
   onRemoveSavedSearch,
   onMoveToFolder,
@@ -125,6 +126,7 @@ export function FolderNav({
   onSelect: (folder: string) => void;
   onSelectLabel: (label: string) => void;
   onManageLabels?: () => void;
+  onDeleteLabel?: (label: string) => void;
   onSelectSavedSearch: (item: SavedSearch) => void;
   onRemoveSavedSearch: (id: number) => void;
   onMoveToFolder: (folder: string, uid: number) => void;
@@ -143,6 +145,7 @@ export function FolderNav({
   const folderTree = buildFolderTree(folders);
   const [dialog, setDialog] = useState<FolderDialog | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [confirmLabel, setConfirmLabel] = useState<string | null>(null);
   const [aclFor, setAclFor] = useState<string | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [nameInput, setNameInput] = useState("");
@@ -508,25 +511,74 @@ export function FolderNav({
                 )}
               </div>
               {labels.map((label) => (
-                <button
-                  key={label}
-                  onClick={() => {
-                    onSelectLabel(label);
-                    onClose();
-                  }}
-                  className={cn(
-                    "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
-                    activeLabel === label
-                      ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                <div key={label} className="group relative flex w-full items-center">
+                  <button
+                    onClick={() => {
+                      onSelectLabel(label);
+                      onClose();
+                    }}
+                    className={cn(
+                      "flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
+                      activeLabel === label
+                        ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                    )}
+                  >
+                    <span
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: labelColor(label, labelColors?.[label]) }}
+                    />
+                    <span className="truncate">{label}</span>
+                  </button>
+                  {onDeleteLabel && (
+                    <div className="absolute right-1 top-1/2 z-30 -translate-y-1/2">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        title={t("delete")}
+                        className={cn(
+                          "size-6 rounded-md",
+                          confirmLabel === label
+                            ? "opacity-100"
+                            : "opacity-0 group-hover:opacity-100",
+                        )}
+                        onClick={() =>
+                          setConfirmLabel(confirmLabel === label ? null : label)
+                        }
+                      >
+                        <Trash2 className="size-3.5" />
+                        <span className="sr-only">{t("delete")}</span>
+                      </Button>
+                      {confirmLabel === label && (
+                        <div className="absolute right-0 top-full z-30 mt-1 w-40 rounded-lg border border-border bg-popover p-1 text-sm shadow-lg">
+                          <p className="px-2 py-1 text-xs text-muted-foreground">
+                            {t("confirmDeleteLabel", { name: label })}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="xs"
+                              variant="destructive"
+                              className="flex-1"
+                              onClick={() => {
+                                onDeleteLabel(label);
+                                setConfirmLabel(null);
+                              }}
+                            >
+                              {t("delete")}
+                            </Button>
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              onClick={() => setConfirmLabel(null)}
+                            >
+                              {t("cancel")}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
-                >
-                  <span
-                    className="size-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: labelColor(label, labelColors?.[label]) }}
-                  />
-                  <span className="truncate">{label}</span>
-                </button>
+                </div>
               ))}
               {labels.length === 0 && onManageLabels && (
                 <button

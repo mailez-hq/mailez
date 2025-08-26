@@ -86,6 +86,7 @@ export function MailView() {
     settingsInitialSection,
     selectFolder,
     selectLabel,
+    deleteLabel,
     runSavedSearch,
     removeSavedSearch,
     moveTo,
@@ -281,6 +282,8 @@ export function MailView() {
         onManageAccounts={() => openSettingsSection("accounts")}
         onSelect={selectFolder}
         onSelectLabel={selectLabel}
+        onManageLabels={() => setLabelManagerOpen(true)}
+        onDeleteLabel={deleteLabel}
         onSelectSavedSearch={runSavedSearch}
         onRemoveSavedSearch={removeSavedSearch}
         onMoveToFolder={(dest, uid) => moveTo([uid], dest, t("toastMoved"))}
