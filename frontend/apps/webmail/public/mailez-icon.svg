@@ -1,46 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="mailez EZ envelope">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="mailez EZ">
   <defs>
     <linearGradient id="mz-bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#2F8E6C"/>
       <stop offset="1" stop-color="#2E6E8E"/>
     </linearGradient>
-    <linearGradient id="mz-stroke" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFFFFF"/>
-      <stop offset="1" stop-color="#DFF1E8"/>
-    </linearGradient>
   </defs>
   <!-- Rounded tile background -->
   <rect x="24" y="24" width="464" height="464" rx="100" fill="url(#mz-bg)"/>
 
-  <!-- Complete envelope outline: top, left, right, bottom + flap V. -->
-  <g fill="none" stroke="#FFFFFF" stroke-width="34" stroke-linecap="round" stroke-linejoin="round">
-    <!-- top edge -->
-    <path d="M150 170 H362"/>
-    <!-- left edge -->
-    <path d="M150 170 V342"/>
-    <!-- right edge -->
-    <path d="M362 170 V342"/>
-    <!-- bottom edge -->
-    <path d="M150 342 H362"/>
-    <!-- flap V -->
-    <path d="M150 170 L256 268 L362 170"/>
+  <!--
+    EZ as one connected letterform, drawn with rounded strokes.
+    E: spine + three bars. Z: top bar, diagonal, bottom bar.
+    The strokes are arranged so the pair reads as an abstract envelope:
+    E's three bars form the top / flap-seam / bottom edges, Z's diagonal
+    is the flap fold, and the right side is closed by Z's vertical return.
+  -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <!-- E spine -->
+    <path d="M136 168 V344"/>
+    <!-- E top arm (envelope top edge) -->
+    <path d="M136 168 H254"/>
+    <!-- E middle arm (flap seam) -->
+    <path d="M136 256 H236"/>
+    <!-- E bottom arm (envelope bottom edge) -->
+    <path d="M136 344 H254"/>
+    <!-- Z top bar (continues the top edge) -->
+    <path d="M376 168 H254"/>
+    <!-- Z diagonal (flap fold) -->
+    <path d="M376 168 L254 344"/>
+    <!-- Z bottom bar (continues the bottom edge) -->
+    <path d="M254 344 H376"/>
+    <!-- Z vertical return (closes the right side) -->
+    <path d="M376 168 V344"/>
   </g>
 
-  <!-- EZ letterforms inside the envelope, in the brand green. -->
-  <g fill="none" stroke="#2F8E6C" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
-    <!-- E: spine + 3 bars -->
-    <path d="M186 200 V310"/>
-    <path d="M186 200 H236"/>
-    <path d="M186 255 H226"/>
-    <path d="M186 310 H236"/>
-    <!-- Z: top bar, diagonal, bottom bar -->
-    <path d="M326 200 H276"/>
-    <path d="M326 200 L276 310"/>
-    <path d="M276 310 H326"/>
-  </g>
-
-  <!-- Postmark + paper plane -->
-  <circle cx="398" cy="224" r="15" fill="#FFD98A"/>
-  <path d="M430 92 L488 58 L466 126 Z" fill="#FFD98A"/>
-  <path d="M488 58 L466 126 L450 110 Z" fill="#FFC96B"/>
+  <!-- Small flap hint: a short V crease from the top-center, plus a postmark dot. -->
+  <path d="M254 168 L282 236" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round" fill="none" opacity="0.9"/>
+  <circle cx="404" cy="230" r="15" fill="#FFD98A"/>
 </svg>
