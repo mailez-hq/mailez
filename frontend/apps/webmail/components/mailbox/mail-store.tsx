@@ -20,7 +20,7 @@ import {
   contacts, mailFlag, mailMove, mailIdentities,
   mailFolders, mailFolderCreate, mailFolderRename, mailFolderDelete, mailFolderClear,
   mailLabelDelete, mailLabelRename, mailLabelSave, mailLabels, mailMessage, mailMessages, mailSaveDraft, mailSearch, mailSearchSpec, mailSend, mailThread, mailUnseen, mailUndoSend, mailUnsubscribe, mailScheduled,
-  mailSnooze, mailSnoozed,
+  mailSnooze,
   meProfile, updateMeSettings,
   pgpEncrypt, pgpLookup, pgpSign,
   type Contact, type DraftTone, type MailAccount, type MailIdentity, type MailLabel, type MailMessage, type MailThread, type Me,
@@ -47,14 +47,88 @@ import {
 const MailStoreContext = createContext<any>(null);
 
 // buildSearchSpec merges the free-text keywords with the visual builder
-// conditions into a structured spec; null when nothing is active.
+// conditions into a structured spec; null when nothing is active. The
+// documented keyword syntax (from:, to:, subject:, is:unread, is:flagged,
+// has:attachment, label:, before:, after:) is parsed into structured fields
+// here, mirroring the backend's parseSearchQuery; bare words become text.
+function applySearchSyntax(keywords: string, spec: MailSearchSpec): boolean {
+  let active = false;
+  const re = /([a-z]+):"([^"]*)"|([a-z]+):(\S+)|(\S+)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(keywords)) !== null) {
+    let key = "";
+    let val = "";
+    if (m[1]) {
+      key = m[1];
+      val = m[2];
+    } else if (m[3]) {
+      key = m[3];
+      val = m[4];
+    } else {
+      spec.text = [...(spec.text ?? []), m[5]];
+      active = true;
+      continue;
+    }
+    switch (key.toLowerCase()) {
+      case "from":
+        spec.from = [...(spec.from ?? []), val];
+        active = true;
+        break;
+      case "to":
+        spec.to = [...(spec.to ?? []), val];
+        active = true;
+        break;
+      case "subject":
+        spec.subject = [...(spec.subject ?? []), val];
+        active = true;
+        break;
+      case "has":
+        if (val.toLowerCase() === "attachment") {
+          spec.hasAttachment = true;
+          active = true;
+        }
+        break;
+      case "is":
+        if (val.toLowerCase() === "unread") {
+          spec.unseen = true;
+          active = true;
+        }
+        if (val.toLowerCase() === "flagged" || val.toLowerCase() === "starred") {
+          spec.flagged = true;
+          active = true;
+        }
+        break;
+      case "label":
+        if (val) {
+          spec.labels = [...(spec.labels ?? []), val];
+          active = true;
+        }
+        break;
+      case "before": {
+        const t = new Date(`${val}T00:00:00Z`);
+        if (!Number.isNaN(t.getTime())) {
+          spec.before = t.toISOString();
+          active = true;
+        }
+        break;
+      }
+      case "after": {
+        const t = new Date(`${val}T00:00:00Z`);
+        if (!Number.isNaN(t.getTime())) {
+          spec.after = t.toISOString();
+          active = true;
+        }
+        break;
+      }
+    }
+  }
+  return active;
+}
+
 function buildSearchSpec(keywords: string, spec: MailSearchSpec | null): MailSearchSpec | null {
   const merged: MailSearchSpec = spec ? { ...spec } : {};
-  const words = keywords.split(/\s+/).filter(Boolean);
-  if (words.length) {
-    merged.text = [...(spec?.text ?? []), ...words];
-  }
-  const active = Object.entries(merged).some(([, v]) =>
+  const syntaxActive = applySearchSyntax(keywords, merged);
+  const active = syntaxActive || Object.entries(merged).some(([, v]) =>
     Array.isArray(v) ? v.length > 0 : Boolean(v),
   );
   return active ? merged : null;
@@ -196,7 +270,6 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [scheduledLoading, setScheduledLoading] = useState(false);
   // Snoozed messages: keyword-based; the backend resurfaced due ones lazily.
   const [snoozedMsgs, setSnoozedMsgs] = useState<SnoozedMessage[]>([]);
-  const [snoozedLoading, setSnoozedLoading] = useState(false);
 
   // ---- compose: form fields ----
   const [to, setTo] = useState<string[]>([]);
@@ -774,6 +847,13 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     setSelected(null);
     setDetail(null);
     setCursor(0);
+    // Drop any opened-message segment from the URL: the reading pane is being
+    // cleared with the search, and leaving a stale /mail/<folder>/<id> makes a
+    // later click on the same row a no-op (pathId never changes, so the
+    // pathId effect never re-runs).
+    if (segs.length > 2) {
+      router.replace(`/mail/${encodeURIComponent(folder)}`, { scroll: false });
+    }
     try {
       setMessages(await mailSearchSpec(searchAll ? "all" : folder, spec));
       lastSearchRef.current = spec.text?.join(" ") ?? "";
@@ -809,6 +889,9 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     setActiveLabel("");
     lastSearchRef.current = "";
     setCursor(0);
+    if (segs.length > 2) {
+      router.replace(`/mail/${encodeURIComponent(folder)}`, { scroll: false });
+    }
     loadMessages(folder);
   }
 
@@ -827,41 +910,15 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     }
   }
 
-  // Virtual views: unread / starred / attachments / snoozed as built-in
-  // filters. Snoozed is a dedicated fetch (keyword-driven), not a search.
-  function selectView(view: string) {
-    setActiveView(view);
-    if (view === "snoozed") {
-      setQuery("");
-      setSearching(false);
-      loadSnoozed();
-      return;
-    }
-    const q =
-      view === "unread"
-        ? "is:unread"
-        : view === "flagged"
-          ? "is:flagged"
-          : view === "attachment"
-            ? "has:attachment"
-            : "";
-    if (q) {
-      setQuery(q);
-      doSearch(q);
-    } else {
-      setQuery("");
-      clearSearch();
-    }
-  }
-
   // Label filter (clicking a tag in the sidebar).
   function selectLabel(label: string) {
     setActiveView("all");
     setActiveLabel(label);
-    const q = label ? `label:${label}` : "";
-    if (q) {
-      setQuery(q);
-      doSearch(q);
+    if (label) {
+      // Run the structured search directly; keep the keyword box empty
+      // instead of echoing the raw label: syntax into it.
+      setQuery("");
+      runSearchWithSpec({ labels: [label] });
     } else {
       setQuery("");
       clearSearch();
@@ -1099,18 +1156,6 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "pin failed");
-    }
-  }
-
-  async function loadSnoozed() {
-    setSnoozedLoading(true);
-    setError("");
-    try {
-      setSnoozedMsgs(await mailSnoozed());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "load snoozed failed");
-    } finally {
-      setSnoozedLoading(false);
     }
   }
 
@@ -1764,7 +1809,6 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     messages,
     displayMessages,
     snoozedMsgs,
-    snoozedLoading,
     total,
     searching,
     loading,
@@ -1779,8 +1823,6 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     cursor,
     selected,
     searchAll,
-    activeView,
-    selectView,
     categoryFilter,
     setCategoryFilter,
     doAiSearch,

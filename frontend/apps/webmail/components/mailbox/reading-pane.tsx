@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
   ArrowLeft,
@@ -341,6 +341,7 @@ export function ReadingPane({
   const [pgpError, setPgpError] = useState("");
   const [labelOpen, setLabelOpen] = useState(false);
   const [newLabel, setNewLabel] = useState("");
+  const labelMenuRef = useRef<HTMLDivElement>(null);
   const [rawOpen, setRawOpen] = useState(false);
   const [rawText, setRawText] = useState("");
   const [rawLoading, setRawLoading] = useState(false);
@@ -364,6 +365,26 @@ export function ReadingPane({
     setRawText("");
     setRemoteLoaded(rememberedRemoteSenders().includes(domain));
   }, [detail.uid, detail.from]);
+
+  // Close the label menu when clicking outside it or pressing Escape; the
+  // menu is a plain popover without a modal backdrop.
+  useEffect(() => {
+    if (!labelOpen) return;
+    function onMouseDown(e: MouseEvent) {
+      if (labelMenuRef.current && !labelMenuRef.current.contains(e.target as Node)) {
+        setLabelOpen(false);
+      }
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setLabelOpen(false);
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [labelOpen]);
 
   const senderDomain = (detail.from[0]?.email || "").split("@").pop() || "";
   const [remoteLoaded, setRemoteLoaded] = useState(() =>
@@ -539,7 +560,7 @@ export function ReadingPane({
                 </span>
               );
             })}
-          <div className="relative">
+          <div className="relative" ref={labelMenuRef}>
             <Button
               size="sm"
               variant="ghost"
@@ -591,6 +612,7 @@ export function ReadingPane({
                       if (e.key === "Enter" && newLabel.trim()) {
                         onToggleLabel(newLabel.trim());
                         setNewLabel("");
+                        setLabelOpen(false);
                       }
                     }}
                     placeholder={t("newLabel")}
@@ -602,6 +624,7 @@ export function ReadingPane({
                       if (newLabel.trim()) {
                         onToggleLabel(newLabel.trim());
                         setNewLabel("");
+                        setLabelOpen(false);
                       }
                     }}
                   >
