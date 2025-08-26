@@ -46,6 +46,29 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MailStoreContext = createContext<any>(null);
 
+// composeSignature fingerprints the compose fields. It is compared against
+// the baseline captured when compose opens, so a pristine reply/forward
+// (only the auto-generated quote) is never mistaken for user content.
+function composeSignature(vals: {
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  body: string;
+  bodyText: string;
+  attachments: {filename: string; size: number}[];
+}): string {
+  return JSON.stringify([
+    vals.to,
+    vals.cc,
+    vals.bcc,
+    vals.subject,
+    vals.body,
+    vals.bodyText,
+    vals.attachments.map((a) => `${a.filename}:${a.size}`),
+  ]);
+}
+
 // buildSearchSpec merges the free-text keywords with the visual builder
 // conditions into a structured spec; null when nothing is active. The
 // documented keyword syntax (from:, to:, subject:, is:unread, is:flagged,
@@ -303,6 +326,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const searchSeq = useRef(0);
   const pendingG = useRef(false);
   const draftUidRef = useRef<number | null>(null);
+  const draftBaselineRef = useRef("");
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Serializes draft saves: while a save is in flight the draft UID is not yet
   // known, so a second overlapping save would create a duplicate draft instead
@@ -424,11 +448,18 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
 
   // Auto-save the draft 30s after the user stops typing, replacing the
   // previous auto-save so one compose session keeps exactly one draft.
+  // A pristine reply/forward (only the auto-generated quote, nothing typed)
+  // is not user content and must not create a draft on its own.
   useEffect(() => {
     if (!composeOpen) return;
     const hasContent =
       to.length > 0 || cc.length > 0 || subject.trim() !== "" || bodyText.trim() !== "" || attachments.length > 0;
     if (!hasContent) return;
+    const pristine =
+      draftUidRef.current == null &&
+      draftBaselineRef.current ===
+        composeSignature({to, cc, bcc, subject, body, bodyText, attachments});
+    if (pristine) return;
     setDraftSaved(false);
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(async () => {
@@ -447,7 +478,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     return () => {
       if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     };
-  }, [composeOpen, to, cc, subject, bodyText, body, attachments]);
+  }, [composeOpen, to, cc, bcc, subject, bodyText, body, attachments]);
 
   // saveDraftNow writes the draft immediately (manual "save draft" button);
   // auto-save also runs 30s after the user stops typing.
@@ -481,9 +512,15 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   function closeCompose() {
     const hasContent =
       to.length > 0 || cc.length > 0 || subject.trim() !== "" || bodyText.trim() !== "" || attachments.length > 0;
+    // Closing a pristine reply (auto quote, no edits, no existing draft)
+    // dismisses it without polluting the Drafts folder.
+    const pristine =
+      draftUidRef.current == null &&
+      draftBaselineRef.current ===
+        composeSignature({to, cc, bcc, subject, body, bodyText, attachments});
     // A create (uid == null) must not race another in-flight create, otherwise
     // two drafts appear; updating an existing draft is always safe.
-    if (hasContent && (draftUidRef.current != null || !draftSavingRef.current)) {
+    if (hasContent && !pristine && (draftUidRef.current != null || !draftSavingRef.current)) {
       mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, attachments)
         .then((res) => {
           draftUidRef.current = res.uid || draftUidRef.current;
@@ -1274,7 +1311,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       finalHtml = `${html}<p><br></p><p>--</p>${sigHtml}`;
       finalText = text ? `${text}\n\n-- \n${sig}` : `-- \n${sig}`;
     }
-    setTo(toAddr ? toAddr.split(",").map((s) => s.trim()).filter(Boolean) : []);
+    const parsedTo = toAddr ? toAddr.split(",").map((s) => s.trim()).filter(Boolean) : [];
+    setTo(parsedTo);
     setCc([]);
     setBcc([]);
     setCcExpanded(false);
@@ -1286,6 +1324,17 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     setEncryptOn(false);
     setDraftSaved(false);
     draftUidRef.current = null;
+    // Baseline for pristine-reply detection: only real user edits (or an
+    // existing draft) should trigger auto/close-save.
+    draftBaselineRef.current = composeSignature({
+      to: parsedTo,
+      cc: [],
+      bcc: [],
+      subject: subj,
+      body: finalHtml,
+      bodyText: finalText,
+      attachments: [],
+    });
     setComposeFocus(focus);
     setComposeOpen(true);
   }
