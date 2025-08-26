@@ -18,6 +18,7 @@ import {
   aiPrioritize, aiSearch,
   accounts, setActiveAccountId,
   contacts, mailFlag, mailMove, mailIdentities,
+  logout as apiLogout,
   mailFolders, mailFolderCreate, mailFolderRename, mailFolderDelete, mailFolderClear,
   mailLabelDelete, mailLabelRename, mailLabelSave, mailLabels, mailMessage, mailMessages, mailSaveDraft, mailSearch, mailSearchSpec, mailSend, mailThread, mailUnseen, mailUndoSend, mailUnsubscribe, mailScheduled,
   mailSnooze,
@@ -1065,6 +1066,16 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     }
   }
 
+  // logout signs out and returns to the sign-in page (full navigation so all
+  // in-memory mailbox state is dropped).
+  async function logout() {
+    try {
+      await apiLogout();
+    } finally {
+      window.location.href = "/";
+    }
+  }
+
   function openMessage(m: MailMessage, srcFolder = folder) {
     if (!m.flags.includes("\\Seen")) {
       mailFlag(srcFolder, m.uid, "\\Seen", true).then(refreshUnseen).catch(() => {});
@@ -1954,6 +1965,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     togglePriority,
     aiSearching,
     refreshMail,
+    logout,
     refreshing,
     openContextMenu,
     onResizeStart,
