@@ -66,15 +66,15 @@ export default function SignupPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-background to-muted/50 p-4">
-      <div className="absolute top-4 right-4">
+      <div className="absolute bottom-4 left-4">
         <LocaleSwitcher />
       </div>
       <div className="mb-6 flex items-center gap-3">
         <Logo className="size-11" />
         <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-          mailez
+          Mailez{" "}
           <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
-            admin
+            Admin
           </span>
         </h1>
       </div>

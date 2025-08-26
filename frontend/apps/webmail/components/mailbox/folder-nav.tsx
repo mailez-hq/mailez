@@ -288,7 +288,7 @@ export function FolderNav({
                 if (uid) onMoveToFolder(node.name, uid);
               }}
               className={cn(
-                "flex min-w-0 flex-1 items-center gap-2.5 rounded-lg py-1.5 pr-2.5 text-sm transition-colors",
+                "flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
                 active
                   ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
                   : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
@@ -385,10 +385,7 @@ export function FolderNav({
         <div className="flex h-12 items-center justify-between px-3">
           <Link href="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-foreground hover:opacity-80">
             <Logo />
-            mail
-            <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
-              ez
-            </span>
+            Mailez Webmail
           </Link>
           <Button variant="ghost" size="sm" onClick={onClose} className="lg:hidden">
             <Menu className="size-4" />

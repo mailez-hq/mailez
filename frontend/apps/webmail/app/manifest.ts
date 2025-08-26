@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "mailez Webmail",
-    short_name: "mailez",
-    description: "mailez webmail — mail easy",
+    name: "Mailez Webmail",
+    short_name: "Mailez",
+    description: "Mailez webmail — mail easy",
     start_url: "/",
     display: "standalone",
     background_color: "#fafaf7",

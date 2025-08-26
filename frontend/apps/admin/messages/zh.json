@@ -16,7 +16,7 @@
     "perPage": "每页条数"
   },
   "login": {
-    "title": "登录 mailez",
+    "title": "登录 Mailez",
     "description": "输入邮箱和密码",
     "email": "邮箱",
     "password": "密码",

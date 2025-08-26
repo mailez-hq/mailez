@@ -112,7 +112,7 @@ export default function Home() {
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
           <span className="text-3xl font-extrabold tracking-tight">
-            mail
+            Mail
             <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
               ez
             </span>

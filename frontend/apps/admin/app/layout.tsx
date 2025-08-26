@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "mailez · Admin",
-  description: "mailez mail server admin console",
+  title: "Mailez · Admin",
+  description: "Mailez mail server admin console",
 };
 
 // Supported locales; the language lives in the NEXT_LOCALE cookie only and the
