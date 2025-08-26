@@ -24,7 +24,7 @@ export function useNewMailNotification(
             playChime();
             if (typeof Notification !== "undefined" && Notification.permission === "granted") {
               try {
-                new Notification("mailez", { body: t("newMail", { count: n - prev }) });
+                new Notification("Mailez", { body: t("newMail", { count: n - prev }) });
               } catch {
                 // notification rejected by the platform
               }
