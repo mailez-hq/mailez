@@ -125,6 +125,7 @@
     "labelColor": "颜色",
     "renameLabel": "重命名",
     "confirmDelete": "删除？",
+    "confirmDeleteLabel": "删除标签“{name}”？将同时从所有邮件移除。",
     "noLabels": "暂无标签",
     "folders": "文件夹",
     "newFolder": "新建文件夹",
