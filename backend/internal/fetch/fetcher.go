@@ -275,5 +275,30 @@ func (f *Fetcher) deliver(recipient, raw string) error {
 	if !strings.HasSuffix(raw, "\r\n") {
 		msg = append(msg, '\r', '\n')
 	}
-	return smtp.SendMail(f.SmtpAddr, nil, recipient, []string{recipient}, msg)
+	// Internal link to the local MTA: tolerate the dev self-signed cert.
+	c, err := smtp.Dial(f.SmtpAddr)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	if err := c.StartTLS(&tls.Config{InsecureSkipVerify: true}); err != nil {
+		// plaintext internal link is fine
+	}
+	if err := c.Mail(recipient); err != nil {
+		return err
+	}
+	if err := c.Rcpt(recipient); err != nil {
+		return err
+	}
+	w, err := c.Data()
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(msg); err != nil {
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+	return c.Quit()
 }
