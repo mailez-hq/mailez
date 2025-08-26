@@ -119,3 +119,22 @@ export type ConfigStats = {
 export const exportConfig = () => api<ConfigBackup>("/config/export");
 export const importConfig = (data: ConfigBackup) =>
   apiPost<ConfigStats>("/config/import", data);
+
+// AI provider settings (admin console)
+export interface AiConfigView {
+  enabled: boolean;
+  provider: string;
+  base_url: string;
+  model: string;
+  has_api_key?: boolean;
+}
+
+export const getAIConfig = () => api<AiConfigView>("/config/ai");
+
+export const putAIConfig = (input: {
+  enabled?: boolean;
+  provider?: string;
+  base_url?: string;
+  api_key?: string;
+  model?: string;
+}) => apiPut<AiConfigView>("/config/ai", input);

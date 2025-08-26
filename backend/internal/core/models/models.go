@@ -10,6 +10,7 @@ import (
 func AutoMigrate(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&Config{},
+		&AiConfig{},
 		&Domain{},
 		&Alternative{},
 		&Relay{},

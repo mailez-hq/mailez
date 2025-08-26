@@ -245,7 +245,20 @@
     "export": "Export JSON",
     "import": "Import JSON...",
     "exported": "Backup contains {domains} domains, {users} users, {aliases} aliases.",
-    "imported": "Imported: {domains} domains, {users} users, {aliases} aliases, {alternatives} alternatives, {relays} relays, {fetches} fetches, {tokens} tokens.",
-    "importConfirm": "Import {name}? Existing entries with the same keys will be overwritten."
-  }
+  "imported": "Imported: {domains} domains, {users} users, {aliases} aliases, {alternatives} alternatives, {relays} relays, {fetches} fetches, {tokens} tokens.",
+  "importConfirm": "Import {name}? Existing entries with the same keys will be overwritten.",
+  "ai": "AI provider",
+  "aiHint": "Configure the LLM backend used by webmail AI features (summary, draft, priority, search). Any OpenAI-compatible endpoint works.",
+  "aiEnabled": "Enable AI",
+  "aiBaseUrl": "Base URL",
+  "aiBaseUrlPlaceholder": "https://api.deepseek.com",
+  "aiApiKey": "API key",
+  "aiApiKeyPlaceholder": "Leave empty to keep the current key",
+  "aiApiKeySet": "A key is stored",
+  "aiModel": "Model",
+  "aiModelPlaceholder": "deepseek-chat",
+  "aiSave": "Save AI settings",
+  "aiSaved": "AI settings saved",
+  "aiFailed": "Failed to save AI settings"
+}
 }
