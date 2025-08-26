@@ -9,32 +9,31 @@
   <rect x="24" y="24" width="464" height="464" rx="100" fill="url(#mz-bg)"/>
 
   <!--
-    EZ as one connected letterform, drawn with rounded strokes.
-    E: spine + three bars. Z: top bar, diagonal, bottom bar.
-    The strokes are arranged so the pair reads as an abstract envelope:
-    E's three bars form the top / flap-seam / bottom edges, Z's diagonal
-    is the flap fold, and the right side is closed by Z's vertical return.
+    Connected EZ whose strokes double as an abstract envelope:
+      E (left): spine + three arms -> envelope left edge, top, seam, bottom.
+      Z (right): top arm continues the top, diagonal stays as the flap fold,
+                 bottom arm continues the bottom, right arm closes the side.
+    No enclosing frame - the letterforms themselves suggest the envelope.
   -->
-  <g fill="none" stroke="#FFFFFF" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
-    <!-- E spine -->
-    <path d="M136 168 V344"/>
-    <!-- E top arm (envelope top edge) -->
-    <path d="M136 168 H254"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="42" stroke-linecap="round" stroke-linejoin="round">
+    <!-- E spine (envelope left edge) -->
+    <path d="M140 172 V340"/>
+    <!-- E top arm (envelope top edge, left half) -->
+    <path d="M140 172 H248"/>
     <!-- E middle arm (flap seam) -->
-    <path d="M136 256 H236"/>
-    <!-- E bottom arm (envelope bottom edge) -->
-    <path d="M136 344 H254"/>
-    <!-- Z top bar (continues the top edge) -->
-    <path d="M376 168 H254"/>
-    <!-- Z diagonal (flap fold) -->
-    <path d="M376 168 L254 344"/>
-    <!-- Z bottom bar (continues the bottom edge) -->
-    <path d="M254 344 H376"/>
-    <!-- Z vertical return (closes the right side) -->
-    <path d="M376 168 V344"/>
+    <path d="M140 256 H232"/>
+    <!-- E bottom arm (envelope bottom edge, left half) -->
+    <path d="M140 340 H248"/>
+    <!-- Z top arm (envelope top edge, right half) -->
+    <path d="M372 172 H248"/>
+    <!-- Z diagonal (flap fold, open) -->
+    <path d="M372 172 L248 340"/>
+    <!-- Z bottom arm (envelope bottom edge, right half) -->
+    <path d="M248 340 H372"/>
+    <!-- Z right arm (closes the right side) -->
+    <path d="M372 172 V340"/>
   </g>
 
-  <!-- Small flap hint: a short V crease from the top-center, plus a postmark dot. -->
-  <path d="M254 168 L282 236" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round" fill="none" opacity="0.9"/>
-  <circle cx="404" cy="230" r="15" fill="#FFD98A"/>
+  <!-- A short flap crease from the top-center keeps the envelope read -->
+  <path d="M248 172 L270 228" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" fill="none" opacity="0.75"/>
 </svg>
