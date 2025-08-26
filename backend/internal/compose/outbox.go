@@ -2,6 +2,7 @@ package compose
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net/smtp"
@@ -100,7 +101,37 @@ func deliverOutbox(addr, from string, recipients []string, raw string) error {
 	if !strings.HasSuffix(raw, "\r\n") {
 		msg = append(msg, '\r', '\n')
 	}
-	return smtp.SendMail(addr, nil, from, recipients, msg)
+	// The local MTA (postdove gateway or mailezine dev) may present a
+	// self-signed certificate on the internal link; verify=false matches
+	// the rest of the internal mail client (mail.go tlsConfig).
+	c, err := smtp.Dial(addr)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	// Opportunistic STARTTLS with the internal (self-signed) cert tolerated.
+	if err := c.StartTLS(&tls.Config{InsecureSkipVerify: true}); err != nil {
+		// plaintext internal link (postdove dev) is fine
+	}
+	if err := c.Mail(from); err != nil {
+		return err
+	}
+	for _, rcpt := range recipients {
+		if err := c.Rcpt(rcpt); err != nil {
+			return err
+		}
+	}
+	w, err := c.Data()
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(msg); err != nil {
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+	return c.Quit()
 }
 
 // outboxCancel lets the sender undo a parked message within the window or
