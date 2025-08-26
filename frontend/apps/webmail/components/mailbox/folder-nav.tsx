@@ -42,6 +42,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/logo";
 import { FolderACLDialog } from "@/components/mailbox/folder-acl-dialog";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import {
   SYSTEM_FOLDERS,
   buildFolderTree,
@@ -567,6 +568,9 @@ export function FolderNav({
         </nav>
 
         <div className="border-t border-sidebar-border p-2">
+          <div className="mb-1 flex items-center justify-center">
+            <LocaleSwitcher />
+          </div>
           <div className="mb-1 flex items-center justify-center gap-0.5">
             <Button variant="ghost" size="sm" onClick={onContacts} title={t("contacts")}>
               <Users className="size-4" />
