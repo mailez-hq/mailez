@@ -14,6 +14,7 @@
   "mail": {
     "write": "Write",
     "settings": "Settings",
+    "logout": "Sign out",
     "contacts": "Contacts",
     "filterRules": "Filter rules (Sieve)",
     "search": "Search",

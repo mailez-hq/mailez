@@ -210,12 +210,15 @@ func (h *Handler) mailFolders(c *fiber.Ctx) error {
 
 // validFolderName enforces mailbox-name rules: non-empty, no control
 // characters, a sane length, and no "." / ".." or empty hierarchy parts.
+// Non-ASCII (Unicode) names are allowed — the IMAP engine handles them
+// (CREATE/LIST/RENAME/DELETE) and the move path was already creating them,
+// so rejecting them here only made folders undeletable.
 func validFolderName(name string) bool {
 	if name == "" || len(name) > 200 {
 		return false
 	}
 	for _, r := range name {
-		if r <= ' ' || r >= 0x7f {
+		if r < 0x20 || r == 0x7f {
 			return false
 		}
 	}

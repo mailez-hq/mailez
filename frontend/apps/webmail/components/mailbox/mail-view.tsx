@@ -143,6 +143,7 @@ export function MailView() {
     togglePriority,
     aiSearching,
     refreshMail,
+    logout,
     refreshing,
     openContextMenu,
     onResizeStart,
@@ -295,6 +296,7 @@ export function MailView() {
         onSettings={() => openSettingsSection("appearance")}
         onContacts={() => setContactsOpen(true)}
         onSieve={() => setSieveOpen(true)}
+        onLogout={logout}
         onScheduled={() => {
           setScheduledOpen(true);
           loadScheduled();
