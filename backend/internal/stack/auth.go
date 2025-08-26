@@ -17,8 +17,17 @@ import (
 )
 
 // webmailPorts are the internal ports reserved for webmail traffic; temp
-// tokens are only accepted on these ports.
-var webmailPorts = map[string]bool{"11490": true, "1143": true, "1587": true}
+// tokens are only accepted on these ports. The postdove engine reaches the
+// gateway proxies on 1143/11490/1587; mailezine publishes the engine ports
+// itself (143 imap, 4190 managesieve, 1587 submission), so those must be
+// accepted for the temp-token path too.
+var webmailPorts = map[string]bool{
+	"11490": true, // gateway managesieve proxy
+	"1143":  true, // gateway imap proxy
+	"1587":  true, // submission (both engines)
+	"143":   true, // mailezine imap direct
+	"4190":  true, // mailezine managesieve direct
+}
 
 // bcryptGate caps concurrent password verifications. A cost-12 bcrypt check
 // burns a full core for ~300-500ms; a login burst would otherwise saturate
