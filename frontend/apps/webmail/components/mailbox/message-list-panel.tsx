@@ -50,8 +50,6 @@ export function MessageListPanel({
   onSaveSearchSpec,
   searchAll,
   onToggleSearchAll,
-  activeView,
-  onSelectView,
   category,
   onCategoryChange,
   aiSearchEnabled,
@@ -101,8 +99,6 @@ export function MessageListPanel({
   onSaveSearchSpec: (name: string, spec: MailSearchSpec) => void;
   searchAll: boolean;
   onToggleSearchAll: () => void;
-  activeView: string;
-  onSelectView: (view: string) => void;
   category: string;
   onCategoryChange: (category: string) => void;
   aiSearchEnabled: boolean;
@@ -130,8 +126,22 @@ export function MessageListPanel({
   }, [searchSpec]);
   // Category pills filter the loaded page client-side (the backend still
   // returns every row; classification is a lightweight per-row tag).
-  const filtered = category ? messages.filter((m) => m.category === category) : messages;
+  const categoryOf = (m: MailMessage) => categories?.[String(m.uid)] ?? m.category;
+  const filtered = category ? messages.filter((m) => categoryOf(m) === category) : messages;
   const shown = filtered;
+  // Only show category pills for categories that actually appear in the
+  // loaded page, so the filter row doesn't advertise dead categories.
+  const presentCategories = useMemo(() => {
+    const found = new Set<string>();
+    for (const m of messages) {
+      const c = categoryOf(m);
+      if (c) found.add(c);
+    }
+    return ["work", "social", "newsletter", "shopping", "finance", "other"].filter((c) =>
+      found.has(c),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, categories]);
 
   return (
     <div className={cn("flex min-h-0 min-w-0 flex-col border-r border-border bg-card", className)}>
@@ -234,25 +244,9 @@ export function MessageListPanel({
             <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
           </Button>
         </div>
-        <div className="mt-1.5 flex items-center gap-1">
-          {["all", "unread", "flagged", "attachment"].map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => onSelectView(v)}
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[11px] transition-colors",
-                activeView === v
-                  ? "bg-accent font-medium text-accent-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              {t(`view${v.charAt(0).toUpperCase()}${v.slice(1)}`)}
-            </button>
-          ))}
-        </div>
+        {presentCategories.length > 0 && (
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          {["", "work", "social", "newsletter", "shopping", "finance"].map((c) => (
+          {["", ...presentCategories].map((c) => (
             <button
               key={c}
               type="button"
@@ -268,6 +262,7 @@ export function MessageListPanel({
             </button>
           ))}
         </div>
+        )}
         {aiPriorityEnabled && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
             <Button
@@ -291,8 +286,8 @@ export function MessageListPanel({
       )}
 
       {selectedUids.size > 0 && (
-        <div className="flex items-center gap-1 border-b border-border px-2 py-1.5">
-          <span className="mr-1 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-1 border-b border-border px-2 py-1.5">
+          <span className="mr-1 shrink-0 whitespace-nowrap text-xs text-muted-foreground">
             {t("selected", { count: selectedUids.size })}
           </span>
           <Button size="xs" variant="outline" onClick={onBulkDelete}>
