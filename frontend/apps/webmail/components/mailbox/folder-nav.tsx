@@ -383,7 +383,14 @@ export function FolderNav({
         )}
       >
         <div className="flex h-12 items-center justify-between px-3">
-          <Link href="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-foreground hover:opacity-80">
+          {/* Logo navigates straight into the mailbox instead of "/" (the
+              sign-in route), so clicking it never flashes the login page or
+              re-runs the auth check. */}
+          <Link
+            href="/mail/Inbox"
+            onClick={onClose}
+            className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-foreground hover:opacity-80"
+          >
             <Logo />
             Mailez Webmail
           </Link>
@@ -474,13 +481,15 @@ export function FolderNav({
             </button>
           </div>
           {renderFolderNodes(folderTree)}
-          <button
-            onClick={onScheduled}
-            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground"
-          >
-            <CalendarClock className="size-4 shrink-0 opacity-70" />
-            <span className="truncate">{t("scheduled")}</span>
-          </button>
+          <div className="mt-3 border-t border-sidebar-border pt-2">
+            <button
+              onClick={onScheduled}
+              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground"
+            >
+              <CalendarClock className="size-4 shrink-0 opacity-70" />
+              <span className="truncate">{t("scheduled")}</span>
+            </button>
+          </div>
           {labels && (
             <div className="mt-3 border-t border-sidebar-border pt-2">
               <div className="flex items-center justify-between pr-1">
@@ -498,34 +507,41 @@ export function FolderNav({
                 )}
               </div>
               {labels.map((label) => (
-                <button
-                  key={label}
-                  onClick={() => {
-                    onSelectLabel(label);
-                    onClose();
-                  }}
-                  className={cn(
-                    "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
-                    activeLabel === label
-                      ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
-                  )}
-                >
-                  <span
-                    className="size-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: labelColor(label, labelColors?.[label]) }}
-                  />
-                  <span className="truncate">{label}</span>
-                </button>
+                <div key={label} className="flex w-full items-center">
+                  {/* Same leading spacer as folder rows, so labels line up
+                      with the folder list instead of the section header. */}
+                  <div className="w-5 shrink-0" />
+                  <button
+                    onClick={() => {
+                      onSelectLabel(label);
+                      onClose();
+                    }}
+                    className={cn(
+                      "flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
+                      activeLabel === label
+                        ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                    )}
+                  >
+                    <span
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: labelColor(label, labelColors?.[label]) }}
+                    />
+                    <span className="truncate">{label}</span>
+                  </button>
+                </div>
               ))}
               {labels.length === 0 && onManageLabels && (
-                <button
-                  onClick={onManageLabels}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground"
-                >
-                  <span className="size-2 shrink-0 rounded-full border border-border" />
-                  {t("newLabel")}
-                </button>
+                <div className="flex w-full items-center">
+                  <div className="w-5 shrink-0" />
+                  <button
+                    onClick={onManageLabels}
+                    className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground"
+                  >
+                    <span className="size-2 shrink-0 rounded-full border border-border" />
+                    {t("newLabel")}
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -539,12 +555,14 @@ export function FolderNav({
                   key={item.id}
                   className="group flex w-full items-center gap-1 rounded-lg px-1 transition-colors hover:bg-sidebar-accent/60"
                 >
+                  {/* Same leading spacer as folder rows (see labels above). */}
+                  <div className="flex w-5 shrink-0 items-center justify-center" />
                   <button
                     onClick={() => {
                       onSelectSavedSearch(item);
                       onClose();
                     }}
-                    className="min-w-0 flex-1 rounded-lg px-1.5 py-1.5 text-left text-sm text-sidebar-foreground transition-colors hover:text-foreground"
+                    className="min-w-0 flex-1 rounded-lg py-1.5 pl-1.5 pr-1 text-left text-sm text-sidebar-foreground transition-colors hover:text-foreground"
                   >
                     <span className="flex items-center gap-2 truncate">
                       <Search className="size-3.5 shrink-0 opacity-60" />
@@ -568,6 +586,9 @@ export function FolderNav({
           <div className="mb-1 flex items-center justify-center">
             <LocaleSwitcher />
           </div>
+          {/* Divider between the language switcher and the user info /
+              account controls below. */}
+          <div className="mx-2 mb-1.5 border-t border-sidebar-border" />
           <div className="mb-1 flex items-center justify-center gap-0.5">
             <Button variant="ghost" size="sm" onClick={onContacts} title={t("contacts")}>
               <Users className="size-4" />
