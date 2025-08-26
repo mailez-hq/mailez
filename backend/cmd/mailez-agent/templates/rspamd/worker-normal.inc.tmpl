@@ -1,1 +1,9 @@
+{{- if eq .Engine "mailezine" }}
+# mailezine mode: the engine classifies over HTTP (checkv2), so run a
+# normal scanner worker instead of the postdove milter.
+enabled = true;
+bind_socket = "*:11333";
+mime = true;
+{{- else }}
 enabled = false;
+{{- end }}
