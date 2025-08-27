@@ -165,6 +165,7 @@ export function MailView() {
     reply,
     replyWithQuote,
     replyAll,
+    editDraft,
     forward,
     backToList,
     moveDetailTo,
@@ -180,6 +181,8 @@ export function MailView() {
     setScheduledOpen,
     scheduledLoading,
     loadScheduled,
+    openSnoozed,
+    snoozeMessage,
     cancelScheduled,
     composeOpen,
     receiptOn,
@@ -337,6 +340,7 @@ export function MailView() {
           setScheduledOpen(true);
           loadScheduled();
         }}
+        onSnoozed={openSnoozed}
         onClose={() => setSidebarOpen(false)}
       />
 
@@ -456,6 +460,8 @@ export function MailView() {
             onRecall={recallMessage}
             onSendReceipt={sendReceipt}
             onApplyRecall={applyRecall}
+            onEditDraft={editDraft}
+            onSnooze={(untilMs) => detail && snoozeMessage(detail, untilMs)}
           />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 bg-secondary p-6 text-sm text-muted-foreground dark:bg-background">

@@ -5,6 +5,7 @@ import {
   Archive,
   ArrowLeft,
   Ban,
+  BellRing,
   CalendarDays,
   ChevronDown,
   ChevronUp,
@@ -17,6 +18,7 @@ import {
   Lock,
   MailCheck,
   MailWarning,
+  PenLine,
   Printer,
   RotateCw,
   Undo2,
@@ -45,7 +47,7 @@ import type { MailAttachment, MailInvitation, MailMessage, MailThread } from "@/
 import { AttachmentCard } from "@/components/mailbox/reader/attachment-card";
 import { QuoteBlock } from "@/components/mailbox/reader/quote-block";
 import { useMounted } from "@/components/mailbox/reader/use-mounted";
-import { escHtml, labelColor } from "@/components/mailbox/mail-utils";
+import { escHtml, isSnoozed, labelColor } from "@/components/mailbox/mail-utils";
 import { buildFolderTree, flattenTree, folderLabel } from "@/components/mailbox/folder-tree";
 import type { ReaderFontSize, ReadingPaneWidth } from "@/lib/preferences";
 import {
@@ -396,6 +398,8 @@ export function ReadingPane({
   onSendReceipt,
   onApplyRecall,
   onReplyWithQuote,
+  onEditDraft,
+  onSnooze,
 }: {
   detail: MailMessage;
   detailLoading: boolean;
@@ -438,16 +442,37 @@ export function ReadingPane({
   onSendReceipt: (folder: string, uid: number) => Promise<boolean>;
   onApplyRecall: (messageId: string, folder: string, uid: number) => Promise<boolean>;
   onReplyWithQuote: (selection: string) => void;
+  onEditDraft: () => void;
+  onSnooze: (untilMs: number) => void;
 }) {
   const t = useTranslations("mail");
   const fontPx = readerFont === "sm" ? 13 : readerFont === "lg" ? 16 : readerFont === "xl" ? 18 : 14;
   const paneMax = paneWidth === "narrow" ? 720 : paneWidth === "wide" ? 1100 : 0;
+  const isDraft = /^drafts$/i.test(folder) || (detail.flags || []).some((f) => /draft/i.test(f));
+  const snoozed = isSnoozed(detail);
   const mounted = useMounted();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [expandedQuotes, setExpandedQuotes] = useState<Set<number>>(new Set());
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
   const [receiptBusy, setReceiptBusy] = useState(false);
+  const [snoozeOpen, setSnoozeOpen] = useState(false);
+  const [snoozeCustom, setSnoozeCustom] = useState("");
+
+  const snoozePreset = (mode: "today" | "tomorrow" | "nextweek") => {
+    const d = new Date();
+    if (mode === "today") {
+      d.setHours(18, 0, 0, 0);
+    } else if (mode === "tomorrow") {
+      d.setDate(d.getDate() + 1);
+      d.setHours(9, 0, 0, 0);
+    } else {
+      const diff = (8 - d.getDay()) % 7 || 7;
+      d.setDate(d.getDate() + diff);
+      d.setHours(9, 0, 0, 0);
+    }
+    return d.getTime();
+  };
   const [recallBusy, setRecallBusy] = useState(false);
   const [recallHandled, setRecallHandled] = useState(false);
   const [replies, setReplies] = useState<string[]>([]);
@@ -785,6 +810,17 @@ export function ReadingPane({
             >
               <Star className={cn("size-4", starred && "fill-current")} />
             </Button>
+            {isDraft && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onEditDraft}
+                className="h-8 gap-1.5 px-2.5 text-xs"
+              >
+                <PenLine className="size-3.5" />
+                {t("editDraft")}
+              </Button>
+            )}
             {isSentFolder(folder) && (
               <Button
                 size="sm"
@@ -864,6 +900,79 @@ export function ReadingPane({
             >
               <Printer className="size-4" />
             </Button>
+            <div className="relative">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSnoozeOpen((v) => !v)}
+                title={snoozed ? t("unsnooze") : t("snooze")}
+                className={cn("size-8", snoozed && "text-primary")}
+              >
+                <BellRing className="size-4" />
+              </Button>
+              {snoozeOpen && (
+                <div className="absolute top-full right-0 z-30 mt-1 w-56 rounded-lg border border-border bg-popover p-2 shadow-lg">
+                  <div className="space-y-1">
+                    <button
+                      type="button"
+                      className="flex w-full items-center rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted"
+                      onClick={() => {
+                        onSnooze(snoozed ? 0 : snoozePreset("today"));
+                        setSnoozeOpen(false);
+                      }}
+                    >
+                      {snoozed ? t("unsnooze") : t("snoozeLaterToday")}
+                    </button>
+                    {!snoozed && (
+                      <>
+                        <button
+                          type="button"
+                          className="flex w-full items-center rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted"
+                          onClick={() => {
+                            onSnooze(snoozePreset("tomorrow"));
+                            setSnoozeOpen(false);
+                          }}
+                        >
+                          {t("snoozeTomorrow")}
+                        </button>
+                        <button
+                          type="button"
+                          className="flex w-full items-center rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted"
+                          onClick={() => {
+                            onSnooze(snoozePreset("nextweek"));
+                            setSnoozeOpen(false);
+                          }}
+                        >
+                          {t("snoozeNextWeek")}
+                        </button>
+                        <div className="flex items-center gap-1.5 border-t border-border pt-1.5">
+                          <input
+                            type="datetime-local"
+                            value={snoozeCustom}
+                            onChange={(e) => setSnoozeCustom(e.target.value)}
+                            className="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-1.5 text-xs outline-none"
+                          />
+                          <Button
+                            size="xs"
+                            disabled={!snoozeCustom}
+                            onClick={() => {
+                              const t0 = new Date(snoozeCustom).getTime();
+                              if (t0 > Date.now()) {
+                                onSnooze(t0);
+                                setSnoozeCustom("");
+                                setSnoozeOpen(false);
+                              }
+                            }}
+                          >
+                            {t("snooze")}
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

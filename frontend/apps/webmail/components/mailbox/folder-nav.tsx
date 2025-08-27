@@ -7,6 +7,7 @@ import {
   CalendarClock,
   Ellipsis,
   HardDrive,
+  BellRing,
   ChevronDown,
   ChevronRight,
   ChevronsUpDown,
@@ -111,6 +112,7 @@ export function FolderNav({
   onRemoveSavedSearch,
   onMoveToFolder,
   onScheduled,
+  onSnoozed,
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
@@ -150,6 +152,7 @@ export function FolderNav({
   onRemoveSavedSearch: (id: number) => void;
   onMoveToFolder: (folder: string, uid: number) => void;
   onScheduled: () => void;
+  onSnoozed: () => void;
   onCreateFolder: (name: string) => void;
   onRenameFolder: (name: string, newName: string) => void;
   onDeleteFolder: (name: string) => void;
@@ -539,6 +542,13 @@ export function FolderNav({
             >
               <CalendarClock className="size-4 shrink-0 opacity-70" />
               <span className="truncate">{t("scheduled")}</span>
+            </button>
+            <button
+              onClick={onSnoozed}
+              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground"
+            >
+              <BellRing className="size-4 shrink-0 opacity-70" />
+              <span className="truncate">{t("snoozed")}</span>
             </button>
           </div>
           {labels && (
