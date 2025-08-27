@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Plus, UserPlus, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Plus, Search, UserPlus, X } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { RowActions } from "@/components/row-actions";
@@ -42,6 +42,10 @@ export default function GroupsPage() {
   const [name, setName] = useState("");
   const [members, setMembers] = useState<MemberDraft[]>([emptyMember()]);
   const [formError, setFormError] = useState("");
+  const [userQuery, setUserQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [userPage, setUserPage] = useState(1);
+  const [userTotal, setUserTotal] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -55,12 +59,25 @@ export default function GroupsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Internal user quick-pick for group membership (non-fatal on failure).
+  // Internal user picker: server-side search (debounced) + pagination.
   useEffect(() => {
-    api<Page<User>>("/users?page=1&limit=200")
-      .then((res) => setUsers(res.data))
-      .catch(() => { /* keep manual entry as fallback */ });
-  }, []);
+    const id = setTimeout(() => setDebouncedQuery(userQuery), 300);
+    return () => clearTimeout(id);
+  }, [userQuery]);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      const qs = new URLSearchParams({ page: String(userPage), limit: "50" });
+      if (debouncedQuery.trim()) qs.set("q", debouncedQuery.trim());
+      const res = await api<Page<User>>(`/users?${qs}`);
+      setUsers(res.data);
+      setUserTotal(res.total);
+    } catch {
+      // keep manual entry as fallback
+    }
+  }, [debouncedQuery, userPage]);
+
+  useEffect(() => { loadUsers(); }, [loadUsers]);
 
   function openCreate() {
     setEditTarget(null);
@@ -209,23 +226,68 @@ export default function GroupsPage() {
               <div className="space-y-2 border-t pt-3">
                 <Label>{t("internalUsers")}</Label>
                 <p className="text-xs text-muted-foreground">{t("memberHint")}</p>
-                <div className="max-h-36 overflow-y-auto rounded-md border">
-                  {users.map((u) => (
-                    <button
-                      key={u.email}
-                      type="button"
-                      onClick={() => appendUser(u)}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted"
-                    >
-                      <UserPlus className="size-3.5 text-muted-foreground" />
-                      <span className="truncate">{u.displayed_name || u.email}</span>
-                      <span className="ml-auto truncate text-xs text-muted-foreground">{u.email}</span>
-                    </button>
-                  ))}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={userQuery}
+                    onChange={(e) => { setUserQuery(e.target.value); setUserPage(1); }}
+                    placeholder={t("userSearchPlaceholder")}
+                    className="pl-8"
+                  />
+                </div>
+                <div className="max-h-40 overflow-y-auto rounded-md border">
+                  {users.map((u) => {
+                    const added = members.some((m) => m.email.toLowerCase() === u.email.toLowerCase());
+                    return (
+                      <button
+                        key={u.email}
+                        type="button"
+                        onClick={() => appendUser(u)}
+                        disabled={added}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted disabled:opacity-60"
+                      >
+                        {added
+                          ? <Check className="size-3.5 shrink-0 text-primary" />
+                          : <UserPlus className="size-3.5 shrink-0 text-muted-foreground" />}
+                        <span className="truncate">{u.displayed_name || u.email}</span>
+                        <span className="ml-auto truncate text-xs text-muted-foreground">{u.email}</span>
+                      </button>
+                    );
+                  })}
                   {users.length === 0 && (
-                    <p className="px-3 py-2 text-xs text-muted-foreground">{ct("noItems")}</p>
+                    <p className="px-3 py-2 text-xs text-muted-foreground">{t("noMatch")}</p>
                   )}
                 </div>
+                {userTotal > 0 && (
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs text-muted-foreground">
+                      {(userPage - 1) * 50 + 1}-{Math.min(userTotal, userPage * 50)} / {userTotal}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={userPage <= 1}
+                        onClick={() => setUserPage(userPage - 1)}
+                        aria-label={ct("prev")}
+                      >
+                        <ChevronLeft />
+                      </Button>
+                      <span className="min-w-10 text-center text-xs text-muted-foreground">
+                        {userPage} / {Math.max(1, Math.ceil(userTotal / 50))}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={userPage >= Math.max(1, Math.ceil(userTotal / 50))}
+                        onClick={() => setUserPage(userPage + 1)}
+                        aria-label={ct("next")}
+                      >
+                        <ChevronRight />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {formError && <p className="text-sm text-red-600">{formError}</p>}

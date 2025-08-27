@@ -312,7 +312,9 @@
     "emailRequired": "通讯组地址不能为空",
     "memberRequired": "至少需要一个成员",
     "internalUsers": "内部用户",
-    "memberHint": "从下方选择内部用户，或手动输入成员邮箱（支持外部地址）"
+    "memberHint": "搜索并选择内部用户，或手动输入成员邮箱（支持外部地址）",
+    "userSearchPlaceholder": "按姓名或邮箱搜索",
+    "noMatch": "未找到匹配的用户"
   },
   "aliases": {
     "title": "别名",

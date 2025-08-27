@@ -312,7 +312,9 @@
     "emailRequired": "Group address is required",
     "memberRequired": "At least one member is required",
     "internalUsers": "Internal users",
-    "memberHint": "Pick an internal user below, or type member addresses manually (external addresses are supported)"
+    "memberHint": "Search and pick internal users, or type member addresses manually (external addresses are supported)",
+    "userSearchPlaceholder": "Search by name or email",
+    "noMatch": "No matching users"
   },
   "aliases": {
     "title": "Aliases",

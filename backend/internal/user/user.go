@@ -36,6 +36,10 @@ func (h *Handler) listUsers(c *fiber.Ctx) error {
 	if u := currentUser(c); !u.GlobalAdmin {
 		q = h.ManagedDomainScope(u, q)
 	}
+	if kw := strings.TrimSpace(c.Query("q")); kw != "" {
+		like := "%" + kw + "%"
+		q = q.Where("email LIKE ? OR displayed_name LIKE ?", like, like)
+	}
 	page, limit := core.PageParams(c)
 	var total int64
 	if err := q.Model(&models.User{}).Count(&total).Error; err != nil {
