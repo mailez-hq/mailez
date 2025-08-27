@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   AtSign,
+  LayoutDashboard,
   Download,
   EyeOff,
   Globe,
@@ -27,6 +28,7 @@ import { cn } from "@/lib/utils";
 import type { Me } from "@/lib/api";
 
 const navItems = [
+  { href: "/overview", key: "overview", roles: ["admin", "manager", "user"], icon: LayoutDashboard },
   { href: "/domains", key: "domains", roles: ["admin"], icon: Globe },
   { href: "/users", key: "users", roles: ["admin", "manager"], icon: Users },
   { href: "/aliases", key: "aliases", roles: ["admin", "manager"], icon: AtSign },

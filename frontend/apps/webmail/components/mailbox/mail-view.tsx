@@ -20,6 +20,7 @@ import { CommandPalette } from "@/components/palette/command-palette";
 import { ShortcutsDialog } from "@/components/mailbox/shortcuts-dialog";
 import { SieveEditor } from "@/components/sieve/sieve-editor";
 import { CalendarDrawer } from "@/components/calendar/calendar-drawer";
+import { DriveDrawer } from "@/components/drive/drive-drawer";
 import { isMuted, textToHtml } from "@/components/mailbox/mail-utils";
 import { buildFolderTree, flattenTree, folderLabel } from "@/components/mailbox/folder-tree";
 import { mailAnnouncement, type MailAnnouncement, type OutboundAttachment } from "@/lib/api";
@@ -246,6 +247,9 @@ export function MailView() {
     sieveOpen,
     calendarOpen,
     openCalendar,
+    driveOpen,
+    setDriveOpen,
+    openDrive,
     setCalendarOpen,
     ctxMenu,
     setCtxMenu,
@@ -327,6 +331,7 @@ export function MailView() {
         onContacts={() => setContactsOpen(true)}
         onSieve={() => setSieveOpen(true)}
         onCalendar={openCalendar}
+        onDrive={openDrive}
         onLogout={logout}
         onScheduled={() => {
           setScheduledOpen(true);
@@ -563,6 +568,7 @@ export function MailView() {
       <SieveEditor open={sieveOpen} onOpenChange={setSieveOpen} />
 
       {calendarOpen && <CalendarDrawer onClose={() => setCalendarOpen(false)} />}
+      {driveOpen && <DriveDrawer onClose={() => setDriveOpen(false)} />}
 
       <LabelManager open={labelManagerOpen} onOpenChange={setLabelManagerOpen} />
 

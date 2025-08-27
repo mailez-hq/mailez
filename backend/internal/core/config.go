@@ -37,6 +37,15 @@ type Config struct {
 	MailMtaAddr        string
 	// UploadDir is where the large-attachment relay (超大附件) stores files.
 	UploadDir string
+	// DriveBackend selects the cloud drive blob backend: "local" (default)
+	// or "minio". MinIO settings reuse the MAILEZINE_S3_* variables so the
+	// existing minio service in the compose profile works out of the box.
+	DriveBackend   string
+	MinioEndpoint  string
+	MinioAccessKey string
+	MinioSecretKey string
+	MinioBucket    string
+	MinioUseSSL    bool
 	AIProvider         string
 	AIBaseURL          string
 	AIAPIKey           string
@@ -81,6 +90,12 @@ func Load() Config {
 		MailSieveAddr:      env("MAIL_SIEVE_ADDR", "gateway:11490"),
 		MailMtaAddr:        env("MAIL_MTA_ADDR", ""),
 		UploadDir:          env("MAILEZ_UPLOAD_DIR", "uploads"),
+		DriveBackend:       env("MAILEZ_DRIVE_BACKEND", "local"),
+		MinioEndpoint:      env("MAILEZINE_S3_ENDPOINT", "minio:9000"),
+		MinioAccessKey:     env("MAILEZINE_S3_ACCESS_KEY", ""),
+		MinioSecretKey:     env("MAILEZINE_S3_SECRET_KEY", ""),
+		MinioBucket:        env("MAILEZINE_S3_BUCKET", "mailezine"),
+		MinioUseSSL:        envBool("MAILEZINE_S3_USE_SSL", false),
 		AIProvider:         env("AI_PROVIDER", "none"),
 		AIBaseURL:          env("AI_BASE_URL", "https://api.openai.com/v1"),
 		AIAPIKey:           env("AI_API_KEY", ""),

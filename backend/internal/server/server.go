@@ -38,6 +38,7 @@ import (
 	"mailez/backend/internal/delegation"
 	"mailez/backend/internal/dlp"
 	"mailez/backend/internal/domain"
+	"mailez/backend/internal/drive"
 	"mailez/backend/internal/fetch"
 	"mailez/backend/internal/invite"
 	"mailez/backend/internal/ldap"
@@ -242,6 +243,11 @@ func (s *Server) routes() {
 	ai.RegisterAPI(authed, app, aiMgr)
 	push.RegisterAPI(authed, app)
 	uploads.New(s.DB, s.Cfg).Register(authed)
+	if driveSvc, derr := drive.New(s.DB, s.Cfg); derr == nil {
+		driveSvc.Register(authed)
+	} else {
+		log.Printf("drive: %v", derr)
+	}
 
 	stackGroup := s.App.Group("/stack", requireStackSecret(s.Cfg.StackSecret))
 	s.internal.Register(stackGroup)

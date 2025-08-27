@@ -5,6 +5,7 @@ import {
   Archive,
   CalendarDays,
   CalendarClock,
+  HardDrive,
   ChevronDown,
   ChevronRight,
   ChevronsUpDown,
@@ -112,6 +113,7 @@ export function FolderNav({
   onContacts,
   onSieve,
   onCalendar,
+  onDrive,
   onLogout,
   onClose,
 }: {
@@ -150,6 +152,7 @@ export function FolderNav({
   onContacts: () => void;
   onSieve: () => void;
   onCalendar: () => void;
+  onDrive: () => void;
   onLogout: () => void;
   onClose: () => void;
 }) {
@@ -679,6 +682,9 @@ export function FolderNav({
             </Button>
             <Button variant="ghost" size="sm" onClick={onCalendar} title={t("calendar")}>
               <CalendarDays className="size-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onDrive} title={t("drive")}>
+              <HardDrive className="size-4" />
             </Button>
             <Button variant="ghost" size="sm" onClick={onSettings} title={t("settings")}>
               <Settings className="size-4" />

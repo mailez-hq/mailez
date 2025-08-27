@@ -1,9 +1,15 @@
 /* mailez offline-first service worker */
-const VERSION = "mailez-sw-v1";
+const VERSION = "mailez-sw-v2";
 const SHELL_URL = "/";
+const PRECACHE = [SHELL_URL, "/mailez-icon.svg", "/manifest.webmanifest"];
 
-self.addEventListener("install", () => {
-  self.skipWaiting();
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches
+      .open(VERSION)
+      .then((cache) => cache.addAll(PRECACHE))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener("activate", (event) => {

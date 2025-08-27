@@ -218,7 +218,6 @@ func buildEmailAppData(msg *mail.Message, pref bodyPreference) *Element {
 		flag.Add(nsEmail, "Status", "2")
 	}
 	if msg.HasAttachment {
-		app.Add(nsEmail, "HasAttachments", "1")
 		atts := app.Add(nsAirSyncBase, "Attachments", "")
 		for i, a := range msg.Attachments {
 			att := atts.Add(nsAirSyncBase, "Attachment", "")
