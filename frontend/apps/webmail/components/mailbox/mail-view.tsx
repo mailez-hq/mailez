@@ -232,6 +232,7 @@ export function MailView() {
     setShortcutsOpen,
     sieveOpen,
     calendarOpen,
+    openCalendar,
     setCalendarOpen,
     ctxMenu,
     setCtxMenu,
@@ -312,7 +313,7 @@ export function MailView() {
         onSettings={() => openSettingsSection("appearance")}
         onContacts={() => setContactsOpen(true)}
         onSieve={() => setSieveOpen(true)}
-        onCalendar={() => setCalendarOpen(true)}
+        onCalendar={openCalendar}
         onLogout={logout}
         onScheduled={() => {
           setScheduledOpen(true);
