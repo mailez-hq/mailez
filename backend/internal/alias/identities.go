@@ -92,14 +92,20 @@ func domainOf(email string) string {
 }
 
 // aliasDeliversTo reports whether the alias destination list (a CSV column)
-// contains the address exactly, or the user owns the alias. Substring
-// matching would let "anna@example.com" match user "a@example.com".
+// or distribution-group member list contains the address exactly, or the
+// user owns the alias. Substring matching would let "anna@example.com" match
+// user "a@example.com".
 func aliasDeliversTo(a models.Alias, email string) bool {
 	if strings.EqualFold(a.OwnerEmail, email) {
 		return true
 	}
 	for _, d := range a.Destinations() {
 		if strings.EqualFold(strings.TrimSpace(d), email) {
+			return true
+		}
+	}
+	for _, m := range a.MemberList() {
+		if strings.EqualFold(strings.TrimSpace(m.Email), email) {
 			return true
 		}
 	}
@@ -112,7 +118,7 @@ func userAliases(db *gorm.DB, user *models.User) []models.Alias {
 	var candidates []models.Alias
 	if err := db.
 		Where("disabled = ?", false).
-		Where("destination LIKE ? OR owner_email = ?", "%"+user.Email+"%", user.Email).
+		Where("destination LIKE ? OR members LIKE ? OR owner_email = ?", "%"+user.Email+"%", "%"+user.Email+"%", user.Email).
 		Find(&candidates).Error; err != nil {
 		return nil
 	}
