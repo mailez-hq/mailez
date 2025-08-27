@@ -3,11 +3,14 @@
 # 一个命令管理整套栈（mailez 控制面 + 邮件引擎），引擎与存储通过 profile
 # 切换，compose 文件全部属于同一个 "mailez" 项目：
 #
-#   Engine          Compose 文件                                    Profile
-#   --------------- ----------------------------------------------  ----------------
-#   postdove        docker-compose.dev.yml                          (默认)
-#   mailezine       dev + docker-compose.mailezine.yml              --profile mailezine
-#   mailezine-tidb  dev + mailezine + docker-compose.tidb.yml       --profile mailezine
+# 存储矩阵（开发 = SQLite + Pebble/TiDB + 本地 FS；生产 = MySQL + TiDB +
+# MinIO/S3）：
+#
+#   Engine          开发（dev 基座）                    生产（-Prod）
+#   ---------------- ---------------------------------  --------------------------------------------
+#   postdove        dev                                compose + mysql
+#   mailezine       dev + mailezine（Pebble+FS）        compose + mailezine + blob-s3 + mysql
+#   mailezine-tidb  dev + mailezine + tidb（TiDB+FS）   compose + mailezine + tidb + blob-s3 + mysql
 #
 # 用法:
 #   powershell .\deploy\mailezctl.ps1 up mailezine-tidb
@@ -49,6 +52,12 @@ switch ($Engine) {
     "mailezine-tidb" {
         $files += @("-f", "docker-compose.mailezine.yml", "-f", "docker-compose.tidb.yml")
         $profile = "mailezine"
+    }
+}
+if ($Prod) {
+    $files += @("-f", "docker-compose.mysql.yml")
+    if ($Engine -ne "postdove") {
+        $files += @("-f", "docker-compose.blob-s3.yml")
     }
 }
 
