@@ -10,7 +10,7 @@ import (
 	"mailez/backend/internal/core/models"
 )
 
-func currentUser(c *fiber.Ctx) *models.User { return core.CurrentUser(c) }
+var currentUser = core.CurrentUser
 
 // listEvents returns events overlapping the ?from=&to= window (RFC3339).
 // @Summary List calendar events
@@ -22,7 +22,15 @@ func currentUser(c *fiber.Ctx) *models.User { return core.CurrentUser(c) }
 // @Router /calendar/events [get]
 func (h *Handler) listEvents(c *fiber.Ctx) error {
 	user := currentUser(c)
-	q := h.DB.Where("user_email = ?", user.Email)
+	// Own events plus events from calendars shared with this account.
+	owners := []string{user.Email}
+	var shares []models.CalendarShare
+	if err := h.DB.Where("sharee_email = ?", user.Email).Find(&shares).Error; err == nil {
+		for _, s := range shares {
+			owners = append(owners, s.OwnerEmail)
+		}
+	}
+	q := h.DB.Where("user_email IN ?", owners)
 	if from := c.Query("from"); from != "" {
 		if t, err := time.Parse(time.RFC3339, from); err == nil {
 			q = q.Where("(end IS NULL OR end >= ?)", t)
@@ -39,7 +47,19 @@ func (h *Handler) listEvents(c *fiber.Ctx) error {
 	}
 	out := make([]fiber.Map, 0, len(events))
 	for i := range events {
-		out = append(out, view(&events[i]))
+		v := view(&events[i])
+		if events[i].UserEmail == user.Email {
+			v["owner_email"] = ""
+		} else {
+			v["read_only"] = true
+			for _, s := range shares {
+				if s.OwnerEmail == events[i].UserEmail {
+					v["read_only"] = s.ReadOnly
+					break
+				}
+			}
+		}
+		out = append(out, v)
 	}
 	return c.JSON(out)
 }
@@ -83,8 +103,11 @@ func (h *Handler) updateEvent(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
 	}
 	var ev models.CalendarEvent
-	if err := h.DB.First(&ev, "id = ? AND user_email = ?", id, user.Email).Error; err != nil {
+	if err := h.DB.First(&ev, "id = ?", id).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "event not found"})
+	}
+	if !h.canModify(&ev, user.Email) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "read-only calendar"})
 	}
 	var in eventInput
 	if err := c.BodyParser(&in); err != nil {
@@ -110,7 +133,14 @@ func (h *Handler) deleteEvent(c *fiber.Ctx) error {
 	if err != nil || id == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
 	}
-	res := h.DB.Where("id = ? AND user_email = ?", id, user.Email).Delete(&models.CalendarEvent{})
+	var ev models.CalendarEvent
+	if err := h.DB.First(&ev, "id = ?", id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "event not found"})
+	}
+	if !h.canModify(&ev, user.Email) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "read-only calendar"})
+	}
+	res := h.DB.Delete(&models.CalendarEvent{}, id)
 	if res.Error != nil {
 		return core.Fail(c, 500, res.Error, "db error")
 	}

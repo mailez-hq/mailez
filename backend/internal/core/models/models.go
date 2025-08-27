@@ -40,6 +40,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&ArchivedMessage{},
 		&DlpRule{},
 		&PendingApproval{},
+		&CalendarShare{},
+		&CalendarReminderLog{},
 		&SchemaMigration{},
 	)
 }
