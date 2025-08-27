@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
+	netmail "net/mail"
 	"net/smtp"
 	"net/url"
 	"strconv"
@@ -38,6 +39,61 @@ func (c *Client) Send(email, token, from string, to, cc, bcc []string, subject, 
 	recipients = append(recipients, cc...)
 	recipients = append(recipients, bcc...)
 	return submitSMTP(conn, from, recipients, BuildMessage(from, to, cc, subject, text, html, attachments, extra...))
+}
+
+// SubmitRawAs delivers a pre-built RFC 5322 message through the gateway's
+// submission server authenticated as the given account. ActiveSync clients
+// (SendMail/SmartReply/SmartForward) supply the full MIME, so the backend
+// must submit it verbatim instead of rebuilding headers/body.
+func (c *Client) SubmitRawAs(email, token, from string, recipients []string, raw string) error {
+	conn, err := c.openSMTP(email, token)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	if from == "" {
+		if msg, perr := netmail.ReadMessage(strings.NewReader(raw)); perr == nil {
+			from = msg.Header.Get("From")
+		}
+	}
+	if len(recipients) == 0 {
+		if msg, perr := netmail.ReadMessage(strings.NewReader(raw)); perr == nil {
+			recipients = envelopeRecipients(msg.Header)
+		}
+	}
+	return submitSMTP(conn, from, recipients, raw)
+}
+
+// AppendRaw stores a pre-built RFC 5322 message into a folder with IMAP
+// APPEND. The ActiveSync SendMail path uses it to honour SaveInSentItems.
+func (c *Client) AppendRaw(email, token, folder, raw string, flags []string) error {
+	folder = inboxName(folder)
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return err
+	}
+	defer cli.Logout()
+	if len(flags) == 0 {
+		flags = []string{`\Seen`}
+	}
+	if err := cli.Append(folder, flags, time.Now(), strings.NewReader(raw)); err != nil {
+		return fmt.Errorf("imap append %q: %w", folder, err)
+	}
+	return nil
+}
+
+// envelopeRecipients collects To/Cc/Bcc from parsed message headers.
+func envelopeRecipients(h netmail.Header) []string {
+	var out []string
+	for _, field := range []string{"To", "Cc", "Bcc"} {
+		addrs, _ := h.AddressList(field)
+		for _, addr := range addrs {
+			if addr.Address != "" {
+				out = append(out, addr.Address)
+			}
+		}
+	}
+	return out
 }
 
 // SubmitRaw delivers a pre-built RFC 5322 message through the dial's
