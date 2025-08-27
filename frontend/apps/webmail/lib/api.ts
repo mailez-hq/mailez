@@ -9,6 +9,8 @@ import type {
   DelegationListing,
   CalendarEvent,
   CalendarEventInput,
+  CalendarShare,
+  CalendarShareListing,
   OrgContact,
   MailAttachment,
   MailIdentity,
@@ -44,6 +46,8 @@ export type {
   DelegationListing,
   CalendarEvent,
   CalendarEventInput,
+  CalendarShare,
+  CalendarShareListing,
   OrgContact,
   MailAttachment,
   MailIdentity,
@@ -233,12 +237,13 @@ export const mailSend = (
   attachments?: OutboundAttachment[],
   undoSeconds = 0,
   sendAt?: string,
+  receiptRequested = false,
 ) =>
   api<{ queued?: boolean; outbox_id?: number; undo_seconds?: number; scheduled?: boolean }>(
     "/mail/send",
     {
       method: "POST",
-      body: JSON.stringify({ to, cc, bcc, subject, body, html, from, attachments, undo_seconds: undoSeconds, send_at: sendAt }),
+      body: JSON.stringify({ to, cc, bcc, subject, body, html, from, attachments, undo_seconds: undoSeconds, send_at: sendAt, receipt_requested: receiptRequested }),
     },
   );
 
@@ -258,6 +263,40 @@ export const mailSendReply = (
       undo_seconds: 0, in_reply_to: inReplyTo, references,
     }),
   });
+
+// mailReceipt answers a read-receipt request (RFC 3798).
+export const mailReceipt = (folder: string, uid: number) =>
+  apiPost<void>("/mail/receipt", { folder, uid });
+
+// mailRecall recalls a sent message (sends X-MS-Recall notices to the
+// recipients and flags the sent copy).
+export const mailRecall = (folder: string, uid: number) =>
+  apiPost<{ notified: number }>("/mail/recall", { folder, uid });
+
+// mailRecallApply deletes the original message targeted by a recall notice.
+export const mailRecallApply = (messageId: string) =>
+  apiPost<{ removed: number }>("/mail/recall/apply", { message_id: messageId });
+
+// MailMergeRecipient is one personalized recipient of a 逐封群发.
+export type MailMergeRecipient = {
+  email: string;
+  name?: string;
+  vars?: Record<string, string>;
+};
+
+// mailMerge sends one personalized copy per recipient ({{name}}, {{email}}
+// and custom {{var}} placeholders are substituted per row).
+export const mailMerge = (input: {
+  subject: string;
+  body: string;
+  html?: string;
+  from?: string;
+  recipients: MailMergeRecipient[];
+}) => apiPost<{ sent: number; failed: { email: string; error: string }[] }>("/mail/merge", input);
+
+// mailReadAll marks an entire folder as read.
+export const mailReadAll = (folder: string) =>
+  apiPost<void>("/mail/read-all", { folder });
 
 // mailUndoSend cancels a parked message within its undo window.
 export const mailUndoSend = (outboxId: number) =>
@@ -451,6 +490,17 @@ export const calendarEventUpdate = (id: number, input: CalendarEventInput) =>
 
 export const calendarEventDelete = (id: number) =>
   api<void>(`/calendar/events/${id}`, { method: "DELETE" });
+
+// Calendar sharing and ICS subscription.
+export const calendarShares = () => api<CalendarShareListing>("/calendar/shares");
+
+export const calendarShareCreate = (shareeEmail: string, readOnly: boolean) =>
+  apiPost<CalendarShare>("/calendar/shares", { sharee_email: shareeEmail, read_only: readOnly });
+
+export const calendarShareDelete = (id: number) =>
+  api<void>(`/calendar/shares/${id}`, { method: "DELETE" });
+
+export const calendarFeed = () => api<{ url: string }>("/calendar/feed");
 
 // Meeting invitations (iTIP): respond to a received REQUEST or send a new
 // one to attendees.

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -253,9 +254,29 @@ func (h *Handler) webhookTest(c *fiber.Ctx) error {
 	status, derr := deliverWebhookSync(wh, "test", map[string]any{"message": "ping"})
 	recordDelivery(h.DB, wh, status, derr)
 	if derr != nil {
-		return c.JSON(fiber.Map{"ok": false, "error": derr.Error()})
+		// The probe targets a webhook URL the user configured themselves, so
+		// the transport outcome (status/DNS/TLS category) is their feedback;
+		// keep it structured instead of raw driver text.
+		return c.JSON(fiber.Map{"ok": false, "status": status, "error": deliveryFeedback(status, derr)})
 	}
 	return c.JSON(fiber.Map{"ok": status >= 200 && status < 300, "status": status})
+}
+
+// deliveryFeedback classifies a failed synchronous delivery into a short,
+// stable message for webhook test probes; details stay in recordDelivery's
+// last_error (visible to the owner) and server logs.
+func deliveryFeedback(status int, err error) string {
+	switch {
+	case status == 0:
+		return "delivery failed: endpoint unreachable"
+	case status >= 500:
+		return fmt.Sprintf("endpoint returned %d", status)
+	default:
+		if err == nil {
+			return fmt.Sprintf("endpoint returned %d", status)
+		}
+		return "endpoint rejected the delivery"
+	}
 }
 
 func buildWebhook(userEmail string, in webhookIn) (models.Webhook, string) {

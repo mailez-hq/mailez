@@ -25,6 +25,7 @@ func (h *Handler) registerMail(r fiber.Router) {
 	r.Get("/mail/search", h.mailSearch)
 	r.Post("/mail/search", h.mailSearchSpec)
 	r.Post("/mail/flag", h.mailFlag)
+	r.Post("/mail/read-all", h.mailReadAll)
 	r.Post("/mail/snooze", h.mailSnooze)
 	r.Get("/mail/snoozed", h.mailSnoozed)
 	r.Post("/mail/move", h.mailMove)
@@ -37,6 +38,29 @@ func (h *Handler) registerMail(r fiber.Router) {
 	r.Get("/mail/acl", h.mailACL)
 	r.Put("/mail/acl", h.mailACLSet)
 	r.Delete("/mail/acl", h.mailACLDelete)
+}
+
+// mailReadAll marks every message of a folder as read.
+// @Summary Mark folder as read
+// @Tags mail
+// @Accept json
+// @Success 204
+// @Router /mail/read-all [post]
+func (h *Handler) mailReadAll(c *fiber.Ctx) error {
+	d, err := h.MailDial(c)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+	}
+	var in struct {
+		Folder string `json:"folder"`
+	}
+	if err := c.BodyParser(&in); err != nil || in.Folder == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "folder is required"})
+	}
+	if err := h.Mail.With(d).MarkAllRead(d.Email, d.Token, in.Folder); err != nil {
+		return core.Fail(c, 502, err, "mail service error")
+	}
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // mailFlag adds or removes an IMAP flag on a message.

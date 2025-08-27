@@ -75,6 +75,7 @@ export function MessageRow({
   const { labelColors } = useMailStore();
   const unread = !message.flags.includes("\\Seen");
   const starred = message.flags.includes("\\Flagged");
+  const recalled = message.flags.includes("$RecallSent");
   const sender = message.from[0]?.name || message.from[0]?.email || "?";
   const pad = density === "compact" ? "px-2" : "px-3";
 
@@ -152,6 +153,11 @@ export function MessageRow({
               {t.has(`category${category.charAt(0).toUpperCase()}${category.slice(1)}`)
                 ? t(`category${category.charAt(0).toUpperCase()}${category.slice(1)}`)
                 : category}
+            </span>
+          )}
+          {recalled && (
+            <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-px text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+              {t("recalled")}
             </span>
           )}
           {message.flags
