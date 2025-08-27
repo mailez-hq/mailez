@@ -19,7 +19,7 @@ import { ScheduledDialog } from "@/components/compose/scheduled-dialog";
 import { CommandPalette } from "@/components/palette/command-palette";
 import { ShortcutsDialog } from "@/components/mailbox/shortcuts-dialog";
 import { SieveEditor } from "@/components/sieve/sieve-editor";
-import { textToHtml } from "@/components/mailbox/mail-utils";
+import { isMuted, textToHtml } from "@/components/mailbox/mail-utils";
 import { buildFolderTree, flattenTree, folderLabel } from "@/components/mailbox/folder-tree";
 import { mailAnnouncement, type MailAnnouncement, type OutboundAttachment } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -112,6 +112,11 @@ export function MailView() {
     cursor,
     selected,
     searchAll,
+    sortBy,
+    sortDir,
+    changeSort,
+    toggleMute,
+    bulkLabel,
     searchSpec,
     applySearchSpec,
     saveSearchSpec,
@@ -182,6 +187,7 @@ export function MailView() {
     setCcExpanded,
     subject,
     body,
+    bodyText,
     setBody,
     setBodyText,
     attachments,
@@ -207,6 +213,7 @@ export function MailView() {
     setDragOverCompose,
     addFiles,
     send,
+    sendQuickReply,
     closeCompose,
     saveDraftNow,
     setTo,
@@ -336,6 +343,8 @@ export function MailView() {
           onBulkArchive={bulkArchive}
           onBulkSpam={bulkSpam}
           onBulkFlag={bulkFlag}
+          onBulkLabel={bulkLabel}
+          labels={knownLabels}
           onLoadMore={loadMore}
           searchInputRef={searchRef}
           error={error}
@@ -344,6 +353,9 @@ export function MailView() {
           onSaveSearch={saveCurrentSearch}
           onSaveSearchSpec={saveSearchSpec}
           searchAll={searchAll}
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onChangeSort={changeSort}
           onToggleSearchAll={() => setSearchAll((v: boolean) => !v)}
           category={categoryFilter}
           onCategoryChange={setCategoryFilter}
@@ -404,6 +416,12 @@ export function MailView() {
             onToggleThread={toggleThread}
             onSelectThread={selectThreadMessage}
             highlightTerms={highlightTerms(query)}
+            readerFont={prefs.readerFont}
+            paneWidth={prefs.paneWidth}
+            meEmail={me.email}
+            onQuickReply={sendQuickReply}
+            muted={isMuted(detail)}
+            onToggleMute={() => detail && toggleMute(detail)}
           />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 bg-secondary p-6 text-sm text-muted-foreground dark:bg-background">
@@ -430,6 +448,7 @@ export function MailView() {
           onToggleCc={() => setCcExpanded(true)}
           subject={subject}
           body={body}
+          bodyText={bodyText}
           onBodyChange={(html, text) => {
             setBody(html);
             setBodyText(text);
@@ -442,6 +461,7 @@ export function MailView() {
           onOpenContacts={() => setContactsOpen(true)}
           fileInputRef={fileInputRef}
           toInputRef={toInputRef}
+          spellcheck={prefs.spellcheck}
           draftTone={draftTone}
           onDraftTone={setDraftTone}
           aiDraftEnabled={ai.draft}

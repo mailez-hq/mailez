@@ -12,13 +12,14 @@ type Gateway interface {
 	With(d Dial) Gateway
 
 	// Compose
-	Send(email, token, from string, to, cc, bcc []string, subject, text, html string, attachments []Attachment) error
+	Send(email, token, from string, to, cc, bcc []string, subject, text, html string, attachments []Attachment, extra ...Header) error
 	SaveDraft(email, token string, to, cc []string, subject, text, html string, attachments []Attachment, replaceUID uint32) (uint32, error)
 
 	// Mailbox
 	ListFolders(email, token string) ([]string, error)
 	UnseenCounts(email, token string) (map[string]int, error)
 	ListMessages(email, token, folder string, page int) ([]Message, int, error)
+	ListMessagesSorted(email, token, folder string, page int, sort, dir string) ([]Message, int, error)
 	GetMessage(email, token, folder string, uid uint32) (*Message, error)
 	UIDByMessageID(email, token, folder, id string) (uint32, error)
 	GetRaw(email, token, folder string, uid uint32) (string, error)

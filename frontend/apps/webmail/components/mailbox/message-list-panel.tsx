@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Archive, Bookmark, FolderSearch, Inbox, Menu, RefreshCw, Search, SearchX, SlidersHorizontal, Sparkles, Trash2, X } from "lucide-react";
+import { Archive, Bookmark, FolderSearch, Inbox, Menu, Plus, RefreshCw, Search, SearchX, SlidersHorizontal, Sparkles, Tag, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +64,11 @@ export function MessageListPanel({
   onRefresh,
   highlightTerms,
   onContextMenu,
+  sortBy,
+  sortDir,
+  onChangeSort,
+  onBulkLabel,
+  labels,
 }: {
   folder: string;
   messages: MailMessage[];
@@ -113,11 +118,18 @@ export function MessageListPanel({
   onRefresh: () => void;
   highlightTerms?: string[];
   onContextMenu?: (e: React.MouseEvent, message: MailMessage) => void;
+  sortBy: string;
+  sortDir: string;
+  onChangeSort: (key: string) => void;
+  onBulkLabel: (label: string) => void;
+  labels?: string[];
 }) {
   const t = useTranslations("mail");
   const { density } = usePreferences();
   const rowHeight = ROW_HEIGHTS[density];
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [labelPopoverOpen, setLabelPopoverOpen] = useState(false);
+  const [bulkLabelName, setBulkLabelName] = useState("");
   const activeFilterCount = useMemo(() => {
     if (!searchSpec) return 0;
     return Object.values(searchSpec).filter((v) =>
@@ -221,6 +233,18 @@ export function MessageListPanel({
           >
             <FolderSearch className="size-4" />
           </Button>
+          <select
+            value={sortDir === "asc" && sortBy === "date" ? "date-asc" : `${sortBy}-${sortDir}`}
+            onChange={(e) => onChangeSort(e.target.value)}
+            title={t("sortLabel")}
+            className="h-7 rounded-md border border-border bg-transparent px-1 text-xs text-muted-foreground outline-none focus-visible:border-ring"
+          >
+            <option value="date-desc">{t("sortNewest")}</option>
+            <option value="date-asc">{t("sortOldest")}</option>
+            <option value="from">{t("sortFrom")}</option>
+            <option value="subject">{t("sortSubject")}</option>
+            <option value="size">{t("sortSize")}</option>
+          </select>
           {aiSearchEnabled && (
             <Button
               variant="ghost"
@@ -308,6 +332,59 @@ export function MessageListPanel({
           <Button size="xs" variant="outline" onClick={() => onBulkFlag("\\Seen", false)}>
             {t("unread")}
           </Button>
+          <div className="relative">
+            <Button size="xs" variant="outline" onClick={() => setLabelPopoverOpen((v) => !v)}>
+              <Tag className="size-3" />
+              {t("bulkLabel")}
+            </Button>
+            {labelPopoverOpen && (
+              <div className="absolute left-0 top-full z-30 mt-1 w-52 rounded-lg border border-border bg-popover p-1.5 text-sm shadow-lg">
+                <div className="max-h-36 space-y-0.5 overflow-y-auto">
+                  {(labels || []).map((l) => (
+                    <button
+                      key={l}
+                      type="button"
+                      onClick={() => {
+                        onBulkLabel(l);
+                        setLabelPopoverOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs transition-colors hover:bg-muted"
+                    >
+                      <span className="size-2 shrink-0 rounded-full bg-muted-foreground/40" />
+                      <span className="truncate">{l}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-1 flex items-center gap-1 border-t border-border pt-1">
+                  <input
+                    value={bulkLabelName}
+                    onChange={(e) => setBulkLabelName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && bulkLabelName.trim()) {
+                        onBulkLabel(bulkLabelName.trim());
+                        setBulkLabelName("");
+                        setLabelPopoverOpen(false);
+                      }
+                    }}
+                    placeholder={t("newLabel")}
+                    className="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                  <Button
+                    size="xs"
+                    onClick={() => {
+                      if (bulkLabelName.trim()) {
+                        onBulkLabel(bulkLabelName.trim());
+                        setBulkLabelName("");
+                        setLabelPopoverOpen(false);
+                      }
+                    }}
+                  >
+                    <Plus className="size-3" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
           <select
             value=""
             onChange={(e) => {

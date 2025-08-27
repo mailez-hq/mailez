@@ -20,7 +20,14 @@ import (
 // multipart/alternative; when attachments are present the whole message
 // becomes multipart/mixed so both plain-text and rich-text stay intact.
 // from is the envelope/From sender; email is the authenticated account.
-func (c *Client) Send(email, token, from string, to, cc, bcc []string, subject, text, html string, attachments []Attachment) error {
+// Header is an extra RFC 5322 header pair appended to a built message
+// (e.g. In-Reply-To / References for reply threading).
+type Header struct {
+	Key   string
+	Value string
+}
+
+func (c *Client) Send(email, token, from string, to, cc, bcc []string, subject, text, html string, attachments []Attachment, extra ...Header) error {
 	conn, err := c.openSMTP(email, token)
 	if err != nil {
 		return err
@@ -30,7 +37,7 @@ func (c *Client) Send(email, token, from string, to, cc, bcc []string, subject, 
 	recipients = append(recipients, to...)
 	recipients = append(recipients, cc...)
 	recipients = append(recipients, bcc...)
-	return submitSMTP(conn, from, recipients, BuildMessage(from, to, cc, subject, text, html, attachments))
+	return submitSMTP(conn, from, recipients, BuildMessage(from, to, cc, subject, text, html, attachments, extra...))
 }
 
 // SubmitRaw delivers a pre-built RFC 5322 message through the dial's
@@ -156,7 +163,7 @@ func headerValue(s string) string {
 // the text/html body, when present, is a nested multipart/alternative part.
 // Exported so the outbox (send-undo queue) can park the exact bytes that will
 // later be submitted, without keeping compose state around.
-func BuildMessage(from string, to, cc []string, subject, text, html string, attachments []Attachment) string {
+func BuildMessage(from string, to, cc []string, subject, text, html string, attachments []Attachment, extra ...Header) string {
 	var b strings.Builder
 	b.WriteString("From: " + headerValue(from) + "\r\n")
 	if len(to) > 0 {
@@ -168,6 +175,11 @@ func BuildMessage(from string, to, cc []string, subject, text, html string, atta
 	b.WriteString("Subject: " + headerValue(subject) + "\r\n")
 	b.WriteString("Date: " + time.Now().Format(time.RFC1123Z) + "\r\n")
 	b.WriteString("Message-ID: <" + newMessageID(from) + ">\r\n")
+	for _, h := range extra {
+		if h.Key != "" && h.Value != "" {
+			b.WriteString(h.Key + ": " + headerValue(h.Value) + "\r\n")
+		}
+	}
 	b.WriteString("MIME-Version: 1.0\r\n")
 
 	if len(attachments) == 0 {

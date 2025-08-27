@@ -9,10 +9,17 @@ export const SYSTEM_FLAGS = new Set([
 ]);
 
 export const PIN_FLAG = "$Pin";
+export const MUTE_FLAG = "$Muted";
 export const SNOOZE_FLAG = "$Snoozed";
 export const SNOOZE_UNTIL_PREFIX = "$SnoozedUntil-";
 
-export const isPinned = (m: { flags: string[] }) => m.flags.includes(PIN_FLAG);
+// Custom keywords are case-insensitive on the wire and go-imap canonicalizes
+// unknown flags to lowercase, so match case-insensitively.
+const hasFlag = (flags: string[], flag: string) =>
+  flags.some((f) => f.toLowerCase() === flag.toLowerCase());
+
+export const isPinned = (m: { flags: string[] }) => hasFlag(m.flags, PIN_FLAG);
+export const isMuted = (m: { flags: string[] }) => hasFlag(m.flags, MUTE_FLAG);
 export const isSnoozed = (m: { flags: string[] }) => m.flags.includes(SNOOZE_FLAG);
 
 // snoozeUntil parses the $SnoozedUntil-<unix> keyword into a Date, or null.

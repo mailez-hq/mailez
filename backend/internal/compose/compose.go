@@ -72,6 +72,8 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 		Attachments []mail.Attachment `json:"attachments"`
 		UndoSeconds int               `json:"undo_seconds"`
 		SendAt      string            `json:"send_at"` // RFC3339; future value schedules the send
+		InReplyTo   string            `json:"in_reply_to"`
+		References  string            `json:"references"`
 	}
 	if err := c.BodyParser(&in); err != nil || len(in.To) == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "to is required"})
@@ -100,7 +102,7 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 		if !sendAt.After(time.Now()) {
 			return c.Status(400).JSON(fiber.Map{"error": "send_at must be in the future"})
 		}
-		id, err := h.enqueue(user.Email, d.AccountID, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments, sendAt)
+		id, err := h.enqueue(user.Email, d.AccountID, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments, sendAt, in.InReplyTo, in.References)
 		if err != nil {
 			return core.Fail(c, 500, err, "outbox error")
 		}
@@ -110,13 +112,20 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 		if in.UndoSeconds > maxUndoSeconds {
 			in.UndoSeconds = maxUndoSeconds
 		}
-		id, err := h.enqueue(user.Email, d.AccountID, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments, time.Now().Add(time.Duration(in.UndoSeconds)*time.Second))
+		id, err := h.enqueue(user.Email, d.AccountID, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments, time.Now().Add(time.Duration(in.UndoSeconds)*time.Second), in.InReplyTo, in.References)
 		if err != nil {
 			return core.Fail(c, 500, err, "outbox error")
 		}
 		return c.JSON(fiber.Map{"queued": true, "outbox_id": id, "undo_seconds": in.UndoSeconds})
 	}
-	if err := h.Mail.With(d).Send(d.Email, d.Token, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments); err != nil {
+	extra := []mail.Header{}
+	if in.InReplyTo != "" {
+		extra = append(extra, mail.Header{Key: "In-Reply-To", Value: in.InReplyTo})
+	}
+	if in.References != "" {
+		extra = append(extra, mail.Header{Key: "References", Value: in.References})
+	}
+	if err := h.Mail.With(d).Send(d.Email, d.Token, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments, extra...); err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}
 	return c.SendStatus(fiber.StatusNoContent)

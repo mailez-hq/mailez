@@ -25,6 +25,7 @@ type SearchQuery struct {
 	Unseen        bool       `json:"unseen"`
 	Flagged       bool       `json:"flagged"`
 	Labels        []string   `json:"labels"`
+	Filenames     []string   `json:"filenames,omitempty"`
 	Before        *time.Time `json:"before,omitempty"`
 	After         *time.Time `json:"after,omitempty"`
 }
@@ -65,6 +66,10 @@ func parseSearchQuery(q string) SearchQuery {
 		case "label":
 			if val != "" {
 				out.Labels = append(out.Labels, val)
+			}
+		case "filename":
+			if val != "" {
+				out.Filenames = append(out.Filenames, val)
 			}
 		case "before":
 			if t, err := time.Parse("2006-01-02", val); err == nil {
@@ -121,6 +126,11 @@ func (c *Client) SearchMessagesSpec(email, token, folder string, sel SearchQuery
 	if err != nil {
 		return nil, fmt.Errorf("imap search: %w", err)
 	}
+	if len(sel.Filenames) > 0 {
+		if uids, err = c.filterAttachmentName(cli, uids, sel.Filenames); err != nil {
+			return nil, err
+		}
+	}
 	if sel.HasAttachment {
 		if uids, err = c.filterHasAttachment(cli, uids); err != nil {
 			return nil, err
@@ -150,6 +160,69 @@ func (c *Client) SearchMessagesSpec(email, token, folder string, sel SearchQuery
 		out[i], out[j] = out[j], out[i]
 	}
 	return out, nil
+}
+
+// filterAttachmentName keeps only UIDs whose attachments carry a filename
+// matching any of the given terms (case-insensitive substring).
+func (c *Client) filterAttachmentName(cli *client.Client, uids []uint32, terms []string) ([]uint32, error) {
+	if len(uids) == 0 || len(terms) == 0 {
+		return uids, nil
+	}
+	lower := make([]string, len(terms))
+	for i, t := range terms {
+		lower[i] = strings.ToLower(t)
+	}
+	seqset := new(imap.SeqSet)
+	for _, uid := range uids {
+		seqset.AddNum(uid)
+	}
+	messages := make(chan *imap.Message, 10)
+	done := make(chan error, 1)
+	go func() {
+		done <- cli.UidFetch(seqset, []imap.FetchItem{imap.FetchUid, imap.FetchBodyStructure}, messages)
+	}()
+	var out []uint32
+	for msg := range messages {
+		if hasMatchingAttachment(msg.BodyStructure, lower) {
+			out = append(out, msg.Uid)
+		}
+	}
+	if err := <-done; err != nil {
+		return nil, fmt.Errorf("imap attachment filename filter: %w", err)
+	}
+	return out, nil
+}
+
+// hasMatchingAttachment walks a body structure and reports whether any part
+// carries a filename (Content-Disposition filename or Content-Type name)
+// containing one of the terms (case-insensitive).
+func hasMatchingAttachment(bs *imap.BodyStructure, terms []string) bool {
+	if bs == nil {
+		return false
+	}
+	check := func(n string) bool {
+		n = strings.ToLower(n)
+		for _, t := range terms {
+			if strings.Contains(n, t) {
+				return true
+			}
+		}
+		return false
+	}
+	if bs.Params != nil && check(bs.Params["name"]) {
+		return true
+	}
+	if bs.DispositionParams != nil && check(bs.DispositionParams["filename"]) {
+		return true
+	}
+	if bs.MIMEType == "multipart" {
+		for _, part := range bs.Parts {
+			if hasMatchingAttachment(part, terms) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // SearchAllMessages parses an advanced query expression and runs it against

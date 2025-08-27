@@ -105,6 +105,20 @@ func (m *Manager) Summarize(ctx context.Context, text string) (string, error) {
 	return p.Chat(ctx, summarizeSystem, text)
 }
 
+// Translate renders an email body into the requested language while keeping
+// its structure (paragraphs, list markers, quotes). Requires a configured
+// provider; no built-in machine translation engine is bundled.
+func (m *Manager) Translate(ctx context.Context, text, target string) (string, error) {
+	p := m.load()
+	if p == nil {
+		return "", ErrDisabled
+	}
+	system := "You are an email translation engine. Translate the user's message into " + target +
+		". Preserve paragraphs, blank lines, list markers and quoted lines; " +
+		"do not add commentary or explanations."
+	return p.Chat(ctx, system, text)
+}
+
 // DraftTone controls the style of an AI-generated reply draft. An empty tone
 // falls back to the default (formal) behavior.
 type DraftTone string

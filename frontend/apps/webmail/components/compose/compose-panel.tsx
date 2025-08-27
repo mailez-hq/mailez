@@ -1,15 +1,18 @@
 "use client";
 
-import type { RefObject } from "react";
-import { CalendarClock, Check, Lock, Paperclip, PenLine, Undo2, X } from "lucide-react";
+import { useState, type RefObject } from "react";
+import { CalendarClock, Check, LayoutTemplate, Lock, Paperclip, PenLine, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ComposeEditor } from "@/components/compose/compose-editor";
 import { RecipientInput } from "@/components/compose/recipient-input";
+import { TemplatesDialog } from "@/components/compose/templates-dialog";
 import { fmtBytes } from "@/components/mailbox/mail-utils";
 import { cn } from "@/lib/utils";
-import type { Contact, DraftTone, MailIdentity, OutboundAttachment } from "@/lib/api";
+import {
+  mailTemplates, type Contact, type DraftTone, type MailIdentity, type MailTemplate, type OutboundAttachment,
+} from "@/lib/api";
 
 // datetime-local values are local wall time; toISOString() would emit UTC and
 // land 8h in the past on UTC+8 (scheduled send would be rejected).
@@ -32,6 +35,7 @@ export interface ComposePanelProps {
   onToggleCc: () => void;
   subject: string;
   body: string;
+  bodyText: string;
   onBodyChange: (html: string, text: string) => void;
   attachments: OutboundAttachment[];
   onRemoveAttachment: (index: number) => void;
@@ -41,6 +45,7 @@ export interface ComposePanelProps {
   onOpenContacts: () => void;
   fileInputRef: RefObject<HTMLInputElement | null>;
   toInputRef: RefObject<HTMLInputElement | null>;
+  spellcheck: boolean;
   draftTone: DraftTone;
   onDraftTone: (tone: DraftTone) => void;
   aiDraftEnabled: boolean;
@@ -87,6 +92,7 @@ export function ComposePanel(props: ComposePanelProps) {
     onToggleCc,
     subject,
     body,
+    bodyText,
     onBodyChange,
     attachments,
     onRemoveAttachment,
@@ -94,9 +100,10 @@ export function ComposePanel(props: ComposePanelProps) {
     allContacts,
     onLoadContacts,
     onOpenContacts,
-    fileInputRef,
-    toInputRef,
-    draftTone,
+  fileInputRef,
+  toInputRef,
+  spellcheck,
+  draftTone,
     onDraftTone,
     aiDraftEnabled,
     hasReplyTarget,
@@ -123,6 +130,21 @@ export function ComposePanel(props: ComposePanelProps) {
     setCcExpanded,
     setSubject,
   } = props;
+  const [templates, setTemplates] = useState<MailTemplate[]>([]);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false);
+
+  function openTemplates() {
+    setTemplatesOpen((v) => !v);
+    if (templates.length === 0) {
+      mailTemplates().then(setTemplates).catch(() => {});
+    }
+  }
+
+  function insertTemplate(tpl: MailTemplate) {
+    setTemplatesOpen(false);
+    onBodyChange(`${body}${tpl.html}`, `${bodyText}${tpl.text || ""}`.trim());
+  }
 
   return (
     <div
@@ -283,6 +305,7 @@ export function ComposePanel(props: ComposePanelProps) {
               onChange={onBodyChange}
               placeholder={t("bodyPlaceholder")}
               autoFocus={composeFocus === "editor"}
+              spellcheck={spellcheck}
             />
           </div>
           {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
@@ -294,6 +317,39 @@ export function ComposePanel(props: ComposePanelProps) {
           )}
         </div>
         <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap items-center gap-2 border-t bg-muted/40 px-4 py-2.5">
+          <div className="relative">
+            <Button type="button" variant="ghost" size="sm" onClick={openTemplates} title={t("templates")}>
+              <LayoutTemplate className="size-4" />
+              <span className="hidden sm:inline">{t("templates")}</span>
+            </Button>
+            {templatesOpen && (
+              <div className="absolute bottom-full left-0 z-30 mb-1 w-64 rounded-lg border border-border bg-popover p-1 text-sm shadow-lg">
+                {templates.length === 0 && (
+                  <p className="px-2 py-1.5 text-xs text-muted-foreground">{t("noTemplates")}</p>
+                )}
+                {templates.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => insertTemplate(item)}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted"
+                  >
+                    <span className="truncate">{item.name}</span>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTemplatesOpen(false);
+                    setTemplatesDialogOpen(true);
+                  }}
+                  className="mt-0.5 flex w-full items-center gap-2 rounded-md border-t border-border px-2 py-1.5 text-left text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  {t("manageTemplates")}
+                </button>
+              </div>
+            )}
+          </div>
           <Button
             type="button"
             variant="ghost"
@@ -399,6 +455,7 @@ export function ComposePanel(props: ComposePanelProps) {
           </div>
         </div>
       </form>
+      <TemplatesDialog open={templatesDialogOpen} onOpenChange={setTemplatesDialogOpen} />
     </div>
   );
 }

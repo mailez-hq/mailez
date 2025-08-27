@@ -51,7 +51,11 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
   onSaved: () => void;
 }) {
   const t = useTranslations("settings");
-  const { theme, setTheme, density, setDensity, accent, setAccent, prefs, setAi, setNotifications } = usePreferences();
+  const {
+    theme, setTheme, density, setDensity, accent, setAccent,
+    spellcheck, setSpellcheck, readerFont, setReaderFont, paneWidth, setPaneWidth,
+    prefs, setAi, setNotifications,
+  } = usePreferences();
   const [profile, setProfile] = useState<MeSettings | null>(null);
   const [error, setError] = useState("");
   const [section, setSection] = useState<string>("appearance");
@@ -474,6 +478,12 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
               setDensity={setDensity}
               accent={accent}
               setAccent={setAccent}
+              spellcheck={spellcheck}
+              setSpellcheck={setSpellcheck}
+              readerFont={readerFont}
+              setReaderFont={setReaderFont}
+              paneWidth={paneWidth}
+              setPaneWidth={setPaneWidth}
               prefs={prefs}
               setAi={setAi}
               setNotifications={setNotifications}
