@@ -221,7 +221,6 @@
     "delegatedMailboxes": "Delegated mailboxes",
     "delegated": "delegated",
     "calendar": "Calendar",
-    "mailbox": "Mail",
     "templates": "Templates",
     "noTemplates": "No templates yet",
     "templateName": "Name",
@@ -531,6 +530,8 @@
     "loading": "Loading…"
   },
   "calendar": {
+    "title": "Calendar",
+    "close": "Close",
     "today": "Today",
     "prevMonth": "Previous month",
     "nextMonth": "Next month",

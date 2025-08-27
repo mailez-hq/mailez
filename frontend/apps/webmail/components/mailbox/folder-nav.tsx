@@ -111,6 +111,7 @@ export function FolderNav({
   onSettings,
   onContacts,
   onSieve,
+  onCalendar,
   onLogout,
   onClose,
 }: {
@@ -148,6 +149,7 @@ export function FolderNav({
   onSettings: () => void;
   onContacts: () => void;
   onSieve: () => void;
+  onCalendar: () => void;
   onLogout: () => void;
   onClose: () => void;
 }) {
@@ -675,9 +677,9 @@ export function FolderNav({
             <Button variant="ghost" size="sm" onClick={onSieve} title={t("filterRules")}>
               <Filter className="size-4" />
             </Button>
-            <Link href="/calendar" title={t("calendar")} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+            <Button variant="ghost" size="sm" onClick={onCalendar} title={t("calendar")}>
               <CalendarDays className="size-4" />
-            </Link>
+            </Button>
             <Button variant="ghost" size="sm" onClick={onSettings} title={t("settings")}>
               <Settings className="size-4" />
             </Button>
