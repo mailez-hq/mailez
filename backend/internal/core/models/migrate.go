@@ -177,6 +177,14 @@ var migrations = []migration{
 			return nil
 		},
 	},
+	{
+		// AD/LDAP directory integration: connection config (encrypted bind
+		// password) and the synced read-only organization address book.
+		ID: "20260827_ldap",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&LdapConfig{}, &OrgContact{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

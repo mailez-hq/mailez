@@ -138,3 +138,41 @@ export const putAIConfig = (input: {
   api_key?: string;
   model?: string;
 }) => apiPut<AiConfigView>("/config/ai", input);
+
+// AD/LDAP directory integration.
+export type LdapConfigView = {
+  enabled: boolean;
+  host: string;
+  port: number;
+  security: string; // none | starttls | tls
+  base_dn: string;
+  bind_dn: string;
+  has_bind_pw?: boolean;
+  user_filter: string;
+  mail_attr: string;
+  uid_attr: string;
+  name_attr: string;
+  dept_attr: string;
+  title_attr: string;
+  phone_attr: string;
+  auto_create: boolean;
+  sync_minutes: number;
+  updated_at?: string;
+};
+
+export const getLDAPConfig = () => api<LdapConfigView>("/ldap");
+
+export const putLDAPConfig = (input: Partial<LdapConfigView> & { bind_password?: string }) =>
+  apiPut<LdapConfigView>("/ldap", input);
+
+export const testLDAP = (input: {
+  host: string;
+  port: number;
+  security: string;
+  base_dn: string;
+  bind_dn: string;
+  bind_password?: string;
+  user_filter: string;
+}) => apiPost<{ ok: boolean }>("/ldap/test", input);
+
+export const syncLDAP = () => apiPost<{ added: number; updated: number }>("/ldap/sync", {});

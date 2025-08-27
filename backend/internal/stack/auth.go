@@ -160,6 +160,24 @@ func (h *Handler) authEmail(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusOK)
 	}
 
+	// A directory user may exist in AD/LDAP without a local account yet:
+	// validate the bind, provision the mailbox, then route to the backend.
+	if !userFound && h.Auth.LDAP != nil && !strings.HasPrefix(authPass, "token-") && !auth.IsAppToken(authPass) {
+		if ok, err := h.Auth.LDAP.Authenticate(c.Context(), userEmail, authPass); err == nil && ok {
+			if h.Auth.LDAP.EnsureLocalUser(c.Context(), userEmail) == nil {
+				if h.DB.WithContext(c.Context()).First(&user, "email = ?", userEmail).Error == nil && user.Enabled {
+					server, port := h.serverFor(protocol, true)
+					c.Set("Auth-Status", "OK")
+					c.Set("Auth-Server", server)
+					c.Set("Auth-User", userEmail)
+					c.Set("Auth-User-Exists", "True")
+					c.Set("Auth-Port", port)
+					return c.SendStatus(fiber.StatusOK)
+				}
+			}
+		}
+	}
+
 	c.Set("Auth-Status", "Authentication credentials invalid")
 	c.Set("Auth-Error-Code", statuses["authentication"][protocol])
 	c.Set("Auth-User", userEmail)
@@ -203,7 +221,17 @@ func (h *Handler) checkCredentials(u *models.User, pw, ip, protocol, authPort st
 		// account when the delegate holds full access.
 		return h.delegatedAppToken(c, pw, u.Email)
 	}
-	return verifyPassword(c, u.Password, pw)
+	if verifyPassword(c, u.Password, pw) {
+		return true
+	}
+	// Directory fallback: the account's password may live in AD/LDAP.
+	if h.Auth.LDAP != nil && !strings.HasPrefix(pw, "token-") {
+		if ok, err := h.Auth.LDAP.Authenticate(c.Context(), u.Email, pw); err == nil && ok {
+			_ = h.Auth.LDAP.EnsureLocalUser(c.Context(), u.Email)
+			return true
+		}
+	}
+	return false
 }
 
 // delegatedFullAccess reports whether the temp token belongs to a session

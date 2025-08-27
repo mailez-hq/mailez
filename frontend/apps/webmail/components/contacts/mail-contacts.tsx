@@ -15,8 +15,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   carddavGet, carddavSet, carddavSync, contacts, contactsDedupe,
   createContact, updateContact, deleteContact, exportContacts, importContacts,
-  mailSearch,
-  type Contact, type MailMessage,
+  mailSearch, orgContacts,
+  type Contact, type MailMessage, type OrgContact,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -105,11 +105,14 @@ export function MailContacts({
   const [carddavPw, setCarddavPw] = useState("");
   const [carddavSaving, setCarddavSaving] = useState(false);
   const [carddavSyncing, setCarddavSyncing] = useState(false);
+  const [tab, setTab] = useState<"mine" | "org">("mine");
+  const [orgList, setOrgList] = useState<OrgContact[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     try {
       setList(await contacts());
+      orgContacts().then(setOrgList).catch(() => setOrgList([]));
     } catch (e) {
       setError(e instanceof Error ? e.message : "load contacts failed");
     }
@@ -238,7 +241,7 @@ export function MailContacts({
     }
   }
 
-  function pick(c: Contact) {
+  function pick(c: { email: string }) {
     onPick(c.email);
     onOpenChange(false);
   }
@@ -290,6 +293,54 @@ export function MailContacts({
         </DialogHeader>
         {error && <p className="text-sm text-destructive">{error}</p>}
         {info && <p className="text-sm text-muted-foreground">{info}</p>}
+        <div className="mb-2 flex gap-1">
+          <button
+            type="button"
+            onClick={() => setTab("mine")}
+            className={cn(
+              "rounded-full border px-2.5 py-0.5 text-xs transition-colors",
+              tab === "mine" ? "bg-accent font-medium text-accent-foreground" : "border-border text-muted-foreground hover:bg-muted",
+            )}
+          >
+            {t("myContacts")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("org")}
+            className={cn(
+              "rounded-full border px-2.5 py-0.5 text-xs transition-colors",
+              tab === "org" ? "bg-accent font-medium text-accent-foreground" : "border-border text-muted-foreground hover:bg-muted",
+            )}
+          >
+            {t("orgContacts")}
+          </button>
+        </div>
+        {tab === "org" ? (
+          <ScrollArea className="max-h-[62vh]">
+            <div className="space-y-1 pr-1">
+              {orgList.length === 0 && <p className="text-sm text-muted-foreground">{t("orgEmpty")}</p>}
+              {orgList.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => pick(c)}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted"
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent/60 text-xs font-semibold">
+                    {(c.name || c.email).charAt(0).toUpperCase()}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{c.name || c.email}</span>
+                    <span className="block truncate text-[11px] text-muted-foreground">
+                      {[c.department, c.title].filter(Boolean).join(" · ")}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">{c.email}</span>
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        ) : (
         <div className="grid gap-4 md:grid-cols-[230px_1fr]">
           {/* left: add + list */}
           <div className="min-w-0">
@@ -405,6 +456,7 @@ export function MailContacts({
             )}
           </div>
         </div>
+        )}
         <DialogFooter />
       </DialogContent>
     </Dialog>
