@@ -7,6 +7,7 @@ import (
 
 	"mailez/backend/internal/auth"
 	"mailez/backend/internal/core"
+	"mailez/backend/internal/ldap"
 )
 
 // Handler implements the internal API consumed by nginx (auth_request) and the
@@ -17,16 +18,18 @@ type Handler struct {
 	Auth  *auth.Manager
 	Cfg   core.Config
 	Redis *redis.Client
+	LDAP  *ldap.Service
 	srs   *srsCodec
 	rate  *rateLimiter
 }
 
-func New(db *gorm.DB, authMgr *auth.Manager, cfg core.Config, rdb *redis.Client) *Handler {
+func New(db *gorm.DB, authMgr *auth.Manager, cfg core.Config, rdb *redis.Client, ldapSvc *ldap.Service) *Handler {
 	return &Handler{
 		DB:    db,
 		Auth:  authMgr,
 		Cfg:   cfg,
 		Redis: rdb,
+		LDAP:  ldapSvc,
 		srs:   newSRSCodec(cfg.SecretKey),
 		rate:  newRateLimiter(rdb, cfg.MessageRateLimit),
 	}

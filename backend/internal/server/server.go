@@ -118,7 +118,7 @@ func New(cfg core.Config) *Server {
 	ldapSvc := ldap.New(db, cfg.SecretKey)
 	s.Auth.LDAP = ldapSvc
 	s.LDAP = ldapSvc
-	s.internal = stack.New(db, s.Auth, cfg, rdb)
+	s.internal = stack.New(db, s.Auth, cfg, rdb, ldapSvc)
 	s.routes()
 
 	// External mailbox poller (fetchmail equivalent).

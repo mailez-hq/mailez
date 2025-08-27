@@ -1,6 +1,7 @@
 package stack
 
 import (
+	"context"
 	"strings"
 
 	"mailez/backend/internal/core/models"
@@ -45,6 +46,14 @@ func (h *Handler) resolveDestination(localpart, domain string, ignoreForwardKeep
 
 	if pure := h.resolveAlias(localpart, domain); pure != nil {
 		if !pure.Wildcard {
+			// Directory group mailbox: expand members live at delivery time
+			// (nested groups included) so membership changes land within the
+			// cache TTL; fall back to the last synced list on any failure.
+			if pure.LdapGroup && h.LDAP != nil {
+				if members, err := h.LDAP.ResolveGroupMembers(context.Background(), pure.Email); err == nil && len(members) > 0 {
+					return members
+				}
+			}
 			return pure.Destinations()
 		}
 	}
