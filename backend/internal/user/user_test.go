@@ -87,3 +87,27 @@ func TestUserCRUD(t *testing.T) {
 		t.Fatalf("delete status = %d, want 204", resp.StatusCode)
 	}
 }
+
+func TestUserCreateDuplicateReturnsConflict(t *testing.T) {
+	app := newUserTestApp(t)
+	body := `{"email":"amy@t.example","password":"secret-pass"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/users", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	if resp, err := app.Test(req, -1); err != nil || resp.StatusCode != http.StatusCreated {
+		t.Fatalf("first create: %v status %d", err, resp.StatusCode)
+	}
+	dup := httptest.NewRequest(http.MethodPost, "/api/v1/users", strings.NewReader(body))
+	dup.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(dup, -1)
+	if err != nil {
+		t.Fatalf("dup create: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("dup status = %d, want 409", resp.StatusCode)
+	}
+	b, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(b), "already exists") {
+		t.Fatalf("dup body = %s, want clear message", string(b))
+	}
+}

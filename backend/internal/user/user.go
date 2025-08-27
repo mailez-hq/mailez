@@ -103,6 +103,10 @@ func (h *Handler) createUser(c *fiber.Ctx) error {
 	if !h.CanManageDomain(currentUser(c), domainName) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "no access to this domain"})
 	}
+	var exists int64
+	if err := h.DB.Model(&models.User{}).Where("email = ?", in.Email).Count(&exists).Error; err == nil && exists > 0 {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "user already exists"})
+	}
 	hash, err := password.Hash(in.Password)
 	if err != nil {
 		return core.Fail(c, 500, err, "internal error")
