@@ -16,11 +16,13 @@ type MailIdentity struct {
 	Name        string `json:"name"`
 	DkimEnabled bool   `json:"dkim_enabled"`
 	Signature   string `json:"signature"`
+	Delegated   bool   `json:"delegated,omitempty"` // true when sending as a delegated mailbox owner
 }
 
 // mailIdentities lists the addresses the current user may send from: their own
-// address plus every non-disabled alias that delivers to them (or that they
-// own as an anonymous alias). DKIM health is reported per hosting domain.
+// address, every non-disabled alias that delivers to them (or that they own as
+// an anonymous alias), plus the mailboxes whose owner delegated sending to
+// them. DKIM health is reported per hosting domain.
 // mailIdentities lists addresses the caller may send from, with DKIM health.
 // @Summary Send-as identities
 // @Tags mail
@@ -57,7 +59,36 @@ func (h *Handler) mailIdentities(c *fiber.Ctx) error {
 			DkimEnabled: dkim(a.DomainName),
 		})
 	}
+	// Delegated mailboxes: owners that granted this user send-as (or full
+	// access, which implies send-as). The owner's display name and signature
+	// travel with the identity so the compose panel looks right.
+	var deps []models.MailDelegation
+	if err := h.DB.Where("delegate_email = ? AND (can_send = ? OR full_access = ?)", user.Email, true, true).
+		Find(&deps).Error; err == nil {
+		for _, dep := range deps {
+			key := strings.ToLower(dep.OwnerEmail)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			idn := MailIdentity{Email: dep.OwnerEmail, Delegated: true, DkimEnabled: dkim(domainOf(dep.OwnerEmail))}
+			var owner models.User
+			if err := h.DB.First(&owner, "email = ?", dep.OwnerEmail).Error; err == nil {
+				idn.Name = owner.DisplayedName
+				idn.Signature = owner.Signature
+			}
+			ids = append(ids, idn)
+		}
+	}
 	return c.JSON(ids)
+}
+
+// domainOf extracts the domain part of an address for DKIM health lookups.
+func domainOf(email string) string {
+	if i := strings.LastIndex(email, "@"); i >= 0 {
+		return email[i+1:]
+	}
+	return email
 }
 
 // aliasDeliversTo reports whether the alias destination list (a CSV column)
@@ -94,8 +125,9 @@ func userAliases(db *gorm.DB, user *models.User) []models.Alias {
 	return out
 }
 
-// MaySendAs reports whether from is the user's own address or one of their
-// aliases (the same rule the mail services apply for spoofing protection).
+// MaySendAs reports whether from is the user's own address, one of their
+// aliases, or a mailbox that delegated sending to them (the same rule the
+// mail services apply for spoofing protection).
 func MaySendAs(app *core.App, user *models.User, from string) bool {
 	from = strings.ToLower(strings.TrimSpace(from))
 	if from == "" || strings.EqualFold(from, user.Email) {
@@ -105,6 +137,12 @@ func MaySendAs(app *core.App, user *models.User, from string) bool {
 		if strings.EqualFold(a.Email, from) {
 			return true
 		}
+	}
+	var dep models.MailDelegation
+	if err := app.DB.Where("owner_email = ? AND delegate_email = ? AND (can_send = ? OR full_access = ?)",
+		from, strings.ToLower(user.Email), true, true).
+		First(&dep).Error; err == nil {
+		return true
 	}
 	return false
 }

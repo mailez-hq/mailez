@@ -78,6 +78,25 @@ func (a *App) MailToken(c *fiber.Ctx) (string, error) {
 // client can connect to the aggregated server directly.
 func (a *App) MailDial(c *fiber.Ctx) (mail.Dial, error) {
 	user := CurrentUser(c)
+	// Mailbox delegation: the caller holds a full-access grant on another
+	// internal account and asks every /mail/* operation to run in that
+	// mailbox context (X-Delegate-Email). The temp token is issued for the
+	// owner but bound to the caller's session; the auth/email endpoint
+	// accepts it through the delegation grant.
+	if delegate := c.Get("X-Delegate-Email"); delegate != "" && !strings.EqualFold(delegate, user.Email) {
+		var dep models.MailDelegation
+		if err := a.DB.WithContext(c.Context()).
+			Where("LOWER(owner_email) = LOWER(?) AND LOWER(delegate_email) = LOWER(?) AND full_access = ?", delegate, user.Email, true).
+			First(&dep).Error; err != nil {
+			return mail.Dial{}, errors.New("not authorized to access this mailbox")
+		}
+		sid := c.Cookies(a.Auth.SessionName)
+		token, err := a.Auth.CreateTempToken(c.Context(), delegate, sid)
+		if err != nil {
+			return mail.Dial{}, err
+		}
+		return mail.LocalDial(delegate, token), nil
+	}
 	if id := c.Query("account_id"); id != "" {
 		aid, err := strconv.ParseUint(id, 10, 64)
 		if err != nil || aid == 0 {

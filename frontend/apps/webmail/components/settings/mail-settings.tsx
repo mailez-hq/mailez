@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   AtSign, Bell, Filter, Forward, IdCard, KeyRound, Lock, MessageSquareReply,
-  Palette, ShieldAlert, ShieldCheck, Sparkles, User, Webhook as WebhookIcon,
+  Palette, ShieldAlert, ShieldCheck, Sparkles, User, Users, Webhook as WebhookIcon,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -14,10 +14,11 @@ import { SettingsSections } from "@/components/settings/sections";
 import {
   changePassword, meProfile, updateMeSettings,
   accounts, accountCreate, accountDelete, accountTest, accountUpdate,
+  delegations, delegationCreate, delegationDelete, delegationUpdate,
   pgpDeleteKey, pgpImportKey, pgpListKeys, pgpStatus, totpStatus,
   smimeDelete, smimeDeleteCert, smimeImport, smimeImportCert, smimeListCerts, smimeStatus,
   webhookCreate, webhookDelete, webhookList, webhookTest, webhookUpdate,
-  type MailAccount, type PgpKey, type SmimeCert, type SmimeStatus, type TotpStatus,
+  type DelegationListing, type MailAccount, type MailDelegation, type PgpKey, type SmimeCert, type SmimeStatus, type TotpStatus,
   type PgpStatus, type MeSettings, type Webhook,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ import { cn } from "@/lib/utils";
 const SETTINGS_SECTIONS = [
   { id: "appearance", icon: Palette, label: "appearance" },
   { id: "accounts", icon: AtSign, label: "accounts" },
+  { id: "delegations", icon: Users, label: "delegations" },
   { id: "ai", icon: Sparkles, label: "aiFeatures" },
   { id: "notifications", icon: Bell, label: "notifications" },
   { id: "identity", icon: User, label: "identity" },
@@ -142,6 +144,13 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
   const [accTesting, setAccTesting] = useState<number | null>(null);
   const [accTestMsg, setAccTestMsg] = useState("");
 
+  // mailbox delegation (shared mailboxes): grants I made + grants I received
+  const [delegationList, setDelegationList] = useState<DelegationListing | null>(null);
+  const [delEmail, setDelEmail] = useState("");
+  const [delCanSend, setDelCanSend] = useState(true);
+  const [delFullAccess, setDelFullAccess] = useState(false);
+  const [delSaving, setDelSaving] = useState(false);
+
   useEffect(() => {
     if (!open) return;
     setError("");
@@ -151,6 +160,7 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
     smimeStatus().then(setSmime).catch(() => setSmime(null));
     smimeListCerts().then(setSmimeCerts).catch(() => setSmimeCerts([]));
     accounts().then(setAccountList).catch(() => setAccountList([]));
+    delegations().then(setDelegationList).catch(() => setDelegationList({ granted: [], received: [] }));
     webhookList().then(setWebhooks).catch(() => setWebhooks([]));
     meProfile().then((p) => {
       setProfile(p);
@@ -436,6 +446,57 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
     }
   }
 
+  async function addDelegation() {
+    if (!delEmail.trim()) return;
+    setDelSaving(true);
+    setError("");
+    try {
+      const d = await delegationCreate({
+        delegate_email: delEmail.trim(),
+        can_send: delCanSend || delFullAccess,
+        full_access: delFullAccess,
+      });
+      setDelegationList((dl) => dl && { ...dl, granted: [...dl.granted, d] });
+      setDelEmail("");
+      setDelFullAccess(false);
+      setDelCanSend(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "delegation create failed");
+    } finally {
+      setDelSaving(false);
+    }
+  }
+
+  async function updateDelegation(d: MailDelegation) {
+    setError("");
+    try {
+      const updated = await delegationUpdate(d.id, {
+        can_send: !d.can_send || d.full_access,
+        full_access: d.full_access,
+      });
+      setDelegationList((dl) => dl && {
+        ...dl,
+        granted: dl.granted.map((x) => (x.id === updated.id ? updated : x)),
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "delegation update failed");
+    }
+  }
+
+  async function removeDelegation(id: number) {
+    if (!window.confirm(t("delegationDeleteConfirm"))) return;
+    setError("");
+    try {
+      await delegationDelete(id);
+      setDelegationList((dl) => dl && {
+        ...dl,
+        granted: dl.granted.filter((x) => x.id !== id),
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "delegation delete failed");
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-0 sm:max-w-3xl">
@@ -607,6 +668,17 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
               onDeleteAccount={removeAccount}
               onToggleAccount={toggleAccount}
               onTestAccount={testAccount}
+              delegationList={delegationList}
+              delEmail={delEmail}
+              setDelEmail={setDelEmail}
+              delCanSend={delCanSend}
+              setDelCanSend={setDelCanSend}
+              delFullAccess={delFullAccess}
+              setDelFullAccess={setDelFullAccess}
+              delSaving={delSaving}
+              onAddDelegation={addDelegation}
+              onUpdateDelegation={updateDelegation}
+              onDeleteDelegation={removeDelegation}
               setError={setError}
               oldPw={oldPw}
               setOldPw={setOldPw}
