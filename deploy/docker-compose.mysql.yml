@@ -1,0 +1,44 @@
+# 生产档控制面数据库：MySQL（叠加在任何基座之上）。
+#
+# 开发档 backend 用宿主机 SQLite（零运维）；生产把控制面元数据放到 MySQL，
+# 供 backend 多实例/高可用使用。引擎存储（Pebble/TiDB）由对应 profile 决定。
+#
+# 用法（通常经 deploy/mailezctl.[ps1|sh] -Prod 组装）：
+#   docker compose -f docker-compose.yml -f docker-compose.mysql.yml \
+#       -f docker-compose.mailezine.yml -f docker-compose.tidb.yml \
+#       -f docker-compose.blob-s3.yml --profile mailezine up -d --build
+
+name: mailez
+
+services:
+
+  backend:
+    environment:
+      - DB_DRIVER=mysql
+      - DB_DSN=mailez:mailez@tcp(mysql:3306)/mailez?charset=utf8mb4&parseTime=True&loc=Local
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    pull_policy: missing
+    restart: always
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      - MYSQL_ROOT_PASSWORD=mailez-root
+      - MYSQL_DATABASE=mailez
+      - MYSQL_USER=mailez
+      - MYSQL_PASSWORD=mailez
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-umailez", "-pmailez"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    volumes:
+      - "./data/mysql:/var/lib/mysql"
+    ports:
+      - "127.0.0.1:13306:3306"
