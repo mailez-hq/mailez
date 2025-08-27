@@ -532,6 +532,10 @@
   "calendar": {
     "title": "日历",
     "close": "关闭",
+    "monthView": "月",
+    "weekView": "周",
+    "prevWeek": "上一周",
+    "nextWeek": "下一周",
     "today": "今天",
     "prevMonth": "上个月",
     "nextMonth": "下个月",

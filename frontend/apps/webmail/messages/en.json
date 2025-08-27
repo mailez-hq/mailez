@@ -532,6 +532,10 @@
   "calendar": {
     "title": "Calendar",
     "close": "Close",
+    "monthView": "Month",
+    "weekView": "Week",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week",
     "today": "Today",
     "prevMonth": "Previous month",
     "nextMonth": "Next month",

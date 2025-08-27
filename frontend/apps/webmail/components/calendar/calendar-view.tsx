@@ -26,6 +26,14 @@ function addDays(d: Date, n: number): Date {
   return out;
 }
 
+// weekStart returns the Sunday of the week containing d (grids start Sunday,
+// matching the month view).
+function weekStart(d: Date): Date {
+  const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  out.setDate(out.getDate() - out.getDay());
+  return out;
+}
+
 function sameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
@@ -48,6 +56,9 @@ function dayEvents(events: CalendarEvent[]): Map<string, CalendarEvent[]> {
 export function CalendarView() {
   const t = useTranslations("calendar");
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
+  const [view, setView] = useState<"month" | "week">("month");
+  // Week view anchor: any date; the visible week is the one containing it.
+  const [weekAnchor, setWeekAnchor] = useState(() => new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -59,16 +70,24 @@ export function CalendarView() {
     setLoading(true);
     setError("");
     try {
-      const from = new Date(month.getFullYear(), month.getMonth(), -6).toISOString();
-      const to = new Date(month.getFullYear(), month.getMonth() + 1, 7).toISOString();
-      const list = await calendarEvents(from, to);
+      let from: Date;
+      let to: Date;
+      if (view === "week") {
+        const start = weekStart(weekAnchor);
+        from = addDays(start, -1);
+        to = addDays(start, 7);
+      } else {
+        from = new Date(month.getFullYear(), month.getMonth(), -6);
+        to = new Date(month.getFullYear(), month.getMonth() + 1, 7);
+      }
+      const list = await calendarEvents(from.toISOString(), to.toISOString());
       setEvents(list);
     } catch (e) {
       setError(e instanceof Error ? e.message : "load failed");
     } finally {
       setLoading(false);
     }
-  }, [month]);
+  }, [month, view, weekAnchor]);
 
   useEffect(() => {
     load();
@@ -117,22 +136,57 @@ export function CalendarView() {
     setEvents((es) => es.filter((e) => e.id !== id));
   };
 
-  const monthLabel = month.toLocaleDateString(undefined, { year: "numeric", month: "long" });
+  const weekStartDate = weekStart(weekAnchor);
+  const weekEndDate = addDays(weekStartDate, 6);
+  const title =
+    view === "month"
+      ? month.toLocaleDateString(undefined, { year: "numeric", month: "long" })
+      : weekStartDate.getFullYear() === weekEndDate.getFullYear()
+        ? `${weekStartDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${weekEndDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`
+        : `${weekStartDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} – ${weekEndDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+
+  const prev = () => {
+    if (view === "week") setWeekAnchor(addDays(weekStartDate, -7));
+    else setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1));
+  };
+  const next = () => {
+    if (view === "week") setWeekAnchor(addDays(weekStartDate, 7));
+    else setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1));
+  };
+  const goToday = () => {
+    if (view === "week") setWeekAnchor(new Date());
+    else setMonth(startOfMonth(new Date()));
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
       <header className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-2.5">
         <div className="flex items-center gap-1.5">
-          <Button variant="ghost" size="icon-sm" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} title={t("prevMonth")}>
+          <Button variant="ghost" size="icon-sm" onClick={prev} title={view === "week" ? t("prevWeek") : t("prevMonth")}>
             <ChevronLeft className="size-4" />
           </Button>
-          <Button variant="ghost" size="icon-sm" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} title={t("nextMonth")}>
+          <Button variant="ghost" size="icon-sm" onClick={next} title={view === "week" ? t("nextWeek") : t("nextMonth")}>
             <ChevronRight className="size-4" />
           </Button>
-          <h1 className="min-w-32 text-base font-semibold">{monthLabel}</h1>
-          <Button variant="outline" size="sm" onClick={() => setMonth(startOfMonth(new Date()))}>
+          <h1 className="min-w-32 text-base font-semibold">{title}</h1>
+          <Button variant="outline" size="sm" onClick={goToday}>
             {t("today")}
           </Button>
+          <div className="flex rounded-lg border border-border bg-muted/40 p-0.5">
+            {(["month", "week"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={cn(
+                  "rounded-md px-2 py-1 text-xs transition-colors",
+                  view === v ? "bg-background font-medium text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {v === "month" ? t("monthView") : t("weekView")}
+              </button>
+            ))}
+          </div>
         </div>
         <Button size="sm" onClick={() => openNew(new Date())}>
           <Plus className="size-4" />
@@ -142,7 +196,7 @@ export function CalendarView() {
       {error && <p className="shrink-0 px-4 py-1.5 text-xs text-destructive">{error}</p>}
       {loading ? (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">{t("loading")}</div>
-      ) : (
+      ) : view === "month" ? (
         <div className="grid min-h-0 flex-1 grid-cols-7 overflow-auto">
           {WEEKDAYS.map((d) => (
             <div key={d} className="border-b border-r border-border px-2 py-1.5 text-center text-[11px] font-medium text-muted-foreground uppercase last:border-r-0">
@@ -205,6 +259,62 @@ export function CalendarView() {
             );
           })}
         </div>
+      ) : (
+        <div className="grid min-h-0 flex-1 grid-cols-7 overflow-auto">
+          {WEEKDAYS.map((d, i) => {
+            const day = addDays(weekStartDate, i);
+            const key = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
+            const dayList = byDay.get(key) || [];
+            return (
+              <div key={d} className="flex min-h-0 flex-col border-b border-r border-border last:border-r-0">
+                <div className="shrink-0 border-b border-border px-1 py-1.5 text-center">
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase">
+                    {t(`weekday${d.charAt(0).toUpperCase()}${d.slice(1)}`)}
+                  </p>
+                  <span
+                    className={cn(
+                      "inline-flex size-6 items-center justify-center rounded-full text-xs",
+                      sameDay(day, today) && "bg-primary font-semibold text-primary-foreground",
+                    )}
+                  >
+                    {day.getDate()}
+                  </span>
+                </div>
+                <div
+                  className="min-h-0 flex-1 cursor-pointer space-y-1 overflow-y-auto p-1"
+                  onClick={() => openNew(day)}
+                >
+                  {dayList.map((ev) => (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEdit(ev);
+                      }}
+                      className={cn(
+                        "block w-full truncate rounded px-1 py-1 text-left text-[11px] leading-4",
+                        ev.all_day ? "bg-accent font-medium text-accent-foreground" : "bg-primary/10 text-primary",
+                      )}
+                      title={ev.summary}
+                    >
+                      {!ev.all_day && (
+                        <span className="mr-1 opacity-70">
+                          {new Date(ev.start).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      )}
+                      {ev.summary || "(no title)"}
+                      {ev.location && <span className="ml-1 opacity-60">· {ev.location}</span>}
+                    </button>
+                  ))}
+                  {dayList.length === 0 && (
+                    <p className="px-1 text-[10px] text-muted-foreground">+</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
       <EventDialog
         open={dialogOpen}
@@ -217,4 +327,3 @@ export function CalendarView() {
     </div>
   );
 }
-
