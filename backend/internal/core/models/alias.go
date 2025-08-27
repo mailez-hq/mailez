@@ -13,6 +13,9 @@ type Alias struct {
 	// Anonymous Email Service metadata
 	Hostname   string `gorm:"size:255" json:"hostname"`
 	OwnerEmail string `gorm:"size:255;index:idx_aliases_owner_email" json:"owner_email"`
+	// LdapGroup marks distribution-list aliases synced from directory groups;
+	// the group sync owns them and never touches manually created aliases.
+	LdapGroup bool `gorm:"not null;default:false" json:"ldap_group"`
 }
 
 // Destinations returns the parsed destination list.

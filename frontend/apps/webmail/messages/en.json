@@ -480,6 +480,7 @@
     "myContacts": "My contacts",
     "orgContacts": "Organization",
     "orgEmpty": "No organization contacts yet (synced from AD/LDAP by an admin)",
+    "allDepartments": "All departments",
     "name": "Name",
     "email": "Email",
     "add": "Add",

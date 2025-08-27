@@ -480,6 +480,7 @@
     "myContacts": "我的联系人",
     "orgContacts": "组织通讯录",
     "orgEmpty": "暂无组织通讯录（由管理员从 AD/LDAP 同步）",
+    "allDepartments": "全部部门",
     "name": "姓名",
     "email": "邮箱",
     "add": "添加",
