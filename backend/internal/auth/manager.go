@@ -12,6 +12,13 @@ import (
 	"mailez/backend/internal/password"
 )
 
+// LDAPAuthenticator is the directory integration surface the auth manager
+// falls back to when local credentials do not match.
+type LDAPAuthenticator interface {
+	Authenticate(ctx context.Context, email, password string) (bool, error)
+	EnsureLocalUser(ctx context.Context, email string) error
+}
+
 // Manager coordinates sessions, login and temporary tokens.
 type Manager struct {
 	Store       Store
@@ -19,6 +26,7 @@ type Manager struct {
 	SessionName string
 	SessionTTL  time.Duration
 	TokenTTL    time.Duration
+	LDAP        LDAPAuthenticator
 
 	secureCookie bool
 	loginWindow  time.Duration

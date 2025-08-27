@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -42,6 +43,20 @@ func (m *Manager) ssoLogin(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusTooManyRequests).JSON(models.APIError{Error: "too many login attempts, try again later", Code: "rate_limited"})
 	}
 	sid, user, err := m.Login(c.Context(), req.Email, req.Password)
+	// Directory fallback: when local credentials fail and an LDAP
+	// integration is configured, bind against the directory and provision
+	// the local account on first successful login.
+	if (err != nil || user == nil) && m.LDAP != nil && !strings.HasPrefix(req.Password, "token-") {
+		if ok, lerr := m.LDAP.Authenticate(c.Context(), req.Email, req.Password); lerr == nil && ok {
+			if uerr := m.LDAP.EnsureLocalUser(c.Context(), req.Email); uerr == nil {
+				var lu models.User
+				if derr := m.DB.WithContext(c.Context()).First(&lu, "email = ?", strings.ToLower(strings.TrimSpace(req.Email))).Error; derr == nil && lu.Enabled {
+					user = &lu
+					sid, err = m.CreateSession(c.Context(), lu.Email)
+				}
+			}
+		}
+	}
 	if err != nil {
 		m.loginFailed(c.Context(), req.Email)
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "wrong e-mail or password"})

@@ -33,6 +33,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&Account{},
 		&MailDelegation{},
 		&CalendarEvent{},
+		&LdapConfig{},
+		&OrgContact{},
 		&Announcement{},
 		&SchemaMigration{},
 	)

@@ -9,6 +9,7 @@ import (
 
 	"mailez/backend/internal/auth"
 	"mailez/backend/internal/core/models"
+	"mailez/backend/internal/ldap"
 	"mailez/backend/internal/mail"
 )
 
@@ -18,6 +19,7 @@ type App struct {
 	Auth *auth.Manager
 	Cfg  Config
 	Mail mail.Gateway
+	LDAP *ldap.Service
 }
 
 func New(db *gorm.DB, authMgr *auth.Manager, cfg Config) *App {
