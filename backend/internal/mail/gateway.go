@@ -13,6 +13,12 @@ type Gateway interface {
 
 	// Compose
 	Send(email, token, from string, to, cc, bcc []string, subject, text, html string, attachments []Attachment, extra ...Header) error
+	// SubmitRawAs delivers a pre-built RFC 5322 message through the gateway
+	// submission server, authenticated as email (ActiveSync SendMail path).
+	SubmitRawAs(email, token, from string, recipients []string, raw string) error
+	// AppendRaw stores a pre-built RFC 5322 message in a folder via IMAP
+	// APPEND (ActiveSync SaveInSentItems copies).
+	AppendRaw(email, token, folder, raw string, flags []string) error
 	SaveDraft(email, token string, to, cc []string, subject, text, html string, attachments []Attachment, replaceUID uint32) (uint32, error)
 
 	// Mailbox
@@ -20,6 +26,12 @@ type Gateway interface {
 	UnseenCounts(email, token string) (map[string]int, error)
 	ListMessages(email, token, folder string, page int) ([]Message, int, error)
 	ListMessagesSorted(email, token, folder string, page int, sort, dir string) ([]Message, int, error)
+	// ListAllMessages returns envelope+flags for every message of a folder
+	// (no bodies), for ActiveSync snapshots and export walks.
+	ListAllMessages(email, token, folder string) ([]Message, error)
+	// FolderStat returns the lightweight folder summary used by ActiveSync
+	// Ping and push change detection (SELECT-level counters).
+	FolderStat(email, token, folder string) (FolderStat, error)
 	GetMessage(email, token, folder string, uid uint32) (*Message, error)
 	UIDByMessageID(email, token, folder, id string) (uint32, error)
 	GetRaw(email, token, folder string, uid uint32) (string, error)
@@ -54,6 +66,14 @@ type Gateway interface {
 	SievePutScript(email, token, name, content string, activate bool) error
 	SieveDeleteScript(email, token, name string) error
 	SieveSetActive(email, token, name string) error
+}
+
+// FolderStat is a lightweight mailbox summary (SELECT counters) used by the
+// ActiveSync Ping command and push change detection.
+type FolderStat struct {
+	Messages uint32 // total messages
+	Unseen   uint32 // \Seen flag not set
+	UidNext  uint32 // predicted next UID
 }
 
 // compile-time check that the production client satisfies the gateway.

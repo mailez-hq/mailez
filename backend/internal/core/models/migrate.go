@@ -236,6 +236,14 @@ var migrations = []migration{
 			return db.AutoMigrate(&DlpRule{}, &PendingApproval{})
 		},
 	},
+	{
+		// ActiveSync: device registry, per-collection incremental
+		// sync snapshots and Ping counters (iOS/mainstream clients mobile sync).
+		ID: "20260827_eas_devices",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&EasDevice{}, &EasSyncState{}, &EasPingState{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

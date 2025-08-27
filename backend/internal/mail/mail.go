@@ -292,6 +292,58 @@ func (c *Client) listAllSorted(cli *client.Client, folder string, total uint32, 
 	return out[start:end], len(out), nil
 }
 
+// ListAllMessages returns envelope + flags + size for every message in the
+// folder (no bodies). ActiveSync uses it to snapshot a collection for
+// incremental sync; order is the mailbox order.
+func (c *Client) ListAllMessages(email, token, folder string) ([]Message, error) {
+	folder = inboxName(folder)
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return nil, err
+	}
+	defer cli.Logout()
+
+	mbox, err := cli.Select(folder, true)
+	if err != nil {
+		return nil, fmt.Errorf("imap select %q: %w", folder, err)
+	}
+	if mbox.Messages == 0 {
+		return []Message{}, nil
+	}
+	seqset := new(imap.SeqSet)
+	seqset.AddRange(1, mbox.Messages)
+	headerSection := &imap.BodySectionName{Peek: true, BodyPartName: imap.BodyPartName{Specifier: imap.HeaderSpecifier}}
+	messages := make(chan *imap.Message, 50)
+	done := make(chan error, 1)
+	go func() {
+		done <- cli.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure, imap.FetchRFC822Size, headerSection.FetchItem()}, messages)
+	}()
+	var out []Message
+	for msg := range messages {
+		out = append(out, envelopeToMessage(msg))
+	}
+	if err := <-done; err != nil {
+		return nil, fmt.Errorf("imap fetch: %w", err)
+	}
+	return out, nil
+}
+
+// FolderStat returns the SELECT counters for a folder (no body data).
+func (c *Client) FolderStat(email, token, folder string) (FolderStat, error) {
+	folder = inboxName(folder)
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return FolderStat{}, err
+	}
+	defer cli.Logout()
+
+	mbox, err := cli.Select(folder, true)
+	if err != nil {
+		return FolderStat{}, fmt.Errorf("imap select %q: %w", folder, err)
+	}
+	return FolderStat{Messages: mbox.Messages, Unseen: mbox.Unseen, UidNext: mbox.UidNext}, nil
+}
+
 // GetMessage returns a full message body by UID.
 func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, error) {
 	folder = inboxName(folder)
