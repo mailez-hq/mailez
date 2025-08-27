@@ -97,6 +97,7 @@
     "summarizing": "摘要生成中…",
     "aiGenerated": "AI 生成，仅供参考",
     "aiPriority": "AI 优先排序",
+    "more": "更多",
     "prioritizing": "排序中…",
     "aiSearch": "AI 搜索",
     "refresh": "刷新",
@@ -285,7 +286,7 @@
     "inviteDecline": "拒绝",
     "inviteAccepted": "已接受，回复已发送给组织者",
     "inviteDeclined": "已拒绝，回复已发送给组织者",
-    "inviteFailed": "回复发送失败"
+    "inviteFailed": "回复发送失败",
     "toastLabelApplied": "已应用标签",
     "translationError": "翻译失败",
     "noSelectionQuote": "（未选中文字，引用全文）"
