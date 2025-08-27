@@ -59,6 +59,39 @@ export type AuditLog = {
   status: number;
 };
 
+export type ArchiveDirection = "inbound" | "outbound";
+
+export type ArchiveSettings = {
+  id: number;
+  domain: string;
+  enabled: boolean;
+  capture_inbound: boolean;
+  capture_outbound: boolean;
+  retention_days: number;
+  updated_at: string;
+};
+
+export type ArchivedMessage = {
+  id: number;
+  direction: ArchiveDirection;
+  domain: string;
+  envelope_from: string;
+  envelope_to: string;
+  message_id: string;
+  from: string;
+  to: string;
+  cc: string;
+  subject: string;
+  date: string;
+  size: number;
+  archived_at: string;
+  expires_at: string | null;
+  reviewed: boolean;
+  reviewed_by: string;
+  reviewed_at: string | null;
+  review_note: string;
+};
+
 export type SignupDomain = {
   name: string;
   max_users: number;

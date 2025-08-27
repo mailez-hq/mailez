@@ -76,6 +76,8 @@ services:
       - MAILEZINE_OUTBOUND_ENABLED=true
       - MAILEZINE_OUTBOUND_PORT=25
       - MAILEZINE_LOG_LEVEL=info
+      # 合规归档：引擎把收/发副本持久转储到 backend 的归档存储。
+      - MAILEZINE_ARCHIVE_ENABLED=true
     # The image runs as unprivileged mailezine (uid 82): the host data dir
     # must be writable by that id (e.g. chown -R 82:101 data/mailezine).
     user: "82:101"

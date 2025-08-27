@@ -1,4 +1,6 @@
-import type { Alias, Announcement, AuditLog, DkimInfo, LoginResult, Me, Page, SignupDomain } from "@mailez/types";
+import type {
+  Alias, Announcement, ArchiveSettings, ArchivedMessage, AuditLog, DkimInfo, LoginResult, Me, Page, SignupDomain,
+} from "@mailez/types";
 
 // Re-export the shared auth types for existing importers of @/lib/api.
 export type { Me, LoginResult };
@@ -96,6 +98,30 @@ export const generateDomainDkim = (name: string) =>
 // audit trail
 export const auditLogs = (page = 1, limit = 50) =>
   api<Page<AuditLog>>(`/audit?page=${page}&limit=${limit}`);
+
+// compliance email archive
+export const archiveSettings = () =>
+  api<{ global: ArchiveSettings; domains: ArchiveSettings[] }>("/archive/settings");
+export const saveArchiveSettings = (body: Partial<ArchiveSettings>) =>
+  apiPut<ArchiveSettings>("/archive/settings", body);
+export const archiveMessages = (
+  params: Record<string, string>,
+  page = 1,
+  limit = 50,
+) => {
+  const qs = new URLSearchParams({ page: String(page), limit: String(limit), ...params });
+  return api<Page<ArchivedMessage>>(`/archive/messages?${qs}`);
+};
+export const archiveMessage = (id: number) =>
+  api<{ message: ArchivedMessage; preview: string }>(`/archive/messages/${id}`);
+export const reviewArchiveMessage = (id: number, reviewed: boolean, note: string) =>
+  apiPost<ArchivedMessage>(`/archive/messages/${id}/review`, { reviewed, note });
+export const deleteArchiveMessage = (id: number) =>
+  apiDelete(`/archive/messages/${id}`);
+export const archiveExportUrl = (params: Record<string, string>) => {
+  const qs = new URLSearchParams(params).toString();
+  return `/api/v1/archive/export${qs ? `?${qs}` : ""}`;
+};
 
 // config backup
 export type ConfigBackup = {

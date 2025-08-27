@@ -11,6 +11,7 @@ import {
   KeyRound,
   LogOut,
   Megaphone,
+  Archive,
   ScrollText,
   Server,
   Settings,
@@ -33,6 +34,7 @@ const navItems = [
   { href: "/tokens", key: "tokens", roles: ["admin"], icon: KeyRound },
   { href: "/announcement", key: "announcement", roles: ["admin"], icon: Megaphone },
   { href: "/anon-aliases", key: "anonAliases", roles: ["admin", "manager", "user"], icon: EyeOff },
+  { href: "/archive", key: "archive", roles: ["admin"], icon: Archive },
   { href: "/audit", key: "audit", roles: ["admin"], icon: ScrollText },
   { href: "/config", key: "config", roles: ["admin"], icon: Settings },
 ];
