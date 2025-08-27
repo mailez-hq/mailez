@@ -29,6 +29,7 @@ const (
 	nsPing            = "Ping"
 	nsComposeMail     = "ComposeMail"
 	nsSettings        = "Settings"
+	nsCalendar        = "Calendar"
 )
 
 var (
@@ -288,6 +289,32 @@ func main() {
 		log.Fatalf("EAS E2E FAILED: sent message not visible in Sent sync: %s", root.String())
 	}
 	fmt.Println("ok   sent delivery verified")
+
+	// Calendar collection sync (EAS calendar over the built-in store).
+	calInit := &activesync.Element{NS: nsAirSync, Name: "Sync"}
+	cCols := calInit.Add(nsAirSync, "Collections", "")
+	cCol := cCols.Add(nsAirSync, "Collection", "")
+	cCol.Add(nsAirSync, "Class", "Calendar")
+	cCol.Add(nsAirSync, "SyncKey", "0")
+	cCol.Add(nsAirSync, "CollectionId", "calendar")
+	cCol.Add(nsAirSync, "GetChanges", "1")
+	status, root, _, err = c.cmd("Sync", calInit)
+	check("sync calendar init", err)
+	calKey := root.Child(nsAirSync, "Collections").Child(nsAirSync, "Collection").ChildText(nsAirSync, "SyncKey")
+	calFull := &activesync.Element{NS: nsAirSync, Name: "Sync"}
+	cCols2 := calFull.Add(nsAirSync, "Collections", "")
+	cCol2 := cCols2.Add(nsAirSync, "Collection", "")
+	cCol2.Add(nsAirSync, "Class", "Calendar")
+	cCol2.Add(nsAirSync, "SyncKey", calKey)
+	cCol2.Add(nsAirSync, "CollectionId", "calendar")
+	cCol2.Add(nsAirSync, "GetChanges", "1")
+	status, root, _, err = c.cmd("Sync", calFull)
+	check("sync calendar full", err)
+	calOut := root.Child(nsAirSync, "Collections").Child(nsAirSync, "Collection")
+	if calOut == nil || calOut.ChildText(nsAirSync, "Status") != "1" {
+		log.Fatalf("EAS E2E FAILED at calendar sync: %s", root.String())
+	}
+	fmt.Println("ok   calendar sync")
 
 	fmt.Println("EAS E2E PASSED")
 }

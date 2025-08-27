@@ -107,6 +107,13 @@ func (s *Service) cmdSync(c *fiber.Ctx, req *easRequest, user *models.User, cred
 
 // syncOne handles one collection and returns its response <Collection>.
 func (s *Service) syncOne(c *fiber.Ctx, req *easRequest, user *models.User, credential string, col syncCollection) *Element {
+	// PIM collections (calendar/contacts) sync over the built-in stores.
+	if col.id == "calendar" {
+		return s.syncCalendar(c, req, user, col)
+	}
+	if col.id == "contacts" {
+		return s.syncContacts(c, req, user, col)
+	}
 	out := &Element{NS: nsAirSync, Name: "Collection"}
 	if col.class != "" {
 		out.Add(nsAirSync, "Class", col.class)

@@ -42,6 +42,7 @@
     "noOpenDomains": "No domains currently accept self-registration."
   },
   "nav": {
+    "overview": "Overview",
     "domains": "Domains",
     "users": "Users",
     "aliases": "Aliases",
@@ -55,6 +56,23 @@
     "dlp": "Approval / DLP",
     "config": "Config",
     "logout": "Logout"
+  },
+  "overview": {
+    "title": "System overview",
+    "loading": "Loading...",
+    "users": "Users",
+    "usersEnabled": "{n} enabled",
+    "domains": "Domains",
+    "aliases": "{n} aliases",
+    "orgContacts": "Org contacts",
+    "ldap": "AD/LDAP synced",
+    "pendingApprovals": "Pending approvals",
+    "dlp": "Outbound approval / DLP",
+    "archived": "Archived messages",
+    "compliance": "Compliance archive",
+    "drive": "Drive files",
+    "uploads": "Large attachments",
+    "largeAttachments": "relay storage"
   },
   "archive": {
     "title": "Email Archive",

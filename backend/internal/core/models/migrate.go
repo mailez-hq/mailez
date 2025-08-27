@@ -268,6 +268,13 @@ var migrations = []migration{
 			return db.AutoMigrate(&User{})
 		},
 	},
+	{
+		// Cloud drive (云盘): per-user file/folder tree with share tokens.
+		ID: "20260827_drive",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&DriveFile{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in
