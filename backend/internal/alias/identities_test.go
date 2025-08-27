@@ -127,6 +127,55 @@ func TestUserMaySendAs(t *testing.T) {
 	}
 }
 
+func TestGroupMemberMaySendAsGroup(t *testing.T) {
+	user := &models.User{
+		Email:      "amy@example.com",
+		Localpart:  "amy",
+		DomainName: "example.com",
+	}
+	h, app := newIdentitiesTestHandler(t, user)
+	if err := h.DB.Create(&models.Domain{Name: "example.com"}).Error; err != nil {
+		t.Fatalf("seed domain: %v", err)
+	}
+	// A members-only distribution group (no destination CSV).
+	g := &models.Alias{Email: "sales@example.com", Localpart: "sales", DomainName: "example.com", Name: "Sales"}
+	g.SetMembers([]models.AliasMember{
+		{Email: "amy@example.com", Name: "Amy"},
+		{Email: "bob@example.com"},
+	})
+	if err := h.DB.Create(g).Error; err != nil {
+		t.Fatalf("seed group: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/mail/identities", nil)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		t.Fatalf("status: got %d body %s", resp.StatusCode, body)
+	}
+	var ids []MailIdentity
+	if err := json.Unmarshal(body, &ids); err != nil {
+		t.Fatalf("unmarshal %q: %v", body, err)
+	}
+	emails := map[string]bool{}
+	for _, id := range ids {
+		emails[id.Email] = true
+	}
+	if !emails["sales@example.com"] {
+		t.Fatalf("group identity missing: %s", body)
+	}
+	if !MaySendAs(h.App, user, "sales@example.com") {
+		t.Fatalf("group member cannot send as group")
+	}
+	if MaySendAs(h.App, user, "stranger@example.com") {
+		t.Fatalf("stranger may send as group")
+	}
+}
+
 func TestMaySendAsRequiresExactDestination(t *testing.T) {
 	// user "a@example.com" must not match a destination "anna@example.com":
 	// substring matching would let them spoof that alias.

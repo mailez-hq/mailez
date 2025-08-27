@@ -1,6 +1,8 @@
 package alias
 
 import (
+	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -31,6 +33,9 @@ func (h *Handler) listAliases(c *fiber.Ctx) error {
 	if u := currentUser(c); !u.GlobalAdmin {
 		q = h.ManagedDomainScope(u, q)
 	}
+	if c.Query("group") == "true" {
+		q = q.Where("members <> ''")
+	}
 	page, limit := core.PageParams(c)
 	var total int64
 	if err := q.Model(&models.Alias{}).Count(&total).Error; err != nil {
@@ -53,7 +58,8 @@ func (h *Handler) listAliases(c *fiber.Ctx) error {
 // @Router /aliases/{email} [get]
 func (h *Handler) getAlias(c *fiber.Ctx) error {
 	var a models.Alias
-	if err := h.DB.First(&a, "email = ?", c.Params("email")).Error; err != nil {
+	email, _ := url.PathUnescape(c.Params("email"))
+	if err := h.DB.First(&a, "email = ?", email).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "alias not found"})
 	}
 	if !h.CanManageDomain(currentUser(c), a.DomainName) {
@@ -74,14 +80,23 @@ func (h *Handler) createAlias(c *fiber.Ctx) error {
 	var in struct {
 		Email       string `json:"email"`
 		Destination string `json:"destination"`
+		Name        string `json:"name"`
+		Members     []models.AliasMember `json:"members"`
 		Wildcard    bool   `json:"wildcard"`
 	}
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
 	}
 	localpart, domainName, ok := strings.Cut(in.Email, "@")
-	if !ok || localpart == "" || domainName == "" || in.Destination == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "email and destination are required"})
+	if !ok || localpart == "" || domainName == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "email is required"})
+	}
+	if in.Destination == "" && len(in.Members) == 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "destination or members are required"})
+	}
+	members, err := normalizeMembers(in.Members)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 	var domain models.Domain
 	if err := h.DB.First(&domain, "name = ?", domainName).Error; err != nil {
@@ -95,8 +110,10 @@ func (h *Handler) createAlias(c *fiber.Ctx) error {
 		Localpart:   localpart,
 		DomainName:  domainName,
 		Destination: in.Destination,
+		Name:        in.Name,
 		Wildcard:    in.Wildcard,
 	}
+	a.SetMembers(members)
 	if err := h.DB.Create(&a).Error; err != nil {
 		return core.Fail(c, 400, err, "save failed")
 	}
@@ -112,22 +129,35 @@ func (h *Handler) createAlias(c *fiber.Ctx) error {
 // @Router /aliases/{email} [put]
 func (h *Handler) updateAlias(c *fiber.Ctx) error {
 	var a models.Alias
-	if err := h.DB.First(&a, "email = ?", c.Params("email")).Error; err != nil {
+	email, _ := url.PathUnescape(c.Params("email"))
+	if err := h.DB.First(&a, "email = ?", email).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "alias not found"})
 	}
 	if !h.CanManageDomain(currentUser(c), a.DomainName) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "no access to this domain"})
 	}
 	var in struct {
-		Destination string `json:"destination"`
-		Wildcard    *bool  `json:"wildcard"`
-		Disabled    *bool  `json:"disabled"`
+		Destination *string `json:"destination"`
+		Name        *string `json:"name"`
+		Members     *[]models.AliasMember `json:"members"`
+		Wildcard    *bool   `json:"wildcard"`
+		Disabled    *bool   `json:"disabled"`
 	}
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
 	}
-	if in.Destination != "" {
-		a.Destination = in.Destination
+	if in.Destination != nil {
+		a.Destination = strings.TrimSpace(*in.Destination)
+	}
+	if in.Name != nil {
+		a.Name = strings.TrimSpace(*in.Name)
+	}
+	if in.Members != nil {
+		members, err := normalizeMembers(*in.Members)
+		if err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		}
+		a.SetMembers(members)
 	}
 	if in.Wildcard != nil {
 		a.Wildcard = *in.Wildcard
@@ -150,7 +180,8 @@ func (h *Handler) updateAlias(c *fiber.Ctx) error {
 // @Router /aliases/{email} [delete]
 func (h *Handler) deleteAlias(c *fiber.Ctx) error {
 	var a models.Alias
-	if err := h.DB.First(&a, "email = ?", c.Params("email")).Error; err != nil {
+	email, _ := url.PathUnescape(c.Params("email"))
+	if err := h.DB.First(&a, "email = ?", email).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "alias not found"})
 	}
 	if !h.CanManageDomain(currentUser(c), a.DomainName) {
@@ -160,4 +191,30 @@ func (h *Handler) deleteAlias(c *fiber.Ctx) error {
 		return core.Fail(c, 400, err, "delete failed")
 	}
 	return c.SendStatus(204)
+}
+
+// normalizeMembers trims, validates and deduplicates a distribution-group
+// member list. Every member must be a plausible email address.
+func normalizeMembers(members []models.AliasMember) ([]models.AliasMember, error) {
+	if len(members) == 0 {
+		return nil, nil
+	}
+	out := make([]models.AliasMember, 0, len(members))
+	seen := map[string]bool{}
+	for _, m := range members {
+		m.Email = strings.ToLower(strings.TrimSpace(m.Email))
+		m.Name = strings.TrimSpace(m.Name)
+		if m.Email == "" {
+			return nil, fmt.Errorf("member email is required")
+		}
+		if !strings.Contains(m.Email, "@") || strings.ContainsAny(m.Email, " \t\n") {
+			return nil, fmt.Errorf("invalid member email: %s", m.Email)
+		}
+		if seen[m.Email] {
+			continue
+		}
+		seen[m.Email] = true
+		out = append(out, m)
+	}
+	return out, nil
 }
