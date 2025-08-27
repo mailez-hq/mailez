@@ -15,6 +15,7 @@ import (
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/crypto"
+	"mailez/backend/internal/dlp"
 	"mailez/backend/internal/mail"
 )
 
@@ -30,10 +31,11 @@ type OutboxWorker struct {
 	DB        *gorm.DB
 	MtaAddr   string
 	SecretKey string
+	DLP       *dlp.Service // optional outbound content filter (审批/DLP)
 }
 
-func NewOutboxWorker(db *gorm.DB, mtaAddr, secretKey string) *OutboxWorker {
-	return &OutboxWorker{DB: db, MtaAddr: mtaAddr, SecretKey: secretKey}
+func NewOutboxWorker(db *gorm.DB, mtaAddr, secretKey string, dlpSvc *dlp.Service) *OutboxWorker {
+	return &OutboxWorker{DB: db, MtaAddr: mtaAddr, SecretKey: secretKey, DLP: dlpSvc}
 }
 
 // Run polls for due messages until the context is cancelled.
@@ -63,6 +65,22 @@ func (w *OutboxWorker) flush() {
 	}
 	for _, o := range due {
 		recipients := strings.Split(o.Recipients, ",")
+		// Outbound content filter (敏感词/审批): internal messages are
+		// scanned before submission; a block rejects, a hold parks the
+		// message until an approver decides.
+		if w.DLP != nil && o.AccountID == 0 {
+			res, derr := w.DLP.CheckRaw(context.Background(), o.AccountEmail, o.FromAddr, recipients, []byte(o.RawMessage))
+			if derr == nil && res != nil && res.Action != "pass" {
+				if res.Action == "block" {
+					w.DB.Model(&models.Outbox{}).Where("id = ?", o.ID).
+						Updates(map[string]any{"status": "failed", "error": "blocked:" + res.Reason})
+					continue
+				}
+				w.DB.Model(&models.Outbox{}).Where("id = ?", o.ID).
+					Updates(map[string]any{"status": "held", "error": fmt.Sprintf("dlp_hold:%d", res.ID)})
+				continue
+			}
+		}
 		var err error
 		if o.AccountID != 0 {
 			err = w.deliverExternal(o, recipients)
@@ -209,8 +227,8 @@ func (h *Handler) enqueue(userEmail string, accountID uint, from string, to, cc,
 		// string comparisons in SQLite) are zone-consistent regardless of
 		// whether the caller passed a local time (undo) or a parsed RFC3339
 		// timestamp (scheduled send).
-		SendAfter:    sendAt.UTC(),
-		Status:       "pending",
+		SendAfter: sendAt.UTC(),
+		Status:    "pending",
 	}
 	if err := h.DB.Create(&entry).Error; err != nil {
 		return 0, err

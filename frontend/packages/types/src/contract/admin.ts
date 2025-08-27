@@ -92,6 +92,38 @@ export type ArchivedMessage = {
   review_note: string;
 };
 
+export type DlpRule = {
+  id: number;
+  name: string;
+  enabled: boolean;
+  pattern: string;
+  is_regex: boolean;
+  scope: string;
+  action: "block" | "hold";
+  severity: string;
+  approvers: string;
+  hold_hours: number;
+  note: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PendingApproval = {
+  id: number;
+  rule_name: string;
+  severity: string;
+  sender_email: string;
+  from: string;
+  recipients: string;
+  subject: string;
+  status: string;
+  approver: string;
+  decision_at: string | null;
+  reason: string;
+  created_at: string;
+  expires_at: string | null;
+};
+
 export type SignupDomain = {
   name: string;
   max_users: number;

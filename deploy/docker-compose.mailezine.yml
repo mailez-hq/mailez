@@ -78,6 +78,8 @@ services:
       - MAILEZINE_LOG_LEVEL=info
       # 合规归档：引擎把收/发副本持久转储到 backend 的归档存储。
       - MAILEZINE_ARCHIVE_ENABLED=true
+      # 外发内容过滤（敏感词/审批）：提交时向 backend 查询裁决。
+      - MAILEZINE_DLP_ENABLED=true
     # The image runs as unprivileged mailezine (uid 82): the host data dir
     # must be writable by that id (e.g. chown -R 82:101 data/mailezine).
     user: "82:101"
