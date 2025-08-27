@@ -3,7 +3,7 @@ rules {
         BLACKLIST_ANTISPOOF = {
             valid_dmarc = true;
             blacklist = true;
-            domains = "http://{{ .BackendAddress }}:8080/stack/rspamd/local_domains";
+            domains = "http://{{ .BackendAddress }}:8080/stack/rspamd/local_domains{{ if .StackSecret }}?stack_secret={{ urlquery .StackSecret }}{{ end }}";
 	    score = 0.0;
         }
 }
