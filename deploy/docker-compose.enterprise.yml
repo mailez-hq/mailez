@@ -1,7 +1,7 @@
 # mailez 企业版生产档（自包含）。
 #
 # 存储：MySQL（控制面）+ TiDB（引擎 KV）+ MinIO/S3（正文 blob）。
-# 全容器化：backend / frontend-admin / frontend-webmail / gateway(caddy) /
+# 全容器化：backend / frontend-admin / frontend-webmail / gateway(nginx) /
 # mailezine 引擎 + redis/mysql/tidb/minio/rspamd/unbound/macro-scanner。
 # 企业版 = mailezine 引擎（区别于社区版 legacy MTA/IMAP stack）。
 #
@@ -148,11 +148,13 @@ services:
     depends_on:
       - backend
 
-  # mailezine 模式 gateway：仅 caddy（HTTP/ACME）；邮件端口由引擎直发。
+  # mailezine 模式 gateway：同一 nginx 镜像，MAILEZ_ENGINE=mailezine 时
+  # agent 渲染 HTTP-only 配置（自动证书走内置 lego）；邮件端口由引擎直发。
   gateway:
-    image: mailez/caddy:local
+    image: mailez/nginx:local
     pull_policy: missing
     restart: always
+    env_file: mailez.env
     environment:
       - MAILEZ_ENGINE=mailezine
     ports:

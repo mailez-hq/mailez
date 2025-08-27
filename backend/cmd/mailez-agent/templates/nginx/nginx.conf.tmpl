@@ -201,7 +201,7 @@ http {
     include /etc/nginx/conf.d/*.conf;
 }
 
-mail {
+{{ if ne .Engine "mailezine" }}mail {
     server_name {{ .Hostname }};
     auth_http http://127.0.0.1:8000/auth/email;
     proxy_pass_error_message on;
@@ -231,4 +231,4 @@ mail {
       auth_http_header Auth-Port 25;
       auth_http_header Client-Port $remote_port;
     }
-}
+}{{ end }}
