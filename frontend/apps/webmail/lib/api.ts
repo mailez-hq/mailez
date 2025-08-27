@@ -14,6 +14,7 @@ import type {
   MailIdentity,
   MailLabel,
   MailMessage,
+  MailInvitation,
   MailPage,
   MailSearchSpec,
   MailThread,
@@ -48,6 +49,7 @@ export type {
   MailIdentity,
   MailLabel,
   MailMessage,
+  MailInvitation,
   MailPage,
   MailSearchSpec,
   MailThread,
@@ -449,6 +451,20 @@ export const calendarEventUpdate = (id: number, input: CalendarEventInput) =>
 
 export const calendarEventDelete = (id: number) =>
   api<void>(`/calendar/events/${id}`, { method: "DELETE" });
+
+// Meeting invitations (iTIP): respond to a received REQUEST or send a new
+// one to attendees.
+export const inviteRespond = (ics: string, action: "accept" | "decline" | "tentative") =>
+  apiPost<{ ok: boolean }>("/invites/respond", { ics, action });
+
+export const inviteSend = (input: {
+  to: string[];
+  summary: string;
+  location: string;
+  description: string;
+  start: string;
+  end?: string;
+}) => apiPost<{ ok: boolean }>("/invites/send", input);
 
 // Organization address book (read-only, synced from AD/LDAP).
 export const orgContacts = () => api<OrgContact[]>("/contacts/org");
