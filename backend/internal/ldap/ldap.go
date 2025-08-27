@@ -187,17 +187,108 @@ func (s *Service) EnsureLocalUser(ctx context.Context, email string) error {
 		return err
 	}
 	u := models.User{
-		Email:      email,
-		Localpart:  local,
-		DomainName: domain,
-		Password:   hash,
-		Enabled:    true,
-		QuotaBytes: d.MaxQuotaBytes,
+		Email:       email,
+		Localpart:   local,
+		DomainName:  domain,
+		Password:    hash,
+		Enabled:     true,
+		QuotaBytes:  d.MaxQuotaBytes,
+		LdapManaged: true,
 	}
 	if u.QuotaBytes <= 0 {
 		u.QuotaBytes = 1_000_000_000
 	}
 	return s.DB.WithContext(ctx).Create(&u).Error
+}
+
+// SyncAccounts reconciles local LDAP-managed accounts with the directory:
+//   - directory users without a local account are provisioned (AutoCreate);
+//   - local LDAP-managed accounts missing from the directory are disabled
+//     (leavers) — manually created accounts are never touched;
+//   - display names follow the directory.
+//
+// The disable step is skipped when the directory returns no users at all,
+// which usually means a filter/base-DN configuration problem rather than an
+// empty organization, so a config typo cannot mass-disable the mailbox.
+func (s *Service) SyncAccounts(ctx context.Context) (created, disabled int, err error) {
+	cfg, err := s.config(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+	conn, err := s.dial(ctx, cfg)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer conn.Close()
+	res, err := conn.Search(&ldap.SearchRequest{
+		BaseDN: cfg.BaseDN,
+		Scope:  ldap.ScopeWholeSubtree,
+		Filter: cfg.UserFilter,
+		Attributes: []string{
+			"dn", cfg.MailAttr, cfg.NameAttr,
+		},
+		TimeLimit: 30,
+	})
+	if err != nil {
+		return 0, 0, fmt.Errorf("ldap search: %w", err)
+	}
+	if len(res.Entries) == 0 {
+		return 0, 0, nil // empty directory: skip provisioning and disabling
+	}
+
+	dirEmails := map[string]string{} // email -> display name
+	for _, e := range res.Entries {
+		email := strings.ToLower(strings.TrimSpace(firstValue(e, cfg.MailAttr)))
+		if email == "" {
+			continue
+		}
+		dirEmails[email] = firstValue(e, cfg.NameAttr)
+	}
+
+	var managed []models.User
+	if err := s.DB.WithContext(ctx).Where("ldap_managed = ?", true).Find(&managed).Error; err != nil {
+		return 0, 0, err
+	}
+	localByEmail := map[string]*models.User{}
+	for i := range managed {
+		localByEmail[strings.ToLower(managed[i].Email)] = &managed[i]
+	}
+
+	for email, name := range dirEmails {
+		if cur, ok := localByEmail[email]; ok {
+			// Name follows the directory; enabled state is left alone so an
+			// admin's manual disable is never overridden by a re-appearing
+			// directory entry.
+			if name != "" && name != cur.DisplayedName {
+				cur.DisplayedName = name
+				if err := s.DB.WithContext(ctx).Model(cur).Update("displayed_name", name).Error; err != nil {
+					return created, disabled, err
+				}
+			}
+			continue
+		}
+		if !cfg.AutoCreate {
+			continue
+		}
+		if err := s.EnsureLocalUser(ctx, email); err != nil {
+			return created, disabled, err
+		}
+		created++
+	}
+
+	for email, cur := range localByEmail {
+		if _, ok := dirEmails[email]; ok {
+			continue
+		}
+		if !cur.Enabled {
+			continue
+		}
+		if err := s.DB.WithContext(ctx).Model(cur).Update("enabled", false).Error; err != nil {
+			return created, disabled, err
+		}
+		disabled++
+	}
+	return created, disabled, nil
 }
 
 // SyncContacts refreshes the read-only organization address book from the

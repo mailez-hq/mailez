@@ -25,9 +25,9 @@ type testDirectory struct {
 	entries []*testEntry
 }
 
-func newTestServer(t *testing.T, entries []*testEntry) (host string, port int) {
+func newTestServer(t *testing.T, entries []*testEntry) (host string, port int, td *testDirectory) {
 	t.Helper()
-	td := &testDirectory{entries: entries}
+	td = &testDirectory{entries: entries}
 	s, err := gldap.NewServer()
 	if err != nil {
 		t.Fatal(err)
@@ -63,7 +63,7 @@ func newTestServer(t *testing.T, entries []*testEntry) (host string, port int) {
 		t.Fatal("test server could not bind a port")
 	}
 	t.Cleanup(func() { _ = s.Stop() })
-	return "127.0.0.1", port
+	return "127.0.0.1", port, td
 }
 
 func (td *testDirectory) handleBind(w *gldap.ResponseWriter, r *gldap.Request) {

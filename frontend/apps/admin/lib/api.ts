@@ -175,4 +175,5 @@ export const testLDAP = (input: {
   user_filter: string;
 }) => apiPost<{ ok: boolean }>("/ldap/test", input);
 
-export const syncLDAP = () => apiPost<{ added: number; updated: number }>("/ldap/sync", {});
+export const syncLDAP = () =>
+  apiPost<{ created: number; disabled: number; added: number; updated: number }>("/ldap/sync", {});

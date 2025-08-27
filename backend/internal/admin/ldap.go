@@ -206,15 +206,20 @@ func (h *Handler) testLDAP(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"ok": true})
 }
 
-// syncLDAPContacts runs the organization address book sync immediately.
+// syncLDAPContacts runs the full directory sync immediately: account
+// lifecycle (provision/disable) plus the organization address book.
 // @Summary Sync LDAP contacts
 // @Tags admin
 // @Success 200 {object} map[string]interface{}
 // @Router /ldap/sync [post]
 func (h *Handler) syncLDAPContacts(c *fiber.Ctx) error {
+	created, disabled, err := h.App.LDAP.SyncAccounts(c.Context())
+	if err != nil {
+		return core.Fail(c, 502, err, "sync failed")
+	}
 	added, updated, err := h.App.LDAP.SyncContacts(c.Context())
 	if err != nil {
 		return core.Fail(c, 502, err, "sync failed")
 	}
-	return c.JSON(fiber.Map{"added": added, "updated": updated})
+	return c.JSON(fiber.Map{"created": created, "disabled": disabled, "added": added, "updated": updated})
 }
