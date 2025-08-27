@@ -1,10 +1,23 @@
 package contacts
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"strings"
+	"time"
 
 	"mailez/backend/internal/core/models"
 )
+
+// newContactUID generates a random vCard UID for locally-created contacts so
+// the built-in CardDAV server can expose every row as a stable resource.
+func newContactUID() string {
+	b := make([]byte, 12)
+	if _, err := rand.Read(b); err != nil {
+		return "mailez-" + time.Now().Format("20060102150405")
+	}
+	return "mailez-" + hex.EncodeToString(b)
+}
 
 // Minimal vCard 3.0 parser/writer for address-book import/export. We only
 // round-trip the fields the Contact model stores: name, email, comment,
@@ -17,6 +30,7 @@ type ParsedContact struct {
 	Comment string
 	Groups  string
 	Avatar  string
+	UID     string
 }
 
 // ParseVCard parses one or more vCard 3.0/4.0 cards into contacts.
@@ -33,6 +47,7 @@ func ParseVCard(data string) []ParsedContact {
 			Comment: fields.comment,
 			Groups:  fields.groups,
 			Avatar:  fields.avatar,
+			UID:     fields.uid,
 		})
 	}
 	return out
@@ -43,6 +58,9 @@ func EncodeVCard(contacts []models.Contact) string {
 	var b strings.Builder
 	for _, c := range contacts {
 		b.WriteString("BEGIN:VCARD\r\nVERSION:3.0\r\n")
+		if c.DavUID != "" {
+			b.WriteString("UID:" + vcardEscape(c.DavUID) + "\r\n")
+		}
 		if c.Name != "" {
 			b.WriteString("FN:" + vcardEscape(c.Name) + "\r\n")
 		}
@@ -58,6 +76,9 @@ func EncodeVCard(contacts []models.Contact) string {
 		if c.Avatar != "" && isURIAvatar(c.Avatar) {
 			b.WriteString("PHOTO;VALUE=URI:" + vcardEscape(c.Avatar) + "\r\n")
 		}
+		if c.DavRev > 0 && !c.UpdatedAt.IsZero() {
+			b.WriteString("REV:" + c.UpdatedAt.UTC().Format("20060102T150405Z") + "\r\n")
+		}
 		b.WriteString("END:VCARD\r\n")
 	}
 	return b.String()
@@ -69,6 +90,7 @@ type vcardFields struct {
 	comment string
 	groups  string
 	avatar  string
+	uid     string
 }
 
 // splitCards splits raw text into individual vCard blocks.
@@ -110,6 +132,10 @@ func parseCard(card string) vcardFields {
 		curName = strings.ToUpper(strings.TrimSpace(line[:colon]))
 		curValue = strings.TrimSpace(line[colon+1:])
 		switch {
+		case strings.HasPrefix(curName, "UID"):
+			if f.uid == "" {
+				f.uid = vcardUnescape(curValue)
+			}
 		case strings.HasPrefix(curName, "FN"):
 			if f.name == "" {
 				f.name = vcardUnescape(curValue)

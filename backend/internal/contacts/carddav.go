@@ -173,6 +173,7 @@ func (h *Handler) upsertContacts(userEmail string, parsed []ParsedContact) (int,
 		}
 		if err := h.DB.Create(&models.Contact{
 			UserEmail: userEmail,
+			DavUID:    newContactUID(),
 			Name:      p.Name,
 			Email:     p.Email,
 			Comment:   p.Comment,

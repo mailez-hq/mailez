@@ -32,6 +32,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&SmimeCert{},
 		&Account{},
 		&MailDelegation{},
+		&CalendarEvent{},
 		&Announcement{},
 		&SchemaMigration{},
 	)

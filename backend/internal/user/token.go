@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -12,13 +13,16 @@ import (
 	"mailez/backend/internal/password"
 )
 
-func (h *Handler) registerTokens(r fiber.Router, mw fiber.Handler) {
-	r.Get("/tokens", mw, h.listTokens)
-	r.Post("/tokens", mw, h.createToken)
-	r.Delete("/tokens/:id", mw, h.deleteToken)
+// registerTokens exposes app-password management. Any signed-in user may
+// manage their own tokens (the webmail DAV setup flow relies on it); global
+// admins additionally see and revoke everyone's.
+func (h *Handler) registerTokens(r fiber.Router) {
+	r.Get("/tokens", h.listTokens)
+	r.Post("/tokens", h.createToken)
+	r.Delete("/tokens/:id", h.deleteToken)
 }
 
-// listTokens returns app tokens (admin), paginated.
+// listTokens returns app tokens: the caller's own, or all when admin.
 // @Summary List app tokens
 // @Tags tokens
 // @Produce json
@@ -30,12 +34,16 @@ func (h *Handler) registerTokens(r fiber.Router, mw fiber.Handler) {
 func (h *Handler) listTokens(c *fiber.Ctx) error {
 	page, limit := core.PageParams(c)
 	var total int64
-	if err := h.DB.Model(&models.Token{}).Count(&total).Error; err != nil {
+	q := h.DB.Model(&models.Token{})
+	if !currentUser(c).GlobalAdmin {
+		q = q.Where("user_email = ?", currentUser(c).Email)
+	}
+	if err := q.Count(&total).Error; err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
 	var tokens []models.Token
 	offset := (page - 1) * limit
-	if err := h.DB.Order("id").Limit(limit).Offset(offset).Find(&tokens).Error; err != nil {
+	if err := q.Order("id").Limit(limit).Offset(offset).Find(&tokens).Error; err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
 	return core.Page(c, tokens, int(total), page, limit)
@@ -59,8 +67,12 @@ func (h *Handler) createToken(c *fiber.Ctx) error {
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
 	}
+	// Self-service: an empty email creates a token for the signed-in user.
 	if in.Email == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "email is required"})
+		in.Email = currentUser(c).Email
+	}
+	if !currentUser(c).GlobalAdmin && !strings.EqualFold(in.Email, currentUser(c).Email) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "cannot create tokens for other users"})
 	}
 	var user models.User
 	if err := h.DB.First(&user, "email = ?", in.Email).Error; err != nil {
@@ -98,8 +110,16 @@ func (h *Handler) deleteToken(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
 	}
-	if err := h.DB.Delete(&models.Token{}, "id = ?", id).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	q := h.DB
+	if !currentUser(c).GlobalAdmin {
+		q = q.Where("user_email = ?", currentUser(c).Email)
+	}
+	res := q.Delete(&models.Token{}, "id = ?", id)
+	if res.Error != nil {
+		return c.Status(400).JSON(fiber.Map{"error": res.Error.Error()})
+	}
+	if res.RowsAffected == 0 {
+		return c.Status(404).JSON(fiber.Map{"error": "token not found"})
 	}
 	return c.SendStatus(204)
 }
