@@ -311,6 +311,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [sieveOpen, setSieveOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [listWidth, setListWidth] = useState(360);
 
   // Deep links from the app sidebar (?open=settings / ?open=contacts) open
@@ -2081,6 +2082,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     openSettingsSection,
     sidebarOpen,
     setSidebarOpen,
+    calendarOpen,
+    setCalendarOpen,
     selectFolder,
     selectLabel,
     runSavedSearch,

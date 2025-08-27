@@ -19,6 +19,7 @@ import { ScheduledDialog } from "@/components/compose/scheduled-dialog";
 import { CommandPalette } from "@/components/palette/command-palette";
 import { ShortcutsDialog } from "@/components/mailbox/shortcuts-dialog";
 import { SieveEditor } from "@/components/sieve/sieve-editor";
+import { CalendarDrawer } from "@/components/calendar/calendar-drawer";
 import { isMuted, textToHtml } from "@/components/mailbox/mail-utils";
 import { buildFolderTree, flattenTree, folderLabel } from "@/components/mailbox/folder-tree";
 import { mailAnnouncement, type MailAnnouncement, type OutboundAttachment } from "@/lib/api";
@@ -230,6 +231,8 @@ export function MailView() {
     shortcutsOpen,
     setShortcutsOpen,
     sieveOpen,
+    calendarOpen,
+    setCalendarOpen,
     ctxMenu,
     setCtxMenu,
     quoteText,
@@ -309,6 +312,7 @@ export function MailView() {
         onSettings={() => openSettingsSection("appearance")}
         onContacts={() => setContactsOpen(true)}
         onSieve={() => setSieveOpen(true)}
+        onCalendar={() => setCalendarOpen(true)}
         onLogout={logout}
         onScheduled={() => {
           setScheduledOpen(true);
@@ -530,6 +534,8 @@ export function MailView() {
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
 
       <SieveEditor open={sieveOpen} onOpenChange={setSieveOpen} />
+
+      {calendarOpen && <CalendarDrawer onClose={() => setCalendarOpen(false)} />}
 
       <LabelManager open={labelManagerOpen} onOpenChange={setLabelManagerOpen} />
 
