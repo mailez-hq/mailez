@@ -415,7 +415,7 @@
   },
   "config": {
     "title": "Configuration",
-    "desc": "Export or import the full server configuration.",
+    "desc": "Server configuration: backup, AI model and AD/LDAP directory.",
     "backup": "Backup",
     "hint": "Export the full configuration (domains, users, aliases, relays, fetches, tokens) as JSON. User password hashes are included so a backup can restore credentials.",
     "export": "Export JSON",
