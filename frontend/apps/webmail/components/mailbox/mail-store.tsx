@@ -313,6 +313,20 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [listWidth, setListWidth] = useState(360);
 
+  // Deep links from the app sidebar (?open=settings / ?open=contacts) open
+  // the matching dialog when the mailbox mounts; the query is consumed once.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const open = params.get("open");
+    if (open === "settings") setSettingsOpen(true);
+    if (open === "contacts") setContactsOpen(true);
+    if (open) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("open");
+      window.history.replaceState(null, "", url.toString());
+    }
+  }, []);
+
   // ---- ai: capability, summary, priority, search ----
   const [aiEnabled, setAiEnabled] = useState(false);
   const [summary, setSummary] = useState("");
