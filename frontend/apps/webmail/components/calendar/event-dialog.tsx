@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { inviteSend } from "@/lib/api";
 import type { CalendarEvent } from "@/lib/api";
 
 // localInput renders a RFC3339 time as a datetime-local input value.
@@ -58,6 +59,8 @@ export function EventDialog({
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [rrule, setRrule] = useState("");
+  const [sendInvite, setSendInvite] = useState(false);
+  const [attendees, setAttendees] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
@@ -73,6 +76,8 @@ export function EventDialog({
       setStart(event.all_day ? dateInput(event.start) : localInput(event.start));
       setEnd(event.end ? (event.all_day ? dateInput(event.end) : localInput(event.end)) : "");
       setRrule(event.rrule || "");
+      setSendInvite(false);
+      setAttendees("");
     } else {
       setSummary("");
       setLocation("");
@@ -83,6 +88,8 @@ export function EventDialog({
       setStart(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
       setEnd("");
       setRrule("");
+      setSendInvite(false);
+      setAttendees("");
     }
   }, [open, event, defaultDate]);
 
@@ -111,6 +118,22 @@ export function EventDialog({
         end: end ? toISO(end, allDay) : undefined,
         rrule,
       });
+      if (sendInvite && attendees.trim()) {
+        const to = attendees
+          .split(/[,，;；\s]+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (to.length > 0) {
+          await inviteSend({
+            to,
+            summary: summary.trim(),
+            location: location.trim(),
+            description: description.trim(),
+            start: toISO(start, allDay),
+            end: end ? toISO(end, allDay) : undefined,
+          });
+        }
+      }
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("errorSave"));
@@ -170,6 +193,20 @@ export function EventDialog({
               />
             </div>
           </div>
+          <div className="rounded-md border border-border p-3">
+            <div className="flex items-center justify-between">
+              <Label>{t("sendInvite")}</Label>
+              <Switch checked={sendInvite} onCheckedChange={setSendInvite} />
+            </div>
+            {sendInvite && (
+              <Input
+                className="mt-2"
+                value={attendees}
+                onChange={(e) => setAttendees(e.target.value)}
+                placeholder={t("attendeesPlaceholder")}
+              />
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="grid gap-1.5">
               <Label htmlFor="ev-location">{t("location")}</Label>
@@ -219,4 +256,3 @@ export function EventDialog({
     </Dialog>
   );
 }
-
