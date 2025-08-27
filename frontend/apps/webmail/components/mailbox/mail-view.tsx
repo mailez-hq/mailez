@@ -180,6 +180,12 @@ export function MailView() {
     loadScheduled,
     cancelScheduled,
     composeOpen,
+    receiptOn,
+    setReceiptOn,
+    mergeOn,
+    setMergeOn,
+    mergeText,
+    setMergeText,
     identities,
     from,
     selectIdentity,
@@ -218,6 +224,10 @@ export function MailView() {
     addFiles,
     send,
     sendQuickReply,
+    sendReceipt,
+    recallMessage,
+    applyRecall,
+    markAllRead,
     closeCompose,
     saveDraftNow,
     setTo,
@@ -356,6 +366,7 @@ export function MailView() {
           onBulkFlag={bulkFlag}
           onBulkLabel={bulkLabel}
           labels={knownLabels}
+          onMarkAllRead={() => markAllRead(folder)}
           onLoadMore={loadMore}
           searchInputRef={searchRef}
           error={error}
@@ -433,6 +444,9 @@ export function MailView() {
             onQuickReply={sendQuickReply}
             muted={isMuted(detail)}
             onToggleMute={() => detail && toggleMute(detail)}
+            onRecall={recallMessage}
+            onSendReceipt={sendReceipt}
+            onApplyRecall={applyRecall}
           />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 bg-secondary p-6 text-sm text-muted-foreground dark:bg-background">
@@ -483,6 +497,12 @@ export function MailView() {
           onUndoSendSeconds={setUndoSend}
           scheduleAt={scheduleAt}
           onScheduleAt={setScheduleAt}
+          receiptOn={receiptOn}
+          onReceiptOn={setReceiptOn}
+          mergeOn={mergeOn}
+          onMergeOn={setMergeOn}
+          mergeText={mergeText}
+          onMergeText={setMergeText}
           signOn={signOn}
           encryptOn={encryptOn}
           onToggleSign={() => setSignOn((v: boolean) => !v)}

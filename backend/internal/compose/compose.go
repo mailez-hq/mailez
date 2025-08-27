@@ -74,6 +74,7 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 		SendAt      string            `json:"send_at"` // RFC3339; future value schedules the send
 		InReplyTo   string            `json:"in_reply_to"`
 		References  string            `json:"references"`
+		Receipt     bool              `json:"receipt_requested"`
 	}
 	if err := c.BodyParser(&in); err != nil || len(in.To) == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "to is required"})
@@ -102,7 +103,7 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 		if !sendAt.After(time.Now()) {
 			return c.Status(400).JSON(fiber.Map{"error": "send_at must be in the future"})
 		}
-		id, err := h.enqueue(user.Email, d.AccountID, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments, sendAt, in.InReplyTo, in.References)
+		id, err := h.enqueue(user.Email, d.AccountID, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments, sendAt, in.InReplyTo, in.References, in.Receipt)
 		if err != nil {
 			return core.Fail(c, 500, err, "outbox error")
 		}
@@ -112,7 +113,7 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 		if in.UndoSeconds > maxUndoSeconds {
 			in.UndoSeconds = maxUndoSeconds
 		}
-		id, err := h.enqueue(user.Email, d.AccountID, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments, time.Now().Add(time.Duration(in.UndoSeconds)*time.Second), in.InReplyTo, in.References)
+		id, err := h.enqueue(user.Email, d.AccountID, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments, time.Now().Add(time.Duration(in.UndoSeconds)*time.Second), in.InReplyTo, in.References, in.Receipt)
 		if err != nil {
 			return core.Fail(c, 500, err, "outbox error")
 		}
@@ -124,6 +125,9 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 	}
 	if in.References != "" {
 		extra = append(extra, mail.Header{Key: "References", Value: in.References})
+	}
+	if in.Receipt {
+		extra = append(extra, mail.Header{Key: "Disposition-Notification-To", Value: from})
 	}
 	if err := h.Mail.With(d).Send(d.Email, d.Token, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments, extra...); err != nil {
 		return core.Fail(c, 502, err, "mail service error")

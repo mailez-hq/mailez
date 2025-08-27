@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Share2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { EventDialog } from "@/components/calendar/event-dialog";
+import { ShareDialog } from "@/components/calendar/share-dialog";
 import {
   calendarEventCreate,
   calendarEventDelete,
@@ -65,6 +66,7 @@ export function CalendarView() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CalendarEvent | null>(null);
   const [defaultDate, setDefaultDate] = useState<Date | undefined>(undefined);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,6 +118,7 @@ export function CalendarView() {
   };
 
   const openEdit = (ev: CalendarEvent) => {
+    // Read-only shared calendars open the dialog in view mode only.
     setEditing(ev);
     setDefaultDate(undefined);
     setDialogOpen(true);
@@ -188,10 +191,16 @@ export function CalendarView() {
             ))}
           </div>
         </div>
-        <Button size="sm" onClick={() => openNew(new Date())}>
-          <Plus className="size-4" />
-          {t("newEvent")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShareOpen(true)} title={t("shareCalendar")}>
+            <Share2 className="size-4" />
+            <span className="hidden sm:inline">{t("share")}</span>
+          </Button>
+          <Button size="sm" onClick={() => openNew(new Date())}>
+            <Plus className="size-4" />
+            {t("newEvent")}
+          </Button>
+        </div>
       </header>
       {error && <p className="shrink-0 px-4 py-1.5 text-xs text-destructive">{error}</p>}
       {loading ? (
@@ -243,6 +252,11 @@ export function CalendarView() {
                       )}
                       title={ev.summary}
                     >
+                      {ev.owner_email && (
+                        <span className="mr-1 rounded-sm bg-background/60 px-1 text-[9px] font-medium text-muted-foreground">
+                          {ev.owner_email.split("@")[0]}
+                        </span>
+                      )}
                       {!ev.all_day && new Date(ev.start).getHours() !== 0 && (
                         <span className="mr-1 opacity-70">
                           {new Date(ev.start).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
@@ -298,6 +312,11 @@ export function CalendarView() {
                       )}
                       title={ev.summary}
                     >
+                      {ev.owner_email && (
+                        <span className="mr-1 rounded-sm bg-background/60 px-1 text-[9px] font-medium text-muted-foreground">
+                          {ev.owner_email.split("@")[0]}
+                        </span>
+                      )}
                       {!ev.all_day && (
                         <span className="mr-1 opacity-70">
                           {new Date(ev.start).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
@@ -323,7 +342,9 @@ export function CalendarView() {
         onOpenChange={setDialogOpen}
         onSave={save}
         onDelete={editing ? del : undefined}
+        readOnly={!!editing?.read_only}
       />
+      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} />
     </div>
   );
 }

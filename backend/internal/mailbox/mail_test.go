@@ -26,6 +26,7 @@ type fakeGateway struct {
 	messages []mail.Message
 	total    int
 	moved    [][2]string
+	marked   []string
 }
 
 func (f *fakeGateway) With(dial mail.Dial) mail.Gateway { return f }
@@ -40,6 +41,11 @@ func (f *fakeGateway) ListMessagesSorted(email, token, folder string, page int, 
 
 func (f *fakeGateway) MoveMany(email, token, folder string, uids []uint32, destination string) error {
 	f.moved = append(f.moved, [2]string{folder, destination})
+	return nil
+}
+
+func (f *fakeGateway) MarkAllRead(email, token, folder string) error {
+	f.marked = append(f.marked, folder)
 	return nil
 }
 

@@ -8,7 +8,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"mailez/backend/internal/core"
-	"mailez/backend/internal/core/models"
 )
 
 // Handler serves the mailbox routes.
@@ -18,7 +17,7 @@ type Handler struct {
 
 func New(app *core.App) *Handler { return &Handler{app} }
 
-func currentUser(c *fiber.Ctx) *models.User { return core.CurrentUser(c) }
+var currentUser = core.CurrentUser
 
 // mailboxIdentity returns the email whose mailbox this request operates on:
 // the signed-in user by default, or the delegated owner named by

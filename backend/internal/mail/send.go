@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net"
 	netmail "net/mail"
 	"net/smtp"
@@ -38,7 +39,20 @@ func (c *Client) Send(email, token, from string, to, cc, bcc []string, subject, 
 	recipients = append(recipients, to...)
 	recipients = append(recipients, cc...)
 	recipients = append(recipients, bcc...)
-	return submitSMTP(conn, from, recipients, BuildMessage(from, to, cc, subject, text, html, attachments, extra...))
+	raw := BuildMessage(from, to, cc, subject, text, html, attachments, extra...)
+	if err := submitSMTP(conn, from, recipients, raw); err != nil {
+		return err
+	}
+	// Keep a copy in Sent Items. The engine does not auto-copy submissions,
+	// so without this the webmail Sent folder would stay empty (and recall
+	// would have nothing to flag). Best-effort: a failed copy must not fail
+	// the send itself.
+	if !c.dial.External {
+		if err := c.AppendRaw(email, token, "Sent", raw, nil); err != nil {
+			log.Printf("mail: save sent copy for %s: %v", email, err)
+		}
+	}
+	return nil
 }
 
 // SubmitRawAs delivers a pre-built RFC 5322 message through the gateway's

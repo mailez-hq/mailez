@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Archive, Bookmark, FolderSearch, Inbox, Menu, Plus, RefreshCw, Search, SearchX, SlidersHorizontal, Sparkles, Tag, Trash2, X } from "lucide-react";
+import { Archive, Bookmark, FolderSearch, Inbox, MailCheck, Menu, Plus, RefreshCw, Search, SearchX, SlidersHorizontal, Sparkles, Tag, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,7 @@ export function MessageListPanel({
   onChangeSort,
   onBulkLabel,
   labels,
+  onMarkAllRead,
 }: {
   folder: string;
   messages: MailMessage[];
@@ -123,6 +124,7 @@ export function MessageListPanel({
   onChangeSort: (key: string) => void;
   onBulkLabel: (label: string) => void;
   labels?: string[];
+  onMarkAllRead: () => void;
 }) {
   const t = useTranslations("mail");
   const { density } = usePreferences();
@@ -245,6 +247,15 @@ export function MessageListPanel({
             <option value="subject">{t("sortSubject")}</option>
             <option value="size">{t("sortSize")}</option>
           </select>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={onMarkAllRead}
+            title={t("markAllRead")}
+            className="shrink-0"
+          >
+            <MailCheck className="size-4" />
+          </Button>
           {aiSearchEnabled && (
             <Button
               variant="ghost"
