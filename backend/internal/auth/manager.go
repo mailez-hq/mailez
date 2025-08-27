@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -32,6 +33,11 @@ type Manager struct {
 	loginWindow  time.Duration
 	loginPerIP   int
 	loginFail    int
+
+	// NotifyLogin, when set, is called after a successful password login from
+	// an IP the account has not used before. The server wires it to the
+	// security-alert email delivery.
+	NotifyLogin func(email, ip, userAgent string)
 }
 
 const sessionKeyPrefix = "mailez:session:"
@@ -65,6 +71,42 @@ func (m *Manager) SetLoginLimits(perIP, fail int) {
 	if fail > 0 {
 		m.loginFail = fail
 	}
+}
+
+// rememberLoginIP tracks the IP the account logged in from; it returns true
+// when this IP is new (the caller should raise a security alert).
+func (m *Manager) rememberLoginIP(ctx context.Context, email, ip string) bool {
+	ip = strings.TrimSpace(ip)
+	if ip == "" {
+		return false
+	}
+	var user models.User
+	if err := m.DB.WithContext(ctx).First(&user, "email = ?", email).Error; err != nil {
+		return false
+	}
+	known := splitKnownIPs(user.KnownIPs)
+	for _, k := range known {
+		if k == ip {
+			return false
+		}
+	}
+	known = append(known, ip)
+	if len(known) > 24 {
+		known = known[len(known)-24:]
+	}
+	_ = m.DB.Model(&models.User{}).Where("email = ?", email).
+		Update("known_ips", strings.Join(known, ",")).Error
+	return true
+}
+
+func splitKnownIPs(s string) []string {
+	var out []string
+	for _, p := range strings.Split(s, ",") {
+		if v := strings.TrimSpace(p); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 // Login validates credentials and creates a session, returning the session id.
