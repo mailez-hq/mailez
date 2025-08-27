@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
 
 	"mailez/backend/internal/core"
@@ -18,43 +20,57 @@ func (h *Handler) registerLDAP(r fiber.Router, mw fiber.Handler) {
 // ldapConfigView is the API shape for the admin UI; the bind password is
 // never returned.
 type ldapConfigView struct {
-	Enabled     bool   `json:"enabled"`
-	Host        string `json:"host"`
-	Port        int    `json:"port"`
-	Security    string `json:"security"`
-	BaseDN      string `json:"base_dn"`
-	BindDN      string `json:"bind_dn"`
-	HasBindPw   bool   `json:"has_bind_pw,omitempty"`
-	UserFilter  string `json:"user_filter"`
-	MailAttr    string `json:"mail_attr"`
-	UIDAttr     string `json:"uid_attr"`
-	NameAttr    string `json:"name_attr"`
-	DeptAttr    string `json:"dept_attr"`
-	TitleAttr   string `json:"title_attr"`
-	PhoneAttr   string `json:"phone_attr"`
-	AutoCreate  bool   `json:"auto_create"`
-	SyncMinutes int    `json:"sync_minutes"`
-	UpdatedAt   string `json:"updated_at,omitempty"`
+	Enabled         bool   `json:"enabled"`
+	Host            string `json:"host"`
+	Port            int    `json:"port"`
+	Security        string `json:"security"`
+	BaseDN          string `json:"base_dn"`
+	BindDN          string `json:"bind_dn"`
+	HasBindPw       bool   `json:"has_bind_pw,omitempty"`
+	UserFilter      string `json:"user_filter"`
+	MailAttr        string `json:"mail_attr"`
+	UIDAttr         string `json:"uid_attr"`
+	UpnAttr         string `json:"upn_attr"`
+	EmailDomain     string `json:"email_domain"`
+	NameAttr        string `json:"name_attr"`
+	DeptAttr        string `json:"dept_attr"`
+	TitleAttr       string `json:"title_attr"`
+	PhoneAttr       string `json:"phone_attr"`
+	AutoCreate      bool   `json:"auto_create"`
+	SyncGroups      bool   `json:"sync_groups"`
+	GroupFilter     string `json:"group_filter"`
+	GroupNameAttr   string `json:"group_name_attr"`
+	GroupMailAttr   string `json:"group_mail_attr"`
+	GroupMemberAttr string `json:"group_member_attr"`
+	SyncMinutes     int    `json:"sync_minutes"`
+	UpdatedAt       string `json:"updated_at,omitempty"`
 }
 
 func viewLDAP(row *models.LdapConfig) ldapConfigView {
 	out := ldapConfigView{
-		Enabled:     row.Enabled,
-		Host:        row.Host,
-		Port:        row.Port,
-		Security:    row.Security,
-		BaseDN:      row.BaseDN,
-		BindDN:      row.BindDN,
-		HasBindPw:   row.BindPasswordEnc != "",
-		UserFilter:  row.UserFilter,
-		MailAttr:    row.MailAttr,
-		UIDAttr:     row.UIDAttr,
-		NameAttr:    row.NameAttr,
-		DeptAttr:    row.DeptAttr,
-		TitleAttr:   row.TitleAttr,
-		PhoneAttr:   row.PhoneAttr,
-		AutoCreate:  row.AutoCreate,
-		SyncMinutes: row.SyncMinutes,
+		Enabled:         row.Enabled,
+		Host:            row.Host,
+		Port:            row.Port,
+		Security:        row.Security,
+		BaseDN:          row.BaseDN,
+		BindDN:          row.BindDN,
+		HasBindPw:       row.BindPasswordEnc != "",
+		UserFilter:      row.UserFilter,
+		MailAttr:        row.MailAttr,
+		UIDAttr:         row.UIDAttr,
+		UpnAttr:         row.UpnAttr,
+		EmailDomain:     row.EmailDomain,
+		NameAttr:        row.NameAttr,
+		DeptAttr:        row.DeptAttr,
+		TitleAttr:       row.TitleAttr,
+		PhoneAttr:       row.PhoneAttr,
+		AutoCreate:      row.AutoCreate,
+		SyncGroups:      row.SyncGroups,
+		GroupFilter:     row.GroupFilter,
+		GroupNameAttr:   row.GroupNameAttr,
+		GroupMailAttr:   row.GroupMailAttr,
+		GroupMemberAttr: row.GroupMemberAttr,
+		SyncMinutes:     row.SyncMinutes,
 	}
 	if !row.UpdatedAt.IsZero() {
 		out.UpdatedAt = row.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
@@ -70,7 +86,7 @@ func viewLDAP(row *models.LdapConfig) ldapConfigView {
 func (h *Handler) getLDAPConfig(c *fiber.Ctx) error {
 	var row models.LdapConfig
 	if err := h.DB.First(&row).Error; err != nil {
-		return c.JSON(ldapConfigView{Port: 389, Security: "none", UserFilter: "(objectClass=person)", MailAttr: "mail", UIDAttr: "uid", NameAttr: "displayName", AutoCreate: true, SyncMinutes: 60})
+		return c.JSON(ldapConfigView{Port: 389, Security: "none", UserFilter: "(objectClass=person)", MailAttr: "mail", UIDAttr: "uid", UpnAttr: "userPrincipalName", NameAttr: "displayName", AutoCreate: true, SyncMinutes: 60})
 	}
 	return c.JSON(viewLDAP(&row))
 }
@@ -84,22 +100,29 @@ func (h *Handler) getLDAPConfig(c *fiber.Ctx) error {
 // @Router /ldap [put]
 func (h *Handler) putLDAPConfig(c *fiber.Ctx) error {
 	var in struct {
-		Enabled      *bool  `json:"enabled"`
-		Host         string `json:"host"`
-		Port         int    `json:"port"`
-		Security     string `json:"security"`
-		BaseDN       string `json:"base_dn"`
-		BindDN       string `json:"bind_dn"`
-		BindPassword string `json:"bind_password"`
-		UserFilter   string `json:"user_filter"`
-		MailAttr     string `json:"mail_attr"`
-		UIDAttr      string `json:"uid_attr"`
-		NameAttr     string `json:"name_attr"`
-		DeptAttr     string `json:"dept_attr"`
-		TitleAttr    string `json:"title_attr"`
-		PhoneAttr    string `json:"phone_attr"`
-		AutoCreate   *bool  `json:"auto_create"`
-		SyncMinutes  int    `json:"sync_minutes"`
+		Enabled         *bool  `json:"enabled"`
+		Host            string `json:"host"`
+		Port            int    `json:"port"`
+		Security        string `json:"security"`
+		BaseDN          string `json:"base_dn"`
+		BindDN          string `json:"bind_dn"`
+		BindPassword    string `json:"bind_password"`
+		UserFilter      string `json:"user_filter"`
+		MailAttr        string `json:"mail_attr"`
+		UIDAttr         string `json:"uid_attr"`
+		UpnAttr         string `json:"upn_attr"`
+		EmailDomain     string `json:"email_domain"`
+		NameAttr        string `json:"name_attr"`
+		DeptAttr        string `json:"dept_attr"`
+		TitleAttr       string `json:"title_attr"`
+		PhoneAttr       string `json:"phone_attr"`
+		AutoCreate      *bool  `json:"auto_create"`
+		SyncGroups      *bool  `json:"sync_groups"`
+		GroupFilter     string `json:"group_filter"`
+		GroupNameAttr   string `json:"group_name_attr"`
+		GroupMailAttr   string `json:"group_mail_attr"`
+		GroupMemberAttr string `json:"group_member_attr"`
+		SyncMinutes     int    `json:"sync_minutes"`
 	}
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
@@ -138,6 +161,8 @@ func (h *Handler) putLDAPConfig(c *fiber.Ctx) error {
 	row.UserFilter = def(in.UserFilter, "(objectClass=person)")
 	row.MailAttr = def(in.MailAttr, "mail")
 	row.UIDAttr = def(in.UIDAttr, "uid")
+	row.UpnAttr = def(in.UpnAttr, "userPrincipalName")
+	row.EmailDomain = strings.TrimSpace(in.EmailDomain)
 	row.NameAttr = def(in.NameAttr, "displayName")
 	row.DeptAttr = def(in.DeptAttr, "department")
 	row.TitleAttr = def(in.TitleAttr, "title")
@@ -145,6 +170,13 @@ func (h *Handler) putLDAPConfig(c *fiber.Ctx) error {
 	if in.AutoCreate != nil {
 		row.AutoCreate = *in.AutoCreate
 	}
+	if in.SyncGroups != nil {
+		row.SyncGroups = *in.SyncGroups
+	}
+	row.GroupFilter = strings.TrimSpace(in.GroupFilter)
+	row.GroupNameAttr = def(in.GroupNameAttr, "cn")
+	row.GroupMailAttr = def(in.GroupMailAttr, "mail")
+	row.GroupMemberAttr = def(in.GroupMemberAttr, "member")
 	row.SyncMinutes = in.SyncMinutes
 	if in.BindPassword != "" {
 		enc, err := crypto.Encrypt(h.Cfg.SecretKey, in.BindPassword)
@@ -217,9 +249,17 @@ func (h *Handler) syncLDAPContacts(c *fiber.Ctx) error {
 	if err != nil {
 		return core.Fail(c, 502, err, "sync failed")
 	}
+	gCreated, gUpdated, gDisabled, err := h.App.LDAP.SyncGroups(c.Context())
+	if err != nil {
+		return core.Fail(c, 502, err, "sync failed")
+	}
 	added, updated, err := h.App.LDAP.SyncContacts(c.Context())
 	if err != nil {
 		return core.Fail(c, 502, err, "sync failed")
 	}
-	return c.JSON(fiber.Map{"created": created, "disabled": disabled, "added": added, "updated": updated})
+	return c.JSON(fiber.Map{
+		"created": created, "disabled": disabled,
+		"groups_created": gCreated, "groups_updated": gUpdated, "groups_disabled": gDisabled,
+		"added": added, "updated": updated,
+	})
 }

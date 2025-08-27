@@ -38,12 +38,18 @@ func RunSyncWorker(ctx context.Context, db *gorm.DB, secretKey string) {
 			if err != nil {
 				log.Printf("ldap account sync failed: %v", err)
 			} else {
-				added, updated, err := svc.SyncContacts(ctx)
-				if err != nil {
-					log.Printf("ldap org sync failed: %v", err)
+				groupsCreated, groupsUpdated, groupsDisabled, gerr := svc.SyncGroups(ctx)
+				if gerr != nil {
+					log.Printf("ldap group sync failed: %v", gerr)
 				} else {
-					last = time.Now()
-					log.Printf("ldap synced: accounts +%d disabled %d, org +%d updated %d", created, disabled, added, updated)
+					added, updated, err := svc.SyncContacts(ctx)
+					if err != nil {
+						log.Printf("ldap org sync failed: %v", err)
+					} else {
+						last = time.Now()
+						log.Printf("ldap synced: accounts +%d disabled %d, groups +%d/%d disabled %d, org +%d updated %d",
+							created, disabled, groupsCreated, groupsUpdated, groupsDisabled, added, updated)
+					}
 				}
 			}
 		}

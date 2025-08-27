@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sort"
 	"strings"
 	"time"
 
@@ -99,8 +100,9 @@ func (s *Service) dial(ctx context.Context, cfg *models.LdapConfig) (*ldap.Conn,
 	return conn, nil
 }
 
-// findUserDN locates the directory entry for an address using MailAttr first
-// and UIDAttr (local part) as a fallback.
+// findUserDN locates the directory entry for an address using MailAttr first,
+// then the AD userPrincipalName attribute, then UIDAttr (local part) so
+// sAMAccountName-only directories authenticate as localpart@domain.
 func findUserDN(conn *ldap.Conn, cfg *models.LdapConfig, email string) (string, error) {
 	local := email
 	if i := strings.LastIndex(email, "@"); i >= 0 {
@@ -108,7 +110,12 @@ func findUserDN(conn *ldap.Conn, cfg *models.LdapConfig, email string) (string, 
 	}
 	filters := []string{
 		fmt.Sprintf("(&%s(%s=%s))", cfg.UserFilter, cfg.MailAttr, ldap.EscapeFilter(email)),
-		fmt.Sprintf("(&%s(%s=%s))", cfg.UserFilter, cfg.UIDAttr, ldap.EscapeFilter(local)),
+	}
+	if cfg.UpnAttr != "" {
+		filters = append(filters, fmt.Sprintf("(&%s(%s=%s))", cfg.UserFilter, cfg.UpnAttr, ldap.EscapeFilter(email)))
+	}
+	if cfg.UIDAttr != "" {
+		filters = append(filters, fmt.Sprintf("(&%s(%s=%s))", cfg.UserFilter, cfg.UIDAttr, ldap.EscapeFilter(local)))
 	}
 	for _, f := range filters {
 		res, err := conn.Search(&ldap.SearchRequest{
@@ -126,6 +133,26 @@ func findUserDN(conn *ldap.Conn, cfg *models.LdapConfig, email string) (string, 
 		}
 	}
 	return "", errors.New("ldap: user not found in directory")
+}
+
+// entryEmail derives the mailbox address of a directory entry: the mail
+// attribute, then the AD userPrincipalName, then uid@EmailDomain for
+// sAMAccountName-only directories.
+func entryEmail(e *ldap.Entry, cfg *models.LdapConfig) string {
+	if v := firstValue(e, cfg.MailAttr); v != "" {
+		return v
+	}
+	if cfg.UpnAttr != "" {
+		if v := firstValue(e, cfg.UpnAttr); v != "" && strings.Contains(v, "@") {
+			return v
+		}
+	}
+	if cfg.EmailDomain != "" && cfg.UIDAttr != "" {
+		if v := firstValue(e, cfg.UIDAttr); v != "" {
+			return v + "@" + cfg.EmailDomain
+		}
+	}
+	return ""
 }
 
 // Authenticate validates email/password against the directory. It returns
@@ -225,7 +252,7 @@ func (s *Service) SyncAccounts(ctx context.Context) (created, disabled int, err 
 		Scope:  ldap.ScopeWholeSubtree,
 		Filter: cfg.UserFilter,
 		Attributes: []string{
-			"dn", cfg.MailAttr, cfg.NameAttr,
+			"dn", cfg.MailAttr, cfg.UIDAttr, cfg.UpnAttr, cfg.NameAttr,
 		},
 		TimeLimit: 30,
 	})
@@ -238,7 +265,7 @@ func (s *Service) SyncAccounts(ctx context.Context) (created, disabled int, err 
 
 	dirEmails := map[string]string{} // email -> display name
 	for _, e := range res.Entries {
-		email := strings.ToLower(strings.TrimSpace(firstValue(e, cfg.MailAttr)))
+		email := strings.ToLower(strings.TrimSpace(entryEmail(e, cfg)))
 		if email == "" {
 			continue
 		}
@@ -309,7 +336,7 @@ func (s *Service) SyncContacts(ctx context.Context) (added, updated int, err err
 		Scope:  ldap.ScopeWholeSubtree,
 		Filter: cfg.UserFilter,
 		Attributes: []string{
-			"dn", cfg.MailAttr, cfg.NameAttr, cfg.DeptAttr, cfg.TitleAttr, cfg.PhoneAttr,
+			"dn", cfg.MailAttr, cfg.UIDAttr, cfg.UpnAttr, cfg.NameAttr, cfg.DeptAttr, cfg.TitleAttr, cfg.PhoneAttr,
 		},
 		TimeLimit: 30,
 	})
@@ -317,7 +344,7 @@ func (s *Service) SyncContacts(ctx context.Context) (added, updated int, err err
 		return 0, 0, fmt.Errorf("ldap search: %w", err)
 	}
 	for _, e := range res.Entries {
-		email := firstValue(e, cfg.MailAttr)
+		email := entryEmail(e, cfg)
 		if email == "" {
 			continue
 		}
@@ -350,6 +377,147 @@ func (s *Service) SyncContacts(ctx context.Context) (added, updated int, err err
 		}
 	}
 	return added, updated, nil
+}
+
+// SyncGroups reconciles distribution-list aliases with directory groups:
+// each group becomes a local Alias (LdapGroup=true) whose destination is the
+// member mailboxes. Manually created aliases are never overwritten, and
+// groups that disappeared are disabled rather than deleted.
+func (s *Service) SyncGroups(ctx context.Context) (created, updated, disabled int, err error) {
+	cfg, err := s.config(ctx)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	if !cfg.SyncGroups || cfg.GroupFilter == "" {
+		return 0, 0, 0, nil
+	}
+	conn, err := s.dial(ctx, cfg)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	defer conn.Close()
+	res, err := conn.Search(&ldap.SearchRequest{
+		BaseDN: cfg.BaseDN,
+		Scope:  ldap.ScopeWholeSubtree,
+		Filter: cfg.GroupFilter,
+		Attributes: []string{
+			"dn", cfg.GroupNameAttr, cfg.GroupMailAttr, cfg.GroupMemberAttr,
+		},
+		TimeLimit: 30,
+	})
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("ldap group search: %w", err)
+	}
+
+	// uid -> mailbox map from local accounts (the account sync provisions
+	// directory users first, so member DNs resolve to real mailboxes).
+	var users []models.User
+	if err := s.DB.WithContext(ctx).Find(&users).Error; err != nil {
+		return 0, 0, 0, err
+	}
+	byLocal := map[string]string{}
+	for i := range users {
+		byLocal[strings.ToLower(users[i].Localpart)] = users[i].Email
+	}
+
+	groupEmails := map[string]bool{}
+	for _, g := range res.Entries {
+		groupEmail := strings.ToLower(strings.TrimSpace(firstValue(g, cfg.GroupMailAttr)))
+		if groupEmail == "" {
+			cn := firstValue(g, cfg.GroupNameAttr)
+			if cn == "" || cfg.EmailDomain == "" {
+				continue
+			}
+			groupEmail = strings.ToLower(cn) + "@" + cfg.EmailDomain
+		}
+		groupEmails[groupEmail] = true
+
+		members := map[string]bool{}
+		for _, dn := range g.GetAttributeValues(cfg.GroupMemberAttr) {
+			if email := strings.TrimSpace(dn); strings.Contains(email, "@") && !strings.Contains(email, "=") {
+				members[strings.ToLower(email)] = true
+				continue
+			}
+			uid := dnUID(dn)
+			if uid == "" {
+				continue
+			}
+			if email, ok := byLocal[strings.ToLower(uid)]; ok {
+				members[email] = true
+			}
+		}
+		if len(members) == 0 {
+			continue // skip empty groups
+		}
+		dest := make([]string, 0, len(members))
+		for m := range members {
+			dest = append(dest, m)
+		}
+		sort.Strings(dest)
+
+		local, domain, ok := strings.Cut(groupEmail, "@")
+		if !ok || local == "" || domain == "" {
+			continue
+		}
+		alias := models.Alias{
+			Email:       groupEmail,
+			Localpart:   local,
+			DomainName:  domain,
+			Destination: strings.Join(dest, ","),
+			Disabled:    false,
+			LdapGroup:   true,
+		}
+		var cur models.Alias
+		found := s.DB.WithContext(ctx).First(&cur, "email = ?", groupEmail).Error == nil
+		if found && !cur.LdapGroup {
+			continue // manual alias wins
+		}
+		if found {
+			if cur.Destination == alias.Destination && !cur.Disabled {
+				continue
+			}
+			alias.Base = cur.Base
+			if err := s.DB.WithContext(ctx).Save(&alias).Error; err != nil {
+				return created, updated, disabled, err
+			}
+			updated++
+		} else {
+			if err := s.DB.WithContext(ctx).Create(&alias).Error; err != nil {
+				return created, updated, disabled, err
+			}
+			created++
+		}
+	}
+
+	// Disable synced aliases whose group vanished (never delete, and never
+	// touch manually created aliases).
+	var synced []models.Alias
+	if err := s.DB.WithContext(ctx).Where("ldap_group = ?", true).Find(&synced).Error; err != nil {
+		return created, updated, disabled, err
+	}
+	for i := range synced {
+		if groupEmails[strings.ToLower(synced[i].Email)] || synced[i].Disabled {
+			continue
+		}
+		if err := s.DB.WithContext(ctx).Model(&synced[i]).Update("disabled", true).Error; err != nil {
+			return created, updated, disabled, err
+		}
+		disabled++
+	}
+	return created, updated, disabled, nil
+}
+
+// dnUID extracts the first RDN value of a distinguished name
+// ("uid=alice,ou=people,dc=example,dc=com" -> "alice").
+func dnUID(dn string) string {
+	if i := strings.Index(dn, "="); i > 0 {
+		rest := dn[i+1:]
+		if j := strings.Index(rest, ","); j >= 0 {
+			return rest[:j]
+		}
+		return rest
+	}
+	return ""
 }
 
 // TestConnection validates a candidate configuration (bind + a single user
