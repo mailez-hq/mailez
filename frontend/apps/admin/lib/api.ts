@@ -1,5 +1,6 @@
 import type {
   Alias, Announcement, ArchiveSettings, ArchivedMessage, AuditLog, DkimInfo, LoginResult, Me, Page, SignupDomain,
+  DlpRule, PendingApproval,
 } from "@mailez/types";
 
 // Re-export the shared auth types for existing importers of @/lib/api.
@@ -122,6 +123,21 @@ export const archiveExportUrl = (params: Record<string, string>) => {
   const qs = new URLSearchParams(params).toString();
   return `/api/v1/archive/export${qs ? `?${qs}` : ""}`;
 };
+
+// DLP rules + approval workflow
+export const dlpRules = () => api<{ data: DlpRule[] }>("/dlp/rules");
+export const createDlpRule = (body: Partial<DlpRule>) =>
+  apiPost<DlpRule>("/dlp/rules", body);
+export const updateDlpRule = (id: number, body: Partial<DlpRule>) =>
+  apiPut<DlpRule>(`/dlp/rules/${id}`, body);
+export const deleteDlpRule = (id: number) =>
+  apiDelete(`/dlp/rules/${id}`);
+export const dlpApprovals = (status: string, page = 1, limit = 50) =>
+  api<Page<PendingApproval>>(`/dlp/approvals?status=${status}&page=${page}&limit=${limit}`);
+export const dlpApproval = (id: number) =>
+  api<{ approval: PendingApproval; preview: string }>(`/dlp/approvals/${id}`);
+export const decideApproval = (id: number, decision: "approve" | "reject", reason: string) =>
+  apiPost<PendingApproval>(`/dlp/approvals/${id}/decision`, { decision, reason });
 
 // config backup
 export type ConfigBackup = {
