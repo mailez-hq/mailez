@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { me, type Me } from "@/lib/api";
+import { AppSidebar } from "@/components/app-sidebar";
 
-// CalendarLayout guards /calendar: the built-in calendar shares the webmail
-// session but lives outside the three-pane /mail shell.
+// CalendarLayout guards /calendar and renders it inside the shared
+// application frame (AppSidebar) so the calendar is one click away from the
+// mailbox instead of a bare full-screen page.
 export default function CalendarLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<Me | null>(null);
@@ -29,6 +31,14 @@ export default function CalendarLayout({ children }: { children: React.ReactNode
     );
   }
   if (!user) return null;
-  return <div className="h-screen">{children}</div>;
+  const quotaPercent =
+    user.quota_bytes && user.quota_bytes > 0 && user.quota_bytes_used != null
+      ? Math.round((user.quota_bytes_used / user.quota_bytes) * 100)
+      : null;
+  return (
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+      <AppSidebar email={user.email} quotaPercent={quotaPercent} />
+      <div className="min-w-0 min-h-0 flex-1">{children}</div>
+    </div>
+  );
 }
-
