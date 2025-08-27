@@ -20,12 +20,27 @@ const hasFlag = (flags: string[], flag: string) =>
 
 export const isPinned = (m: { flags: string[] }) => hasFlag(m.flags, PIN_FLAG);
 export const isMuted = (m: { flags: string[] }) => hasFlag(m.flags, MUTE_FLAG);
-  export const isSnoozed = (m: { flags?: string[] } | null | undefined) => m?.flags?.includes(SNOOZE_FLAG) ?? false;
+  export const isSnoozed = (m: { flags?: string[] } | null | undefined) =>
+    m?.flags ? hasFlag(m.flags, SNOOZE_FLAG) : false;
+
+// isUserLabel reports whether a flag is a genuine user-created tag rather
+// than a system flag or an internal keyword ($Pin/$Muted/$Snoozed*), so the
+// latter never surface as labels in the sidebar or on message rows.
+export function isUserLabel(f: string): boolean {
+  const low = f.toLowerCase();
+  return (
+    !f.startsWith("\\") &&
+    !SYSTEM_FLAGS.has(f) &&
+    !low.startsWith("$snoozed") &&
+    low !== "$muted" &&
+    !low.startsWith("$pin")
+  );
+}
 
 // snoozeUntil parses the $SnoozedUntil-<unix> keyword into a Date, or null.
 export function snoozeUntil(flags: string[]): Date | null {
   for (const f of flags) {
-    if (f.startsWith(SNOOZE_UNTIL_PREFIX)) {
+    if (f.toLowerCase().startsWith(SNOOZE_UNTIL_PREFIX.toLowerCase())) {
       const n = Number(f.slice(SNOOZE_UNTIL_PREFIX.length));
       if (Number.isFinite(n)) return new Date(n * 1000);
     }
