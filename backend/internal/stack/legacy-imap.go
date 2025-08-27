@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 )
 
@@ -37,7 +38,7 @@ func (h *Handler) dovecotPassdb(c *fiber.Ctx) error {
 func (h *Handler) dovecotUserdbList(c *fiber.Ctx) error {
 	var emails []string
 	if err := h.DB.WithContext(c.Context()).Model(&models.User{}).Where("enabled = ?", true).Pluck("email", &emails).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, fiber.StatusInternalServerError, err, "userdb list failed")
 	}
 	return c.JSON(emails)
 }
@@ -83,7 +84,7 @@ func (h *Handler) dovecotSieveData(c *fiber.Ctx) error {
 	}
 	var buf strings.Builder
 	if err := sieveTemplate.Execute(&buf, &u); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, fiber.StatusInternalServerError, err, "sieve render failed")
 	}
 	return c.JSON(buf.String())
 }

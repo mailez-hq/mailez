@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
@@ -118,15 +119,21 @@ func (h *Handler) createUser(c *fiber.Ctx) error {
 	if in.Enabled != nil {
 		u.Enabled = *in.Enabled
 	}
-	if err := h.DB.Create(&u).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
-	}
-	// GORM omits zero-value booleans carrying a `default` tag from INSERT, so
-	// an explicitly disabled account would otherwise be stored as enabled.
-	if in.Enabled != nil && !*in.Enabled {
-		if err := h.DB.Model(&u).Update("enabled", false).Error; err != nil {
-			return core.Fail(c, 500, err, "internal error")
+	// Create and the enabled fixup below commit together so the account is
+	// never persisted in a half-initialized state.
+	err = h.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&u).Error; err != nil {
+			return err
 		}
+		// GORM omits zero-value booleans carrying a `default` tag from INSERT,
+		// so an explicitly disabled account would otherwise be stored enabled.
+		if in.Enabled != nil && !*in.Enabled {
+			return tx.Model(&u).Update("enabled", false).Error
+		}
+		return nil
+	})
+	if err != nil {
+		return core.Fail(c, 400, err, "save failed")
 	}
 	return c.Status(201).JSON(u)
 }
@@ -234,7 +241,7 @@ func (h *Handler) updateUser(c *fiber.Ctx) error {
 		u.SpamThreshold = *in.SpamThreshold
 	}
 	if err := h.DB.Save(&u).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "update failed")
 	}
 	return c.JSON(u)
 }
@@ -268,7 +275,7 @@ func (h *Handler) deleteUser(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "no access to this domain"})
 	}
 	if err := h.DB.Delete(&models.User{}, "email = ?", c.Params("email")).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "delete failed")
 	}
 	return c.SendStatus(204)
 }

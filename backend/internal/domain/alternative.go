@@ -58,7 +58,7 @@ func (h *Handler) createAlternative(c *fiber.Ctx) error {
 	}
 	a := models.Alternative{Name: in.Name, DomainName: in.DomainName}
 	if err := h.DB.Create(&a).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "save failed")
 	}
 	return c.Status(201).JSON(a)
 }
@@ -72,7 +72,7 @@ func (h *Handler) createAlternative(c *fiber.Ctx) error {
 // @Router /alternatives/{name} [delete]
 func (h *Handler) deleteAlternative(c *fiber.Ctx) error {
 	if err := h.DB.Delete(&models.Alternative{}, "name = ?", c.Params("name")).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "delete failed")
 	}
 	return c.SendStatus(204)
 }

@@ -244,6 +244,14 @@ var migrations = []migration{
 			return db.AutoMigrate(&EasDevice{}, &EasSyncState{}, &EasPingState{})
 		},
 	},
+	{
+		// Enterprise calendar: event reminders (mail delivery + dedupe log),
+		// calendar sharing between accounts, and the reminder columns.
+		ID: "20260827_calendar_share_reminder",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&CalendarEvent{}, &CalendarShare{}, &CalendarReminderLog{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in
@@ -253,6 +261,12 @@ func Migrate(db *gorm.DB) error {
 	if err := db.AutoMigrate(&SchemaMigration{}); err != nil {
 		return err
 	}
+	// Serialise migration runs across concurrent instances.
+	unlock, err := lockMigrations(db)
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	for _, m := range migrations {
 		var count int64
 		if err := db.Model(&SchemaMigration{}).Where("id = ?", m.ID).Count(&count).Error; err != nil {
@@ -261,13 +275,37 @@ func Migrate(db *gorm.DB) error {
 		if count > 0 {
 			continue
 		}
-		if err := m.Up(db); err != nil {
-			return err
-		}
-		if err := db.Create(&SchemaMigration{ID: m.ID, AppliedAt: time.Now()}).Error; err != nil {
+		// Schema change and its bookkeeping record commit atomically, so a
+		// crash mid-migration cannot leave a half-applied state that the
+		// next start would silently skip and re-run on a changed schema.
+		if err := db.Transaction(func(tx *gorm.DB) error {
+			if err := m.Up(tx); err != nil {
+				return err
+			}
+			return tx.Create(&SchemaMigration{ID: m.ID, AppliedAt: time.Now()}).Error
+		}); err != nil {
 			return err
 		}
 		log.Printf("migration applied: %s", m.ID)
 	}
 	return nil
+}
+
+// lockMigrations takes a database-level advisory lock so concurrent server
+// instances do not race on the same schema change. Backends without advisory
+// locks get a no-op unlocker.
+func lockMigrations(db *gorm.DB) (func() error, error) {
+	if db.Dialector.Name() != "mysql" {
+		return func() error { return nil }, nil
+	}
+	var got int64
+	if err := db.Raw("SELECT GET_LOCK('mailez_migrations', 120)").Scan(&got).Error; err != nil {
+		return nil, err
+	}
+	if got != 1 {
+		return nil, fmt.Errorf("timed out waiting for migration lock")
+	}
+	return func() error {
+		return db.Exec("SELECT RELEASE_LOCK('mailez_migrations')").Error
+	}, nil
 }

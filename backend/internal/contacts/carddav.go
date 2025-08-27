@@ -110,7 +110,7 @@ func (h *Handler) contactsCardDAVSync(c *fiber.Ctx) error {
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return c.Status(502).JSON(fiber.Map{"error": "sync failed: " + err.Error()})
+		return core.Fail(c, 502, err, "carddav sync failed")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {

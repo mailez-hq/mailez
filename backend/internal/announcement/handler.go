@@ -56,7 +56,7 @@ func (h *Handler) put(c *fiber.Ctx) error {
 	a.Body = in.Body
 	a.Enabled = in.Enabled == nil || *in.Enabled
 	if err := h.DB.Save(&a).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, fiber.StatusInternalServerError, err, "save failed")
 	}
 	return c.JSON(fiber.Map{"id": a.ID, "subject": a.Subject, "body": a.Body, "enabled": a.Enabled})
 }
@@ -64,7 +64,7 @@ func (h *Handler) put(c *fiber.Ctx) error {
 // delete clears the announcement so no user sees it anymore.
 func (h *Handler) delete(c *fiber.Ctx) error {
 	if err := h.DB.Where("1 = 1").Delete(&models.Announcement{}).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, fiber.StatusInternalServerError, err, "delete failed")
 	}
 	return c.SendStatus(fiber.StatusNoContent)
 }

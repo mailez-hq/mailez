@@ -57,7 +57,7 @@ func (h *Handler) createRelay(c *fiber.Ctx) error {
 	}
 	r := models.Relay{Name: in.Name, SMTP: in.SMTP}
 	if err := h.DB.Create(&r).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "save failed")
 	}
 	return c.Status(201).JSON(r)
 }
@@ -82,7 +82,7 @@ func (h *Handler) updateRelay(c *fiber.Ctx) error {
 	}
 	r.SMTP = in.SMTP
 	if err := h.DB.Save(&r).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "update failed")
 	}
 	return c.JSON(r)
 }
@@ -96,7 +96,7 @@ func (h *Handler) updateRelay(c *fiber.Ctx) error {
 // @Router /relays/{name} [delete]
 func (h *Handler) deleteRelay(c *fiber.Ctx) error {
 	if err := h.DB.Delete(&models.Relay{}, "name = ?", c.Params("name")).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "delete failed")
 	}
 	return c.SendStatus(204)
 }

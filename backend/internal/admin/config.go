@@ -132,7 +132,7 @@ func (h *Handler) importConfig(c *fiber.Ctx) error {
 		return nil
 	})
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "import failed")
 	}
 	return c.JSON(stats)
 }
