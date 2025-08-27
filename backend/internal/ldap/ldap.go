@@ -15,6 +15,7 @@ import (
 	"net"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-ldap/ldap/v3"
@@ -29,7 +30,23 @@ import (
 type Service struct {
 	DB        *gorm.DB
 	SecretKey string
+
+	// groupCache memoizes delivery-time member expansion for a short TTL so
+	// directory changes land within a minute without hammering LDAP on every
+	// message to a group mailbox.
+	groupCache sync.Map // groupEmail -> cachedGroup
 }
+
+type cachedGroup struct {
+	members []string
+	expires time.Time
+}
+
+// groupCacheTTL bounds how stale a delivery-time expansion may be.
+const groupCacheTTL = 60 * time.Second
+
+// maxGroupDepth guards against pathological nesting in the directory.
+const maxGroupDepth = 12
 
 // New returns an LDAP service bound to the database.
 func New(db *gorm.DB, secretKey string) *Service {
@@ -505,6 +522,167 @@ func (s *Service) SyncGroups(ctx context.Context) (created, updated, disabled in
 		disabled++
 	}
 	return created, updated, disabled, nil
+}
+
+// ResolveGroupMembers returns the effective member mailboxes of a group
+// mailbox at delivery time: the directory is queried live (with a short
+// cache), nested groups are expanded recursively with loop protection, and
+// user DNs resolve through local accounts or their directory entry. An error
+// is returned when the directory integration is off so callers can fall back
+// to the last synced member list.
+func (s *Service) ResolveGroupMembers(ctx context.Context, groupEmail string) ([]string, error) {
+	cfg, err := s.config(ctx)
+	if err != nil || !cfg.SyncGroups {
+		return nil, errors.New("ldap: group sync not enabled")
+	}
+	key := strings.ToLower(strings.TrimSpace(groupEmail))
+	if key == "" {
+		return nil, errors.New("ldap: empty group email")
+	}
+	if v, ok := s.groupCache.Load(key); ok {
+		if c := v.(cachedGroup); time.Now().Before(c.expires) {
+			return append([]string(nil), c.members...), nil
+		}
+	}
+
+	local, _, ok := strings.Cut(key, "@")
+	if !ok || local == "" {
+		return nil, errors.New("ldap: invalid group email")
+	}
+	conn, err := s.dial(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	// Locate the group entry: by its mail attribute or by name@email_domain.
+	groupFilter := fmt.Sprintf("(&%s(|(%s=%s)(%s=%s)))",
+		cfg.GroupFilter,
+		cfg.GroupMailAttr, ldap.EscapeFilter(key),
+		cfg.GroupNameAttr, ldap.EscapeFilter(local))
+	res, err := conn.Search(&ldap.SearchRequest{
+		BaseDN:     cfg.BaseDN,
+		Scope:      ldap.ScopeWholeSubtree,
+		Filter:     groupFilter,
+		Attributes: []string{"dn", cfg.GroupMemberAttr},
+		TimeLimit:  10,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("ldap group lookup: %w", err)
+	}
+	if len(res.Entries) == 0 {
+		return nil, errors.New("ldap: group not found in directory")
+	}
+
+	// uid -> mailbox from local accounts (delivery targets must be real
+	// mailboxes; the account sync provisions directory users).
+	var users []models.User
+	if err := s.DB.WithContext(ctx).Find(&users).Error; err != nil {
+		return nil, err
+	}
+	byLocal := map[string]string{}
+	for i := range users {
+		byLocal[strings.ToLower(users[i].Localpart)] = users[i].Email
+	}
+
+	out := map[string]bool{}
+	visited := map[string]bool{}
+	if err := s.expandGroup(ctx, conn, cfg, res.Entries[0].DN, byLocal, visited, out, 0); err != nil {
+		return nil, err
+	}
+	members := make([]string, 0, len(out))
+	for m := range out {
+		members = append(members, m)
+	}
+	sort.Strings(members)
+	s.groupCache.Store(key, cachedGroup{members: members, expires: time.Now().Add(groupCacheTTL)})
+	return members, nil
+}
+
+// expandGroup recursively resolves a group DN's members. Member DNs that
+// match a local account become that mailbox; other user DNs are looked up in
+// the directory for their mail/UPN/uid-derived address; member groups are
+// expanded recursively with a visited set and depth cap.
+func (s *Service) expandGroup(ctx context.Context, conn *ldap.Conn, cfg *models.LdapConfig,
+	groupDN string, byLocal map[string]string, visited map[string]bool, out map[string]bool, depth int) error {
+	if depth > maxGroupDepth || visited[groupDN] {
+		return nil
+	}
+	visited[groupDN] = true
+	res, err := conn.Search(&ldap.SearchRequest{
+		BaseDN:     groupDN,
+		Scope:      ldap.ScopeBaseObject,
+		Filter:     "(objectClass=*)",
+		Attributes: []string{"dn", cfg.GroupMemberAttr},
+		TimeLimit:  10,
+	})
+	if err != nil || len(res.Entries) == 0 {
+		return nil // missing group: treat as empty, don't fail delivery
+	}
+	for _, memberDN := range res.Entries[0].GetAttributeValues(cfg.GroupMemberAttr) {
+		uid := dnUID(memberDN)
+		if uid != "" {
+			if email, ok := byLocal[strings.ToLower(uid)]; ok {
+				out[email] = true
+				continue
+			}
+		}
+		// A member may be a nested group (recurse) or a user entry without a
+		// local account yet (resolve its directory mailbox).
+		entry, err := s.entryByDN(ctx, conn, cfg, memberDN)
+		if err != nil || entry == nil {
+			continue
+		}
+		// Nested group: recurse (its own mail attribute, if any, is the group
+		// mailbox address, not a delivery target).
+		if isGroupEntry(entry) {
+			if err := s.expandGroup(ctx, conn, cfg, memberDN, byLocal, visited, out, depth+1); err != nil {
+				return err
+			}
+			continue
+		}
+		if email := entryEmail(entry, cfg); email != "" {
+			out[strings.ToLower(email)] = true
+			continue
+		}
+	}
+	return nil
+}
+
+// isGroupEntry reports whether a directory entry is a group object class.
+func isGroupEntry(e *ldap.Entry) bool {
+	for _, attr := range e.Attributes {
+		if !strings.EqualFold(attr.Name, "objectclass") {
+			continue
+		}
+		for _, oc := range attr.Values {
+			switch strings.ToLower(oc) {
+			case "groupofnames", "groupofuniquenames", "group", "distributionlist", "mailgroup":
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// entryByDN fetches a directory entry by its DN.
+func (s *Service) entryByDN(ctx context.Context, conn *ldap.Conn, cfg *models.LdapConfig, dn string) (*ldap.Entry, error) {
+	res, err := conn.Search(&ldap.SearchRequest{
+		BaseDN: dn,
+		Scope:  ldap.ScopeBaseObject,
+		Filter: "(objectClass=*)",
+		Attributes: []string{
+			"dn", cfg.MailAttr, cfg.UIDAttr, cfg.UpnAttr, "objectClass",
+		},
+		TimeLimit: 10,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(res.Entries) == 0 {
+		return nil, nil
+	}
+	return res.Entries[0], nil
 }
 
 // dnUID extracts the first RDN value of a distinguished name
