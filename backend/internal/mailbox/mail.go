@@ -26,6 +26,7 @@ func (h *Handler) registerMail(r fiber.Router) {
 	r.Post("/mail/search", h.mailSearchSpec)
 	r.Post("/mail/flag", h.mailFlag)
 	r.Post("/mail/read-all", h.mailReadAll)
+	r.Get("/mail/attachments/zip", h.mailAttachmentsZip)
 	r.Post("/mail/snooze", h.mailSnooze)
 	r.Get("/mail/snoozed", h.mailSnoozed)
 	r.Post("/mail/move", h.mailMove)

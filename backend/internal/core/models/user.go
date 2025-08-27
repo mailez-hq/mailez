@@ -46,6 +46,9 @@ type User struct {
 	SmimeFingerprint   string     `gorm:"size:64" json:"smime_fingerprint"`
 	SmimeEmail         string     `gorm:"size:255" json:"smime_email"`
 	SmimeNotAfter      *time.Time `gorm:"type:date" json:"smime_not_after"`
+	// KnownIPs is the rolling list of IPs this account has logged in from;
+	// a login from a new IP triggers the security alert email.
+	KnownIPs string `gorm:"type:text" json:"-"`
 
 	Tokens  []Token `gorm:"foreignKey:UserEmail" json:"-"`
 	Fetches []Fetch `gorm:"foreignKey:UserEmail" json:"-"`

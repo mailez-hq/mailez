@@ -80,6 +80,38 @@ func TestInterpretSearch(t *testing.T) {
 	}
 }
 
+func TestSmartReplies(t *testing.T) {
+	m := &Manager{envFallback: fakeProvider{out: `["好的，收到！", "我稍后处理，谢谢。", "可以，就这么办。"]`}}
+	replies, err := m.SmartReplies(context.Background(), "请帮忙确认一下明天的会议时间")
+	if err != nil {
+		t.Fatalf("smart replies: %v", err)
+	}
+	if len(replies) != 3 {
+		t.Fatalf("replies = %v", replies)
+	}
+	if replies[0] != "好的，收到！" {
+		t.Fatalf("first reply = %q", replies[0])
+	}
+}
+
+func TestSmartRepliesBulletFallback(t *testing.T) {
+	m := &Manager{envFallback: fakeProvider{out: "- Thanks, noted!\n- Will do!"}}
+	replies, err := m.SmartReplies(context.Background(), "reminder")
+	if err != nil {
+		t.Fatalf("smart replies: %v", err)
+	}
+	if len(replies) != 2 || replies[0] != "Thanks, noted!" {
+		t.Fatalf("replies = %v", replies)
+	}
+}
+
+func TestSmartRepliesDisabled(t *testing.T) {
+	m := &Manager{}
+	if _, err := m.SmartReplies(context.Background(), "hi"); err != ErrDisabled {
+		t.Fatalf("expected ErrDisabled, got %v", err)
+	}
+}
+
 func TestInterpretSearchFences(t *testing.T) {
 	m := &Manager{envFallback: fakeProvider{out: "```json\n{\"keywords\":[\"invoice\"]}\n```"}}
 	spec, err := m.InterpretSearch(context.Background(), "invoices")

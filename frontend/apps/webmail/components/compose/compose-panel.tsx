@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type RefObject } from "react";
-import { CalendarClock, Check, LayoutTemplate, Lock, Paperclip, PenLine, Undo2, X } from "lucide-react";
+import { CalendarClock, Check, Flame, LayoutTemplate, Lock, Paperclip, PenLine, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +62,8 @@ export interface ComposePanelProps {
   onMergeOn: (v: boolean) => void;
   mergeText: string;
   onMergeText: (v: string) => void;
+  burnAfter: number;
+  onBurnAfter: (v: number) => void;
   signOn: boolean;
   encryptOn: boolean;
   onToggleSign: () => void;
@@ -125,6 +127,8 @@ export function ComposePanel(props: ComposePanelProps) {
     onMergeOn,
     mergeText,
     onMergeText,
+    burnAfter,
+    onBurnAfter,
     signOn,
     encryptOn,
     onToggleSign,
@@ -364,6 +368,21 @@ export function ComposePanel(props: ComposePanelProps) {
             />
             {t("receiptRequest")}
           </label>
+          <div className="flex items-center gap-1 rounded-full border border-border px-2 py-1">
+            <Flame className="size-3 text-muted-foreground" />
+            <select
+              value={burnAfter}
+              onChange={(e) => onBurnAfter(Number(e.target.value))}
+              title={t("burnAfter")}
+              className="bg-transparent text-[11px] outline-none"
+            >
+              <option value={0}>{t("burnAfterOff")}</option>
+              <option value={5}>{t("burnAfter5")}</option>
+              <option value={30}>{t("burnAfter30")}</option>
+              <option value={60}>{t("burnAfter60")}</option>
+              <option value={1440}>{t("burnAfter1d")}</option>
+            </select>
+          </div>
           <button
             type="button"
             onClick={() => {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"slices"
@@ -20,8 +21,8 @@ import (
 	"gorm.io/gorm"
 
 	_ "mailez/backend/docs"
-	"mailez/backend/internal/admin"
 	"mailez/backend/internal/activesync"
+	"mailez/backend/internal/admin"
 	"mailez/backend/internal/agent"
 	"mailez/backend/internal/ai"
 	"mailez/backend/internal/alias"
@@ -40,10 +41,12 @@ import (
 	"mailez/backend/internal/fetch"
 	"mailez/backend/internal/invite"
 	"mailez/backend/internal/ldap"
+	"mailez/backend/internal/mail"
 	"mailez/backend/internal/mailbox"
 	"mailez/backend/internal/push"
 	"mailez/backend/internal/sieve"
 	"mailez/backend/internal/stack"
+	"mailez/backend/internal/uploads"
 	"mailez/backend/internal/user"
 )
 
@@ -127,6 +130,18 @@ func New(cfg core.Config) *Server {
 	s.Auth = auth.NewManager(db, newStore(rdb, cfg.Env), "mailez_session", time.Duration(cfg.SessionLifetime)*time.Second)
 	s.Auth.SetCookieSecure(cfg.CookieSecure)
 	s.Auth.SetLoginLimits(cfg.LoginRateLimit, cfg.LoginFailLimit)
+	// Security alert on login from a new IP/device: mail the account owner.
+	s.Auth.NotifyLogin = func(email, ip, ua string) {
+		if ua == "" {
+			ua = "未知设备"
+		}
+		text := fmt.Sprintf("您的账号于 %s 从 IP %s 登录（设备：%s）。\n如非本人操作，请立即修改密码。\n",
+			time.Now().Format("2006-01-02 15:04:05"), ip, ua)
+		raw := mail.BuildMessage(email, []string{email}, nil, "安全提醒：新设备登录", text, "", nil)
+		if err := mail.SubmitMTA(cfg.MailMtaAddr, email, []string{email}, raw); err != nil {
+			log.Printf("login alert to %s: %v", email, err)
+		}
+	}
 	// AD/LDAP directory integration: shared by login, mail-proxy auth and the
 	// organization address book sync.
 	ldapSvc := ldap.New(db, cfg.SecretKey)
@@ -148,6 +163,8 @@ func New(cfg core.Config) *Server {
 	go archive.New(&core.App{DB: db, Auth: s.Auth, Cfg: cfg}).RunRetention(bgCtx)
 	// Calendar event reminders: mail the owner when start - reminder arrives.
 	go calendar.NewReminderWorker(db, cfg).Run(bgCtx)
+	// Large-attachment relay cleanup: delete expired uploads.
+	go uploads.New(db, cfg).RunCleanup(bgCtx)
 	// Push notifier (new-mail notifications for subscribed clients).
 	if cfg.PushInterval > 0 {
 		notifier := push.NewNotifier(db, cfg)
@@ -224,6 +241,7 @@ func (s *Server) routes() {
 	fetch.RegisterAPI(authed, app)
 	ai.RegisterAPI(authed, app, aiMgr)
 	push.RegisterAPI(authed, app)
+	uploads.New(s.DB, s.Cfg).Register(authed)
 
 	stackGroup := s.App.Group("/stack", requireStackSecret(s.Cfg.StackSecret))
 	s.internal.Register(stackGroup)

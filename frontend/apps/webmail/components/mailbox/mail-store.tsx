@@ -24,6 +24,7 @@ import {
   mailLabelDelete, mailLabelRename, mailLabelSave, mailLabels, mailMessage, mailMessages, mailSaveDraft, mailSearch, mailSearchSpec, mailSend, mailSendReply, mailThread, mailUnseen, mailUndoSend, mailUnsubscribe, mailScheduled,
   mailSnooze,
   mailReceipt, mailRecall, mailRecallApply, mailMerge, mailReadAll,
+  aiReplies, uploadLargeAttachment,
   meProfile, updateMeSettings,
   pgpEncrypt, pgpLookup, pgpSign,
   type Contact, type DraftTone, type MailAccount, type MailDelegation, type MailIdentity, type MailLabel, type MailMessage, type MailThread, type Me,
@@ -304,6 +305,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [receiptOn, setReceiptOn] = useState(false);
   const [mergeOn, setMergeOn] = useState(false);
   const [mergeText, setMergeText] = useState("");
+  const [burnAfter, setBurnAfter] = useState(0);
   // Where the initial focus should land when the compose dialog opens:
   // "to" (new message / forward) or "editor" (reply / reply all).
   const [composeFocus, setComposeFocus] = useState<"to" | "editor">("to");
@@ -1497,12 +1499,25 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   async function addFiles(list: FileList | File[]) {
     try {
       const files = Array.from(list);
-      const oversized = files.find((f) => f.size > MAX_ATTACHMENT_BYTES);
-      if (oversized) {
-        setError(t("attachmentTooLarge", { name: oversized.name }));
-        return;
+      const inline: File[] = [];
+      for (const f of files) {
+        if (f.size > MAX_ATTACHMENT_BYTES) {
+          // 超大附件：relay the file to the server and embed a download link.
+          try {
+            const up = await uploadLargeAttachment(f);
+            const link = `${up.filename}（超大附件）\n下载：${up.url}`;
+            setBodyText((prev) => `${prev}\n\n${link}`);
+            setBody((prev) => `${prev}<p>${escHtml(up.filename)}（超大附件）<br/><a href="${escHtml(up.url)}">下载</a></p>`);
+            showToast(t("largeAttachmentUploaded", { name: up.filename }));
+          } catch {
+            setError(t("largeAttachmentFailed", { name: f.name }));
+          }
+          continue;
+        }
+        inline.push(f);
       }
-      const ready = await Promise.all(files.map(readFileAsBase64));
+      if (inline.length === 0) return;
+      const ready = await Promise.all(inline.map(readFileAsBase64));
       setAttachments((prev) => [...prev, ...ready]);
       setError("");
     } catch {
@@ -1594,6 +1609,20 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   function reply() {
     if (!detail) return;
     const quote = selectedQuote(detail);
+    openCompose(
+      detail.from[0]?.email || "",
+      detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`,
+      textToHtml(quote),
+      quote,
+      "editor",
+    );
+  }
+
+  // replyWithQuote opens a reply whose body quotes only the selected passage.
+  function replyWithQuote(selection: string) {
+    if (!detail) return;
+    const s = selection.trim();
+    const quote = s ? `> ${s.replace(/\n/g, "\n> ")}\n\n` : selectedQuote(detail);
     openCompose(
       detail.from[0]?.email || "",
       detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`,
@@ -1809,14 +1838,14 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       // Scheduled send: the backend parks the message until send_at. Cancel it
       // from the Scheduled dialog, not the send/undo toast.
       if (sendAt) {
-        await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, 0, sendAt, receiptOn);
+        await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, 0, sendAt, receiptOn, burnAfter);
         resetCompose();
         showToast(t("toastScheduled", { time: fmtDate(sendAt) }));
         return;
       }
 
       if (delay <= 0) {
-        await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, 0, undefined, receiptOn);
+        await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, 0, undefined, receiptOn, burnAfter);
         resetCompose();
         loadMessages(folder);
         return;
@@ -1825,7 +1854,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       // Server-side undo window: the backend parks the message in its outbox
       // and delivers it when the window elapses, so closing the tab no longer
       // loses the send.
-      const res = await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, delay, undefined, receiptOn);
+      const res = await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, delay, undefined, receiptOn, burnAfter);
       const outboxId = res?.outbox_id;
       resetCompose();
 
@@ -2301,6 +2330,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     summarizing,
     summarize,
     reply,
+    replyWithQuote,
     replyAll,
     forward,
     backToList,
@@ -2326,6 +2356,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     setMergeOn,
     mergeText,
     setMergeText,
+    burnAfter,
+    setBurnAfter,
     identities,
     from,
     selectIdentity,

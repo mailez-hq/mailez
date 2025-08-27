@@ -55,6 +55,43 @@ func (c *Client) Send(email, token, from string, to, cc, bcc []string, subject, 
 	return nil
 }
 
+// SubmitMTA delivers a pre-built RFC 5322 message through a trusted local MTA
+// without authentication (internal notifications: security alerts, calendar
+// reminders). Mirror of the outbox worker's delivery path.
+func SubmitMTA(addr, from string, recipients []string, raw string) error {
+	msg := []byte(raw)
+	if !strings.HasSuffix(raw, "\r\n") {
+		msg = append(msg, '\r', '\n')
+	}
+	c, err := smtp.Dial(addr)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	if err := c.StartTLS(&tls.Config{InsecureSkipVerify: true}); err != nil {
+		// plaintext internal link is fine
+	}
+	if err := c.Mail(from); err != nil {
+		return err
+	}
+	for _, rcpt := range recipients {
+		if err := c.Rcpt(rcpt); err != nil {
+			return err
+		}
+	}
+	w, err := c.Data()
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(msg); err != nil {
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+	return c.Quit()
+}
+
 // SubmitRawAs delivers a pre-built RFC 5322 message through the gateway's
 // submission server authenticated as the given account. ActiveSync clients
 // (SendMail/SmartReply/SmartForward) supply the full MIME, so the backend
