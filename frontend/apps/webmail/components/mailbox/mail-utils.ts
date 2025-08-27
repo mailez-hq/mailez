@@ -20,7 +20,7 @@ const hasFlag = (flags: string[], flag: string) =>
 
 export const isPinned = (m: { flags: string[] }) => hasFlag(m.flags, PIN_FLAG);
 export const isMuted = (m: { flags: string[] }) => hasFlag(m.flags, MUTE_FLAG);
-export const isSnoozed = (m: { flags: string[] }) => m.flags.includes(SNOOZE_FLAG);
+  export const isSnoozed = (m: { flags?: string[] } | null | undefined) => m?.flags?.includes(SNOOZE_FLAG) ?? false;
 
 // snoozeUntil parses the $SnoozedUntil-<unix> keyword into a Date, or null.
 export function snoozeUntil(flags: string[]): Date | null {

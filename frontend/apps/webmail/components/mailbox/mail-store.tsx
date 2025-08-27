@@ -22,7 +22,8 @@ import {
   logout as apiLogout,
   mailFolders, mailFolderCreate, mailFolderRename, mailFolderDelete, mailFolderClear,
   mailLabelDelete, mailLabelRename, mailLabelSave, mailLabels, mailMessage, mailMessages, mailSaveDraft, mailSearch, mailSearchSpec, mailSend, mailSendReply, mailThread, mailUnseen, mailUndoSend, mailUnsubscribe, mailScheduled,
-  mailSnooze,
+  mailDelete,
+  mailSnooze, mailSnoozed,
   mailReceipt, mailRecall, mailRecallApply, mailMerge, mailReadAll,
   aiReplies, uploadLargeAttachment,
   meProfile, updateMeSettings,
@@ -1390,6 +1391,27 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     }
   }
 
+  // openSnoozed switches to the Snoozed virtual view, listing every message
+  // parked by the user until a later time.
+  async function openSnoozed() {
+    setActiveView("snoozed");
+    setActiveLabel("");
+    setSearchSpec(null);
+    setQuery("");
+    setSearching(false);
+    setCursor(0);
+    setSelected(null);
+    setDetail(null);
+    try {
+      const list = await mailSnoozed();
+      setSnoozedMsgs(list);
+      setMessages(list);
+      setTotal(list.length);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "load snoozed failed");
+    }
+  }
+
   // displayMessages drops snoozed messages from normal views and floats
   // pinned ones to the top, without mutating the raw list state.
   const displayMessages = useMemo(() => {
@@ -1626,6 +1648,38 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     );
   }
 
+  // editDraft reopens a saved draft in the compose editor and takes over its
+  // uid, so the next save replaces the same draft instead of creating a new
+  // one. Attachments are restored when the detail carries their payload.
+  function editDraft() {
+    if (!detail) return;
+    const m = detail;
+    const to = (m.to || []).map((a) => a.email).filter(Boolean);
+    const cc = (m.cc || []).map((a) => a.email).filter(Boolean);
+    const html = m.html_body || textToHtml(m.text_body || "");
+    const text = m.text_body || "";
+    const atts = (m.attachments || [])
+      .filter((a) => a.data)
+      .map((a) => ({ filename: a.filename, content_type: a.content_type, size: a.size, data: a.data as string }));
+    setTo(to);
+    setCc(cc);
+    setBcc([]);
+    setCcExpanded(cc.length > 0);
+    setAttachments(atts);
+    setSubject(m.subject || "");
+    setBody(html);
+    setBodyText(text);
+    setSignOn(false);
+    setEncryptOn(false);
+    setDraftSaved(false);
+    draftUidRef.current = m.uid;
+    draftBaselineRef.current = composeSignature({
+      to, cc, bcc: [], subject: m.subject || "", body: html, bodyText: text, attachments: atts,
+    });
+    setComposeFocus("editor");
+    setComposeOpen(true);
+  }
+
   // replyWithQuote opens a reply whose body quotes only the selected passage.
   function replyWithQuote(selection: string) {
     if (!detail) return;
@@ -1843,10 +1897,24 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
         draftUidRef.current = null;
       };
 
+      // Sending an edited draft must remove the original from Drafts; the
+      // backend only handles the outbox, not draft cleanup.
+      const removeEditedDraft = async (draftUid: number | null) => {
+        if (!draftUid) return;
+        try {
+          await mailDelete("Drafts", draftUid);
+          console.log("[draft-debug] delete ok, folder=", folder, "-> refresh", folder === "Drafts");
+          refreshDraftsIfActive();
+        } catch {
+          // The draft may already be gone; the next folder load reconciles.
+        }
+      };
+
       // Scheduled send: the backend parks the message until send_at. Cancel it
       // from the Scheduled dialog, not the send/undo toast.
       if (sendAt) {
         await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, 0, sendAt, receiptOn, burnAfter);
+        removeEditedDraft(draftUidRef.current);
         resetCompose();
         showToast(t("toastScheduled", { time: fmtDate(sendAt) }));
         return;
@@ -1854,6 +1922,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
 
       if (delay <= 0) {
         await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, 0, undefined, receiptOn, burnAfter);
+        removeEditedDraft(draftUidRef.current);
         resetCompose();
         loadMessages(folder);
         return;
@@ -1863,12 +1932,22 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       // and delivers it when the window elapses, so closing the tab no longer
       // loses the send.
       const res = await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, delay, undefined, receiptOn, burnAfter);
+      removeEditedDraft(draftUidRef.current);
       const outboxId = res?.outbox_id;
       resetCompose();
 
       showToast(t("sending"), () => {
         if (outboxId) mailUndoSend(outboxId).catch(() => {});
       }, delay * 1000);
+
+      // The backend parks the message in the outbox until the undo window
+      // elapses, then delivers it. Refresh the current folder after that
+      // window so a sent-and-delivered message shows up without requiring a
+      // manual refresh.
+      setTimeout(() => {
+        loadMessages(folder, 0, true);
+        refreshUnseen();
+      }, delay * 1000 + 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "send failed");
     }
@@ -2311,6 +2390,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     togglePin,
     snoozeMessage,
     unsnooze,
+    openSnoozed,
     archiveMessage,
     bulkDelete,
     bulkArchive,
@@ -2340,6 +2420,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     reply,
     replyWithQuote,
     replyAll,
+    editDraft,
     forward,
     backToList,
     moveDetailTo,
