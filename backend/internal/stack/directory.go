@@ -114,15 +114,25 @@ func (h *Handler) directoryRelay(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"domain": asciiDomain(domain), "transport": transport})
 }
 
-// directorySender returns the set of addresses a sender is allowed to use.
+// directorySender decides whether an authenticated user may use a given
+// envelope sender address. mailezine passes the authenticated user in the
+// X-Auth-User header; the sender address is allowed when it belongs to the
+// user (own address or an alias delivering to them), when the user holds a
+// send/delegation grant for it, or when the user has allow_spoofing on the
+// same domain. Without the header the lookup degrades to the sender itself,
+// preserving direct (unauthenticated) contract tests.
 func (h *Handler) directorySender(c *fiber.Ctx) error {
 	sender, _ := url.PathUnescape(c.Params("email"))
 	if unsupportedAddress(sender) {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
+	user := strings.ToLower(strings.TrimSpace(c.Get("X-Auth-User")))
+	if user == "" {
+		user = strings.ToLower(sender)
+	}
 	localpart, domain, _ := h.resolveDomain(sender)
-	addresses := map[string]bool{}
-	if localpart != "" {
+	allowed := false
+	if localpart != "" && !allowed {
 		stripped := localpart
 		if h.Cfg.RecipientDelimiter != "" {
 			if i := strings.IndexAny(localpart, h.Cfg.RecipientDelimiter); i >= 0 {
@@ -130,23 +140,36 @@ func (h *Handler) directorySender(c *fiber.Ctx) error {
 			}
 		}
 		for _, d := range h.resolveDestination(stripped, domain, true) {
-			addresses[d] = true
+			if strings.EqualFold(d, user) {
+				allowed = true
+				break
+			}
 		}
 	}
-	var spoofers []models.User
-	if err := h.DB.WithContext(c.Context()).Where("allow_spoofing = ? AND domain_name = ?", true, domain).Find(&spoofers).Error; err == nil {
-		for _, u := range spoofers {
-			addresses[u.Email] = true
+	// Mailbox delegation: the user may send as the owner they are granted.
+	if !allowed {
+		var dep models.MailDelegation
+		if err := h.DB.WithContext(c.Context()).
+			Where("LOWER(owner_email) = LOWER(?) AND LOWER(delegate_email) = LOWER(?) AND (can_send = ? OR full_access = ?)",
+				sender, user, true, true).
+			First(&dep).Error; err == nil {
+			allowed = true
 		}
 	}
-	if len(addresses) == 0 {
+	// allow_spoofing lets the user themselves send as any address of their
+	// own domain (the grant no longer leaks to other authenticated users).
+	if !allowed {
+		var u models.User
+		if err := h.DB.WithContext(c.Context()).First(&u, "email = ?", user).Error; err == nil && u.AllowSpoofing {
+			if _, d, ok := h.resolveDomain(sender); ok && strings.EqualFold(d, u.DomainName) {
+				allowed = true
+			}
+		}
+	}
+	if !allowed {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
-	out := make([]string, 0, len(addresses))
-	for a := range addresses {
-		out = append(out, asciiEmail(a))
-	}
-	return c.JSON(fiber.Map{"allowed": true, "addresses": out})
+	return c.JSON(fiber.Map{"allowed": true, "addresses": []string{asciiEmail(sender)}})
 }
 
 // directorySenderRate reports the outbound rate-limit state for a sender.

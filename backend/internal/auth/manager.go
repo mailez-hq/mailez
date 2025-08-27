@@ -190,6 +190,25 @@ func (m *Manager) VerifyTempToken(ctx context.Context, email, token string) bool
 	return sessionEmail == email
 }
 
+// SessionEmailFromToken resolves the session owner behind a temp token without
+// requiring the credential to match a specific account. The mailbox delegation
+// path uses it to allow a delegate's token to authenticate as the owner whose
+// mailbox was delegated to them (full access).
+func (m *Manager) SessionEmailFromToken(ctx context.Context, token string) (string, bool) {
+	if len(token) < 6 || token[:6] != "token-" {
+		return "", false
+	}
+	sid, ok, err := m.Store.Get(ctx, tokenKeyPrefix+token)
+	if err != nil || !ok {
+		return "", false
+	}
+	email, ok, err := m.Store.Get(ctx, sessionKeyPrefix+sid)
+	if err != nil || !ok {
+		return "", false
+	}
+	return email, true
+}
+
 // IsAppToken reports whether the credential looks like a 32-char hex app token.
 func IsAppToken(candidate string) bool {
 	if len(candidate) != 32 {

@@ -118,9 +118,8 @@ func (h *Handler) rewriteLabelTokens(userEmail, query string) string {
 // @Success 200 {array} models.Label
 // @Router /mail/labels [get]
 func (h *Handler) mailLabels(c *fiber.Ctx) error {
-	user := currentUser(c)
 	var labels []models.Label
-	if err := h.DB.Where("user_email = ?", user.Email).Order("name").Find(&labels).Error; err != nil {
+	if err := h.DB.Where("user_email = ?", mailboxIdentity(c)).Order("name").Find(&labels).Error; err != nil {
 		return core.Fail(c, 500, err, "db error")
 	}
 	return c.JSON(labels)
@@ -134,7 +133,7 @@ func (h *Handler) mailLabels(c *fiber.Ctx) error {
 // @Failure 400 {object} map[string]interface{}
 // @Router /mail/labels [post]
 func (h *Handler) mailLabelSave(c *fiber.Ctx) error {
-	user := currentUser(c)
+	identity := mailboxIdentity(c)
 	var in struct {
 		Name  string `json:"name"`
 		Color string `json:"color"`
@@ -148,7 +147,7 @@ func (h *Handler) mailLabelSave(c *fiber.Ctx) error {
 	kw := labelutil.EncodeKeyword(in.Name)
 	var clash int64
 	if err := h.DB.Model(&models.Label{}).
-		Where("user_email = ? AND keyword = ? AND name <> ?", user.Email, kw, in.Name).
+		Where("user_email = ? AND keyword = ? AND name <> ?", identity, kw, in.Name).
 		Count(&clash).Error; err != nil {
 		return core.Fail(c, 500, err, "db error")
 	}
@@ -157,17 +156,17 @@ func (h *Handler) mailLabelSave(c *fiber.Ctx) error {
 	}
 
 	res := h.DB.Model(&models.Label{}).
-		Where("user_email = ? AND name = ?", user.Email, in.Name).
+		Where("user_email = ? AND name = ?", identity, in.Name).
 		Updates(map[string]interface{}{"color": in.Color, "keyword": kw})
 	if res.Error != nil {
 		return core.Fail(c, 500, res.Error, "db error")
 	}
-	label := models.Label{UserEmail: user.Email, Name: in.Name, Keyword: kw, Color: in.Color}
+	label := models.Label{UserEmail: identity, Name: in.Name, Keyword: kw, Color: in.Color}
 	if res.RowsAffected == 0 {
 		if err := h.DB.Create(&label).Error; err != nil {
 			return core.Fail(c, 500, err, "db error")
 		}
-	} else if err := h.DB.Where("user_email = ? AND name = ?", user.Email, in.Name).First(&label).Error; err != nil {
+	} else if err := h.DB.Where("user_email = ? AND name = ?", identity, in.Name).First(&label).Error; err != nil {
 		return core.Fail(c, 500, err, "db error")
 	}
 	return c.JSON(label)
@@ -182,7 +181,7 @@ func (h *Handler) mailLabelSave(c *fiber.Ctx) error {
 // @Failure 400 {object} map[string]interface{}
 // @Router /mail/labels/rename [post]
 func (h *Handler) mailLabelRename(c *fiber.Ctx) error {
-	user := currentUser(c)
+	identity := mailboxIdentity(c)
 	var in struct {
 		From string `json:"from"`
 		To   string `json:"to"`
@@ -191,7 +190,7 @@ func (h *Handler) mailLabelRename(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "valid from and to names are required"})
 	}
 	var old models.Label
-	if err := h.DB.Where("user_email = ? AND name = ?", user.Email, in.From).
+	if err := h.DB.Where("user_email = ? AND name = ?", identity, in.From).
 		First(&old).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.Status(404).JSON(fiber.Map{"error": "label not found"})
@@ -205,7 +204,7 @@ func (h *Handler) mailLabelRename(c *fiber.Ctx) error {
 	newKw := labelutil.EncodeKeyword(in.To)
 	var clash int64
 	if err := h.DB.Model(&models.Label{}).
-		Where("user_email = ? AND keyword = ? AND name <> ?", user.Email, newKw, in.To).
+		Where("user_email = ? AND keyword = ? AND name <> ?", identity, newKw, in.To).
 		Count(&clash).Error; err != nil {
 		return core.Fail(c, 500, err, "db error")
 	}
@@ -220,7 +219,7 @@ func (h *Handler) mailLabelRename(c *fiber.Ctx) error {
 		return core.Fail(c, 502, err, "mail service error")
 	}
 	if err := h.DB.Model(&models.Label{}).
-		Where("user_email = ? AND name = ?", user.Email, in.From).
+		Where("user_email = ? AND name = ?", identity, in.From).
 		Updates(map[string]interface{}{"name": in.To, "keyword": newKw}).Error; err != nil {
 		return core.Fail(c, 500, err, "db error")
 	}
@@ -235,13 +234,13 @@ func (h *Handler) mailLabelRename(c *fiber.Ctx) error {
 // @Failure 400 {object} map[string]interface{}
 // @Router /mail/labels [delete]
 func (h *Handler) mailLabelDelete(c *fiber.Ctx) error {
-	user := currentUser(c)
+	identity := mailboxIdentity(c)
 	name := c.Query("name")
 	if !validLabelName(name) {
 		return c.Status(400).JSON(fiber.Map{"error": "valid label name is required"})
 	}
 	var label models.Label
-	err := h.DB.Where("user_email = ? AND name = ?", user.Email, name).First(&label).Error
+	err := h.DB.Where("user_email = ? AND name = ?", identity, name).First(&label).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return core.Fail(c, 500, err, "db error")
 	}

@@ -16,7 +16,7 @@ import { writeLastFolder } from "@/lib/preferences";
 import {
   aiDraft, aiStatus, aiSummarize,
   aiPrioritize, aiSearch,
-  accounts, setActiveAccountId,
+  accounts, delegations, setActiveAccountId, setActiveDelegateEmail,
   contacts, mailFlag, mailMove, mailIdentities,
   logout as apiLogout,
   mailFolders, mailFolderCreate, mailFolderRename, mailFolderDelete, mailFolderClear,
@@ -24,7 +24,7 @@ import {
   mailSnooze,
   meProfile, updateMeSettings,
   pgpEncrypt, pgpLookup, pgpSign,
-  type Contact, type DraftTone, type MailAccount, type MailIdentity, type MailLabel, type MailMessage, type MailThread, type Me,
+  type Contact, type DraftTone, type MailAccount, type MailDelegation, type MailIdentity, type MailLabel, type MailMessage, type MailThread, type Me,
   type MailSearchSpec, type OutboundAttachment, type ScheduledSend, type SnoozedMessage,
 } from "@/lib/api";
 import {
@@ -208,6 +208,11 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [accountList, setAccountList] = useState<MailAccount[]>([]);
   // null = the internal gateway account; a number = an external mailbox.
   const [activeAccount, setActiveAccount] = useState<number | null>(null);
+  // ---- delegated mailboxes (shared mailboxes with full access) ----
+  // delegateList holds every owner mailbox this user may open; activeDelegate
+  // is the currently open owner email (null = the user's own mailbox).
+  const [delegateList, setDelegateList] = useState<MailDelegation[]>([]);
+  const [activeDelegate, setActiveDelegate] = useState<string | null>(null);
   const switchInFlight = useRef(false);
 
   const refreshAccounts = useCallback(async () => {
@@ -218,20 +223,36 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     }
   }, []);
 
+  const refreshDelegations = useCallback(async () => {
+    try {
+      const listing = await delegations();
+      setDelegateList(listing.received.filter((d) => d.full_access));
+    } catch {
+      // delegation listing is optional; the user's own mailbox always works
+    }
+  }, []);
+
   // Load the account list once; keep the active account in the api module so
   // every /mail/* request is scoped to it.
   useEffect(() => {
     refreshAccounts();
   }, [refreshAccounts]);
   useEffect(() => {
+    refreshDelegations();
+  }, [refreshDelegations]);
+  useEffect(() => {
     setActiveAccountId(activeAccount);
   }, [activeAccount]);
+  useEffect(() => {
+    setActiveDelegateEmail(activeDelegate);
+  }, [activeDelegate]);
 
   // Switching accounts resets the mailbox view and re-scopes all requests.
   async function switchAccount(id: number | null) {
     if (id === activeAccount || switchInFlight.current) return;
     switchInFlight.current = true;
     setActiveAccount(id);
+    setActiveDelegate(null);
     setFolder("Inbox");
     setMessages([]);
     setSelected(null);
@@ -242,6 +263,29 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     setSearching(false);
     setSelectedUids(new Set());
     setCursor(0);
+    switchInFlight.current = false;
+    router.push("/mail/Inbox");
+    loadFolders();
+  }
+
+  // Switching delegated mailboxes re-scopes every /mail/* request to the
+  // owner's mailbox (X-Delegate-Email); the backend validates the grant.
+  async function switchDelegate(email: string | null) {
+    if (email === activeDelegate || switchInFlight.current) return;
+    switchInFlight.current = true;
+    setActiveAccount(null);
+    setActiveDelegate(email);
+    setFolder("Inbox");
+    setMessages([]);
+    setSelected(null);
+    setDetail(null);
+    setThread(null);
+    setThreadOpen(false);
+    setQuery("");
+    setSearching(false);
+    setSelectedUids(new Set());
+    setCursor(0);
+    setActiveLabel("");
     switchInFlight.current = false;
     router.push("/mail/Inbox");
     loadFolders();
@@ -2015,6 +2059,10 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     activeAccount,
     switchAccount,
     refreshAccounts,
+    delegateList,
+    activeDelegate,
+    switchDelegate,
+    refreshDelegations,
     settingsInitialSection,
     openSettingsSection,
     sidebarOpen,

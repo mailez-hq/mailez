@@ -133,6 +133,9 @@ export function ComposePanel(props: ComposePanelProps) {
   const [templates, setTemplates] = useState<MailTemplate[]>([]);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false);
+  // Earliest schedulable moment, captured once so render stays pure (the
+  // backend re-checks that send_at is in the future anyway).
+  const [minScheduleAt] = useState(() => localDateTime(new Date(Date.now() + 60000)));
 
   function openTemplates() {
     setTemplatesOpen((v) => !v);
@@ -211,10 +214,15 @@ export function ComposePanel(props: ComposePanelProps) {
                     <span
                       className={cn(
                         "size-1.5 shrink-0 rounded-full",
-                        idn.dkim_enabled ? "bg-primary" : "bg-[#C9A227]",
+                        idn.delegated ? "bg-violet-500" : idn.dkim_enabled ? "bg-primary" : "bg-[#C9A227]",
                       )}
                     />
                     <span className="truncate">{idn.email}</span>
+                    {idn.delegated && (
+                      <span className="rounded bg-violet-500/10 px-1 py-px text-[10px] font-medium text-violet-600 dark:text-violet-400">
+                        {t("delegated")}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -384,12 +392,12 @@ export function ComposePanel(props: ComposePanelProps) {
                 value={scheduleAt}
                 onChange={(e) => onScheduleAt(e.target.value)}
                 className="w-36 bg-transparent text-[11px] outline-none"
-                min={localDateTime(new Date(Date.now() + 60000))}
+                min={minScheduleAt}
               />
             ) : (
               <button
                 type="button"
-                onClick={() => onScheduleAt(localDateTime(new Date(Date.now() + 60000)))}
+                onClick={() => onScheduleAt(minScheduleAt)}
                 title={t("scheduleSend")}
                 className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
               >

@@ -26,6 +26,7 @@ import (
 	"mailez/backend/internal/contacts"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
+	"mailez/backend/internal/delegation"
 	"mailez/backend/internal/domain"
 	"mailez/backend/internal/fetch"
 	"mailez/backend/internal/mailbox"
@@ -176,6 +177,7 @@ func (s *Server) routes() {
 	alias.New(app).Register(authed)
 	mailbox.New(app).Register(authed)
 	compose.New(app).Register(authed)
+	delegation.New(app).Register(authed)
 	contacts.New(app).Register(authed)
 	sieve.New(app).Register(authed)
 	admin.New(app).Register(authed)
