@@ -7,6 +7,8 @@ import type {
   MailAccount,
   MailDelegation,
   DelegationListing,
+  CalendarEvent,
+  CalendarEventInput,
   MailAttachment,
   MailIdentity,
   MailLabel,
@@ -38,6 +40,8 @@ export type {
   MailAccount,
   MailDelegation,
   DelegationListing,
+  CalendarEvent,
+  CalendarEventInput,
   MailAttachment,
   MailIdentity,
   MailLabel,
@@ -425,6 +429,42 @@ export const delegationUpdate = (
 
 export const delegationDelete = (id: number) =>
   api<void>(`/delegations/${id}`, { method: "DELETE" });
+
+// Calendar (webmail JSON API over the same store as CalDAV).
+export const calendarEvents = (from?: string, to?: string) => {
+  const q = new URLSearchParams();
+  if (from) q.set("from", from);
+  if (to) q.set("to", to);
+  const qs = q.toString();
+  return api<CalendarEvent[]>(`/calendar/events${qs ? `?${qs}` : ""}`);
+};
+
+export const calendarEventCreate = (input: CalendarEventInput) =>
+  apiPost<CalendarEvent>("/calendar/events", input);
+
+export const calendarEventUpdate = (id: number, input: CalendarEventInput) =>
+  apiPut<CalendarEvent>(`/calendar/events/${id}`, input);
+
+export const calendarEventDelete = (id: number) =>
+  api<void>(`/calendar/events/${id}`, { method: "DELETE" });
+
+// App passwords (used by IMAP/SMTP and the DAV servers).
+export type AppToken = {
+  id: number;
+  user_email: string;
+  ip: string;
+  created_at?: string;
+};
+
+export type AppTokenResult = AppToken & { token?: string };
+
+export const appTokens = () => api<{ data: AppToken[]; total: number }>("/tokens");
+
+export const appTokenCreate = () =>
+  apiPost<AppTokenResult>("/tokens", {});
+
+export const appTokenDelete = (id: number) =>
+  api<void>(`/tokens/${id}`, { method: "DELETE" });
 
 // Web Push subscriptions (new-mail notifications via service worker).
 export const pushVapid = () => api<{ public_key: string }>("/push/vapid");

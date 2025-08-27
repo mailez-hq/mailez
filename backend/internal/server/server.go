@@ -22,10 +22,12 @@ import (
 	"mailez/backend/internal/alias"
 	"mailez/backend/internal/announcement"
 	"mailez/backend/internal/auth"
+	"mailez/backend/internal/calendar"
 	"mailez/backend/internal/compose"
 	"mailez/backend/internal/contacts"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
+	"mailez/backend/internal/dav"
 	"mailez/backend/internal/delegation"
 	"mailez/backend/internal/domain"
 	"mailez/backend/internal/fetch"
@@ -80,6 +82,9 @@ func New(cfg core.Config) *Server {
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
+		// WebDAV methods used by the built-in CardDAV/CalDAV servers; Fiber
+		// rejects unknown verbs unless they are registered here.
+		RequestMethods: append(append([]string{}, fiber.DefaultMethods...), "PROPFIND", "REPORT", "MKCOL"),
 		// Only trust X-Forwarded-For from the stack's own gateway subnet;
 		// a client-spoofed XFF must not control c.IP() (login rate limiting).
 		EnableTrustedProxyCheck: true,
@@ -182,11 +187,23 @@ func (s *Server) routes() {
 	sieve.New(app).Register(authed)
 	admin.New(app).Register(authed)
 	announcement.New(app).Register(authed)
+	calendar.New(app).Register(authed)
 	fetch.RegisterAPI(authed, app)
 	ai.RegisterAPI(authed, app, aiMgr)
 	push.RegisterAPI(authed, app)
 
 	s.internal.Register(s.App.Group("/stack"))
+
+	// Built-in CardDAV/CalDAV servers (phone/desktop sync over Basic Auth)
+	// plus the RFC 6764 well-known discovery redirects.
+	dav.New(s.DB).Register(s.App.Group("/dav"))
+	s.App.Get("/.well-known/carddav", redirectDAV)
+	s.App.Get("/.well-known/caldav", redirectDAV)
+}
+
+// redirectDAV points DAV discovery clients at the server root.
+func redirectDAV(c *fiber.Ctx) error {
+	return c.Redirect("/dav/", fiber.StatusMovedPermanently)
 }
 
 func (s *Server) health(c *fiber.Ctx) error {

@@ -116,6 +116,30 @@ export type DelegationListing = {
   received: MailDelegation[];
 };
 
+// CalendarEvent is one entry in the built-in calendar (shared with CalDAV).
+export type CalendarEvent = {
+  id: number;
+  uid: string;
+  summary: string;
+  location: string;
+  description: string;
+  all_day: boolean;
+  start: string; // RFC3339
+  end?: string; // RFC3339
+  rrule: string;
+  updated_at: string;
+};
+
+export type CalendarEventInput = {
+  summary: string;
+  location?: string;
+  description?: string;
+  all_day?: boolean;
+  start: string;
+  end?: string;
+  rrule?: string;
+};
+
 // MailAccount is an external IMAP/SMTP mailbox aggregated into the inbox
 // (full aggregation client). The password never leaves the backend; these
 // rows only expose configuration and health.

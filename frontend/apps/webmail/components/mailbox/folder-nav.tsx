@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Archive,
+  CalendarDays,
   CalendarClock,
   ChevronDown,
   ChevronRight,
@@ -674,6 +675,9 @@ export function FolderNav({
             <Button variant="ghost" size="sm" onClick={onSieve} title={t("filterRules")}>
               <Filter className="size-4" />
             </Button>
+            <Link href="/calendar" title={t("calendar")} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+              <CalendarDays className="size-4" />
+            </Link>
             <Button variant="ghost" size="sm" onClick={onSettings} title={t("settings")}>
               <Settings className="size-4" />
             </Button>
