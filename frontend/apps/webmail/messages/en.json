@@ -97,6 +97,7 @@
     "summarizing": "Summarizing…",
     "aiGenerated": "AI-generated — verify before relying on it",
     "aiPriority": "AI priority",
+    "more": "More",
     "prioritizing": "Prioritizing…",
     "aiSearch": "AI search",
     "refresh": "Refresh",
@@ -285,7 +286,7 @@
     "inviteDecline": "Decline",
     "inviteAccepted": "Accepted — reply sent to the organizer",
     "inviteDeclined": "Declined — reply sent to the organizer",
-    "inviteFailed": "Failed to send reply"
+    "inviteFailed": "Failed to send reply",
     "toastLabelApplied": "Label applied",
     "translationError": "Translation failed",
     "noSelectionQuote": "（未选中文字，引用全文）"
