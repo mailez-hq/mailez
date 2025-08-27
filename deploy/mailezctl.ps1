@@ -1,26 +1,15 @@
-# mailezctl — 统一编排管理入口。
+# mailezctl — 两档管理入口：开发 / 生产。
 #
-# 一个命令管理整套栈（mailez 控制面 + 邮件引擎），引擎与存储通过 profile
-# 切换，compose 文件全部属于同一个 "mailez" 项目：
-#
-# 存储矩阵（开发 = SQLite + Pebble/TiDB + 本地 FS；生产 = MySQL + TiDB +
-# MinIO/S3）：
-#
-#   Engine          开发（dev 基座）                    生产（-Prod）
-#   ---------------- ---------------------------------  --------------------------------------------
-#   postdove        dev                                compose + mysql
-#   mailezine       dev + mailezine（Pebble+FS）        compose + mailezine + blob-s3 + mysql
-#   mailezine-tidb  dev + mailezine + tidb（TiDB+FS）   compose + mailezine + tidb + blob-s3 + mysql
+# 只有两个 compose 文件，对应两档存储：
+#   dev  = docker-compose.dev.yml   （SQLite + Pebble + 本地 FS）
+#   prod = docker-compose.prod.yml  （MySQL + TiDB + MinIO/S3）
 #
 # 用法:
-#   powershell .\deploy\mailezctl.ps1 up mailezine-tidb
-#   powershell .\deploy\mailezctl.ps1 up mailezine
+#   powershell .\deploy\mailezctl.ps1 up              # 开发档
+#   powershell .\deploy\mailezctl.ps1 up prod         # 生产档
 #   powershell .\deploy\mailezctl.ps1 ps
-#   powershell .\deploy\mailezctl.ps1 logs mailezine -Follow
+#   powershell .\deploy\mailezctl.ps1 logs prod mailezine -Follow
 #   powershell .\deploy\mailezctl.ps1 down
-#
-# -Prod 切换基座为 docker-compose.yml（完整容器化，backend/frontend 也在
-# 容器内）；默认 dev 基座要求后端在宿主机 8080 运行（见 docs/dev-setup.md）。
 
 param(
     [Parameter(Position = 0)]
@@ -28,66 +17,31 @@ param(
     [string]$Action = "ps",
 
     [Parameter(Position = 1)]
-    [ValidateSet("postdove", "mailezine", "mailezine-tidb")]
-    [string]$Engine = "postdove",
+    [ValidateSet("dev", "prod")]
+    [string]$Target = "dev",
 
     [Parameter(Position = 2)]
     [string]$Service = "",
-    [switch]$Follow,
-    [switch]$Prod
+
+    [switch]$Follow
 )
 
 $ErrorActionPreference = "Stop"
 $deploy = Split-Path -Parent $MyInvocation.MyCommand.Path
+$file = if ($Target -eq "prod") { "docker-compose.prod.yml" } else { "docker-compose.dev.yml" }
 
-$base = if ($Prod) { "docker-compose.yml" } else { "docker-compose.dev.yml" }
-$files = @("-f", $base)
-$profile = $null
-
-switch ($Engine) {
-    "mailezine" {
-        $files += @("-f", "docker-compose.mailezine.yml")
-        $profile = "mailezine"
-    }
-    "mailezine-tidb" {
-        $files += @("-f", "docker-compose.mailezine.yml", "-f", "docker-compose.tidb.yml")
-        $profile = "mailezine"
-    }
-}
-if ($Prod) {
-    $files += @("-f", "docker-compose.mysql.yml")
-    if ($Engine -ne "postdove") {
-        $files += @("-f", "docker-compose.blob-s3.yml")
-    }
-}
-
-$compose = @("docker", "compose")
-$compose += $files
-if ($profile) { $compose += @("--profile", $profile) }
-
+$compose = @("docker", "compose", "-f", $file)
 switch ($Action) {
-    "up" {
-        $compose += @("up", "-d", "--build")
-        if ($Service) { $compose += $Service }
-    }
-    "down" {
-        $compose += @("down")
-        if ($Service) { $compose += $Service }
-    }
-    "ps" { $compose += @("ps") }
-    "logs" {
-        $compose += @("logs")
-        if ($Follow) { $compose += "--follow" }
-        if ($Service) { $compose += $Service }
-    }
-    "build" {
-        $compose += @("build")
-        if ($Service) { $compose += $Service }
-    }
+    "up"     { $compose += @("up", "-d", "--build") }
+    "down"   { $compose += @("down") }
+    "ps"     { $compose += @("ps") }
+    "logs"   { $compose += @("logs"); if ($Follow) { $compose += "--follow" } }
+    "build"  { $compose += @("build") }
     "config" { $compose += @("config") }
 }
+if ($Service) { $compose += $Service }
 
-Write-Host ("== mailezctl {0} (engine={1}, prod={2})" -f $Action, $Engine, $Prod)
+Write-Host ("== mailezctl {0} ({1})" -f $Action, $Target)
 Push-Location $deploy
 try {
     & $compose[0] $compose[1..($compose.Count - 1)]
