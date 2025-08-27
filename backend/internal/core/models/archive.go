@@ -36,7 +36,9 @@ type ArchivedMessage struct {
 	From         string           `gorm:"size:512;index" json:"from"`
 	To           string           `gorm:"size:2048" json:"to"`
 	Cc           string           `gorm:"size:2048" json:"cc"`
-	Subject      string           `gorm:"size:1024;index" json:"subject"`
+	// size:512 keeps the utf8mb4 index under MySQL's 3072-byte key limit
+	// (512×4 = 2048 bytes); 1024 would exceed it on MySQL 8.0.
+	Subject      string           `gorm:"size:512;index" json:"subject"`
 	Date         time.Time        `gorm:"index" json:"date"`
 	Size         int64            `gorm:"not null" json:"size"`
 	Raw          []byte           `gorm:"type:blob" json:"-"`
