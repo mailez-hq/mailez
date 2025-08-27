@@ -379,6 +379,13 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [signOn, setSignOn] = useState(false);
   const [encryptOn, setEncryptOn] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
+  // Snapshot of a closed-but-unsaved-completely compose session: closing the
+  // editor persists the draft and remembers its content so the next "Write"
+  // restores it instead of starting blank.
+  const lastDraftRef = useRef<{
+    to: string[]; cc: string[]; bcc: string[]; subject: string; body: string; bodyText: string;
+    attachments: OutboundAttachment[]; uid: number | null;
+  } | null>(null);
   // Optional RFC3339 timestamp (from the compose datetime input) that turns a
   // send into a scheduled send; null means "send now".
   const [scheduleAt, setScheduleAt] = useState<string>("");
@@ -602,14 +609,30 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     // A create (uid == null) must not race another in-flight create, otherwise
     // two drafts appear; updating an existing draft is always safe.
     if (hasContent && !pristine && (draftUidRef.current != null || !draftSavingRef.current)) {
+      // Remember the content synchronously so a quick reopen restores it even
+      // before the async save resolves.
+      lastDraftRef.current = {
+        to, cc, bcc, subject, body, bodyText, attachments,
+        uid: draftUidRef.current,
+      };
       mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, attachments)
         .then((res) => {
           draftUidRef.current = res.uid || draftUidRef.current;
+          if (lastDraftRef.current) lastDraftRef.current.uid = draftUidRef.current;
           refreshDraftsIfActive();
         })
         .catch(() => {});
+    } else {
+      lastDraftRef.current = null;
     }
     setComposeOpen(false);
+  }
+
+  // Opening the calendar drawer dismisses a composing editor first so the
+  // drawer is never hidden behind it; the draft is persisted by closeCompose.
+  function openCalendar() {
+    if (composeOpen) closeCompose();
+    setCalendarOpen(true);
   }
 
   // Esc dismisses the compose panel (no Base UI dialog to handle it anymore).
@@ -1402,6 +1425,30 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   }, [composeOpen, composeFocus]);
 
   function openCompose(toAddr = "", subj = "", html = "", text = "", focus: "to" | "editor" = "to") {
+    // A bare "Write" right after closing a draft restores the saved content
+    // instead of starting from scratch (the close path persisted it).
+    if (!toAddr && !subj && !html && !text && lastDraftRef.current) {
+      const s = lastDraftRef.current;
+      lastDraftRef.current = null;
+      setTo(s.to);
+      setCc(s.cc);
+      setBcc(s.bcc);
+      setCcExpanded(false);
+      setAttachments(s.attachments);
+      setSubject(s.subject);
+      setBody(s.body);
+      setBodyText(s.bodyText);
+      setSignOn(false);
+      setEncryptOn(false);
+      setDraftSaved(false);
+      draftUidRef.current = s.uid ?? draftUidRef.current;
+      draftBaselineRef.current = composeSignature({
+        to: s.to, cc: s.cc, bcc: s.bcc, subject: s.subject, body: s.body, bodyText: s.bodyText, attachments: s.attachments,
+      });
+      setComposeFocus(focus);
+      setComposeOpen(true);
+      return;
+    }
     const identity = identities.find((i) => i.email === from);
     const sig = identity?.signature?.trim() || me.signature?.trim();
     let finalHtml = html;
@@ -1714,6 +1761,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       const sendAt = scheduleAt ? new Date(scheduleAt).toISOString() : undefined;
 
       const resetCompose = () => {
+        lastDraftRef.current = null;
         setComposeOpen(false);
         setTo([]);
         setCc([]);
@@ -2218,6 +2266,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     send,
     sendQuickReply,
     closeCompose,
+    openCalendar,
     saveDraftNow,
     setTo,
     setCc,
