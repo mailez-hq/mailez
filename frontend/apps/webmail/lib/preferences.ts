@@ -5,6 +5,8 @@ export type Density = "compact" | "cozy" | "relaxed";
 // default "blue" (stone cyan) is the default theme; "green" is the legacy
 // mailez brand teal. Alternatives provide additional theme families.
 export type Accent = "blue" | "green" | "purple" | "orange" | "rose";
+export type ReaderFontSize = "sm" | "md" | "lg" | "xl";
+export type ReadingPaneWidth = "narrow" | "md" | "wide";
 
 // Per-feature AI toggles. A feature switch is only effective while the master
 // switch is on; the backend additionally gates everything behind ai/status.
@@ -23,6 +25,11 @@ export type Preferences = {
   ai: AiPrefs;
   notifications: boolean;
   undoSendSeconds: number;
+  // Compose spellcheck (browser built-in on the editor).
+  spellcheck: boolean;
+  // Reading pane typography / width presets.
+  readerFont: ReaderFontSize;
+  paneWidth: ReadingPaneWidth;
 };
 
 export const PREF_KEY = "mailez.prefs";
@@ -34,6 +41,9 @@ export const DEFAULT_PREFS: Preferences = {
   ai: { enabled: true, summary: true, draft: true, priority: true, search: true },
   notifications: true,
   undoSendSeconds: 5,
+  spellcheck: true,
+  readerFont: "md",
+  paneWidth: "md",
 };
 
 export function readPreferences(): Preferences {
@@ -62,6 +72,13 @@ export function readPreferences(): Preferences {
       undoSendSeconds: [0, 5, 10, 20, 30].includes(parsed.undoSendSeconds ?? 5)
         ? (parsed.undoSendSeconds ?? 5)
         : 5,
+      spellcheck: parsed.spellcheck !== false,
+      readerFont: ["sm", "lg", "xl"].includes(parsed.readerFont ?? "")
+        ? (parsed.readerFont as ReaderFontSize)
+        : "md",
+      paneWidth: ["narrow", "wide"].includes(parsed.paneWidth ?? "")
+        ? (parsed.paneWidth as ReadingPaneWidth)
+        : "md",
     };
   } catch {
     return DEFAULT_PREFS;

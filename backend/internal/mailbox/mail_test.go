@@ -34,6 +34,10 @@ func (f *fakeGateway) ListMessages(email, token, folder string, page int) ([]mai
 	return f.messages, f.total, nil
 }
 
+func (f *fakeGateway) ListMessagesSorted(email, token, folder string, page int, sort, dir string) ([]mail.Message, int, error) {
+	return f.messages, f.total, nil
+}
+
 func (f *fakeGateway) MoveMany(email, token, folder string, uids []uint32, destination string) error {
 	f.moved = append(f.moved, [2]string{folder, destination})
 	return nil

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Loader2, Mail, MessageSquare, PenLine, Trash2, Upload, Download,
+  Loader2, Mail, MessageSquare, PenLine, Trash2, Upload, Download, FolderOpen,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  contacts, createContact, updateContact, deleteContact, exportContacts, importContacts,
+  carddavGet, carddavSet, carddavSync, contacts, contactsDedupe,
+  createContact, updateContact, deleteContact, exportContacts, importContacts,
   mailSearch,
   type Contact, type MailMessage,
 } from "@/lib/api";
@@ -96,6 +97,14 @@ export function MailContacts({
   const [email, setEmail] = useState("");
   const [groups, setGroups] = useState("");
   const [importing, setImporting] = useState(false);
+  const [groupFilter, setGroupFilter] = useState("");
+  const [deduping, setDeduping] = useState(false);
+  const [carddavOpen, setCarddavOpen] = useState(false);
+  const [carddavUrl, setCarddavUrl] = useState("");
+  const [carddavUser, setCarddavUser] = useState("");
+  const [carddavPw, setCarddavPw] = useState("");
+  const [carddavSaving, setCarddavSaving] = useState(false);
+  const [carddavSyncing, setCarddavSyncing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -174,14 +183,72 @@ export function MailContacts({
     }
   }
 
+  async function handleDedupe() {
+    setDeduping(true);
+    setError("");
+    try {
+      const res = await contactsDedupe();
+      setInfo(`合并 ${res.merged} 组重复项，删除 ${res.removed} 条`);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "dedupe failed");
+    } finally {
+      setDeduping(false);
+    }
+  }
+
+  async function openCardDAV() {
+    setCarddavOpen(true);
+    setError("");
+    try {
+      const cfg = await carddavGet();
+      setCarddavUrl(cfg.url);
+      setCarddavUser(cfg.username);
+      setCarddavPw("");
+    } catch {
+      // default empty form
+    }
+  }
+
+  async function saveCardDAV() {
+    setCarddavSaving(true);
+    setError("");
+    try {
+      await carddavSet({url: carddavUrl.trim(), username: carddavUser, password: carddavPw});
+      setCarddavPw("");
+      setInfo(t("carddavSaved"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "save failed");
+    } finally {
+      setCarddavSaving(false);
+    }
+  }
+
+  async function syncCardDAV() {
+    setCarddavSyncing(true);
+    setError("");
+    try {
+      const res = await carddavSync();
+      setInfo(t("carddavSynced", {added: res.added, updated: res.updated}));
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "sync failed");
+    } finally {
+      setCarddavSyncing(false);
+    }
+  }
+
   function pick(c: Contact) {
     onPick(c.email);
     onOpenChange(false);
   }
 
   const selected = list.find((c) => c.id === selectedId) || null;
+  const groupList = [...new Set(list.flatMap((c) => (c.groups || "").split(",").map((g) => g.trim()).filter(Boolean)))];
+  const visible = groupFilter ? list.filter((c) => (c.groups || "").split(",").map((g) => g.trim()).includes(groupFilter)) : list;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] sm:max-w-2xl">
         <DialogHeader>
@@ -212,6 +279,13 @@ export function MailContacts({
               <Download className="size-3.5" />
               {t("export")}
             </Button>
+            <Button size="xs" variant="ghost" className="gap-1" onClick={handleDedupe} disabled={deduping}>
+              {deduping ? <Loader2 className="size-3.5 animate-spin" /> : <FolderOpen className="size-3.5" />}
+              {t("dedupe")}
+            </Button>
+            <Button size="xs" variant="ghost" className="gap-1" onClick={openCardDAV}>
+              CardDAV
+            </Button>
           </DialogTitle>
         </DialogHeader>
         {error && <p className="text-sm text-destructive">{error}</p>}
@@ -219,6 +293,33 @@ export function MailContacts({
         <div className="grid gap-4 md:grid-cols-[230px_1fr]">
           {/* left: add + list */}
           <div className="min-w-0">
+            {groupList.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1">
+                <button
+                  type="button"
+                  onClick={() => setGroupFilter("")}
+                  className={cn(
+                    "rounded-full border px-2 py-0.5 text-[11px] transition-colors",
+                    groupFilter === "" ? "bg-accent font-medium text-accent-foreground" : "border-border text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  {t("allGroups")}
+                </button>
+                {groupList.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setGroupFilter(groupFilter === g ? "" : g)}
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[11px] transition-colors",
+                      groupFilter === g ? "bg-accent font-medium text-accent-foreground" : "border-border text-muted-foreground hover:bg-muted",
+                    )}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            )}
             <form onSubmit={add} className="space-y-2">
               <div className="flex gap-1.5">
                 <Input
@@ -248,7 +349,7 @@ export function MailContacts({
             </form>
             <ScrollArea className="mt-2 max-h-72">
               <div className="space-y-1 pr-1">
-                {list.map((c) => (
+                {visible.map((c) => (
                   <button
                     key={c.id}
                     type="button"
@@ -275,7 +376,7 @@ export function MailContacts({
                     </span>
                   </button>
                 ))}
-                {list.length === 0 && (
+                {visible.length === 0 && (
                   <p className="p-3 text-sm text-muted-foreground">{t("noContacts")}</p>
                 )}
               </div>
@@ -307,6 +408,44 @@ export function MailContacts({
         <DialogFooter />
       </DialogContent>
     </Dialog>
+
+    {/* CardDAV one-way import sync */}
+    <Dialog open={carddavOpen} onOpenChange={setCarddavOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>CardDAV</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2.5">
+          <div className="space-y-1">
+            <Label>{t("carddavUrl")}</Label>
+            <Input value={carddavUrl} onChange={(e) => setCarddavUrl(e.target.value)} placeholder="https://dav.example.com/addressbooks/user/contacts/" />
+          </div>
+          <div className="space-y-1">
+            <Label>{t("username")}</Label>
+            <Input value={carddavUser} onChange={(e) => setCarddavUser(e.target.value)} autoComplete="off" />
+          </div>
+          <div className="space-y-1">
+            <Label>{t("password")}</Label>
+            <Input type="password" value={carddavPw} onChange={(e) => setCarddavPw(e.target.value)} autoComplete="new-password" />
+          </div>
+          <p className="text-xs text-muted-foreground">{t("carddavHint")}</p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => setCarddavOpen(false)}>
+            {t("close")}
+          </Button>
+          <Button size="sm" variant="outline" onClick={syncCardDAV} disabled={carddavSyncing || !carddavUrl.trim()}>
+            {carddavSyncing ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            {t("carddavSync")}
+          </Button>
+          <Button size="sm" onClick={saveCardDAV} disabled={carddavSaving}>
+            {carddavSaving ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            {t("save")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 

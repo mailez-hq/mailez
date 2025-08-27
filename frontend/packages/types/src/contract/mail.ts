@@ -65,6 +65,7 @@ export type MailSearchSpec = {
   unseen?: boolean;
   flagged?: boolean;
   labels?: string[];
+  filenames?: string[];
   before?: string | null;
   after?: string | null;
 };

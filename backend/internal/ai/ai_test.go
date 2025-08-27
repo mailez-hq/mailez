@@ -13,7 +13,7 @@ func (f fakeProvider) Chat(_ context.Context, _, _ string) (string, error) {
 }
 
 func TestPrioritizeParsesScores(t *testing.T) {
-	m := &Manager{provider: fakeProvider{out: `{"1": {"score": 5, "category": "work"}, "2": {"score": 2, "category": "newsletter"}, "3": {"score": 7, "category": "other"}}`}}
+	m := &Manager{envFallback: fakeProvider{out: `{"1": {"score": 5, "category": "work"}, "2": {"score": 2, "category": "newsletter"}, "3": {"score": 7, "category": "other"}}`}}
 	res, err := m.Prioritize(context.Background(), []PriorityItem{
 		{UID: 1}, {UID: 2}, {UID: 3},
 	})
@@ -32,7 +32,7 @@ func TestPrioritizeParsesScores(t *testing.T) {
 }
 
 func TestPrioritizeToleratesFences(t *testing.T) {
-	m := &Manager{provider: fakeProvider{out: "```json\n{\"7\": {\"score\": 4, \"category\": \"finance\"}}\n```"}}
+	m := &Manager{envFallback: fakeProvider{out: "```json\n{\"7\": {\"score\": 4, \"category\": \"finance\"}}\n```"}}
 	res, err := m.Prioritize(context.Background(), []PriorityItem{{UID: 7}})
 	if err != nil {
 		t.Fatalf("prioritize: %v", err)
@@ -53,7 +53,7 @@ func TestPrioritizeDisabled(t *testing.T) {
 }
 
 func TestPrioritizeGarbageResponse(t *testing.T) {
-	m := &Manager{provider: fakeProvider{out: "sorry, no scores"}}
+	m := &Manager{envFallback: fakeProvider{out: "sorry, no scores"}}
 	if _, err := m.Prioritize(context.Background(), []PriorityItem{{UID: 1}}); err == nil {
 		t.Fatal("expected error for garbage response")
 	}
@@ -61,7 +61,7 @@ func TestPrioritizeGarbageResponse(t *testing.T) {
 
 func TestInterpretSearch(t *testing.T) {
 	m := &Manager{
-		provider: fakeProvider{
+		envFallback: fakeProvider{
 			out: `{"keywords":["contract"],"from":"amy@example.com","to":"","subject":"","has_attachment":true,"before":"2026-01-31","after":"2026-01-01"}`,
 		},
 	}
@@ -81,7 +81,7 @@ func TestInterpretSearch(t *testing.T) {
 }
 
 func TestInterpretSearchFences(t *testing.T) {
-	m := &Manager{provider: fakeProvider{out: "```json\n{\"keywords\":[\"invoice\"]}\n```"}}
+	m := &Manager{envFallback: fakeProvider{out: "```json\n{\"keywords\":[\"invoice\"]}\n```"}}
 	spec, err := m.InterpretSearch(context.Background(), "invoices")
 	if err != nil {
 		t.Fatalf("interpret: %v", err)

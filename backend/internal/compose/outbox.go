@@ -185,8 +185,15 @@ func (h *Handler) outboxList(c *fiber.Ctx) error {
 // enqueue parks a fully built message for delivery at sendAt (now + undo
 // window, or a future timestamp for scheduled sends) and returns its id.
 // accountID selects an external aggregated account (0 = internal gateway).
-func (h *Handler) enqueue(userEmail string, accountID uint, from string, to, cc, bcc []string, subject, text, html string, attachments []mail.Attachment, sendAt time.Time) (uint, error) {
-	raw := mail.BuildMessage(from, to, cc, subject, text, html, attachments)
+func (h *Handler) enqueue(userEmail string, accountID uint, from string, to, cc, bcc []string, subject, text, html string, attachments []mail.Attachment, sendAt time.Time, inReplyTo, references string) (uint, error) {
+	extra := []mail.Header{}
+	if inReplyTo != "" {
+		extra = append(extra, mail.Header{Key: "In-Reply-To", Value: inReplyTo})
+	}
+	if references != "" {
+		extra = append(extra, mail.Header{Key: "References", Value: references})
+	}
+	raw := mail.BuildMessage(from, to, cc, subject, text, html, attachments, extra...)
 	recipients := make([]string, 0, len(to)+len(cc)+len(bcc))
 	recipients = append(recipients, to...)
 	recipients = append(recipients, cc...)

@@ -149,9 +149,9 @@ export const mailFolderClear = (name: string) =>
 
 export const mailUnseen = () => api<Record<string, number>>("/mail/unseen");
 
-export async function mailMessages(folder: string, page = 0): Promise<MailPage> {
+export async function mailMessages(folder: string, page = 0, sort = "date", dir = ""): Promise<MailPage> {
   const res = await fetch(
-    `${API}${mailPath(`/mail/messages?folder=${encodeURIComponent(folder)}&page=${page}`)}`,
+    `${API}${mailPath(`/mail/messages?folder=${encodeURIComponent(folder)}&page=${page}&sort=${encodeURIComponent(sort)}&dir=${encodeURIComponent(dir)}`)}`,
     { headers: { "Content-Type": "application/json" } },
   );
   if (!res.ok) {
@@ -214,6 +214,23 @@ export const mailSend = (
     },
   );
 
+// mailSendReply sends an inline quick reply with proper threading headers.
+export const mailSendReply = (
+  to: string[],
+  cc: string[],
+  subject: string,
+  body: string,
+  inReplyTo: string,
+  references: string,
+) =>
+  api("/mail/send", {
+    method: "POST",
+    body: JSON.stringify({
+      to, cc, bcc: [], subject, body, html: "",
+      undo_seconds: 0, in_reply_to: inReplyTo, references,
+    }),
+  });
+
 // mailUndoSend cancels a parked message within its undo window.
 export const mailUndoSend = (outboxId: number) =>
   api<void>(`/mail/outbox/${outboxId}`, { method: "DELETE" });
@@ -258,6 +275,9 @@ export const mailSnooze = (folder: string, uid: number, until: number | null) =>
 
 export const mailSnoozed = () => api<SnoozedMessage[]>("/mail/snoozed");
 
+export const aiTranslate = (text: string, target: string) =>
+  apiPost<{translation: string}>("/ai/translate", {text, target});
+
 // Global admin announcement banner (204/undefined when none is active).
 export const mailAnnouncement = () => api<MailAnnouncement | undefined>("/announcement");
 
@@ -273,8 +293,35 @@ export const mailLabelRename = (from: string, to: string) =>
 export const mailLabelDelete = (name: string) =>
   api(`/mail/labels?name=${encodeURIComponent(name)}`, { method: "DELETE" });
 
+// Compose templates (canned responses / 常用语).
+export interface MailTemplate {
+  id: number;
+  name: string;
+  subject: string;
+  html: string;
+  text: string;
+}
+
+export const mailTemplates = () => api<MailTemplate[]>("/mail/templates");
+
+export const mailTemplateSave = (tpl: {id?: number; name: string; subject?: string; html: string; text: string}) =>
+  apiPost<MailTemplate>("/mail/templates", tpl);
+
+export const mailTemplateDelete = (id: number) =>
+  api(`/mail/templates/${id}`, { method: "DELETE" });
+
 export const mailDelete = (folder: string, uid: number) =>
   apiPost("/mail/delete", { folder, uid });
+
+// Contacts.
+export const contactsDedupe = () => apiPost<{merged: number; removed: number}>("/contacts/dedupe", {});
+
+export const carddavGet = () => api<{url: string; username: string; has_auth: boolean}>("/contacts/carddav");
+
+export const carddavSet = (body: {url: string; username?: string; password?: string}) =>
+  apiPut<void>("/contacts/carddav", body);
+
+export const carddavSync = () => apiPost<{added: number; updated: number; total: number}>("/contacts/carddav/sync", {});
 
 export const mailMove = (folder: string, uids: number[], destination: string) =>
   apiPost("/mail/move", { folder, uids, destination });

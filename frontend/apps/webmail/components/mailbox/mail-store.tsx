@@ -20,7 +20,7 @@ import {
   contacts, mailFlag, mailMove, mailIdentities,
   logout as apiLogout,
   mailFolders, mailFolderCreate, mailFolderRename, mailFolderDelete, mailFolderClear,
-  mailLabelDelete, mailLabelRename, mailLabelSave, mailLabels, mailMessage, mailMessages, mailSaveDraft, mailSearch, mailSearchSpec, mailSend, mailThread, mailUnseen, mailUndoSend, mailUnsubscribe, mailScheduled,
+  mailLabelDelete, mailLabelRename, mailLabelSave, mailLabels, mailMessage, mailMessages, mailSaveDraft, mailSearch, mailSearchSpec, mailSend, mailSendReply, mailThread, mailUnseen, mailUndoSend, mailUnsubscribe, mailScheduled,
   mailSnooze,
   meProfile, updateMeSettings,
   pgpEncrypt, pgpLookup, pgpSign,
@@ -30,7 +30,9 @@ import {
 import {
   SYSTEM_FLAGS,
   PIN_FLAG,
+  MUTE_FLAG,
   isPinned,
+  isMuted,
   isSnoozed,
   snoozeUntil,
   SAVED_SEARCH_KEY,
@@ -128,6 +130,12 @@ function applySearchSyntax(keywords: string, spec: MailSearchSpec): boolean {
           active = true;
         }
         break;
+      case "filename":
+        if (val) {
+          spec.filenames = [...(spec.filenames ?? []), val];
+          active = true;
+        }
+        break;
       case "before": {
         const t = new Date(`${val}T00:00:00Z`);
         if (!Number.isNaN(t.getTime())) {
@@ -191,6 +199,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [query, setQuery] = useState("");
   const [searchSpec, setSearchSpec] = useState<MailSearchSpec | null>(null);
   const [searching, setSearching] = useState(false);
+  const [sortBy, setSortBy] = useState("date");
+  const [sortDir, setSortDir] = useState("desc");
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
@@ -430,7 +440,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     const seq = ++loadSeq.current;
     if (p === 0 && !silent) setLoading(true);
     try {
-      const res = await mailMessages(f, p);
+      const res = await mailMessages(f, p, sortBy, sortDir);
       if (seq !== loadSeq.current) return;
       setMessages(p === 0 ? res.messages : (prev) => [...prev, ...res.messages]);
       setTotal(res.total);
@@ -441,7 +451,18 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     } finally {
       if (seq === loadSeq.current) setLoading(false);
     }
-  }, []);
+  }, [sortBy, sortDir]);
+
+  // changeSort updates the list ordering (date desc/asc, by sender, subject
+  // or size) and reloads the current folder.
+  function changeSort(key: string) {
+    const [s, d] = key.split("-");
+    const nextBy = s || "date";
+    const nextDir = d === "asc" ? "asc" : nextBy === "date" ? "desc" : "asc";
+    setSortBy(nextBy);
+    setSortDir(nextDir);
+    loadMessages(folder, 0, true);
+  }
 
   useEffect(() => {
     loadFolders();
@@ -1300,6 +1321,18 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     return `\n\nOn ${fmtDate(d.date)}, ${from} wrote:\n${quoted}`;
   };
 
+  // selectedQuote quotes only the user's current selection in the reading
+  // pane when replying; without a selection it falls back to the full body.
+  const selectedQuote = (d: MailMessage) => {
+    const sel = typeof window !== "undefined" ? window.getSelection()?.toString().trim() : "";
+    if (sel && sel.length > 1 && !/^[\r\n\s]+$/.test(sel)) {
+      const from = d.from.map((a) => a.name || a.email).join(", ");
+      const quoted = sel.split("\n").map((l) => `> ${l}`).join("\n");
+      return `\n\nOn ${fmtDate(d.date)}, ${from} wrote:\n${quoted}`;
+    }
+    return quoteText(d);
+  };
+
   // Focus the recipient field when the compose dialog opens in "to" mode
   // (new message / forward). A short delay keeps the focus from being
   // stolen by Base UI's dialog focus management.
@@ -1449,11 +1482,12 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
 
   function reply() {
     if (!detail) return;
+    const quote = selectedQuote(detail);
     openCompose(
       detail.from[0]?.email || "",
       detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`,
-      textToHtml(quoteText(detail)),
-      quoteText(detail),
+      textToHtml(quote),
+      quote,
       "editor",
     );
   }
@@ -1467,11 +1501,12 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     [...detail.from, ...(detail.cc || []), ...detail.to].forEach((a) => {
       if (a.email && a.email.toLowerCase() !== me.email.toLowerCase()) recipients.add(a.email);
     });
+    const quote = selectedQuote(detail);
     openCompose(
       [...recipients].join(", "),
       detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`,
-      textToHtml(quoteText(detail)),
-      quoteText(detail),
+      textToHtml(quote),
+      quote,
       "editor",
     );
   }
@@ -1673,6 +1708,28 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     setThreadOpen(false);
   }
 
+  // sendQuickReply sends an inline quick reply from the reading pane without
+  // opening the compose panel; threading headers keep it in the conversation.
+  async function sendQuickReply(
+    to: string[],
+    cc: string[],
+    subject: string,
+    text: string,
+    inReplyTo: string,
+    references: string,
+  ): Promise<boolean> {
+    setError("");
+    try {
+      await mailSendReply(to, cc, subject, text, inReplyTo, references);
+      showToast(t("toastSent"));
+      refreshMail();
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "send failed");
+      return false;
+    }
+  }
+
   function selectFolder(f: string) {
     // Clicking the folder that is already open (e.g. right after a saved
     // search that kept the same URL) must drop the active search conditions
@@ -1706,6 +1763,65 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       } finally {
         setThreadLoading(false);
       }
+    }
+  }
+
+  // toggleMute mutes/unmutes the current conversation: muting archives every
+  // message of the thread and marks them $Muted (the sidebar badge shows the
+  // state; future replies need a server rule to skip the inbox automatically).
+  async function toggleMute(m: MailMessage) {
+    if (!m.thread_id) {
+      // Single message with no thread metadata: mute just this message.
+      const muted = isMuted(m);
+      try {
+        await mailFlag(m.folder || folder, m.uid, MUTE_FLAG, !muted);
+        if (!muted) await mailMove(m.folder || folder, [m.uid], "Archive");
+        refreshMail();
+        showToast(t(muted ? "toastUnmuted" : "toastMuted"));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "mute failed");
+      }
+      return;
+    }
+    try {
+      const th = await mailThread(m.folder || folder, m.thread_id);
+      const msgs = th.messages || [];
+      const muted = msgs.some((x) => isMuted(x));
+      const targets = msgs.length ? msgs : [m];
+      const uids = targets.map((x) => x.uid);
+      const src = m.folder || folder;
+      for (const x of targets) {
+        await mailFlag(src, x.uid, MUTE_FLAG, !muted);
+      }
+      if (!muted && uids.length) {
+        await mailMove(src, uids, "Archive");
+      }
+      refreshMail();
+      showToast(t(muted ? "toastUnmuted" : "toastMuted"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "mute failed");
+    }
+  }
+
+  // bulkLabel applies a label to every selected message. A brand-new name is
+  // persisted as a label definition first so the sidebar keeps it.
+  async function bulkLabel(label: string) {
+    if (selectedUids.size === 0 || !label.trim()) return;
+    setError("");
+    try {
+      const name = label.trim();
+      if (!labelDefs.some((d) => d.name === name)) {
+        const saved = await mailLabelSave(name, "");
+        setLabelDefs((ds) => [...ds, saved]);
+      }
+      for (const uid of selectedUids) {
+        await mailFlag(folder, uid, name, true);
+      }
+      setSelectedUids(new Set());
+      showToast(t("toastLabelApplied"));
+      refreshMail();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "label failed");
     }
   }
 
@@ -1921,6 +2037,11 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     snoozedMsgs,
     total,
     searching,
+    sortBy,
+    sortDir,
+    changeSort,
+    toggleMute,
+    bulkLabel,
     loading,
     query,
     setQuery,
@@ -2030,6 +2151,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     setDragOverCompose,
     addFiles,
     send,
+    sendQuickReply,
     closeCompose,
     saveDraftNow,
     setTo,

@@ -370,7 +370,12 @@ func (h *Handler) mailMessages(c *fiber.Ctx) error {
 	if err != nil || page < 0 {
 		page = 0
 	}
-	messages, total, err := h.Mail.With(d).ListMessages(d.Email, d.Token, folder, page)
+	sortBy := c.Query("sort", "date")
+	dir := c.Query("dir", "")
+	if sortBy != "date" && sortBy != "from" && sortBy != "subject" && sortBy != "size" {
+		sortBy = "date"
+	}
+	messages, total, err := h.Mail.With(d).ListMessagesSorted(d.Email, d.Token, folder, page, sortBy, dir)
 	if err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}
