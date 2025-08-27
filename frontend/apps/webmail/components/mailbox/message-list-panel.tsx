@@ -24,6 +24,7 @@ const SKELETON_ROWS = 8;
 export function MessageListPanel({
   folder,
   messages,
+  displayMessages,
   total,
   searching,
   loading,
@@ -79,6 +80,7 @@ export function MessageListPanel({
 }: {
   folder: string;
   messages: MailMessage[];
+  displayMessages: MailMessage[];
   total: number;
   searching: boolean;
   loading: boolean;
@@ -147,13 +149,13 @@ export function MessageListPanel({
   // Category pills filter the loaded page client-side (the backend still
   // returns every row; classification is a lightweight per-row tag).
   const categoryOf = (m: MailMessage) => categories?.[String(m.uid)] ?? m.category;
-  const filtered = category ? messages.filter((m) => categoryOf(m) === category) : messages;
+  const filtered = category ? displayMessages.filter((m) => categoryOf(m) === category) : displayMessages;
   const shown = filtered;
   // Only show category pills for categories that actually appear in the
   // loaded page, so the filter row doesn't advertise dead categories.
   const presentCategories = useMemo(() => {
     const found = new Set<string>();
-    for (const m of messages) {
+    for (const m of displayMessages) {
       const c = categoryOf(m);
       if (c) found.add(c);
     }
@@ -161,7 +163,7 @@ export function MessageListPanel({
       found.has(c),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, categories]);
+  }, [displayMessages, categories]);
   // "其他" alone is not a useful filter (filtering it equals showing all), so
   // the category row only appears when a real category exists on the page;
   // "其他" is still offered when it mixes with real categories.

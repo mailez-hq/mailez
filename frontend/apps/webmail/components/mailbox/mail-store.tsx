@@ -39,6 +39,7 @@ import {
   isMuted,
   isSnoozed,
   snoozeUntil,
+  isUserLabel,
   SAVED_SEARCH_KEY,
   type SavedSearch,
   MAX_ATTACHMENT_BYTES,
@@ -767,7 +768,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       const set = new Set(prev);
       messages.forEach((m) =>
         m.flags.forEach((f) => {
-          if (!f.startsWith("\\") && !SYSTEM_FLAGS.has(f)) set.add(f);
+          if (isUserLabel(f)) set.add(f);
         }),
       );
       return [...set];
