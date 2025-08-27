@@ -6,6 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 )
 
@@ -52,11 +53,11 @@ func (h *Handler) rspamdDkimKey(c *fiber.Ctx) error {
 func (h *Handler) rspamdLocalDomains(c *fiber.Ctx) error {
 	var names []string
 	if err := h.DB.Model(&models.Domain{}).Pluck("name", &names).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, fiber.StatusInternalServerError, err, "load domains failed")
 	}
 	var alts []string
 	if err := h.DB.Model(&models.Alternative{}).Pluck("name", &alts).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, fiber.StatusInternalServerError, err, "load domains failed")
 	}
 	names = append(names, alts...)
 	return c.Type("text/plain").SendString(strings.Join(names, "\n"))

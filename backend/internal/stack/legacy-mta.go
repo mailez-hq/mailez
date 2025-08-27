@@ -8,7 +8,15 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
+)
+
+// Rejections of [literal-IP] domain/address forms run on every directory
+// request; compile once instead of per call.
+var (
+	literalIPRe      = regexp.MustCompile(`^\[.*\]$`)
+	emailLiteralIPRe = regexp.MustCompile(`(^|.*@)\[.*\]$`)
 )
 
 func (h *Handler) registerPostfix(r fiber.Router) {
@@ -26,7 +34,7 @@ func (h *Handler) registerPostfix(r fiber.Router) {
 // postfixDomain maps a served domain (or alternative) to itself.
 func (h *Handler) postfixDomain(c *fiber.Ctx) error {
 	domain, _ := url.PathUnescape(c.Params("domain"))
-	if regexp.MustCompile(`^\[.*\]$`).MatchString(domain) {
+	if literalIPRe.MatchString(domain) {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
 	var d models.Domain
@@ -76,7 +84,7 @@ func (h *Handler) postfixAlias(c *fiber.Ctx) error {
 // postfixTransport returns the relay transport for a domain.
 func (h *Handler) postfixTransport(c *fiber.Ctx) error {
 	email, _ := url.PathUnescape(c.Params("email"))
-	if email == "*" || regexp.MustCompile(`(^|.*@)\[.*\]$`).MatchString(email) {
+	if email == "*" || emailLiteralIPRe.MatchString(email) {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
 	_, domain, _ := h.resolveDomain(email)
@@ -86,7 +94,7 @@ func (h *Handler) postfixTransport(c *fiber.Ctx) error {
 	}
 	transport, err := relayTransport(relay)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, fiber.StatusBadRequest, err, "invalid transport")
 	}
 	return c.JSON(transport)
 }

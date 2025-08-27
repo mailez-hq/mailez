@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"mailez/backend/internal/core/models"
+
+	"gorm.io/gorm"
 )
 
 func jsonUnmarshal(b []byte, out any) error {
@@ -104,15 +106,15 @@ func buildNotice(from, to, subject, body string) []byte {
 
 // markOutboxRejected updates the originating outbox entry when the approval
 // is rejected, so the sender's UI shows the final state.
-func (s *Service) markOutboxRejected(pendingID uint, reason string) {
-	s.DB.Model(&models.Outbox{}).
+func markOutboxRejected(db *gorm.DB, pendingID uint, reason string) error {
+	return db.Model(&models.Outbox{}).
 		Where("status = ? AND error = ?", "held", fmt.Sprintf("dlp_hold:%d", pendingID)).
-		Updates(map[string]any{"status": "failed", "error": "rejected:" + reason})
+		Updates(map[string]any{"status": "failed", "error": "rejected:" + reason}).Error
 }
 
 // markOutboxApproved marks the originating outbox entry sent after delivery.
-func (s *Service) markOutboxApproved(pendingID uint) {
-	s.DB.Model(&models.Outbox{}).
+func markOutboxApproved(db *gorm.DB, pendingID uint) error {
+	return db.Model(&models.Outbox{}).
 		Where("status = ? AND error = ?", "held", fmt.Sprintf("dlp_hold:%d", pendingID)).
-		Updates(map[string]any{"status": "sent", "error": ""})
+		Updates(map[string]any{"status": "sent", "error": ""}).Error
 }

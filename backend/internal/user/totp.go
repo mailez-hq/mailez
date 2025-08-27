@@ -69,7 +69,7 @@ func (h *Handler) totpEnable(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid verification code"})
 	}
 	if err := h.DB.Model(u).Update("totp_enabled", true).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "update failed")
 	}
 	return c.SendStatus(204)
 }
@@ -93,7 +93,7 @@ func (h *Handler) totpDisable(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid verification code"})
 	}
 	if err := h.DB.Model(u).Updates(map[string]interface{}{"totp_enabled": false, "totp_secret": ""}).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "update failed")
 	}
 	return c.SendStatus(204)
 }

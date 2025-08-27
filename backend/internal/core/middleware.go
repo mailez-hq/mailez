@@ -34,7 +34,7 @@ func (a *App) RequireManager(c *fiber.Ctx) error {
 	}
 	var count int64
 	if err := a.DB.Table("manager").Where("user_email = ?", u.Email).Count(&count).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		return Fail(c, fiber.StatusInternalServerError, err, "internal error")
 	}
 	if count == 0 {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "manager required"})

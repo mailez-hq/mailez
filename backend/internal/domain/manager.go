@@ -58,7 +58,7 @@ func (h *Handler) addDomainManager(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "user not found"})
 	}
 	if err := h.DB.Model(&d).Association("Managers").Append(&user); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "add failed")
 	}
 	return c.SendStatus(204)
 }
@@ -82,7 +82,7 @@ func (h *Handler) removeDomainManager(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "user not found"})
 	}
 	if err := h.DB.Model(&d).Association("Managers").Delete(&user); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "remove failed")
 	}
 	return c.SendStatus(204)
 }

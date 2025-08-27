@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
@@ -41,35 +42,42 @@ func (h *Handler) dedupeContacts(c *fiber.Ctx) error {
 	}
 	byEmail := map[string]*models.Contact{}
 	merged, removed := 0, 0
-	for i := range contacts {
-		key := strings.ToLower(strings.TrimSpace(contacts[i].Email))
-		if key == "" {
-			continue
+	// All merges commit atomically: a partial dedupe would leave survivors
+	// updated while their duplicates survive, or the reverse.
+	if err := h.DB.Transaction(func(tx *gorm.DB) error {
+		for i := range contacts {
+			key := strings.ToLower(strings.TrimSpace(contacts[i].Email))
+			if key == "" {
+				continue
+			}
+			cur, ok := byEmail[key]
+			if !ok {
+				byEmail[key] = &contacts[i]
+				continue
+			}
+			// Merge useful fields into the surviving entry.
+			if len(contacts[i].Name) > len(cur.Name) {
+				cur.Name = contacts[i].Name
+			}
+			if len(contacts[i].Comment) > len(cur.Comment) {
+				cur.Comment = contacts[i].Comment
+			}
+			if contacts[i].Avatar != "" && cur.Avatar == "" {
+				cur.Avatar = contacts[i].Avatar
+			}
+			cur.Groups = mergeGroups(cur.Groups, contacts[i].Groups)
+			if err := tx.Save(cur).Error; err != nil {
+				return err
+			}
+			if err := tx.Delete(&models.Contact{}, contacts[i].ID).Error; err != nil {
+				return err
+			}
+			merged++
+			removed++
 		}
-		cur, ok := byEmail[key]
-		if !ok {
-			byEmail[key] = &contacts[i]
-			continue
-		}
-		// Merge useful fields into the surviving entry.
-		if len(contacts[i].Name) > len(cur.Name) {
-			cur.Name = contacts[i].Name
-		}
-		if len(contacts[i].Comment) > len(cur.Comment) {
-			cur.Comment = contacts[i].Comment
-		}
-		if contacts[i].Avatar != "" && cur.Avatar == "" {
-			cur.Avatar = contacts[i].Avatar
-		}
-		cur.Groups = mergeGroups(cur.Groups, contacts[i].Groups)
-		if err := h.DB.Save(cur).Error; err != nil {
-			return core.Fail(c, 500, err, "db error")
-		}
-		if err := h.DB.Delete(&models.Contact{}, contacts[i].ID).Error; err != nil {
-			return core.Fail(c, 500, err, "db error")
-		}
-		merged++
-		removed++
+		return nil
+	}); err != nil {
+		return core.Fail(c, 500, err, "db error")
 	}
 	return c.JSON(fiber.Map{"merged": merged, "removed": removed})
 }
@@ -135,7 +143,7 @@ func (h *Handler) createContact(c *fiber.Ctx) error {
 		Avatar:    in.Avatar,
 	}
 	if err := h.DB.Create(&contact).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "save failed")
 	}
 	return c.Status(201).JSON(contact)
 }
@@ -182,7 +190,7 @@ func (h *Handler) updateContact(c *fiber.Ctx) error {
 		contact.Avatar = *in.Avatar
 	}
 	if err := h.DB.Save(&contact).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "update failed")
 	}
 	return c.JSON(contact)
 }
@@ -200,7 +208,7 @@ func (h *Handler) deleteContact(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
 	}
 	if err := h.DB.Delete(&models.Contact{}, "id = ? AND user_email = ?", id, currentUser(c).Email).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "delete failed")
 	}
 	return c.SendStatus(204)
 }

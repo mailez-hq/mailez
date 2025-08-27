@@ -111,7 +111,7 @@ func (h *Handler) createAnonAlias(c *fiber.Ctx) error {
 		Hostname:    in.Domain,
 	}
 	if err := h.DB.Create(&a).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "save failed")
 	}
 	return c.Status(201).JSON(a)
 }
@@ -138,7 +138,7 @@ func (h *Handler) deleteAnonAlias(c *fiber.Ctx) error {
 		return c.Status(403).JSON(fiber.Map{"error": "not your alias"})
 	}
 	if err := h.DB.Delete(&a).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "delete failed")
 	}
 	return c.SendStatus(204)
 }

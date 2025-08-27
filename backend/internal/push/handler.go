@@ -2,6 +2,7 @@ package push
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
@@ -14,7 +15,7 @@ type Handler struct {
 	*core.App
 }
 
-func currentUser(c *fiber.Ctx) *models.User { return core.CurrentUser(c) }
+var currentUser = core.CurrentUser
 
 func newAppToken() (string, error) { return core.NewAppToken() }
 
@@ -77,9 +78,12 @@ func (h *Handler) pushSubscribe(c *fiber.Ctx) error {
 
 	var tokenEnc string
 	var tokenID uint
+	var tokenHash string
+	needToken := true
 	var existing models.PushSubscription
 	if err := h.DB.Where("user_email = ?", user.Email).First(&existing).Error; err == nil {
 		tokenEnc, tokenID = existing.TokenEnc, existing.TokenID
+		needToken = false
 	} else {
 		secret, err := newAppToken()
 		if err != nil {
@@ -89,31 +93,37 @@ func (h *Handler) pushSubscribe(c *fiber.Ctx) error {
 		if err != nil {
 			return core.Fail(c, 500, err, "internal error")
 		}
-		t := models.Token{UserEmail: user.Email, Password: hash, IP: "push-notifier"}
-		if err := h.DB.Create(&t).Error; err != nil {
-			return core.Fail(c, 500, err, "internal error")
-		}
-		tokenID = t.ID
-		tokenEnc, err = crypto.Encrypt(h.Cfg.SecretKey, secret)
+		enc, err := crypto.Encrypt(h.Cfg.SecretKey, secret)
 		if err != nil {
 			return core.Fail(c, 500, err, "internal error")
 		}
+		tokenHash, tokenEnc = hash, enc
 	}
-
-	var count int64
-	h.DB.Model(&models.PushSubscription{}).
-		Where("user_email = ? AND endpoint = ?", user.Email, in.Endpoint).
-		Count(&count)
-	if count > 0 {
-		if err := h.DB.Model(&models.PushSubscription{}).
-			Where("user_email = ? AND endpoint = ?", user.Email, in.Endpoint).
-			Updates(map[string]any{
-				"p256dh": in.Keys.P256dh, "auth": in.Keys.Auth,
-				"token_enc": tokenEnc, "token_id": tokenID,
-			}).Error; err != nil {
-			return core.Fail(c, 500, err, "internal error")
+	// Provisioning the notifier token and storing the subscription happen in
+	// one transaction so a failure never leaves credentials without a
+	// subscription row.
+	if err := h.DB.Transaction(func(tx *gorm.DB) error {
+		if needToken {
+			t := models.Token{UserEmail: user.Email, Password: tokenHash, IP: "push-notifier"}
+			if err := tx.Create(&t).Error; err != nil {
+				return err
+			}
+			tokenID = t.ID
 		}
-	} else {
+		var count int64
+		if err := tx.Model(&models.PushSubscription{}).
+			Where("user_email = ? AND endpoint = ?", user.Email, in.Endpoint).
+			Count(&count).Error; err != nil {
+			return err
+		}
+		if count > 0 {
+			return tx.Model(&models.PushSubscription{}).
+				Where("user_email = ? AND endpoint = ?", user.Email, in.Endpoint).
+				Updates(map[string]any{
+					"p256dh": in.Keys.P256dh, "auth": in.Keys.Auth,
+					"token_enc": tokenEnc, "token_id": tokenID,
+				}).Error
+		}
 		sub := models.PushSubscription{
 			UserEmail: user.Email,
 			Endpoint:  in.Endpoint,
@@ -122,9 +132,9 @@ func (h *Handler) pushSubscribe(c *fiber.Ctx) error {
 			TokenEnc:  tokenEnc,
 			TokenID:   tokenID,
 		}
-		if err := h.DB.Create(&sub).Error; err != nil {
-			return core.Fail(c, 500, err, "internal error")
-		}
+		return tx.Create(&sub).Error
+	}); err != nil {
+		return core.Fail(c, 500, err, "internal error")
 	}
 	return c.SendStatus(204)
 }
@@ -151,16 +161,24 @@ func (h *Handler) pushUnsubscribe(c *fiber.Ctx) error {
 		return core.Fail(c, 500, err, "internal error")
 	}
 	removed := false
-	for _, s := range subs {
-		if s.Endpoint == in.Endpoint {
-			if err := h.DB.Delete(&models.PushSubscription{}, "id = ?", s.ID).Error; err != nil {
-				return core.Fail(c, 500, err, "internal error")
+	// Subscription removal and notifier-token cleanup commit together, so no
+	// orphaned subscription or token is left behind on partial failure.
+	if err := h.DB.Transaction(func(tx *gorm.DB) error {
+		for _, s := range subs {
+			if s.Endpoint != in.Endpoint {
+				continue
+			}
+			if err := tx.Delete(&models.PushSubscription{}, "id = ?", s.ID).Error; err != nil {
+				return err
 			}
 			removed = true
 		}
-	}
-	if removed && len(subs) == 1 {
-		_ = h.DB.Delete(&models.Token{}, "id = ?", subs[0].TokenID)
+		if removed && len(subs) == 1 {
+			return tx.Delete(&models.Token{}, "id = ?", subs[0].TokenID).Error
+		}
+		return nil
+	}); err != nil {
+		return core.Fail(c, 500, err, "internal error")
 	}
 	return c.SendStatus(204)
 }

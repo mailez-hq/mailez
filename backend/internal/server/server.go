@@ -3,8 +3,10 @@ package server
 import (
 	"context"
 	"crypto/subtle"
+	"errors"
 	"log"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -71,14 +73,7 @@ func New(cfg core.Config) *Server {
 	if cfg.Env == "production" && weakSecrets[cfg.SecretKey] {
 		log.Fatal("refusing to start in production with a placeholder SECRET_KEY; set a strong secret")
 	}
-	knownEngine := false
-	for _, e := range core.SupportedMailEngines {
-		if cfg.MailEngine == e {
-			knownEngine = true
-			break
-		}
-	}
-	if !knownEngine {
+	if !slices.Contains(core.SupportedMailEngines, cfg.MailEngine) {
 		log.Fatalf("unsupported MAILEZ_MAIL_ENGINE %q (supported: %v)", cfg.MailEngine, core.SupportedMailEngines)
 	}
 	db := connectDB(cfg)
@@ -97,6 +92,19 @@ func New(cfg core.Config) *Server {
 		// a client-spoofed XFF must not control c.IP() (login rate limiting).
 		EnableTrustedProxyCheck: true,
 		TrustedProxies:          []string{cfg.Subnet},
+		// Single error exit point: known *fiber.Error values surface their
+		// (developer-authored) message as JSON; anything else — unexpected
+		// returns from handlers — is logged server-side and reported
+		// generically so internals (gorm/redis/driver text) never leak.
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			code := fiber.StatusInternalServerError
+			var fe *fiber.Error
+			if errors.As(err, &fe) {
+				return c.Status(fe.Code).JSON(fiber.Map{"error": fe.Message})
+			}
+			log.Printf("api error (%d %s): %v", code, c.Path(), err)
+			return c.Status(code).JSON(fiber.Map{"error": "internal error"})
+		},
 	})
 	app.Use(recover.New())
 	app.Use(requestid.New())
@@ -138,6 +146,8 @@ func New(cfg core.Config) *Server {
 	go ldap.RunSyncWorker(bgCtx, db, cfg.SecretKey)
 	// Compliance archive retention: purge messages past their policy deadline.
 	go archive.New(&core.App{DB: db, Auth: s.Auth, Cfg: cfg}).RunRetention(bgCtx)
+	// Calendar event reminders: mail the owner when start - reminder arrives.
+	go calendar.NewReminderWorker(db, cfg).Run(bgCtx)
 	// Push notifier (new-mail notifications for subscribed clients).
 	if cfg.PushInterval > 0 {
 		notifier := push.NewNotifier(db, cfg)

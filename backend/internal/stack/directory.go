@@ -14,11 +14,11 @@ package stack
 
 import (
 	"net/url"
-	"regexp"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 
+	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 )
 
@@ -58,7 +58,7 @@ func (h *Handler) directoryUser(c *fiber.Ctx) error {
 // directoryDomain reports whether a name is served (canonical or alternative).
 func (h *Handler) directoryDomain(c *fiber.Ctx) error {
 	domain, _ := url.PathUnescape(c.Params("domain"))
-	if regexp.MustCompile(`^\[.*\]$`).MatchString(domain) {
+	if literalIPRe.MatchString(domain) {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
 	var d models.Domain
@@ -99,7 +99,7 @@ func (h *Handler) directoryAliases(c *fiber.Ctx) error {
 // directoryRelay returns the relay transport for a domain.
 func (h *Handler) directoryRelay(c *fiber.Ctx) error {
 	email, _ := url.PathUnescape(c.Params("email"))
-	if email == "*" || regexp.MustCompile(`(^|.*@)\[.*\]$`).MatchString(email) {
+	if email == "*" || emailLiteralIPRe.MatchString(email) {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
 	_, domain, _ := h.resolveDomain(email)
@@ -234,7 +234,7 @@ func (h *Handler) directoryQuotaUpdate(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid quota"})
 	}
 	if err := h.DB.WithContext(c.Context()).Model(&u).Update("quota_bytes_used", used).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, fiber.StatusInternalServerError, err, "quota update failed")
 	}
 	return c.JSON(nil)
 }
@@ -248,7 +248,7 @@ func (h *Handler) directorySieve(c *fiber.Ctx) error {
 	}
 	var buf strings.Builder
 	if err := sieveTemplate.Execute(&buf, &u); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, fiber.StatusInternalServerError, err, "sieve render failed")
 	}
 	return c.JSON(fiber.Map{"name": "default", "script": buf.String()})
 }

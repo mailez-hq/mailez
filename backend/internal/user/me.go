@@ -104,7 +104,7 @@ func (h *Handler) meUpdateSettings(c *fiber.Ctx) error {
 		u.Blacklist = *in.Blacklist
 	}
 	if err := h.DB.Save(u).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "update failed")
 	}
 	return c.JSON(u)
 }
@@ -138,7 +138,7 @@ func (h *Handler) meChangePassword(c *fiber.Ctx) error {
 		return core.Fail(c, 500, err, "internal error")
 	}
 	if err := h.DB.Model(u).Update("password", hash).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "update failed")
 	}
 	return c.SendStatus(204)
 }

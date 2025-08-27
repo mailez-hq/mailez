@@ -68,7 +68,9 @@ func (s *Service) RunExpiry(ctx context.Context) {
 				continue
 			}
 			s.notifySender(p, "expired")
-			s.markOutboxRejected(p.ID, "审批超时自动拒绝")
+			if err := markOutboxRejected(s.DB, p.ID, "审批超时自动拒绝"); err != nil {
+				log.Printf("dlp expiry: mark outbox rejected %d: %v", p.ID, err)
+			}
 		}
 	}
 	run()

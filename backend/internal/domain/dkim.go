@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 )
 
@@ -52,11 +53,11 @@ func (h *Handler) dkimGenerate(c *fiber.Ctx) error {
 	}
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, fiber.StatusInternalServerError, err, "key generation failed")
 	}
 	privPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
 	if err := h.DB.Model(&d).Update("dkim_key", string(privPEM)).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, fiber.StatusInternalServerError, err, "save key failed")
 	}
 	_ = h.DB.First(&d, "name = ?", d.Name)
 	return c.JSON(h.dkimResponse(d))

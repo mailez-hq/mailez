@@ -112,7 +112,13 @@ func (h *Handler) signup(c *fiber.Ctx) error {
 		u.SpamEnabled = *in.SpamEnabled
 	}
 	if err := h.DB.Create(&u).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		// The pre-check above narrows races to genuine duplicates; anything
+		// else is an internal failure whose driver text must not leak.
+		var dup int64
+		if h.DB.Model(&models.User{}).Where("email = ?", in.Email).Count(&dup).Error == nil && dup > 0 {
+			return c.Status(409).JSON(fiber.Map{"error": "this address is already taken"})
+		}
+		return core.Fail(c, 500, err, "internal error")
 	}
 	return c.Status(201).JSON(fiber.Map{"email": u.Email})
 }

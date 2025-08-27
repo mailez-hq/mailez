@@ -7,7 +7,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"mailez/backend/internal/core"
-	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/mail"
 )
 
@@ -17,7 +16,7 @@ type Handler struct {
 	AI *Manager
 }
 
-func currentUser(c *fiber.Ctx) *models.User { return core.CurrentUser(c) }
+var currentUser = core.CurrentUser
 
 func (h *Handler) mailToken(c *fiber.Ctx) (string, error) { return h.App.MailToken(c) }
 

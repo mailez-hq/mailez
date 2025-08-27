@@ -70,7 +70,7 @@ func (h *Handler) createDomain(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "name is required"})
 	}
 	if err := h.DB.Create(&d).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "save failed")
 	}
 	return c.Status(201).JSON(d)
 }
@@ -117,7 +117,7 @@ func (h *Handler) updateDomain(c *fiber.Ctx) error {
 		d.Comment = *in.Comment
 	}
 	if err := h.DB.Save(&d).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "update failed")
 	}
 	return c.JSON(d)
 }
@@ -131,7 +131,7 @@ func (h *Handler) updateDomain(c *fiber.Ctx) error {
 // @Router /domains/{name} [delete]
 func (h *Handler) deleteDomain(c *fiber.Ctx) error {
 	if err := h.DB.Delete(&models.Domain{}, "name = ?", c.Params("name")).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "delete failed")
 	}
 	return c.SendStatus(204)
 }

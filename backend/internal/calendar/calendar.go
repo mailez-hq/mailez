@@ -103,17 +103,17 @@ func newUID() string {
 // view is the API shape of an event.
 func view(ev *models.CalendarEvent) fiber.Map {
 	out := fiber.Map{
-		"id":          ev.ID,
-		"uid":         ev.UID,
-		"summary":     ev.Summary,
-		"location":    ev.Location,
-		"description": ev.Description,
-		"all_day":     ev.AllDay,
-		"rrule":       ev.RRule,
+		"id":               ev.ID,
+		"uid":              ev.UID,
+		"summary":          ev.Summary,
+		"location":         ev.Location,
+		"description":      ev.Description,
+		"all_day":          ev.AllDay,
+		"rrule":            ev.RRule,
 		"reminder_minutes": ev.ReminderMinutes,
 		"owner_email":      ev.UserEmail,
 		"read_only":        false,
-		"updated_at":  ev.UpdatedAt,
+		"updated_at":       ev.UpdatedAt,
 	}
 	if ev.Start != nil {
 		out["start"] = ev.Start.Format(time.RFC3339)

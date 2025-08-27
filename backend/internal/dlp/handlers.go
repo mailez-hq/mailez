@@ -1,12 +1,14 @@
 package dlp
 
 import (
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
@@ -248,16 +250,26 @@ func (s *Service) decideInternal(id uint, decision, reason, approver string) (*m
 		to := splitApprovers(p.Recipients)
 		if err := s.sendRaw(p.From, to, p.Raw); err != nil {
 			p.Status = "delivery_failed"
-			s.DB.Save(&p)
+			if serr := s.DB.Save(&p).Error; serr != nil {
+				log.Printf("dlp save delivery_failed for pending %d: %v", p.ID, serr)
+			}
 			return nil, errDelivery
 		}
-		s.markOutboxApproved(p.ID)
+		if err := markOutboxApproved(s.DB, p.ID); err != nil {
+			log.Printf("dlp mark outbox sent for pending %d: %v", p.ID, err)
+		}
 	case "reject":
 		p.Status = "rejected"
-		if err := s.DB.Save(&p).Error; err != nil {
+		// Decision and outbox flip commit together so the sender never sees a
+		// held message whose approval is already final.
+		if err := s.DB.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Save(&p).Error; err != nil {
+				return err
+			}
+			return markOutboxRejected(tx, p.ID, p.Reason)
+		}); err != nil {
 			return nil, err
 		}
-		s.markOutboxRejected(p.ID, p.Reason)
 		s.notifySender(&p, "rejected")
 	default:
 		return nil, errBadDecision
