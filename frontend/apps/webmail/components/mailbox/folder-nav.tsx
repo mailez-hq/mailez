@@ -745,7 +745,6 @@ export function FolderNav({
               <LogOut className="size-4" />
             </Button>
           </div>
-          <p className="truncate px-2 text-center text-xs text-muted-foreground">{email}</p>
           {quotaPercent !== null && (
             <div className="mt-1.5 px-3">
               <div className="h-1 w-full overflow-hidden rounded-full bg-sidebar-accent">
