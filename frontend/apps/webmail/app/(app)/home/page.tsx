@@ -160,7 +160,7 @@ export default function WorkspacePage() {
   });
 
   return (
-    <div className="h-full overflow-y-auto bg-[radial-gradient(ellipse_at_top,rgba(46,133,85,0.07),transparent_55%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(37,194,160,0.08),transparent_55%)]">
+    <div className="min-w-0 flex-1 overflow-y-auto bg-[radial-gradient(ellipse_at_top,rgba(46,133,85,0.07),transparent_55%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(37,194,160,0.08),transparent_55%)]">
       <div className="w-full space-y-6 p-6">
         {/* Greeting banner */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background ring-1 ring-foreground/5">
