@@ -17,6 +17,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
 	"os"
@@ -270,9 +271,11 @@ func main() {
 		failHard("relist Inbox", fmt.Errorf("status %d: %w", code, err))
 	}
 	var moveUID float64
+	var sentThreadID string
 	for _, m := range inboxAfter {
 		if strings.Contains(m.Subject, subject) {
 			moveUID = m.UID
+			sentThreadID = m.ThreadID
 		}
 	}
 	if moveUID > 0 {
@@ -286,16 +289,20 @@ func main() {
 			failHard("list Trash", fmt.Errorf("status %d: %w", code, err))
 		}
 		inTrash := false
+		var trashUID float64
 		for _, m := range trash {
 			if strings.Contains(m.Subject, subject) {
 				inTrash = true
+				trashUID = m.UID
 			}
 		}
 		check("moved to Trash", inTrash, "")
-		if code, err := api.json("POST", "/mail/move", map[string]any{
-			"folder": "Trash", "uid": moveUID, "destination": "Inbox",
-		}, nil); err != nil || code != 204 {
-			failHard("restore to Inbox", fmt.Errorf("status %d: %w", code, err))
+		if trashUID > 0 {
+			if code, err := api.json("POST", "/mail/move", map[string]any{
+				"folder": "Trash", "uid": trashUID, "destination": "Inbox",
+			}, nil); err != nil || code != 204 {
+				failHard("restore to Inbox", fmt.Errorf("status %d: %w", code, err))
+			}
 		}
 	} else {
 		check("moved to Trash", false, "delivered message not found for move test")
@@ -449,6 +456,178 @@ func main() {
 		check(fmt.Sprintf("concurrent reads (%d)", workers), okCount == workers, fmt.Sprintf("%d/%d ok", okCount, workers))
 	}
 
+	// 9c. Extended functional surface: profile, drafts, templates, scheduled
+	// send, snooze, thread, app tokens, drive upload/download.
+	var me struct {
+		Email string `json:"email"`
+	}
+	if code, err := api.json("GET", "/me", nil, &me); err != nil || code != 200 {
+		failHard("me profile", fmt.Errorf("status %d: %w", code, err))
+	}
+	check("me profile", strings.EqualFold(me.Email, opts.user), me.Email)
+
+	var draftResp struct {
+		UID float64 `json:"uid"`
+	}
+	draftSubject := "e2e draft " + time.Now().Format("150405")
+	if code, err := api.json("POST", "/mail/draft", map[string]any{
+		"to": []string{}, "subject": draftSubject, "text": "draft body",
+	}, &draftResp); err != nil || (code != 200 && code != 201) {
+		failHard("save draft", fmt.Errorf("status %d: %w", code, err))
+	}
+	var drafts []mailRow
+	if code, err := api.json("GET", "/mail/messages?folder=Drafts&page=0", nil, &drafts); err != nil || code != 200 {
+		failHard("list drafts", fmt.Errorf("status %d: %w", code, err))
+	}
+	draftSeen := false
+	for _, d := range drafts {
+		if strings.Contains(d.Subject, draftSubject) {
+			draftSeen = true
+		}
+	}
+	check("draft saved", draftSeen, "")
+	if draftResp.UID > 0 {
+		// Clean up: move the draft to Trash.
+		if code, err := api.json("POST", "/mail/move", map[string]any{
+			"folder": "Drafts", "uid": draftResp.UID, "destination": "Trash",
+		}, nil); err != nil || code != 204 {
+			failHard("cleanup draft", fmt.Errorf("status %d: %w", code, err))
+		}
+	}
+
+	templateName := "e2e-tpl-" + time.Now().Format("150405")
+	var tpl struct {
+		ID uint `json:"id"`
+	}
+	if code, err := api.json("POST", "/mail/templates", map[string]any{
+		"name": templateName, "subject": "tpl subject", "text": "tpl body",
+	}, &tpl); err != nil || (code != 200 && code != 201) {
+		failHard("save template", fmt.Errorf("status %d: %w", code, err))
+	}
+	var templates []struct {
+		ID   uint   `json:"id"`
+		Name string `json:"name"`
+	}
+	if code, err := api.json("GET", "/mail/templates", nil, &templates); err != nil || code != 200 {
+		failHard("list templates", fmt.Errorf("status %d: %w", code, err))
+	}
+	tplSeen := false
+	for _, t := range templates {
+		if t.ID == tpl.ID {
+			tplSeen = true
+		}
+	}
+	check("template saved", tplSeen, "")
+	if tpl.ID > 0 {
+		if code, err := api.json("DELETE", fmt.Sprintf("/mail/templates/%d", tpl.ID), nil, nil); err != nil || code != 204 {
+			failHard("delete template", fmt.Errorf("status %d: %w", code, err))
+		}
+	}
+
+	var sched struct {
+		OutboxID uint `json:"outbox_id"`
+		Scheduled bool `json:"scheduled"`
+	}
+	schedSubject := "e2e-scheduled-" + time.Now().Format("150405")
+	sendAt := time.Now().Add(30 * time.Minute).Format(time.RFC3339)
+	if code, err := api.json("POST", "/mail/send", map[string]any{
+		"to": []string{opts.user}, "subject": schedSubject, "body": "scheduled", "send_at": sendAt,
+	}, &sched); err != nil || code != 200 || !sched.Scheduled || sched.OutboxID == 0 {
+		failHard("schedule send", fmt.Errorf("status %d: %w outbox=%d", code, err, sched.OutboxID))
+	}
+	var outbox []struct {
+		ID uint `json:"id"`
+	}
+	if code, err := api.json("GET", "/mail/scheduled", nil, &outbox); err != nil || code != 200 {
+		failHard("list scheduled", fmt.Errorf("status %d: %w", code, err))
+	}
+	schedSeen := false
+	for _, o := range outbox {
+		if o.ID == sched.OutboxID {
+			schedSeen = true
+		}
+	}
+	check("scheduled send parked", schedSeen, "")
+	if code, err := api.json("DELETE", fmt.Sprintf("/mail/outbox/%d", sched.OutboxID), nil, nil); err != nil || code != 204 {
+		failHard("cancel scheduled", fmt.Errorf("status %d: %w", code, err))
+	}
+
+	var inboxRows []mailRow
+	if code, err := api.json("GET", "/mail/messages?folder=Inbox&page=0", nil, &inboxRows); err != nil || code != 200 || len(inboxRows) == 0 {
+		failHard("relist for snooze", fmt.Errorf("status %d: %w", code, err))
+	}
+	snoozeUID := inboxRows[0].UID
+	until := time.Now().Add(time.Hour).Unix()
+	if code, err := api.json("POST", "/mail/snooze", map[string]any{
+		"folder": "Inbox", "uid": snoozeUID, "until": until,
+	}, nil); err != nil || code != 204 {
+		failHard("snooze message", fmt.Errorf("status %d: %w", code, err))
+	}
+	var snoozed []struct {
+		UID float64 `json:"uid"`
+	}
+	if code, err := api.json("GET", "/mail/snoozed", nil, &snoozed); err != nil || code != 200 {
+		failHard("list snoozed", fmt.Errorf("status %d: %w", code, err))
+	}
+	snoozeSeen := false
+	for _, s := range snoozed {
+		if s.UID == snoozeUID {
+			snoozeSeen = true
+		}
+	}
+	check("snoozed listed", snoozeSeen, "")
+	if code, err := api.json("POST", "/mail/snooze", map[string]any{
+		"folder": "Inbox", "uid": snoozeUID, "until": 0,
+	}, nil); err != nil || code != 204 {
+		failHard("unsnooze", fmt.Errorf("status %d: %w", code, err))
+	}
+
+	var threadResp struct {
+		ThreadID string    `json:"thread_id"`
+		Messages []mailRow `json:"messages"`
+	}
+	var freshInbox []mailRow
+	if code, err := api.json("GET", "/mail/messages?folder=Inbox&page=0", nil, &freshInbox); err != nil || code != 200 {
+		failHard("relist for thread", fmt.Errorf("status %d: %w", code, err))
+	}
+	threadTID := sentThreadID
+	for _, m := range freshInbox {
+		if strings.Contains(m.Subject, schedSubject) == false && strings.Contains(m.Subject, "e2e-enterprise") && m.ThreadID != "" {
+			threadTID = m.ThreadID
+			break
+		}
+	}
+	if code, err := api.json("GET", "/mail/thread?folder=Inbox&thread_id="+threadTID, nil, &threadResp); err != nil || code != 200 {
+		failHard("thread view", fmt.Errorf("status %d: %w", code, err))
+	}
+	check("thread view", len(threadResp.Messages) > 0, fmt.Sprintf("%d messages", len(threadResp.Messages)))
+
+	var tok struct {
+		ID    uint   `json:"id"`
+		Token string `json:"token"`
+	}
+	if code, err := api.json("POST", "/tokens", map[string]any{}, &tok); err != nil || code != 201 || tok.Token == "" {
+		failHard("create app token", fmt.Errorf("status %d: %w", code, err))
+	}
+	if err := imapLogin(opts.host, opts.imapPort, opts.user, tok.Token); err != nil {
+		failHard("imap login with app token", err)
+	}
+	check("app token authenticates IMAP", true, "")
+	if code, err := api.json("DELETE", fmt.Sprintf("/tokens/%d", tok.ID), nil, nil); err != nil || code != 204 {
+		failHard("delete app token", fmt.Errorf("status %d: %w", code, err))
+	}
+
+	driveBody := fmt.Sprintf("e2e drive payload %d", time.Now().Unix())
+	uploadID, err := api.uploadFile("/drive/upload", "file", "e2e.txt", []byte(driveBody))
+	if err != nil || uploadID == 0 {
+		failHard("drive upload", err)
+	}
+	down, err := api.download("/drive/download/" + fmt.Sprintf("%d", uploadID))
+	if err != nil || !strings.Contains(string(down), driveBody) {
+		failHard("drive download", err)
+	}
+	check("drive upload+download", true, "")
+
 	// 10. Admin surface (best effort).
 	adminAPI := newAPIClient(baseURL)
 	if code, err := adminAPI.json("POST", "/sso/login", map[string]string{"email": opts.adminEmail, "pw": opts.adminPassword}, nil); err == nil && code == 200 {
@@ -469,10 +648,11 @@ func main() {
 }
 
 type mailRow struct {
-	ID      string   `json:"id"`
-	UID     float64  `json:"uid"`
-	Subject string   `json:"subject"`
-	Flags   []string `json:"flags"`
+	ID       string   `json:"id"`
+	UID      float64  `json:"uid"`
+	Subject  string   `json:"subject"`
+	Flags    []string `json:"flags"`
+	ThreadID string   `json:"thread_id"`
 }
 
 type apiClient struct {
@@ -516,6 +696,61 @@ func (a *apiClient) json(method, path string, body, out any) (int, error) {
 		_ = json.Unmarshal(raw, out)
 	}
 	return resp.StatusCode, nil
+}
+
+// uploadFile posts one multipart file and returns the created row id.
+func (a *apiClient) uploadFile(path, field, filename string, data []byte) (uint, error) {
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	fw, err := w.CreateFormFile(field, filename)
+	if err != nil {
+		return 0, err
+	}
+	if _, err := fw.Write(data); err != nil {
+		return 0, err
+	}
+	if err := w.Close(); err != nil {
+		return 0, err
+	}
+	req, err := http.NewRequest("POST", a.base+path, &buf)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	resp, err := a.http.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode != 200 && resp.StatusCode != 201 {
+		return 0, fmt.Errorf("upload status %d: %s", resp.StatusCode, raw)
+	}
+	var out struct {
+		ID uint `json:"id"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return 0, err
+	}
+	return out.ID, nil
+}
+
+// download fetches a raw body for an authenticated endpoint.
+func (a *apiClient) download(path string) ([]byte, error) {
+	req, err := http.NewRequest("GET", a.base+path, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := a.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("download status %d", resp.StatusCode)
+	}
+	return raw, nil
 }
 
 func davPropfind(url, basic string) (int, string, error) {
