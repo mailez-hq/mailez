@@ -15,7 +15,7 @@ import { setupPushSubscription, teardownPushSubscription } from "@/lib/push";
 import { writeLastFolder } from "@/lib/preferences";
 import { parseMergeRecipients } from "@/lib/mail-merge";
 import {
-  aiDraft, aiDraftNew, aiStatus, aiSummarize,
+  aiComposeDraft, aiDraft, aiDraftNew, aiStatus, aiSummarize,
   aiPrioritize, aiSearch,
   accounts, delegations, setActiveAccountId, setActiveDelegateEmail,
   contacts, mailFlag, mailMove, mailIdentities,
@@ -316,6 +316,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   // + hints instead.
   const [hasReplyTarget, setHasReplyTarget] = useState(false);
   const [aiDraftHint, setAiDraftHint] = useState("");
+  const [aiComposeBusy, setAiComposeBusy] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // The settings section to land on when the dialog opens (e.g. "accounts"
   // from the sidebar account manager); defaults to the first section.
@@ -1813,6 +1814,57 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     }
   }
 
+  // aiCompose turns a free-form instruction ("给小明写封邮件，说我下周不去
+  // 旅游了") into a complete compose: recipients are resolved against the
+  // address book, then subject/body are filled in.
+  async function aiCompose(instruction: string) {
+    setError("");
+    setAiComposeBusy(true);
+    try {
+      const draft = await aiComposeDraft(instruction);
+      let contactsList = allContacts;
+      if (!contactsList) {
+        try {
+          contactsList = await contacts();
+        } catch {
+          contactsList = [];
+        }
+      }
+      const resolved: string[] = [];
+      const unresolved: string[] = [];
+      for (const raw of draft.to || []) {
+        const name = (raw || "").trim();
+        if (!name) continue;
+        if (name.includes("@")) {
+          resolved.push(name);
+          continue;
+        }
+        const hit = (contactsList || []).find(
+          (c) =>
+            (c.name || "").toLowerCase() === name.toLowerCase() ||
+            (c.name || "").toLowerCase().includes(name.toLowerCase()),
+        );
+        if (hit) resolved.push(hit.email);
+        else unresolved.push(name);
+      }
+      if (resolved.length > 0) setTo(resolved);
+      if (draft.subject) setSubject(draft.subject);
+      if (draft.body) {
+        setBody(textToHtml(draft.body));
+        setBodyText(draft.body);
+      }
+      setComposeFocus("editor");
+      setComposeOpen(true);
+      if (unresolved.length > 0) {
+        setError(t("aiComposeUnresolved", { names: unresolved.join("、") }));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("aiComposeFailed"));
+    } finally {
+      setAiComposeBusy(false);
+    }
+  }
+
   async function summarize() {
     if (!detail) return;
     setSummarizing(true);
@@ -2531,6 +2583,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     setDraftTone,
     drafting,
     aiDraftReply,
+    aiComposeBusy,
+    aiCompose,
     hasReplyTarget,
     aiDraftHint,
     setAiDraftHint,

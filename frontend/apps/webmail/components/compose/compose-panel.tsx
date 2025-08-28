@@ -1,10 +1,14 @@
 "use client";
 
 import { useState, type RefObject } from "react";
-import { CalendarClock, Check, Flame, LayoutTemplate, Lock, Paperclip, PenLine, Undo2, X } from "lucide-react";
+import { CalendarClock, Check, Flame, LayoutTemplate, Lock, Paperclip, PenLine, Sparkles, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ComposeEditor } from "@/components/compose/compose-editor";
 import { RecipientInput } from "@/components/compose/recipient-input";
 import { TemplatesDialog } from "@/components/compose/templates-dialog";
@@ -52,6 +56,8 @@ export interface ComposePanelProps {
   hasReplyTarget: boolean;
   aiDraftHint: string;
   onAiDraftHint: (v: string) => void;
+  aiComposeBusy: boolean;
+  onAiCompose: (instruction: string) => void;
   drafting: boolean;
   onAiDraft: () => void;
   undoSendSeconds: number;
@@ -119,6 +125,8 @@ export function ComposePanel(props: ComposePanelProps) {
     hasReplyTarget,
     aiDraftHint,
     onAiDraftHint,
+    aiComposeBusy,
+    onAiCompose,
     drafting,
     onAiDraft,
     undoSendSeconds,
@@ -153,6 +161,8 @@ export function ComposePanel(props: ComposePanelProps) {
   const [templates, setTemplates] = useState<MailTemplate[]>([]);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false);
+  const [aiComposeOpen, setAiComposeOpen] = useState(false);
+  const [aiInstruction, setAiInstruction] = useState("");
   // Earliest schedulable moment, captured once so render stays pure (the
   // backend re-checks that send_at is in the future anyway).
   const [minScheduleAt] = useState(() => localDateTime(new Date(Date.now() + 60000)));
@@ -513,6 +523,19 @@ export function ComposePanel(props: ComposePanelProps) {
               <Button type="button" variant="outline" onClick={onAiDraft} disabled={drafting}>
                 {drafting ? t("drafting") : t("aiDraft")}
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-1"
+                onClick={() => {
+                  setAiInstruction("");
+                  setAiComposeOpen(true);
+                }}
+                disabled={aiComposeBusy}
+              >
+                <Sparkles className="size-3" />
+                {aiComposeBusy ? t("aiComposeBusy") : t("aiCompose")}
+              </Button>
             </div>
           )}
           <div className="ml-auto flex items-center gap-1">
@@ -550,6 +573,33 @@ export function ComposePanel(props: ComposePanelProps) {
         </div>
       </form>
         <TemplatesDialog open={templatesDialogOpen} onOpenChange={setTemplatesDialogOpen} />
+        <Dialog open={aiComposeOpen} onOpenChange={setAiComposeOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t("aiCompose")}</DialogTitle>
+              <DialogDescription>{t("aiComposeHint")}</DialogDescription>
+            </DialogHeader>
+            <Textarea
+              value={aiInstruction}
+              onChange={(e) => setAiInstruction(e.target.value)}
+              placeholder={t("aiComposePlaceholder")}
+              rows={4}
+              autoFocus
+            />
+            <DialogFooter>
+              <Button
+                type="button"
+                disabled={aiComposeBusy || !aiInstruction.trim()}
+                onClick={() => {
+                  onAiCompose(aiInstruction.trim());
+                  setAiComposeOpen(false);
+                }}
+              >
+                {aiComposeBusy ? t("aiComposeBusy") : t("aiComposeGenerate")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );

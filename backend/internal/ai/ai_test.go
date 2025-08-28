@@ -137,6 +137,35 @@ func TestDraftNewDisabled(t *testing.T) {
 	}
 }
 
+func TestComposeFromInstructionParsesJSON(t *testing.T) {
+	m := &Manager{envFallback: fakeProvider{out: `{"to":["小明"],"subject":"下周不去旅游了","body":"小明，我下周有事去不了旅游了，抱歉。"}`}}
+	draft, err := m.ComposeFromInstruction(context.Background(), "给小明写封邮件，说我下周不去旅游了")
+	if err != nil {
+		t.Fatalf("compose: %v", err)
+	}
+	if len(draft.To) != 1 || draft.To[0] != "小明" || draft.Subject == "" || draft.Body == "" {
+		t.Fatalf("draft = %+v", draft)
+	}
+}
+
+func TestComposeFromInstructionToleratesFences(t *testing.T) {
+	m := &Manager{envFallback: fakeProvider{out: "```json\n{\"to\":[\"a@example.com\"],\"subject\":\"s\",\"body\":\"b\"}\n```"}}
+	draft, err := m.ComposeFromInstruction(context.Background(), "写邮件给 a@example.com")
+	if err != nil {
+		t.Fatalf("compose: %v", err)
+	}
+	if len(draft.To) != 1 || draft.To[0] != "a@example.com" {
+		t.Fatalf("draft = %+v", draft)
+	}
+}
+
+func TestComposeFromInstructionDisabled(t *testing.T) {
+	m := &Manager{}
+	if _, err := m.ComposeFromInstruction(context.Background(), "给小明写封邮件"); err != ErrDisabled {
+		t.Fatalf("expected ErrDisabled, got %v", err)
+	}
+}
+
 func TestLoadPrefersDefaultEnabledProvider(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "ai.db")), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{SingularTable: true},

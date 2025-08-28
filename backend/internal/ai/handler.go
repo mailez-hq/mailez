@@ -31,10 +31,37 @@ func (h *Handler) registerAI(r fiber.Router) {
 	r.Get("/ai/status", h.aiStatus)
 	r.Post("/ai/summarize", h.aiSummarize)
 	r.Post("/ai/draft", h.aiDraft)
+	r.Post("/ai/compose", h.aiCompose)
 	r.Post("/ai/prioritize", h.aiPrioritize)
 	r.Post("/ai/search", h.aiSearch)
 	r.Post("/ai/translate", h.aiTranslate)
 	r.Post("/ai/replies", h.aiReplies)
+}
+
+// aiCompose writes a complete email from a free-form instruction
+// (natural-language compose: recipients, subject and body).
+// @Summary Compose email from instruction
+// @Tags ai
+// @Accept json
+// @Produce json
+// @Success 200 {object} ai.ComposeDraft
+// @Failure 400 {object} models.APIError
+// @Router /ai/compose [post]
+func (h *Handler) aiCompose(c *fiber.Ctx) error {
+	if !h.AI.Enabled() {
+		return c.Status(400).JSON(fiber.Map{"error": "ai is disabled"})
+	}
+	var in struct {
+		Instruction string `json:"instruction"`
+	}
+	if err := c.BodyParser(&in); err != nil || strings.TrimSpace(in.Instruction) == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "instruction is required"})
+	}
+	draft, err := h.AI.ComposeFromInstruction(c.Context(), in.Instruction)
+	if err != nil {
+		return core.Fail(c, 502, err, "mail service error")
+	}
+	return c.JSON(draft)
 }
 
 // aiReplies returns short ready-to-send reply suggestions (Smart Reply).
