@@ -217,11 +217,6 @@ export default function Home() {
               <CardDescription>{t("description")}</CardDescription>
             </CardHeader>
             <CardContent>
-            {/* Security notice, shown above the form */}
-            <div className="mb-4 rounded-md bg-muted/60 px-3 py-2 text-left text-xs leading-relaxed text-muted-foreground">
-              <p>{t("noticeClassified", { product: brandTitle })}</p>
-              <p>{t("noticeSecurity")}</p>
-            </div>
           {pendingToken ? (
             <form onSubmit={onSubmitTotp} className="space-y-4">
               <div className="space-y-2">
@@ -259,6 +254,11 @@ export default function Home() {
           )}
             </CardContent>
           </Card>
+          {/* Security notice, between the sign-in form and mail settings */}
+          <div className="mt-4 rounded-md bg-muted/60 px-3 py-2 text-left text-xs leading-relaxed text-muted-foreground">
+            <p>{t("noticeClassified", { product: brandTitle })}</p>
+            <p>{t("noticeSecurity")}</p>
+          </div>
           {settings && (
             <details className="mt-4 rounded-lg border border-border p-3 text-xs text-muted-foreground">
               <summary className="cursor-pointer font-medium text-foreground">
