@@ -4,13 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Download, Upload } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
+import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import {
   exportConfig, getAIConfigs, getBranding, getLDAPConfig, importConfig,
@@ -40,7 +43,8 @@ export default function ConfigPage() {
   const [brandingError, setBrandingError] = useState("");
   const [brandingMessage, setBrandingMessage] = useState("");
   const [aiProviders, setAiProviders] = useState<AiConfigView[]>([]);
-  const [aiBusyId, setAiBusyId] = useState<number | "new" | null>(null);
+  const [aiDrawer, setAiDrawer] = useState<AiConfigView | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState("");
   const [aiMessage, setAiMessage] = useState("");
   const [ldap, setLdap] = useState({
@@ -157,62 +161,94 @@ export default function ConfigPage() {
     setAiProviders((list) => list.map((p) => (p.id === next.id ? next : p)));
   }
 
-  async function onSaveAI(p: AiConfigView) {
+  function emptyAIDraft(): AiConfigView {
+    return {
+      id: 0, name: "", enabled: false, is_default: false, provider: "openai",
+      base_url: "", model: "", has_api_key: false, api_key: "", last_test_ok: false,
+    };
+  }
+
+  function openAIDrawer(p: AiConfigView | null) {
     setAiError(""); setAiMessage("");
-    setAiBusyId(p.id);
+    setAiDrawer(p ? { ...p, api_key: "" } : emptyAIDraft());
+  }
+
+  function patchAIDrawer(patch: Partial<AiConfigView>) {
+    setAiDrawer((d) => (d ? { ...d, ...patch } : d));
+  }
+
+  // saveAIDrawer persists the drawer form (create or update) and refreshes
+  // both the list and the drawer copy; it returns the persisted row.
+  async function saveAIDrawer(): Promise<AiConfigView | null> {
+    const d = aiDrawer;
+    if (!d) return null;
+    const isNew = d.id === 0;
+    const saved = isNew
+      ? await createAIConfig({
+          name: d.name,
+          base_url: d.base_url,
+          api_key: d.api_key,
+          model: d.model,
+        })
+      : await updateAIConfig(d.id, {
+          name: d.name,
+          base_url: d.base_url,
+          api_key: d.api_key,
+          model: d.model,
+        });
+    const withKey = { ...saved, api_key: "" };
+    setAiDrawer(withKey);
+    if (isNew) {
+      setAiProviders((list) => [...list, withKey]);
+    } else {
+      replaceProvider(withKey);
+    }
+    return saved;
+  }
+
+  async function onSaveAIDrawer() {
+    setAiError(""); setAiMessage("");
+    setAiBusy(true);
     try {
-      const saved = p.id === 0
-        ? await createAIConfig({
-            name: p.name,
-            base_url: p.base_url,
-            api_key: p.api_key,
-            model: p.model,
-          })
-        : await updateAIConfig(p.id, {
-            name: p.name,
-            base_url: p.base_url,
-            api_key: p.api_key,
-            model: p.model,
-          });
-      if (p.id === 0) {
-        setAiProviders((list) => [...list, saved]);
-      } else {
-        replaceProvider(saved);
-      }
+      await saveAIDrawer();
       setAiMessage(t("aiSaved"));
     } catch (e) {
       setAiError(e instanceof Error ? e.message : t("aiFailed"));
     } finally {
-      setAiBusyId(null);
+      setAiBusy(false);
     }
   }
 
-  async function onTestAI(p: AiConfigView) {
+  async function onTestAIDrawer() {
     setAiError(""); setAiMessage("");
-    setAiBusyId(p.id);
+    setAiBusy(true);
     try {
       // Persist the current form first so the test runs against these
       // settings (a changed endpoint/key disables the provider until the
       // test passes, which is exactly what we want).
-      let saved = p;
-      if (p.id === 0) {
-        saved = await createAIConfig({
-          name: p.name,
-          base_url: p.base_url,
-          api_key: p.api_key,
-          model: p.model,
-        });
-        setAiProviders((list) => [...list, saved]);
-      } else {
-        saved = await updateAIConfig(p.id, {
-          name: p.name,
-          base_url: p.base_url,
-          api_key: p.api_key,
-          model: p.model,
-        });
-        replaceProvider(saved);
-      }
+      const saved = await saveAIDrawer();
+      if (!saved) return;
       const tested = await testAIConfig(saved.id);
+      const withKey = { ...tested, api_key: "" };
+      setAiDrawer(withKey);
+      replaceProvider(withKey);
+      if (tested.last_test_ok) {
+        setAiMessage(t("aiTestOk"));
+      } else {
+        setAiError(t("aiTestFail") + (tested.last_test_error ? `：${tested.last_test_error}` : ""));
+      }
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : t("aiFailed"));
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
+  async function onTestAIRow(p: AiConfigView) {
+    setAiError(""); setAiMessage("");
+    setAiBusy(true);
+    try {
+      const tested = await testAIConfig(p.id);
       replaceProvider(tested);
       if (tested.last_test_ok) {
         setAiMessage(t("aiTestOk"));
@@ -222,13 +258,13 @@ export default function ConfigPage() {
     } catch (e) {
       setAiError(e instanceof Error ? e.message : t("aiFailed"));
     } finally {
-      setAiBusyId(null);
+      setAiBusy(false);
     }
   }
 
   async function onToggleAIEnabled(p: AiConfigView, enabled: boolean) {
     setAiError(""); setAiMessage("");
-    setAiBusyId(p.id);
+    setAiBusy(true);
     try {
       const saved = await updateAIConfig(p.id, { enabled });
       replaceProvider(saved);
@@ -236,29 +272,29 @@ export default function ConfigPage() {
     } catch (e) {
       setAiError(e instanceof Error ? e.message : t("aiFailed"));
     } finally {
-      setAiBusyId(null);
+      setAiBusy(false);
     }
   }
 
   async function onSetAIDefault(p: AiConfigView) {
     setAiError(""); setAiMessage("");
-    setAiBusyId(p.id);
+    setAiBusy(true);
     try {
-      const saved = await updateAIConfig(p.id, { is_default: true });
+      await updateAIConfig(p.id, { is_default: true });
       // Refresh the whole list: the other providers' default flags changed.
       setAiProviders(await getAIConfigs());
       setAiMessage(t("aiDefaultSaved"));
     } catch (e) {
       setAiError(e instanceof Error ? e.message : t("aiFailed"));
     } finally {
-      setAiBusyId(null);
+      setAiBusy(false);
     }
   }
 
   async function onDeleteAI(p: AiConfigView) {
     if (!confirm(t("aiDeleteConfirm", { name: p.name }))) return;
     setAiError(""); setAiMessage("");
-    setAiBusyId(p.id);
+    setAiBusy(true);
     try {
       await deleteAIConfig(p.id);
       setAiProviders((list) => list.filter((x) => x.id !== p.id));
@@ -266,21 +302,8 @@ export default function ConfigPage() {
     } catch (e) {
       setAiError(e instanceof Error ? e.message : t("aiFailed"));
     } finally {
-      setAiBusyId(null);
+      setAiBusy(false);
     }
-  }
-
-  function onAddAI() {
-    setAiError(""); setAiMessage("");
-    setAiProviders((list) => [
-      ...list,
-      { id: 0, name: "", enabled: false, is_default: false, provider: "openai",
-        base_url: "", model: "", has_api_key: false, api_key: "", last_test_ok: false },
-    ]);
-  }
-
-  function patchProvider(id: number, patch: Partial<AiConfigView>) {
-    setAiProviders((list) => list.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   }
 
   async function onSaveLDAP() {
@@ -501,13 +524,13 @@ export default function ConfigPage() {
       )}
 
       {tab === "ai" && (
-        <div className="max-w-2xl space-y-4">
+        <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="text-base font-medium">{t("ai")}</h3>
               <p className="text-sm text-muted-foreground">{t("aiHint")}</p>
             </div>
-            <Button variant="outline" onClick={onAddAI} disabled={aiBusyId !== null}>
+            <Button onClick={() => openAIDrawer(null)} disabled={aiBusy}>
               {t("aiAdd")}
             </Button>
           </div>
@@ -517,115 +540,177 @@ export default function ConfigPage() {
               {aiMessage && <p className="text-green-600">{aiMessage}</p>}
             </div>
           )}
-          {aiProviders.length === 0 && (
-            <Card>
-              <CardContent className="py-6 text-sm text-muted-foreground">{t("aiEmpty")}</CardContent>
-            </Card>
-          )}
-          {aiProviders.map((p) => (
-            <Card key={p.id === 0 ? "new" : p.id}>
-              <CardContent className="space-y-3 pt-4">
-                <div className="flex items-center justify-between gap-3">
-                  <Input
-                    value={p.name}
-                    placeholder={t("aiNamePlaceholder")}
-                    onChange={(e) => patchProvider(p.id, { name: e.target.value })}
-                    className="max-w-xs"
-                  />
-                  <div className="flex items-center gap-3">
-                    <Label htmlFor={`ai-enabled-${p.id}`}>{t("aiEnabled")}</Label>
-                    <Switch
-                      id={`ai-enabled-${p.id}`}
-                      checked={p.enabled}
-                      disabled={!p.last_test_ok || p.id === 0 || aiBusyId !== null}
-                      onCheckedChange={(v) => onToggleAIEnabled(p, v)}
-                    />
-                  </div>
-                </div>
-                {p.id !== 0 && !p.last_test_ok && (
-                  <p className="text-xs text-amber-600">{t("aiEnabledRequiresTest")}</p>
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("aiName")}</TableHead>
+                  <TableHead>{t("aiBaseUrl")}</TableHead>
+                  <TableHead>{t("aiModel")}</TableHead>
+                  <TableHead>{t("aiStatus")}</TableHead>
+                  <TableHead>{t("aiLastTest")}</TableHead>
+                  <TableHead className="text-right">{t("aiActions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {aiProviders.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
+                      {t("aiEmpty")}
+                    </TableCell>
+                  </TableRow>
                 )}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="grid gap-1.5">
-                    <Label htmlFor={`ai-url-${p.id}`}>{t("aiBaseUrl")}</Label>
-                    <Input
-                      id={`ai-url-${p.id}`}
-                      value={p.base_url}
-                      onChange={(e) => patchProvider(p.id, { base_url: e.target.value })}
-                      placeholder={t("aiBaseUrlPlaceholder")}
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor={`ai-model-${p.id}`}>{t("aiModel")}</Label>
-                    <Input
-                      id={`ai-model-${p.id}`}
-                      value={p.model}
-                      onChange={(e) => patchProvider(p.id, { model: e.target.value })}
-                      placeholder={t("aiModelPlaceholder")}
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor={`ai-key-${p.id}`}>
-                    {t("aiApiKey")}
-                    {p.has_api_key && !p.api_key && (
-                      <span className="ml-2 text-xs text-muted-foreground">({t("aiApiKeySet")})</span>
-                    )}
-                  </Label>
-                  <Input
-                    id={`ai-key-${p.id}`}
-                    type="password"
-                    value={p.api_key ?? ""}
-                    onChange={(e) => patchProvider(p.id, { api_key: e.target.value })}
-                    placeholder={t("aiApiKeyPlaceholder")}
-                  />
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" onClick={() => onSaveAI(p)} disabled={aiBusyId !== null}>
-                    {t("aiSave")}
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => onTestAI(p)} disabled={aiBusyId !== null}>
-                    {aiBusyId === p.id ? t("aiTesting") : t("aiTest")}
-                  </Button>
-                  {p.id !== 0 && p.enabled && (
-                    <Button
-                      size="sm"
-                      variant={p.is_default ? "default" : "secondary"}
-                      onClick={() => onSetAIDefault(p)}
-                      disabled={aiBusyId !== null}
-                    >
-                      {p.is_default ? t("aiIsDefault") : t("aiSetDefault")}
-                    </Button>
-                  )}
-                  {p.id !== 0 && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-red-600"
-                      onClick={() => onDeleteAI(p)}
-                      disabled={aiBusyId !== null}
-                    >
-                      {t("aiDelete")}
-                    </Button>
-                  )}
-                </div>
-                {p.id !== 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {t("aiLastTest")}:{" "}
-                    {p.last_test_at ? new Date(p.last_test_at).toLocaleString() : t("aiNeverTested")}
-                    {" · "}
-                    {p.last_test_ok
-                      ? t("aiTestOkShort")
-                      : p.last_test_error
-                        ? t("aiTestFailShort")
-                        : t("aiTestNone")}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                {aiProviders.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2 font-medium">
+                        {p.name}
+                        {p.is_default && <Badge variant="secondary">{t("aiIsDefault")}</Badge>}
+                      </div>
+                      {!p.last_test_ok && (
+                        <p className="text-xs text-amber-600">{t("aiEnabledRequiresTest")}</p>
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-[200px] truncate text-muted-foreground">
+                      {p.base_url || "https://api.openai.com/v1"}
+                    </TableCell>
+                    <TableCell>{p.model || "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={p.enabled}
+                          disabled={!p.last_test_ok || aiBusy}
+                          onCheckedChange={(v) => onToggleAIEnabled(p, v)}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {p.enabled ? t("aiOn") : t("aiOff")}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {p.last_test_at ? (
+                        <span className={p.last_test_ok ? "text-green-600" : "text-red-600"}>
+                          {p.last_test_ok ? t("aiTestOkShort") : t("aiTestFailShort")}
+                          <span className="text-muted-foreground">
+                            {" · "}
+                            {new Date(p.last_test_at).toLocaleString()}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">{t("aiNeverTested")}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => openAIDrawer(p)} disabled={aiBusy}>
+                          {t("aiEdit")}
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => onTestAIRow(p)} disabled={aiBusy}>
+                          {t("aiTest")}
+                        </Button>
+                        {p.enabled && !p.is_default && (
+                          <Button size="sm" variant="secondary" onClick={() => onSetAIDefault(p)} disabled={aiBusy}>
+                            {t("aiSetDefault")}
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-600"
+                          onClick={() => onDeleteAI(p)}
+                          disabled={aiBusy}
+                        >
+                          {t("aiDelete")}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
         </div>
       )}
+
+      <Drawer
+        open={aiDrawer !== null}
+        onOpenChange={(open) => {
+          if (!open) setAiDrawer(null);
+        }}
+      >
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>{aiDrawer && aiDrawer.id === 0 ? t("aiAdd") : t("aiEdit")}</DrawerTitle>
+            <DrawerDescription>{t("aiDrawerHint")}</DrawerDescription>
+          </DrawerHeader>
+          {aiDrawer && (
+            <div className="space-y-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="ai-drawer-name">{t("aiName")}</Label>
+                <Input
+                  id="ai-drawer-name"
+                  value={aiDrawer.name}
+                  placeholder={t("aiNamePlaceholder")}
+                  onChange={(e) => patchAIDrawer({ name: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="ai-drawer-url">{t("aiBaseUrl")}</Label>
+                <Input
+                  id="ai-drawer-url"
+                  value={aiDrawer.base_url}
+                  placeholder={t("aiBaseUrlPlaceholder")}
+                  onChange={(e) => patchAIDrawer({ base_url: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="ai-drawer-model">{t("aiModel")}</Label>
+                <Input
+                  id="ai-drawer-model"
+                  value={aiDrawer.model}
+                  placeholder={t("aiModelPlaceholder")}
+                  onChange={(e) => patchAIDrawer({ model: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="ai-drawer-key">
+                  {t("aiApiKey")}
+                  {aiDrawer.has_api_key && !aiDrawer.api_key && (
+                    <span className="ml-2 text-xs text-muted-foreground">({t("aiApiKeySet")})</span>
+                  )}
+                </Label>
+                <Input
+                  id="ai-drawer-key"
+                  type="password"
+                  value={aiDrawer.api_key ?? ""}
+                  placeholder={t("aiApiKeyPlaceholder")}
+                  onChange={(e) => patchAIDrawer({ api_key: e.target.value })}
+                />
+              </div>
+              {aiDrawer.id !== 0 && aiDrawer.last_test_at && (
+                <p className="text-xs text-muted-foreground">
+                  {t("aiLastTest")}:{" "}
+                  {aiDrawer.last_test_ok ? t("aiTestOkShort") : t("aiTestFailShort")}
+                  {" · "}
+                  {new Date(aiDrawer.last_test_at).toLocaleString()}
+                  {aiDrawer.last_test_error ? ` — ${aiDrawer.last_test_error}` : ""}
+                </p>
+              )}
+            </div>
+          )}
+          <DrawerFooter>
+            <Button variant="outline" onClick={() => setAiDrawer(null)} disabled={aiBusy}>
+              {t("aiCancel")}
+            </Button>
+            <Button variant="outline" onClick={onTestAIDrawer} disabled={aiBusy}>
+              {aiBusy ? t("aiTesting") : t("aiTest")}
+            </Button>
+            <Button onClick={onSaveAIDrawer} disabled={aiBusy}>
+              {t("aiSave")}
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
 
       {tab === "ldap" && (
         <Card className="max-w-xl">
