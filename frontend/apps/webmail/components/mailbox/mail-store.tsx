@@ -806,6 +806,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       setSelected(cachedDetail);
       setDetail(cachedDetail);
       setDetailLoading(false);
+      setSummary("");
       return;
     }
     const fetch = row
@@ -819,6 +820,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
         viewCachePut(detailCache, detailKey, full);
         setSelected(full);
         setDetail(full);
+        setSummary("");
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "load message failed");
