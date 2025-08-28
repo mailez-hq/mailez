@@ -1580,14 +1580,6 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     return quoteText(d);
   };
 
-  // quoteBody places the cursor on a fresh blank line above the quoted
-  // content, so the user can start typing immediately instead of landing on
-  // the same line as the quote.
-  const quoteBody = (quote: string) => ({
-    html: `<p><br></p>${textToHtml(quote)}`,
-    text: `\n\n${quote}`,
-  });
-
   // Focus the recipient field when the compose dialog opens in "to" mode
   // (new message / forward). A short delay keeps the focus from being
   // stolen by Base UI's dialog focus management.
@@ -1728,12 +1720,11 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     [...m.from, ...(m.cc || []), ...(m.to || [])].forEach((a) => {
       if (a.email && a.email.toLowerCase() !== me.email.toLowerCase()) recipients.add(a.email);
     });
-    const body = quoteBody(quoteText(m));
     openCompose(
       [...recipients].join(", "),
       m.subject.startsWith("Re:") ? m.subject : `Re: ${m.subject}`,
-      body.html,
-      body.text,
+      textToHtml(quoteText(m)),
+      quoteText(m),
       "editor",
       true,
     );
@@ -1788,12 +1779,12 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
 
   function reply() {
     if (!detail) return;
-    const body = quoteBody(selectedQuote(detail));
+    const quote = selectedQuote(detail);
     openCompose(
       detail.from[0]?.email || "",
       detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`,
-      body.html,
-      body.text,
+      textToHtml(quote),
+      quote,
       "editor",
       true,
     );
@@ -1835,12 +1826,12 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   function replyWithQuote(selection: string) {
     if (!detail) return;
     const s = selection.trim();
-    const body = quoteBody(s ? `> ${s.replace(/\n/g, "\n> ")}\n\n` : selectedQuote(detail));
+    const quote = s ? `> ${s.replace(/\n/g, "\n> ")}\n\n` : selectedQuote(detail);
     openCompose(
       detail.from[0]?.email || "",
       detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`,
-      body.html,
-      body.text,
+      textToHtml(quote),
+      quote,
       "editor",
       true,
     );
@@ -1855,12 +1846,12 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     [...detail.from, ...(detail.cc || []), ...detail.to].forEach((a) => {
       if (a.email && a.email.toLowerCase() !== me.email.toLowerCase()) recipients.add(a.email);
     });
-    const body = quoteBody(selectedQuote(detail));
+    const quote = selectedQuote(detail);
     openCompose(
       [...recipients].join(", "),
       detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`,
-      body.html,
-      body.text,
+      textToHtml(quote),
+      quote,
       "editor",
       true,
     );
@@ -1870,12 +1861,12 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     if (!detail) return;
     const from = detail.from.map((a) => a.name || a.email).join(", ");
     const head = `---------- Forwarded message ----------\nFrom: ${from}\nDate: ${fmtDate(detail.date)}\nSubject: ${detail.subject}\n\n`;
-    const body = quoteBody(head + (detail.text_body || ""));
+    const quote = head + (detail.text_body || "");
     openCompose(
       "",
       detail.subject.startsWith("Fwd:") ? detail.subject : `Fwd: ${detail.subject}`,
-      body.html,
-      body.text,
+      textToHtml(quote),
+      quote,
       "to",
       true,
     );
