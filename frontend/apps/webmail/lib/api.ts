@@ -713,6 +713,12 @@ export const aiDraftNew = (subject: string, hint: string, tone: DraftTone = "for
     body: JSON.stringify({ subject, hint, tone }),
   });
 
+export const aiComposeDraft = (instruction: string) =>
+  api<{ to: string[]; subject: string; body: string }>("/ai/compose", {
+    method: "POST",
+    body: JSON.stringify({ instruction }),
+  });
+
 export const aiPrioritize = (messages: { uid: number; subject: string; from: string }[]) =>
   api<{ scores: Record<string, number>; categories?: Record<string, string> }>("/ai/prioritize", {
     method: "POST",
