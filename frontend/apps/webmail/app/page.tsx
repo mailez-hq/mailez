@@ -139,7 +139,7 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       {/* Top bar: enterprise logo + brand name, language switcher on the right */}
       <header className="border-b border-border/60">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-4 md:px-10">
+        <div className="mx-auto flex w-full max-w-[1140px] flex-wrap items-center justify-between gap-3 px-5 py-4 md:px-10 min-[1440px]:max-w-[1320px]">
           <div className="flex items-center gap-3">
             {brand.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -163,9 +163,9 @@ export default function Home() {
 
       {/* Middle: left brand image + right sign-in card */}
       <main className="flex flex-1">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-center gap-10 px-5 py-8 md:px-10 lg:py-12">
+        <div className="mx-auto flex w-full max-w-[1140px] items-center justify-center gap-10 px-5 py-8 md:px-10 lg:py-12 min-[1440px]:max-w-[1320px]">
         {/* Left brand image, hidden on small screens */}
-        <div className="relative hidden h-[540px] w-full max-w-xl overflow-hidden rounded-3xl text-white shadow-xl lg:block">
+        <div className="relative hidden h-[540px] min-w-0 flex-1 overflow-hidden rounded-3xl text-white shadow-xl lg:block">
           {brand.hero_url ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -199,7 +199,7 @@ export default function Home() {
         </div>
 
         {/* Right sign-in form */}
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-sm shrink-0">
           <Card>
             <CardHeader className="items-center text-center">
               {brand.logo_url ? (
