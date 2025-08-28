@@ -205,6 +205,12 @@ export function ComposePanel(props: ComposePanelProps) {
             <X className="size-4" />
           </Button>
         </header>
+        {aiComposeBusy && (
+          <div className="flex shrink-0 items-center gap-2 border-b border-ai/20 bg-ai/5 px-4 py-2 text-xs text-ai">
+            <Loader2 className="size-3.5 shrink-0 animate-spin" />
+            <span>{t("aiComposeStreaming")}</span>
+          </div>
+        )}
         <div className="shrink-0 space-y-3 px-4 pt-3">
           {identities.length > 1 && (
             <div className="space-y-1">
@@ -332,12 +338,6 @@ export function ComposePanel(props: ComposePanelProps) {
                   rows={5}
                   className="w-full resize-y rounded-md border border-border bg-background p-2 text-xs outline-none focus:border-accent"
                 />
-              </div>
-            )}
-            {aiComposeBusy && !(bodyText || "").trim() && (
-              <div className="mb-2 flex items-center gap-2 rounded-md border border-ai/30 bg-ai/5 px-3 py-2 text-xs text-ai">
-                <Loader2 className="size-3.5 shrink-0 animate-spin" />
-                <span>{t("aiComposeStreaming")}</span>
               </div>
             )}
             <ComposeEditor
