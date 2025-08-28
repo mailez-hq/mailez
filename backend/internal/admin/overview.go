@@ -53,6 +53,9 @@ func (h *Handler) overview(c *fiber.Ctx) error {
 	out["upload_bytes"] = uploadBytes
 	out["drive_bytes"] = driveBytes
 	out["drive_files"] = driveFiles
+	out["db_driver"] = h.Cfg.DBDriver
+	out["kv_backend"] = h.Cfg.KVBackend
+	out["blob_backend"] = h.Cfg.BlobBackend
 	out["license"] = h.License.Status(db)
 	return c.JSON(out)
 }

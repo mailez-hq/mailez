@@ -62,6 +62,9 @@ export type AdminOverview = {
   upload_bytes: number;
   drive_bytes: number;
   drive_files: number;
+  db_driver: string;
+  kv_backend: string;
+  blob_backend: string;
   license?: {
     edition: string;
     licensee?: string;

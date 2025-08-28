@@ -104,6 +104,12 @@ services:
       - MAILEZ_RECIPIENT_DELIMITER=+
       - MAILEZ_MESSAGE_RATELIMIT=200
       - MAILEZ_DKIM_SELECTOR=dkim
+      # 引擎存储信息（供管理台概览展示）：KV=tidb、正文 blob=MinIO。
+      - MAILEZINE_STORAGE_BACKEND=tidb
+      - MAILEZINE_S3_ENDPOINT=minio:9000
+      - MAILEZINE_S3_ACCESS_KEY=mailezine
+      - MAILEZINE_S3_SECRET_KEY=mailezine-e2e-pass
+      - MAILEZINE_S3_BUCKET=mailezine
       # 引擎直连（mailezine 模式）：backend 直接访问引擎端口契约。
       - MAIL_IMAP_ADDR=mailezine:143
       - MAIL_SMTP_ADDR=mailezine:1587
