@@ -46,6 +46,23 @@ func (c *Client) aclExec(cli *client.Client, name string, args ...interface{}) (
 	return h.responses, nil
 }
 
+// aclFolder runs one ACL command against a folder, trying the canonical
+// protocol spelling first and falling back to the literal name for legacy
+// "Inbox/..." mailboxes (same rationale as selectFolder).
+func (c *Client) aclFolder(cli *client.Client, name, folder string, extra ...interface{}) ([]*imap.DataResp, error) {
+	norm := inboxName(folder)
+	args := append([]interface{}{imap.RawString(norm)}, extra...)
+	resps, err := c.aclExec(cli, name, args...)
+	if err == nil || norm == folder {
+		return resps, err
+	}
+	args[0] = imap.RawString(folder)
+	if resps2, err2 := c.aclExec(cli, name, args...); err2 == nil {
+		return resps2, nil
+	}
+	return nil, err
+}
+
 // FolderACL returns every ACL entry for a folder (GETACL).
 func (c *Client) FolderACL(email, token, folder string) ([]ACLEntry, error) {
 	cli, err := c.openIMAP(email, token)
@@ -54,7 +71,7 @@ func (c *Client) FolderACL(email, token, folder string) ([]ACLEntry, error) {
 	}
 	defer cli.Logout()
 
-	resps, err := c.aclExec(cli, "GETACL", imap.RawString(inboxName(folder)))
+	resps, err := c.aclFolder(cli, "GETACL", folder)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +102,7 @@ func (c *Client) MyRights(email, token, folder string) (string, error) {
 	}
 	defer cli.Logout()
 
-	resps, err := c.aclExec(cli, "MYRIGHTS", imap.RawString(inboxName(folder)))
+	resps, err := c.aclFolder(cli, "MYRIGHTS", folder)
 	if err != nil {
 		return "", err
 	}
@@ -110,7 +127,7 @@ func (c *Client) ListRights(email, token, folder, identifier string) (granted, a
 	}
 	defer cli.Logout()
 
-	resps, err := c.aclExec(cli, "LISTRIGHTS", imap.RawString(inboxName(folder)), imap.RawString(identifier))
+	resps, err := c.aclFolder(cli, "LISTRIGHTS", folder, imap.RawString(identifier))
 	if err != nil {
 		return "", "", err
 	}
@@ -139,7 +156,7 @@ func (c *Client) SetFolderACL(email, token, folder, identifier, rights string) e
 	}
 	defer cli.Logout()
 
-	_, err = c.aclExec(cli, "SETACL", imap.RawString(inboxName(folder)), imap.RawString(identifier), imap.RawString(rights))
+	_, err = c.aclFolder(cli, "SETACL", folder, imap.RawString(identifier), imap.RawString(rights))
 	return err
 }
 
@@ -151,6 +168,6 @@ func (c *Client) DeleteFolderACL(email, token, folder, identifier string) error 
 	}
 	defer cli.Logout()
 
-	_, err = c.aclExec(cli, "DELETEACL", imap.RawString(inboxName(folder)), imap.RawString(identifier))
+	_, err = c.aclFolder(cli, "DELETEACL", folder, imap.RawString(identifier))
 	return err
 }

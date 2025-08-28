@@ -300,7 +300,7 @@ func (h *Handler) mailFolderRename(c *fiber.Ctx) error {
 	if err := c.BodyParser(&in); err != nil || !validFolderName(in.Name) || !validFolderName(in.NewName) {
 		return c.Status(400).JSON(fiber.Map{"error": "valid name and new_name are required"})
 	}
-	if mail.SystemFolders[strings.ToLower(in.Name)] {
+	if mail.IsSystemFolder(in.Name) {
 		return c.Status(400).JSON(fiber.Map{"error": "cannot rename a system folder"})
 	}
 	if err := h.Mail.With(d).RenameFolder(d.Email, d.Token, in.Name, in.NewName); err != nil {
@@ -324,7 +324,7 @@ func (h *Handler) mailFolderDelete(c *fiber.Ctx) error {
 	if !validFolderName(name) {
 		return c.Status(400).JSON(fiber.Map{"error": "valid folder name is required"})
 	}
-	if mail.SystemFolders[strings.ToLower(name)] {
+	if mail.IsSystemFolder(name) {
 		return c.Status(400).JSON(fiber.Map{"error": "cannot delete a system folder"})
 	}
 	if err := h.Mail.With(d).DeleteFolder(d.Email, d.Token, name); err != nil {

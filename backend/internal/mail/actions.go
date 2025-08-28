@@ -299,11 +299,17 @@ func (c *Client) SaveDraft(email, token string, to, cc []string, subject, text, 
 	return st.UidNext - 1, nil
 }
 
-// SystemFolders are the protocol/service mailboxes that must never be renamed,
-// deleted or cleared from the folder manager. The names are case-insensitive.
-var SystemFolders = map[string]bool{
-	"inbox": true, "sent": true, "drafts": true, "trash": true,
-	"archive": true, "junk": true, "spam": true, "all mail": true,
+// IsSystemFolder reports whether name is one of the engine-created system
+// mailboxes. Only the special INBOX is matched case-insensitively; the rest
+// must match the canonical Title-case spelling the engine creates, so a
+// user-created folder literally named "sent" or "trash" is not accidentally
+// protected (and therefore impossible to rename or delete).
+func IsSystemFolder(name string) bool {
+	switch inboxName(name) {
+	case "INBOX", "Sent", "Drafts", "Trash", "Archive", "Junk":
+		return true
+	}
+	return false
 }
 
 // CreateFolder creates a new mailbox, failing when it already exists so the
