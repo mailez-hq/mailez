@@ -20,7 +20,6 @@
     "error": "登录失败",
     "rateLimited": "尝试次数过多，请稍等片刻再试。",
     "mailSettings": "邮箱设置（客户端配置）",
-    "mailSettingsHint": "在 电脑邮件客户端 / 手机邮箱中配置时使用以下服务器信息：",
     "smtpServer": "SMTP 服务器",
     "pop3Server": "POP3 服务器",
     "imapServer": "IMAP 服务器",

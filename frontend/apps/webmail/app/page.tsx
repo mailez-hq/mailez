@@ -316,7 +316,6 @@ export default function Home() {
               <summary className="cursor-pointer font-medium text-foreground">
                 {t("mailSettings")}
               </summary>
-              <p className="mt-1">{t("mailSettingsHint")}</p>
               <ul className="mt-2 space-y-1">
                 <li>
                   {t("smtpServer")}：<code>{settings.hostname}</code>
