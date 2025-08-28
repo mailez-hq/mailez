@@ -1625,7 +1625,9 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       return;
     }
     const identity = identities.find((i) => i.email === from);
-    const sig = identity?.signature?.trim() || me.signature?.trim();
+    const sig = prefs.autoSignature
+      ? identity?.signature?.trim() || me.signature?.trim()
+      : "";
     let finalHtml = html;
     let finalText = text;
     if (sig) {
@@ -1758,7 +1760,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   function selectIdentity(email: string) {
     setFrom(email);
     const idn = identities.find((i) => i.email === email);
-    const sig = idn?.signature?.trim();
+    const sig = prefs.autoSignature ? idn?.signature?.trim() : "";
     if (sig) {
       const next = applySignature(bodyText, body, sig);
       setBodyText(next.text);
