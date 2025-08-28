@@ -73,6 +73,8 @@ export function MailShell({ children }: { children: React.ReactNode }) {
     deleteFolder,
     clearFolder,
     error,
+    composeError,
+    composeNotice,
     detail,
     ai,
     draftSaved,
@@ -266,7 +268,8 @@ export function MailShell({ children }: { children: React.ReactNode }) {
           identities={identities}
           from={from}
           onSelectIdentity={selectIdentity}
-          error={error}
+          composeError={composeError}
+          composeNotice={composeNotice}
           draftSaved={draftSaved}
           to={to}
           cc={cc}
