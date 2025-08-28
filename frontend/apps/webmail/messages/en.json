@@ -20,7 +20,9 @@
     "smtpServer": "SMTP server",
     "pop3Server": "POP3 server",
     "imapServer": "IMAP server",
-    "serverPorts": "Ports {ports}"
+    "serverPorts": "Ports {ports}",
+    "noticeClassified": "Notice: do not use {product} to process classified information",
+    "noticeSecurity": "For your security, do not open unfamiliar emails or links."
   },
   "mail": {
     "write": "Write",
