@@ -351,6 +351,10 @@
 .mail-scroll {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
+  /* Reserve the scrollbar gutter so appearing/disappearing scrollbars (e.g.
+     when collapsing a thread message crosses the viewport-height threshold)
+     do not shift the whole pane content horizontally. */
+  scrollbar-gutter: stable;
 }
 
 /* Print: keep only the message body, hide the app chrome around it. */

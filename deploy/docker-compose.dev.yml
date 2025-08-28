@@ -45,7 +45,7 @@ services:
       - MAILEZINE_ROCKS_PATH=/data/rocks
       - MAILEZINE_RSPAMD_URL=http://mail-filter:11333/checkv2
       - MAILEZINE_DKIM_VAULT_URL=http://host.docker.internal:8080/stack/rspamd/vault
-      - MAILEZINE_TRUSTED_NETS=192.168.206.0/24
+      - MAILEZINE_TRUSTED_NETS=${MAILEZ_SUBNET:-192.168.206.0/24}
       # 明文端口（开发不配 TLS）；465/993/995 隐式 TLS 不启用。
       - MAILEZINE_SMTP_ADDR=:25
       - MAILEZINE_SUBMISSION_ADDR=:1587
@@ -100,6 +100,10 @@ services:
 networks:
   default:
     driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: ${MAILEZ_SUBNET:-192.168.206.0/24}
   no-egress:
     driver: bridge
     internal: true

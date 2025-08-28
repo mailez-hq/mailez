@@ -1,0 +1,39 @@
+# 企业版（生产档）本地开发运行 override：
+#
+# - 未挂载授权文件时以内置开发版授权运行（MAILEZINE_LICENSE_REQUIRED=false，
+#   不限邮箱数；生产环境应移除本文件并挂载正式授权）。
+# - TLS=off：清空隐式 TLS 监听与证书路径（465/993/995 不再监听），避免
+#   在无证书的开发机上启动失败。
+# - 避让本机其它项目占用的端口：gateway 80/443 → 8084/8443，mysql
+#   13306 → 13307。
+#
+# 用法：
+#   $env:MAILEZINE_LICENSE_REQUIRED = "false"
+#   docker compose -f docker-compose.enterprise.yml \
+#     -f docker-compose.enterprise.dev.yml up -d
+services:
+  backend:
+    environment:
+      - MAILEZINE_LICENSE_REQUIRED=false
+      - MAILEZ_LICENSE_REQUIRED=false
+      # 开发环境没有技术服务证书；显式指向不存在的文件会让 service.Load
+      # 拒绝启动（生产环境需挂载 service.lic 后移除这一行）。
+      - MAILEZ_SERVICE_FILE=
+
+  mailezine:
+    environment:
+      - MAILEZINE_LICENSE_REQUIRED=false
+      - MAILEZINE_TLS_CERT_FILE=
+      - MAILEZINE_TLS_KEY_FILE=
+      - MAILEZINE_SMTPS_ADDR=
+      - MAILEZINE_IMAPS_ADDR=
+      - MAILEZINE_POP3S_ADDR=
+
+  mysql:
+    ports: !override
+      - "127.0.0.1:13307:3306"
+
+  gateway:
+    ports: !override
+      - "127.0.0.1:8084:80"
+      - "127.0.0.1:8443:443"

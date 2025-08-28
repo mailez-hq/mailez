@@ -78,7 +78,9 @@ function ThreadMessage({
   onToggleQuote,
   highlightTerms,
   remoteLoaded,
-  onShowActions,
+  onReply,
+  onReplyAll,
+  onForward,
 }: {
   message: MailMessage;
   isExpanded: boolean;
@@ -91,7 +93,9 @@ function ThreadMessage({
   onToggleQuote: (i: number) => void;
   highlightTerms?: string[];
   remoteLoaded: boolean;
-  onShowActions: () => void;
+  onReply: () => void;
+  onReplyAll: () => void;
+  onForward: () => void;
 }) {
   const t = useTranslations("mail");
   const mounted = useMounted();
@@ -147,7 +151,12 @@ function ThreadMessage({
             </div>
           )}
         </div>
-        <ChevronDown className="mt-1 size-3.5 shrink-0 text-muted-foreground" />
+        {/* Same footprint as the expanded-state collapse button (28x28, top
+            aligned) so toggling a thread message does not make the arrow
+            jump horizontally or vertically. */}
+        <span className="flex size-7 shrink-0 items-center justify-center">
+          <ChevronDown className="size-3.5 text-muted-foreground" />
+        </span>
       </button>
     );
   }
@@ -185,14 +194,19 @@ function ThreadMessage({
             </span>
           </div>
         </div>
-        <Button
-          size="sm"
-          variant="ghost"
+        {/* Collapse control: up arrow (not X) so it reads as "collapse" rather
+            than close/delete. Plain button on purpose: the shared Button has an
+            active:translate-y-px press effect that makes the icon drift on
+            click. */}
+        <button
+          type="button"
           onClick={onClose}
-          className="size-7"
+          title={t("collapseMessage")}
+          aria-label={t("collapseMessage")}
+          className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
-          <X className="size-3.5" />
-        </Button>
+          <ChevronUp className="size-3.5" />
+        </button>
       </div>
 
       {message.invitation && message.invitation.method === "REQUEST" && (
@@ -273,15 +287,15 @@ function ThreadMessage({
 
       {/* Action buttons below message */}
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-        <Button size="sm" variant="outline" onClick={onShowActions}>
+        <Button size="sm" variant="outline" onClick={onReply}>
           <Reply className="size-3.5" />
           {t("reply")}
         </Button>
-        <Button size="sm" variant="outline" onClick={onShowActions}>
+        <Button size="sm" variant="outline" onClick={onReplyAll}>
           <ReplyAll className="size-3.5" />
           {t("replyAll")}
         </Button>
-        <Button size="sm" variant="outline" onClick={onShowActions}>
+        <Button size="sm" variant="outline" onClick={onForward}>
           <Send className="size-3.5" />
           {t("forward")}
         </Button>
@@ -388,7 +402,9 @@ export function ReadingPane({
   threadLoading,
   conversationEnabled,
   onToggleThread,
-  onSelectThread,
+  onReplyThread,
+  onReplyAllThread,
+  onForwardThread,
   highlightTerms,
   readerFont,
   paneWidth,
@@ -431,7 +447,9 @@ export function ReadingPane({
   threadLoading: boolean;
   conversationEnabled: boolean;
   onToggleThread: () => void;
-  onSelectThread: (uid: number) => void;
+  onReplyThread: (m: MailMessage) => void;
+  onReplyAllThread: (m: MailMessage) => void;
+  onForwardThread: (m: MailMessage) => void;
   highlightTerms?: string[];
   readerFont?: ReaderFontSize;
   paneWidth?: ReadingPaneWidth;
@@ -655,11 +673,6 @@ export function ReadingPane({
 
   function handleToggleMessage(uid: number) {
     setExpandedUid((prev) => (prev === uid ? null : uid));
-  }
-
-  function handleSelectThreadMessage(uid: number) {
-    onSelectThread(uid);
-    setExpandedUid(uid);
   }
 
   function toggleQuote(i: number) {
@@ -1106,10 +1119,9 @@ export function ReadingPane({
                 onToggleQuote={toggleQuote}
                 highlightTerms={highlightTerms}
                 remoteLoaded={remoteLoaded}
-                onShowActions={() => {
-                  // When clicking reply on a thread message, select it first
-                  handleSelectThreadMessage(msg.uid);
-                }}
+                onReply={() => onReplyThread(msg)}
+                onReplyAll={() => onReplyAllThread(msg)}
+                onForward={() => onForwardThread(msg)}
               />
             ))}
           </div>

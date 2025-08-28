@@ -70,6 +70,8 @@ type Server struct {
 	Auth     *auth.Manager
 	LDAP     *ldap.Service
 	internal *stack.Handler
+	// events fans mailbox-change events to open webmail SSE connections.
+	events *push.Hub
 	// basicAuthCache memoizes Basic-auth credential verification for the
 	// protocol endpoints that re-authenticate on every request.
 	basicAuthCache *authcache.Cache
@@ -93,7 +95,12 @@ func New(cfg core.Config) *Server {
 		AppName:      "mailez",
 		BodyLimit:    64 * 1024 * 1024, // aligned with the 20MB attachment cap + base64 overhead
 		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 60 * time.Second,
+		// No write timeout: long-lived responses (the AI compose SSE stream
+		// and the /events mailbox push) stay open for hours. fasthttp applies
+		// WriteTimeout as one absolute deadline for the whole response write,
+		// which would kill an SSE connection at 60s. Slow clients are bounded
+		// by ReadTimeout and IdleTimeout instead.
+		WriteTimeout: 0,
 		IdleTimeout:  120 * time.Second,
 		// WebDAV methods used by the built-in CardDAV/CalDAV servers; Fiber
 		// rejects unknown verbs unless they are registered here.
@@ -134,6 +141,7 @@ func New(cfg core.Config) *Server {
 
 	bgCtx, bgCancel := context.WithCancel(context.Background())
 	s := &Server{App: app, DB: db, Redis: rdb, Cfg: cfg, bgCtx: bgCtx, bgCancel: bgCancel}
+	s.events = push.NewHub()
 	s.Auth = auth.NewManager(db, newStore(rdb, cfg.Env), "mailez_session", time.Duration(cfg.SessionLifetime)*time.Second)
 	s.Auth.SetCookieSecure(cfg.CookieSecure)
 	s.Auth.SetLoginLimits(cfg.LoginRateLimit, cfg.LoginFailLimit)
@@ -164,7 +172,7 @@ func New(cfg core.Config) *Server {
 	go fetcher.Run(bgCtx)
 	// Send-undo queue: delivers parked messages once their window elapses.
 	dlpSvc := dlp.New(&core.App{DB: db, Auth: s.Auth, Cfg: cfg})
-	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey, dlpSvc).Run(bgCtx)
+	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey, dlpSvc, mail.New(cfg.MailImapAddr, "", "")).Run(bgCtx)
 	go dlpSvc.RunExpiry(bgCtx)
 	// Organization address book refresh (AD/LDAP) when directory sync is on.
 	go ldap.RunSyncWorker(bgCtx, db, cfg.SecretKey)
@@ -178,6 +186,11 @@ func New(cfg core.Config) *Server {
 	if cfg.PushInterval > 0 {
 		notifier := push.NewNotifier(db, cfg)
 		go notifier.Run(bgCtx)
+	}
+	// Webmail mailbox-change stream: polls connected users' folders and pushes
+	// a "mail" event down their SSE connections when new mail arrives.
+	if cfg.EventsInterval > 0 {
+		go push.NewEventWatcher(cfg, s.events).Run(bgCtx)
 	}
 	if cfg.MetricsAddr != "" {
 		startMetricsServer(cfg.MetricsAddr)
@@ -306,7 +319,7 @@ func (s *Server) routes() {
 	invite.New(app).Register(authed)
 	fetch.RegisterAPI(authed, app)
 	ai.RegisterAPI(authed, app, aiMgr)
-	push.RegisterAPI(authed, app)
+	push.RegisterAPI(authed, app, s.events)
 	uploads.New(s.DB, s.Cfg).Register(authed)
 	if driveSvc, derr := drive.New(s.DB, s.Cfg); derr == nil {
 		driveSvc.Register(authed)

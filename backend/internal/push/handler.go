@@ -13,15 +13,17 @@ import (
 // Handler serves the push domain routes.
 type Handler struct {
 	*core.App
+	Events *Hub
 }
 
 var currentUser = core.CurrentUser
 
 func newAppToken() (string, error) { return core.NewAppToken() }
 
-// RegisterAPI mounts the push routes.
-func RegisterAPI(r fiber.Router, app *core.App) {
-	h := &Handler{app}
+// RegisterAPI mounts the push routes. hub backs the SSE mailbox-change
+// stream; pass NewHub() when the stream is enabled.
+func RegisterAPI(r fiber.Router, app *core.App, hub *Hub) {
+	h := &Handler{app, hub}
 	h.registerPush(r)
 }
 
@@ -29,6 +31,7 @@ func (h *Handler) registerPush(r fiber.Router) {
 	r.Get("/push/vapid", h.pushVapid)
 	r.Post("/push/subscribe", h.pushSubscribe)
 	r.Delete("/push/subscribe", h.pushUnsubscribe)
+	r.Get("/events", h.mailEvents)
 	r.Get("/webhooks", h.webhookList)
 	r.Post("/webhooks", h.webhookCreate)
 	r.Put("/webhooks/:id", h.webhookUpdate)

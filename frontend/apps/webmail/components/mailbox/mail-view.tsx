@@ -124,6 +124,9 @@ export function MailView() {
     reply,
     replyWithQuote,
     replyAll,
+    replyFrom,
+    replyAllFrom,
+    forwardFrom,
     editDraft,
     forward,
     backToList,
@@ -134,7 +137,6 @@ export function MailView() {
     threadOpen,
     threadLoading,
     toggleThread,
-    selectThreadMessage,
     snoozeMessage,
     prefs,
     sendQuickReply,
@@ -236,6 +238,9 @@ export function MailView() {
             onReplyWithQuote={replyWithQuote}
             onReplyAll={replyAll}
             onForward={forward}
+            onReplyThread={replyFrom}
+            onReplyAllThread={replyAllFrom}
+            onForwardThread={forwardFrom}
             onArchive={() => archiveMessage(detail)}
             onDelete={() => removeMessage(detail)}
             onStar={() => toggleStar(detail)}
@@ -255,7 +260,6 @@ export function MailView() {
             threadLoading={threadLoading}
             conversationEnabled={prefs.conversation}
             onToggleThread={toggleThread}
-            onSelectThread={selectThreadMessage}
             highlightTerms={highlightTerms(query)}
             readerFont={prefs.readerFont}
             paneWidth={prefs.paneWidth}
