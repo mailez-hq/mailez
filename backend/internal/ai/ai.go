@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -22,6 +23,7 @@ var ErrDisabled = errors.New("ai is disabled")
 type Provider interface {
 	Name() string
 	Chat(ctx context.Context, system, user string) (string, error)
+	ChatStream(ctx context.Context, system, user string, onDelta func(string)) error
 }
 
 // Manager dispatches AI features to the configured provider. The provider is
@@ -207,6 +209,129 @@ func parseComposeDraft(raw string) (ComposeDraft, error) {
 	}
 	return out, nil
 }
+
+// ComposeEvent is one streamed piece of a composed email: recipients
+// ("to"), the subject ("subject"), body text ("body"), an error or the
+// terminal "done" marker.
+type ComposeEvent struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
+// ComposeStream turns a natural-language instruction into a complete email
+// and streams it as ComposeEvents: the TO: line, the SUBJECT: line and then
+// the body text as it is generated, so the client can fill the compose form
+// while the model is still writing.
+func (m *Manager) ComposeStream(ctx context.Context, instruction string, emit func(ComposeEvent)) error {
+	p := m.load()
+	if p == nil {
+		return ErrDisabled
+	}
+	var buf []byte
+	inBody := false
+	sawHeader := false
+	var pendingBody []string
+	flushPending := func() {
+		if len(pendingBody) > 0 {
+			emit(ComposeEvent{Type: "body", Text: strings.Join(pendingBody, "\n")})
+			pendingBody = nil
+		}
+	}
+	handleLine := func(line string) {
+		trimmed := strings.TrimSpace(line)
+		lower := strings.ToLower(strings.ReplaceAll(trimmed, "：", ":"))
+		switch {
+		case strings.HasPrefix(lower, "to:"):
+			sawHeader = true
+			emit(ComposeEvent{Type: "to", Text: strings.TrimSpace(trimmed[3:])})
+		case strings.HasPrefix(lower, "subject:"):
+			sawHeader = true
+			emit(ComposeEvent{Type: "subject", Text: strings.TrimSpace(trimmed[len("subject:"):])})
+		case strings.HasPrefix(lower, "body:") || strings.HasPrefix(lower, "正文:") || strings.HasPrefix(lower, "内容:"):
+			inBody = true
+			flushPending()
+			// Strip any of the accepted headers (ASCII or full-width colon).
+			rest := trimmed
+			for _, h := range []string{"body:", "正文:", "内容:"} {
+				if len(rest) >= len(h) && strings.EqualFold(strings.ReplaceAll(rest[:len(h)], "：", ":"), h) {
+					rest = rest[len(h):]
+					break
+				}
+			}
+			if r := strings.TrimSpace(rest); r != "" {
+				emit(ComposeEvent{Type: "body", Text: r})
+			}
+			if len(buf) > 0 {
+				emit(ComposeEvent{Type: "body", Text: string(buf)})
+				buf = nil
+			}
+		default:
+			// Content after the headers counts as body even when the model
+			// skips the BODY: label.
+			if trimmed != "" && sawHeader {
+				pendingBody = append(pendingBody, trimmed)
+			}
+		}
+	}
+	err := p.ChatStream(ctx, composeStreamSystem, instruction, func(delta string) {
+		if inBody {
+			// Safety: a model that repeats the BODY: header mid-stream must
+			// not paste the raw label into the email body.
+			t := strings.TrimSpace(delta)
+			if strings.HasPrefix(strings.ToLower(strings.ReplaceAll(t, "：", ":")), "body:") {
+				if rest := strings.TrimSpace(t[len("body:"):]); rest != "" {
+					emit(ComposeEvent{Type: "body", Text: rest})
+				}
+				return
+			}
+			emit(ComposeEvent{Type: "body", Text: delta})
+			return
+		}
+		buf = append(buf, delta...)
+		for {
+			nl := bytes.IndexByte(buf, '\n')
+			if nl < 0 {
+				break
+			}
+			line := strings.TrimRight(string(buf[:nl]), "\r")
+			buf = buf[nl+1:]
+			handleLine(line)
+		}
+		// Early BODY: detection: models often stream the whole body on one
+		// long line, so start streaming as soon as the header prefix arrives
+		// instead of waiting for a newline.
+		if !inBody && len(buf) >= 5 &&
+			strings.EqualFold(strings.ReplaceAll(string(buf[:5]), "：", ":"), "body:") {
+			inBody = true
+			buf = buf[5:]
+			if rest := strings.TrimLeft(string(buf), " \t"); rest != "" {
+				emit(ComposeEvent{Type: "body", Text: rest})
+			}
+			buf = nil
+		}
+	})
+	// Trailing partial line (no newline at end of stream).
+	if !inBody && len(buf) > 0 {
+		tail := string(buf)
+		buf = nil
+		handleLine(strings.TrimRight(tail, "\r"))
+	}
+	if !inBody && len(pendingBody) > 0 {
+		flushPending()
+	}
+	return err
+}
+
+const composeStreamSystem = "You are an email assistant. Turn the user's instruction into a complete email and respond " +
+	"in EXACTLY this line format:\n\n" +
+	"TO: recipient1, recipient2\n" +
+	"SUBJECT: the subject\n" +
+	"BODY: the email body\n\n" +
+	"Rules:\n" +
+	"- TO lists every recipient mentioned, using the exact name or address the user used, comma-separated.\n" +
+	"- SUBJECT is one concise line.\n" +
+	"- Everything after \"BODY:\" is the body; it may span multiple lines, but never repeat the TO:/SUBJECT:/BODY: prefixes.\n" +
+	"- Write in the same language as the instruction."
 
 func draftReplySystem(tone DraftTone) string {
 	switch tone {
