@@ -69,6 +69,11 @@ type Config struct {
 	// BlobBackend is the message-body blob store: "minio" when an S3/MinIO
 	// endpoint is configured, otherwise "local".
 	BlobBackend string
+	// ServiceFile / Service carry the annual technical-service certificate
+	// (MAILEZ_SERVICE_FILE / MAILEZ_SERVICE). It is engine-independent: both
+	// the community and enterprise editions can subscribe to support.
+	ServiceFile string
+	Service     string
 }
 
 // SupportedMailEngines are the mail engines the control plane can drive.
@@ -125,6 +130,8 @@ func Load() Config {
 		License:            env("MAILEZ_LICENSE", ""),
 		LicenseRequired:    envBool("MAILEZ_LICENSE_REQUIRED", false),
 		KVBackend:          env("MAILEZINE_STORAGE_BACKEND", ""),
+		ServiceFile:        env("MAILEZ_SERVICE_FILE", ""),
+		Service:            env("MAILEZ_SERVICE", ""),
 	}
 	if os.Getenv("MAILEZINE_S3_ENDPOINT") != "" {
 		cfg.BlobBackend = "minio"

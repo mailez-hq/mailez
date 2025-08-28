@@ -33,17 +33,13 @@ func testDB(t *testing.T, emails ...string) *gorm.DB {
 	return db
 }
 
-func enterprise(mailboxes int, expires string) License {
+func enterprise(mailboxes int) License {
 	lic := License{
 		Version:      1,
 		Edition:      EditionEnterprise,
 		Licensee:     "Acme",
 		MaxMailboxes: mailboxes,
 		IssuedAt:     time.Now().Add(-time.Hour).UTC().Format(time.RFC3339),
-		ExpiresAt:    expires,
-	}
-	if expires == "" {
-		lic.ExpiresAt = time.Now().Add(365 * 24 * time.Hour).UTC().Format(time.RFC3339)
 	}
 	return lic
 }
@@ -58,7 +54,7 @@ func mustEnvelope(t *testing.T, lic License) string {
 }
 
 func TestSignParseRoundtrip(t *testing.T) {
-	env := mustEnvelope(t, enterprise(500, ""))
+	env := mustEnvelope(t, enterprise(500))
 	lic, err := Parse(env)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -69,7 +65,7 @@ func TestSignParseRoundtrip(t *testing.T) {
 }
 
 func TestTamperedPayloadRejected(t *testing.T) {
-	env := mustEnvelope(t, enterprise(500, ""))
+	env := mustEnvelope(t, enterprise(500))
 	payload := strings.SplitN(env, ".", 2)[0]
 	tampered := payload + "A" // flip the payload bytes
 	parts := strings.SplitN(env, ".", 2)
@@ -81,26 +77,6 @@ func TestTamperedPayloadRejected(t *testing.T) {
 	}
 }
 
-func TestServiceExpiryDoesNotBlockUsage(t *testing.T) {
-	env := mustEnvelope(t, enterprise(100, time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)))
-	m, err := Load("", env, true)
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	if !m.ServiceExpired(time.Now()) {
-		t.Fatal("service should be reported expired")
-	}
-	// Perpetual usage right: the mailbox cap still applies and provisioning
-	// inside the cap must be allowed even with an expired service.
-	if err := m.CheckCapacity(testDB(t)); err != nil {
-		t.Fatalf("service-expired license must not block capacity: %v", err)
-	}
-	st := m.Status(testDB(t))
-	if st.Valid != true || st.ServiceValid != false {
-		t.Fatalf("expected valid usage + expired service, got %+v", st)
-	}
-}
-
 func TestCapacity(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -108,10 +84,10 @@ func TestCapacity(t *testing.T) {
 		users     []string
 		wantAllow bool
 	}{
-		{"under limit", enterprise(5, ""), []string{"a@x", "b@x"}, true},
-		{"at limit", enterprise(2, ""), []string{"a@x", "b@x"}, false},
-		{"over limit", enterprise(2, ""), []string{"a@x", "b@x", "c@x"}, false},
-		{"unlimited", enterprise(0, ""), []string{"a@x", "b@x", "c@x"}, true},
+		{"under limit", enterprise(5), []string{"a@x", "b@x"}, true},
+		{"at limit", enterprise(2), []string{"a@x", "b@x"}, false},
+		{"over limit", enterprise(2), []string{"a@x", "b@x", "c@x"}, false},
+		{"unlimited", enterprise(0), []string{"a@x", "b@x", "c@x"}, true},
 		{"dev edition", DevLicense(), []string{"a@x", "b@x", "c@x"}, true},
 	}
 	for _, c := range cases {
@@ -152,13 +128,13 @@ func TestLoadRequired(t *testing.T) {
 }
 
 func TestStatus(t *testing.T) {
-	env := mustEnvelope(t, enterprise(3, ""))
+	env := mustEnvelope(t, enterprise(3))
 	m, err := Load("", env, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	st := m.Status(testDB(t, "a@x", "b@x"))
-	if st.MaxMailboxes != 3 || st.Used != 2 || !st.Valid || !st.ServiceValid || !st.Required {
+	if st.MaxMailboxes != 3 || st.Used != 2 || !st.Valid || !st.Required {
 		t.Fatalf("unexpected status: %+v", st)
 	}
 }

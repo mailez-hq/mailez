@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  Archive, BadgeCheck, Database, FileStack, Globe, HardDrive, Mail, Server, ShieldAlert, Users,
+  Archive, BadgeCheck, Database, FileStack, Globe, HardDrive, LifeBuoy, Mail, Server, ShieldAlert, Users,
 } from "lucide-react";
 import { adminOverview, type AdminOverview } from "@/lib/api";
 
@@ -72,6 +72,23 @@ export default function OverviewPage() {
     ].filter(Boolean);
     return parts.join(" · ");
   };
+  const serviceValue = data.service
+    ? data.service.tier === "premium"
+      ? t("servicePremium")
+      : t("serviceStandard")
+    : t("serviceNone");
+  const serviceSub = data.service
+    ? [
+        data.service.valid
+          ? data.service.expires_at
+            ? t("serviceEnds", { date: data.service.expires_at.slice(0, 10) })
+            : ""
+          : t("serviceExpired"),
+        data.service.licensee ? t("licenseLicensee", { name: data.service.licensee }) : "",
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : t("serviceHint");
 
   const cards = [
     {
@@ -80,6 +97,7 @@ export default function OverviewPage() {
       sub: licenseSub(),
       icon: BadgeCheck,
     },
+    { key: "service", value: serviceValue, sub: serviceSub, icon: LifeBuoy },
     { key: "users", value: `${data.users}`, sub: t("usersEnabled", { n: data.users_enabled }), icon: Users },
     { key: "domains", value: `${data.domains}`, sub: t("aliases", { n: data.aliases }), icon: Globe },
     { key: "orgContacts", value: `${data.org_contacts}`, sub: t("ldap"), icon: Database },
