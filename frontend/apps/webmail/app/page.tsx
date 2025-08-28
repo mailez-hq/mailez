@@ -136,7 +136,12 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="relative flex min-h-screen overflow-hidden">
+      {/* Ambient brand-color glows on the form side so the two halves melt
+          into each other instead of meeting at a hard vertical seam. */}
+      <div className="pointer-events-none absolute top-1/4 -left-24 size-96 rounded-full bg-[#2F8E6C]/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 left-1/2 size-80 rounded-full bg-[#2E6E8E]/10 blur-3xl" />
+
       {/* Brand panel: hero image / gradient showcase, hidden on small screens */}
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-gradient-to-br from-[#2F8E6C] to-[#2E6E8E] p-10 text-white lg:flex xl:w-[55%]">
         {brand.hero_url ? (
@@ -155,6 +160,9 @@ export default function Home() {
             <div className="pointer-events-none absolute -bottom-24 -left-24 size-72 rounded-full bg-white/5" />
           </>
         )}
+        {/* Right-edge fade: dissolves the panel boundary into the page
+            background for a smooth left-to-right transition. */}
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-20 bg-gradient-to-r from-transparent to-background md:w-28" />
         <div className="relative flex items-center gap-3">
           {brand.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
