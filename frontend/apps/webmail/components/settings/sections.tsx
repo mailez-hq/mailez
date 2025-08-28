@@ -112,6 +112,9 @@ export type SettingsSectionsProps = {
   accTesting: number | null;
   accTestMsg: string;
   onAddAccount: () => void;
+  editingAccount: MailAccount | null;
+  onStartEditAccount: (a: MailAccount) => void;
+  onCancelEditAccount: () => void;
   onDeleteAccount: (id: number) => void;
   onToggleAccount: (a: MailAccount) => void;
   onTestAccount: (id: number) => void;
@@ -138,7 +141,7 @@ export type SettingsSectionsProps = {
 // MailSettings shell owns all state and passes it down; the extracted JSX
 // is byte-identical to the original single-file implementation.
 export function SettingsSections(props: SettingsSectionsProps) {
-  const { t, section, profile, theme, setTheme, density, setDensity, accent, setAccent, spellcheck, setSpellcheck, readerFont, setReaderFont, paneWidth, setPaneWidth, landing, setLanding, prefs, setAi, setNotifications, displayedName, setDisplayedName, signature, setSignature, whitelist, setWhitelist, blacklist, setBlacklist, forwardEnabled, setForwardEnabled, forwardDestination, setForwardDestination, forwardKeep, setForwardKeep, replyEnabled, setReplyEnabled, replySubject, setReplySubject, replyBody, setReplyBody, replyStartdate, setReplyStartdate, replyEnddate, setReplyEnddate, spamEnabled, setSpamEnabled, spamMarkAsRead, setSpamMarkAsRead, spamThreshold, setSpamThreshold, saveSettings, savePassword, pgp, setPgp, generating, setGenerating, copied, setCopied, pgpKeys, pgpImportEmail, setPgpImportEmail, pgpImportKeyText, setPgpImportKeyText, pgpImporting, pgpDeleting, onImportPgpKey, onDeletePgpKey, totp, setTotp, totpCode, setTotpCode, totpBusy, setTotpBusy, webhooks, whUrl, setWhUrl, whSecret, setWhSecret, whEvents, setWhEvents, whEnabled, setWhEnabled, whSaving, whTesting, whTestMsg, onAddWebhook, onDeleteWebhook, onToggleWebhook, onTestWebhook, smime, smimeCerts, smimeImportMode, setSmimeImportMode, smimeCertPem, setSmimeCertPem, smimeKeyPem, setSmimeKeyPem, smimeP12B64, setSmimeP12B64, smimeP12Password, setSmimeP12Password, smimeImporting, smimeKeyringEmail, setSmimeKeyringEmail, smimeKeyringCert, setSmimeKeyringCert, smimeKeyringImporting, smimeKeyringDeleting, onImportSmime, onDeleteSmime, onImportSmimeCert, onDeleteSmimeCert, accountList, accName, setAccName, accEmail, setAccEmail, accImapHost, setAccImapHost, accImapPort, setAccImapPort, accImapSecurity, setAccImapSecurity, accSmtpHost, setAccSmtpHost, accSmtpPort, setAccSmtpPort, accSmtpSecurity, setAccSmtpSecurity, accUsername, setAccUsername, accPassword, setAccPassword, accSaving, accTesting, accTestMsg, onAddAccount, onDeleteAccount, onToggleAccount, onTestAccount, delegationList, delEmail, setDelEmail, delCanSend, setDelCanSend, delFullAccess, setDelFullAccess, delSaving, onAddDelegation, onUpdateDelegation, onDeleteDelegation, davTokens, davNewToken, davTokenBusy, onCreateDavToken, onDeleteDavToken, setError, oldPw, setOldPw, newPw, setNewPw, confirmPw, setConfirmPw } = props;
+  const { t, section, profile, theme, setTheme, density, setDensity, accent, setAccent, spellcheck, setSpellcheck, readerFont, setReaderFont, paneWidth, setPaneWidth, landing, setLanding, prefs, setAi, setNotifications, displayedName, setDisplayedName, signature, setSignature, whitelist, setWhitelist, blacklist, setBlacklist, forwardEnabled, setForwardEnabled, forwardDestination, setForwardDestination, forwardKeep, setForwardKeep, replyEnabled, setReplyEnabled, replySubject, setReplySubject, replyBody, setReplyBody, replyStartdate, setReplyStartdate, replyEnddate, setReplyEnddate, spamEnabled, setSpamEnabled, spamMarkAsRead, setSpamMarkAsRead, spamThreshold, setSpamThreshold, saveSettings, savePassword, pgp, setPgp, generating, setGenerating, copied, setCopied, pgpKeys, pgpImportEmail, setPgpImportEmail, pgpImportKeyText, setPgpImportKeyText, pgpImporting, pgpDeleting, onImportPgpKey, onDeletePgpKey, totp, setTotp, totpCode, setTotpCode, totpBusy, setTotpBusy, webhooks, whUrl, setWhUrl, whSecret, setWhSecret, whEvents, setWhEvents, whEnabled, setWhEnabled, whSaving, whTesting, whTestMsg, onAddWebhook, onDeleteWebhook, onToggleWebhook, onTestWebhook, smime, smimeCerts, smimeImportMode, setSmimeImportMode, smimeCertPem, setSmimeCertPem, smimeKeyPem, setSmimeKeyPem, smimeP12B64, setSmimeP12B64, smimeP12Password, setSmimeP12Password, smimeImporting, smimeKeyringEmail, setSmimeKeyringEmail, smimeKeyringCert, setSmimeKeyringCert, smimeKeyringImporting, smimeKeyringDeleting, onImportSmime, onDeleteSmime, onImportSmimeCert, onDeleteSmimeCert, accountList, accName, setAccName, accEmail, setAccEmail, accImapHost, setAccImapHost, accImapPort, setAccImapPort, accImapSecurity, setAccImapSecurity, accSmtpHost, setAccSmtpHost, accSmtpPort, setAccSmtpPort, accSmtpSecurity, setAccSmtpSecurity, accUsername, setAccUsername, accPassword, setAccPassword, accSaving, accTesting, accTestMsg, onAddAccount, editingAccount, onStartEditAccount, onCancelEditAccount, onDeleteAccount, onToggleAccount, onTestAccount, delegationList, delEmail, setDelEmail, delCanSend, setDelCanSend, delFullAccess, setDelFullAccess, delSaving, onAddDelegation, onUpdateDelegation, onDeleteDelegation, davTokens, davNewToken, davTokenBusy, onCreateDavToken, onDeleteDavToken, setError, oldPw, setOldPw, newPw, setNewPw, confirmPw, setConfirmPw } = props;
   return (
     <div className="min-w-0 flex-1">
       {PROFILE_SECTIONS.has(section) && (
@@ -493,7 +496,16 @@ export function SettingsSections(props: SettingsSectionsProps) {
 
               {section === "accounts" && (
                 <div key={section} className="h-full space-y-5 overflow-y-auto p-5">
-                  <p className="text-sm font-medium">{t("accounts")}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      {editingAccount ? t("accountEditTitle") : t("accounts")}
+                    </p>
+                    {editingAccount && (
+                      <Button variant="ghost" size="xs" onClick={onCancelEditAccount}>
+                        {t("accountCancelEdit")}
+                      </Button>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">{t("accountIntro")}</p>
 
                   {accTestMsg && (
@@ -524,6 +536,9 @@ export function SettingsSections(props: SettingsSectionsProps) {
                           <Button variant="outline" size="sm" disabled={accTesting === a.id} onClick={() => onTestAccount(a.id)}>
                             {accTesting === a.id ? t("accountTesting") : t("accountTest")}
                           </Button>
+                          <Button variant="outline" size="sm" onClick={() => onStartEditAccount(a)}>
+                            {t("accountEdit")}
+                          </Button>
                           <Button variant="ghost" size="sm" className="text-destructive" onClick={() => onDeleteAccount(a.id)}>
                             {t("accountDelete")}
                           </Button>
@@ -533,7 +548,9 @@ export function SettingsSections(props: SettingsSectionsProps) {
                   </div>
 
                   <div className="space-y-2.5 rounded-lg border border-border p-3">
-                    <p className="text-sm font-medium">{t("accountAdd")}</p>
+                    <p className="text-sm font-medium">
+                      {editingAccount ? t("accountEditTitle") : t("accountAdd")}
+                    </p>
                     <div className="grid grid-cols-2 gap-2.5">
                       <div className="space-y-1">
                         <Label>{t("accountName")}</Label>
@@ -591,7 +608,11 @@ export function SettingsSections(props: SettingsSectionsProps) {
                       </div>
                     </div>
                     <Button disabled={accSaving} onClick={onAddAccount}>
-                      {accSaving ? t("accountSaving") : t("accountAdd")}
+                      {accSaving
+                        ? t("accountSaving")
+                        : editingAccount
+                          ? t("accountSave")
+                          : t("accountAdd")}
                     </Button>
                   </div>
                 </div>

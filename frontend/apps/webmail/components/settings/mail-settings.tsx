@@ -146,6 +146,7 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
   const [accSaving, setAccSaving] = useState(false);
   const [accTesting, setAccTesting] = useState<number | null>(null);
   const [accTestMsg, setAccTestMsg] = useState("");
+  const [editingAccount, setEditingAccount] = useState<MailAccount | null>(null);
 
   // mailbox delegation (shared mailboxes): grants I made + grants I received
   const [delegationList, setDelegationList] = useState<DelegationListing | null>(null);
@@ -389,13 +390,40 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
     }
   }
 
-  async function addAccount() {
+  function startEditAccount(a: MailAccount) {
+    setEditingAccount(a);
+    setAccName(a.name || "");
+    setAccEmail(a.email);
+    setAccImapHost(a.imap_host);
+    setAccImapPort(a.imap_port);
+    setAccImapSecurity(a.imap_security || "tls");
+    setAccSmtpHost(a.smtp_host || "");
+    setAccSmtpPort(a.smtp_port || a.imap_port);
+    setAccSmtpSecurity(a.smtp_security || a.imap_security || "starttls");
+    setAccUsername(a.username || "");
+    setAccPassword("");
+    setAccTestMsg("");
+    setError("");
+  }
+
+  function cancelEditAccount() {
+    setEditingAccount(null);
+    setAccName("");
+    setAccEmail("");
+    setAccImapHost("");
+    setAccSmtpHost("");
+    setAccUsername("");
+    setAccPassword("");
+    setAccTestMsg("");
+  }
+
+  async function saveAccount() {
     if (!accName.trim() || !accEmail.trim() || !accImapHost.trim()) return;
     setAccSaving(true);
     setError("");
     setAccTestMsg("");
     try {
-      const a = await accountCreate({
+      const base = {
         name: accName.trim(),
         email: accEmail.trim(),
         imap_host: accImapHost.trim(),
@@ -405,15 +433,16 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
         smtp_port: accSmtpPort || undefined,
         smtp_security: accSmtpSecurity,
         username: accUsername.trim(),
-        password: accPassword,
-      });
-      setAccountList((as) => [a, ...(as || [])]);
-      setAccName("");
-      setAccEmail("");
-      setAccImapHost("");
-      setAccSmtpHost("");
-      setAccUsername("");
-      setAccPassword("");
+      };
+      const a = editingAccount
+        ? await accountUpdate(editingAccount.id, { ...base, password: accPassword || undefined })
+        : await accountCreate({ ...base, password: accPassword });
+      setAccountList((as) =>
+        editingAccount
+          ? (as || []).map((x) => (x.id === a.id ? a : x))
+          : [a, ...(as || [])],
+      );
+      cancelEditAccount();
     } catch (e) {
       setError(e instanceof Error ? e.message : "account create failed");
     } finally {
@@ -701,7 +730,10 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
               accSaving={accSaving}
               accTesting={accTesting}
               accTestMsg={accTestMsg}
-              onAddAccount={addAccount}
+              onAddAccount={saveAccount}
+              editingAccount={editingAccount}
+              onStartEditAccount={startEditAccount}
+              onCancelEditAccount={cancelEditAccount}
               onDeleteAccount={removeAccount}
               onToggleAccount={toggleAccount}
               onTestAccount={testAccount}
