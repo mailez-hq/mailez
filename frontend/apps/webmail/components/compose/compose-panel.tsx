@@ -334,6 +334,12 @@ export function ComposePanel(props: ComposePanelProps) {
                 />
               </div>
             )}
+            {aiComposeBusy && !bodyText.trim() && (
+              <div className="mb-2 flex items-center gap-2 rounded-md border border-ai/30 bg-ai/5 px-3 py-2 text-xs text-ai">
+                <Loader2 className="size-3.5 shrink-0 animate-spin" />
+                <span>{t("aiComposeStreaming")}</span>
+              </div>
+            )}
             <ComposeEditor
               value={body}
               onChange={onBodyChange}
@@ -344,12 +350,6 @@ export function ComposePanel(props: ComposePanelProps) {
           </div>
           {composeError && <p className="mt-2 text-sm text-destructive">{composeError}</p>}
           {composeNotice && <p className="mt-2 text-sm text-amber-600">{composeNotice}</p>}
-          {aiComposeBusy && (
-            <div className="mt-2 flex items-center gap-2 rounded-md border border-ai/30 bg-ai/5 px-3 py-2 text-xs text-ai">
-              <Loader2 className="size-3.5 shrink-0 animate-spin" />
-              <span>{t("aiComposeStreaming")}</span>
-            </div>
-          )}
           {draftSaved && !composeError && (
             <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
               <Check className="size-3" />
