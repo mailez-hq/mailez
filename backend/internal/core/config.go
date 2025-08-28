@@ -129,11 +129,19 @@ func Load() Config {
 		LicenseFile:        env("MAILEZ_LICENSE_FILE", ""),
 		License:            env("MAILEZ_LICENSE", ""),
 		LicenseRequired:    envBool("MAILEZ_LICENSE_REQUIRED", false),
-		KVBackend:          env("MAILEZINE_STORAGE_BACKEND", ""),
 		ServiceFile:        env("MAILEZ_SERVICE_FILE", ""),
 		Service:            env("MAILEZ_SERVICE", ""),
 	}
+	// Enterprise (mailezine) defaults to the distributed stack: TiDB KV +
+	// MinIO/S3 blobs. Community (postdove) keeps Maildir/local and reports
+	// no KV. Explicit env overrides always win.
+	cfg.KVBackend = env("MAILEZINE_STORAGE_BACKEND", "")
+	if cfg.KVBackend == "" && cfg.MailEngine == "mailezine" {
+		cfg.KVBackend = "tidb"
+	}
 	if os.Getenv("MAILEZINE_S3_ENDPOINT") != "" {
+		cfg.BlobBackend = "minio"
+	} else if cfg.MailEngine == "mailezine" {
 		cfg.BlobBackend = "minio"
 	} else {
 		cfg.BlobBackend = "local"
