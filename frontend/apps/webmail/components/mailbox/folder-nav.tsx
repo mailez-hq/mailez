@@ -8,6 +8,7 @@ import {
   Ellipsis,
   HardDrive,
   BellRing,
+  House,
   ChevronDown,
   ChevronRight,
   ChevronsUpDown,
@@ -34,6 +35,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import type { MailAccount, MailDelegation } from "@/lib/api";
 import {
@@ -167,6 +169,8 @@ export function FolderNav({
   onClose: () => void;
 }) {
   const t = useTranslations("mail");
+  const pathname = usePathname();
+  const onHome = pathname?.startsWith("/home") ?? false;
   const folderTree = buildFolderTree(folders);
   const [dialog, setDialog] = useState<FolderDialog | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -412,11 +416,11 @@ export function FolderNav({
         )}
       >
         <div className="flex h-12 items-center justify-between px-3">
-          {/* Logo navigates straight into the mailbox instead of "/" (the
+          {/* Logo navigates straight into the workspace instead of "/" (the
               sign-in route), so clicking it never flashes the login page or
               re-runs the auth check. */}
           <Link
-            href="/mail/Inbox"
+            href="/home"
             onClick={onClose}
             className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-foreground hover:opacity-80"
           >
@@ -522,6 +526,19 @@ export function FolderNav({
         </div>
 
         <nav className="mail-scroll flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
+          <Link
+            href="/home"
+            onClick={onClose}
+            className={cn(
+              "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
+              onHome
+                ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+            )}
+          >
+            <House className="size-4 shrink-0 opacity-70" />
+            {t("workspace")}
+          </Link>
           <div className="flex items-center justify-between pr-1">
             <p className="px-2.5 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
               {t("folders")}

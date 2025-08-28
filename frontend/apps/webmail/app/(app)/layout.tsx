@@ -2,15 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MailView } from "@/components/mailbox/mail-view";
+import { MailShell } from "@/components/mailbox/mail-shell";
 import { MailStoreProvider } from "@/components/mailbox/mail-store";
 import { me, type Me } from "@/lib/api";
 import { readLastFolder } from "@/lib/preferences";
 
-// MailLayout guards the /mail area and keeps MailView mounted across folder /
-// message transitions so the message list never rebuilds or flashes. The URL
-// is the single source for folder & opened uid — MailView reads usePathname.
-export default function MailLayout({ children }: { children: React.ReactNode }) {
+// AppLayout guards the signed-in area — the /home workspace and the /mail
+// segment alike — and keeps the MailStoreProvider + MailShell chrome mounted
+// across transitions, so the sidebar, drawers and compose state survive
+// navigation between home and mail.
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
@@ -20,9 +21,9 @@ export default function MailLayout({ children }: { children: React.ReactNode }) 
       .then((u) => {
         setUser(u);
         // A bare /mail visit restores the last-visited folder (or the inbox);
-        // explicit /mail/[folder] deep links are left untouched.
+        // explicit /mail/[folder] deep links and /home are left untouched.
         const segs = window.location.pathname.split("/").filter(Boolean);
-        if (segs.length <= 1) {
+        if (segs.length === 1 && segs[0] === "mail") {
           const last = readLastFolder();
           router.replace(last ? `/mail/${encodeURIComponent(last)}` : "/mail/Inbox");
         }
@@ -46,13 +47,12 @@ export default function MailLayout({ children }: { children: React.ReactNode }) 
 
   if (!user) return null;
 
-  // children hold the leaf route (folder / message) pages, which are kept as
-  // thin stubs; MailView renders the full three-pane UI driven by the URL and
-  // stays mounted so the message list never rebuilds. MailStoreProvider owns
-  // all mailbox state while MailView stays a thin presentational shell.
+  // children hold the segment content: the workspace dashboard on /home and
+  // MailView (via the /mail layout) on /mail. MailStoreProvider owns all
+  // mailbox state while the segments stay thin presentational layers.
   return (
     <MailStoreProvider me={user}>
-      <MailView />
+      <MailShell>{children}</MailShell>
     </MailStoreProvider>
   );
 }
