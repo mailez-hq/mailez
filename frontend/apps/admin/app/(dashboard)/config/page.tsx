@@ -13,11 +13,12 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
-  exportConfig, getAIConfig, getLDAPConfig, importConfig, putAIConfig, putLDAPConfig, syncLDAP, testLDAP,
-  type ConfigBackup, type ConfigStats,
+  exportConfig, getAIConfig, getBranding, getLDAPConfig, importConfig,
+  putAIConfig, putBranding, putLDAPConfig, syncLDAP, testLDAP,
+  type BrandingConfigView, type ConfigBackup, type ConfigStats,
 } from "@/lib/api";
 
-type ConfigTab = "backup" | "ai" | "ldap";
+type ConfigTab = "backup" | "branding" | "ai" | "ldap";
 
 export default function ConfigPage() {
   const t = useTranslations("config");
@@ -29,6 +30,13 @@ export default function ConfigPage() {
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupError, setBackupError] = useState("");
   const [backupMessage, setBackupMessage] = useState("");
+  const [branding, setBranding] = useState({
+    title: "", subtitle: "", tagline: "", feature1: "", feature2: "", feature3: "",
+    logo_url: "", hero_url: "", copyright: "",
+  });
+  const [brandingBusy, setBrandingBusy] = useState(false);
+  const [brandingError, setBrandingError] = useState("");
+  const [brandingMessage, setBrandingMessage] = useState("");
   const [aiEnabled, setAiEnabled] = useState(false);
   const [aiBaseUrl, setAiBaseUrl] = useState("");
   const [aiApiKey, setAiApiKey] = useState("");
@@ -51,6 +59,13 @@ export default function ConfigPage() {
   const [ldapMessage, setLdapMessage] = useState("");
 
   useEffect(() => {
+    getBranding()
+      .then((b) => setBranding({
+        title: b.title || "", subtitle: b.subtitle || "", tagline: b.tagline || "",
+        feature1: b.feature1 || "", feature2: b.feature2 || "", feature3: b.feature3 || "",
+        logo_url: b.logo_url || "", hero_url: b.hero_url || "", copyright: b.copyright || "",
+      }))
+      .catch(() => {});
     getAIConfig()
       .then((c) => {
         setAiEnabled(c.enabled);
@@ -98,6 +113,24 @@ export default function ConfigPage() {
       }));
     } catch (e) {
       setBackupError(e instanceof Error ? e.message : "export failed");
+    }
+  }
+
+  async function onSaveBranding() {
+    setBrandingError(""); setBrandingMessage("");
+    setBrandingBusy(true);
+    try {
+      const saved: BrandingConfigView = await putBranding(branding);
+      setBranding({
+        title: saved.title || "", subtitle: saved.subtitle || "", tagline: saved.tagline || "",
+        feature1: saved.feature1 || "", feature2: saved.feature2 || "", feature3: saved.feature3 || "",
+        logo_url: saved.logo_url || "", hero_url: saved.hero_url || "", copyright: saved.copyright || "",
+      });
+      setBrandingMessage(t("brandingSaved"));
+    } catch (e) {
+      setBrandingError(e instanceof Error ? e.message : t("brandingFailed"));
+    } finally {
+      setBrandingBusy(false);
     }
   }
 
@@ -202,6 +235,7 @@ export default function ConfigPage() {
 
   const tabs: { key: ConfigTab; label: string }[] = [
     { key: "backup", label: t("backup") },
+    { key: "branding", label: t("branding") },
     { key: "ai", label: t("ai") },
     { key: "ldap", label: t("ldap") },
   ];
@@ -258,6 +292,97 @@ export default function ConfigPage() {
             </div>
             {backupError && <p className="text-sm text-red-600">{backupError}</p>}
             {backupMessage && <p className="text-sm text-green-600">{backupMessage}</p>}
+          </CardContent>
+        </Card>
+      )}
+
+      {tab === "branding" && (
+        <Card className="max-w-xl">
+          <CardHeader>
+            <CardTitle className="text-base">{t("branding")}</CardTitle>
+            <CardDescription>{t("brandingHint")}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="branding-title">{t("brandingTitle")}</Label>
+                <Input
+                  id="branding-title"
+                  value={branding.title}
+                  onChange={(e) => setBranding((b) => ({ ...b, title: e.target.value }))}
+                  placeholder="Mailez"
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="branding-subtitle">{t("brandingSubtitle")}</Label>
+                <Input
+                  id="branding-subtitle"
+                  value={branding.subtitle}
+                  onChange={(e) => setBranding((b) => ({ ...b, subtitle: e.target.value }))}
+                  placeholder={t("brandingSubtitlePlaceholder")}
+                />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="branding-tagline">{t("brandingTagline")}</Label>
+              <Input
+                id="branding-tagline"
+                value={branding.tagline}
+                onChange={(e) => setBranding((b) => ({ ...b, tagline: e.target.value }))}
+                placeholder={t("brandingTaglinePlaceholder")}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {([
+                ["feature1", t("brandingFeature1")],
+                ["feature2", t("brandingFeature2")],
+                ["feature3", t("brandingFeature3")],
+              ] as const).map(([key, label]) => (
+                <div key={key} className="grid gap-1.5">
+                  <Label htmlFor={`branding-${key}`}>{label}</Label>
+                  <Input
+                    id={`branding-${key}`}
+                    value={branding[key]}
+                    onChange={(e) => setBranding((b) => ({ ...b, [key]: e.target.value }))}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="branding-logo">{t("brandingLogoUrl")}</Label>
+                <Input
+                  id="branding-logo"
+                  value={branding.logo_url}
+                  onChange={(e) => setBranding((b) => ({ ...b, logo_url: e.target.value }))}
+                  placeholder="https://example.com/logo.png"
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="branding-hero">{t("brandingHeroUrl")}</Label>
+                <Input
+                  id="branding-hero"
+                  value={branding.hero_url}
+                  onChange={(e) => setBranding((b) => ({ ...b, hero_url: e.target.value }))}
+                  placeholder="https://example.com/banner.jpg"
+                />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="branding-copyright">{t("brandingCopyright")}</Label>
+              <Input
+                id="branding-copyright"
+                value={branding.copyright}
+                onChange={(e) => setBranding((b) => ({ ...b, copyright: e.target.value }))}
+                placeholder="Copyright © example.com, All Rights Reserved"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">{t("brandingPreviewHint")}</p>
+            <div className="flex items-center gap-2">
+              <Button onClick={onSaveBranding} disabled={brandingBusy}>{t("brandingSave")}</Button>
+              {brandingError && <p className="text-sm text-red-600">{brandingError}</p>}
+              {brandingMessage && <p className="text-sm text-green-600">{brandingMessage}</p>}
+            </div>
           </CardContent>
         </Card>
       )}

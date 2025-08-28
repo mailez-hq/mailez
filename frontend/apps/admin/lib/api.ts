@@ -198,6 +198,26 @@ export const exportConfig = () => api<ConfigBackup>("/config/export");
 export const importConfig = (data: ConfigBackup) =>
   apiPost<ConfigStats>("/config/import", data);
 
+// Login-page branding (top-left logo, left hero image, copy) customized by
+// the enterprise. Empty fields fall back to the built-in Mailez brand.
+export type BrandingConfigView = {
+  title: string;
+  subtitle: string;
+  tagline: string;
+  feature1: string;
+  feature2: string;
+  feature3: string;
+  logo_url: string;
+  hero_url: string;
+  copyright: string;
+  updated_at?: string;
+};
+
+export const getBranding = () => api<BrandingConfigView>("/branding");
+
+export const putBranding = (data: Partial<BrandingConfigView>) =>
+  apiPut<BrandingConfigView>("/branding", data);
+
 // AI provider settings (admin console)
 export interface AiConfigView {
   enabled: boolean;

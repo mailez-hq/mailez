@@ -2,7 +2,8 @@
   "login": {
     "title": "Mailez 网页邮箱",
     "description": "登录以阅读邮件",
-    "tagline": "安全、稳定、高效的企业邮箱",
+  "tagline": "安全、稳定、高效的企业邮箱",
+  "subtitle": "电子邮件系统",
     "featSecurity": "双重验证，账号更安全",
     "featWorkspace": "全新工作台，邮件与日程一目了然",
     "featAnywhere": "多端同步，随时随地处理邮件",
