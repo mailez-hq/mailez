@@ -322,6 +322,16 @@ var migrations = []migration{
 			return db.AutoMigrate(&AiConfig{})
 		},
 	},
+	{
+		// Outbox worker Sent-copy credential: per-user encrypted app token
+		// that the send-undo/scheduled worker uses to APPEND delivered mail
+		// into the sender's Sent folder. Existing databases predate the
+		// initial AutoMigrate so the table needs its own migration.
+		ID: "20260829_outbox_worker_token",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&WorkerToken{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

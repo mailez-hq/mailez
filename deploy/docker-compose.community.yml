@@ -83,7 +83,7 @@ services:
       - REDIS_ADDR=redis:6379
       - MAILEZ_HOSTNAME=mail.example.com
       - MAILEZ_DOMAIN=example.com
-      - MAILEZ_SUBNET=192.168.206.0/24
+      - MAILEZ_SUBNET=${MAILEZ_SUBNET:-192.168.206.0/24}
       - MAILEZ_RECIPIENT_DELIMITER=+
       - MAILEZ_MESSAGE_RATELIMIT=200
       - MAILEZ_DKIM_SELECTOR=dkim
@@ -181,9 +181,6 @@ services:
     pull_policy: missing
     restart: always
     env_file: mailez.env
-    networks:
-      default:
-        ipv4_address: 192.168.206.254
 
 networks:
   default:
@@ -191,7 +188,7 @@ networks:
     ipam:
       driver: default
       config:
-        - subnet: 192.168.206.0/24
+        - subnet: ${MAILEZ_SUBNET:-192.168.206.0/24}
   no-egress:
     driver: bridge
     internal: true

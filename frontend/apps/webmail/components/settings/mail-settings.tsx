@@ -58,7 +58,8 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
   const {
     theme, setTheme, density, setDensity, accent, setAccent,
     spellcheck, setSpellcheck, readerFont, setReaderFont, paneWidth, setPaneWidth,
-    conversation, setConversation, autoSignature, setAutoSignature, landing, setLanding,
+    conversation, setConversation, autoSignature, setAutoSignature,
+    collapseReplyQuote, setCollapseReplyQuote, landing, setLanding,
     prefs, setAi, setNotifications,
   } = usePreferences();
   const [profile, setProfile] = useState<MeSettings | null>(null);
@@ -563,7 +564,10 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-0 sm:max-w-3xl">
+      {/* Fixed height (not max-h): tabs have different content heights and the
+          centered popup would resize/reposition on every switch, making the
+          whole window jump. Content scrolls inside the flex row instead. */}
+      <DialogContent className="flex h-[85vh] flex-col overflow-hidden p-0 sm:max-w-3xl">
         <DialogHeader className="shrink-0 border-b px-5 py-4">
           <DialogTitle>{t("title")}</DialogTitle>
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -613,6 +617,8 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
               setConversation={setConversation}
               autoSignature={autoSignature}
               setAutoSignature={setAutoSignature}
+              collapseReplyQuote={collapseReplyQuote}
+              setCollapseReplyQuote={setCollapseReplyQuote}
               landing={landing}
               setLanding={setLanding}
               prefs={prefs}

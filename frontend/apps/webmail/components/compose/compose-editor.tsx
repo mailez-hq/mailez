@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { quoteBlockText } from "@/components/mailbox/mail-utils";
+import { CollapsibleBlockquote } from "./collapsible-blockquote";
 
 // Font size rides on TextStyle so it survives serialization as inline style.
 const FontSize = TextStyle.extend({
@@ -96,7 +98,9 @@ export function ComposeEditor({
       StarterKit.configure({
         heading: {levels: [2, 3]},
         link: {openOnClick: false},
+        blockquote: false,
       }),
+      CollapsibleBlockquote,
       Placeholder.configure({placeholder}),
       FontSize,
       FontFamily,
@@ -118,7 +122,19 @@ export function ComposeEditor({
         return;
       }
       const html = editor.isEmpty ? "" : editor.getHTML();
-      onChange(html, editor.getText() || "");
+      // Quotes must serialize as "> " lines (see serializeBlockquote); the
+      // default block text separator would otherwise inject extra blank
+      // lines into every reply and grow them across reply chains.
+      onChange(
+        html,
+        editor.getText({
+          textSerializers: {
+            // textBetween (not textContent) so hard breaks inside the quote
+            // stay single newlines instead of vanishing.
+            blockquote: ({ node }) => quoteBlockText(node),
+          },
+        }) || "",
+      );
     },
   });
 
@@ -142,9 +158,13 @@ export function ComposeEditor({
   useEffect(() => {
     if (!editor || !autoFocus) return;
     const t = setTimeout(() => {
-      const html = editor.isEmpty ? "" : editor.getHTML();
-      if (html && !/^<p><br>\s*<\/p>/.test(html)) {
-        editor.commands.insertContentAt(0, "<p><br></p>", { updateSelection: true });
+      const first = editor.state.doc.firstChild;
+      // A textblock with no content renders as a single blank line. Inserting
+      // "<p><br></p>" would parse the <br> as a hard break and show TWO blank
+      // lines, so insert an empty paragraph node instead.
+      const startsEmpty = !!first && first.isTextblock && first.content.size === 0;
+      if (!startsEmpty) {
+        editor.commands.insertContentAt(0, {type: "paragraph"}, {updateSelection: true});
       }
       editor.commands.focus("start");
     }, 60);
