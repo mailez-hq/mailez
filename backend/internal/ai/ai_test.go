@@ -119,6 +119,24 @@ func TestSmartRepliesDisabled(t *testing.T) {
 	}
 }
 
+func TestDraftNewWritesFromSubjectAndHint(t *testing.T) {
+	m := &Manager{envFallback: fakeProvider{out: "确认参加，明天见。"}}
+	draft, err := m.DraftNew(context.Background(), ToneFormal, "会议确认", "确认参加，并说明会提前到场")
+	if err != nil {
+		t.Fatalf("draft new: %v", err)
+	}
+	if draft != "确认参加，明天见。" {
+		t.Fatalf("draft = %q", draft)
+	}
+}
+
+func TestDraftNewDisabled(t *testing.T) {
+	m := &Manager{}
+	if _, err := m.DraftNew(context.Background(), ToneConcise, "主题", ""); err != ErrDisabled {
+		t.Fatalf("expected ErrDisabled, got %v", err)
+	}
+}
+
 func TestLoadPrefersDefaultEnabledProvider(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "ai.db")), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{SingularTable: true},

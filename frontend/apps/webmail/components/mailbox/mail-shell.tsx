@@ -103,6 +103,9 @@ export function MailShell({ children }: { children: React.ReactNode }) {
     setDraftTone,
     drafting,
     aiDraftReply,
+    hasReplyTarget,
+    aiDraftHint,
+    setAiDraftHint,
     prefs,
     setUndoSend,
     scheduleAt,
@@ -274,8 +277,10 @@ export function MailShell({ children }: { children: React.ReactNode }) {
           spellcheck={prefs.spellcheck}
           draftTone={draftTone}
           onDraftTone={setDraftTone}
-          aiDraftEnabled={aiDraftReply !== undefined && true && prefs !== undefined ? true : true}
-          hasReplyTarget={false}
+          aiDraftEnabled={ai.draft}
+          hasReplyTarget={hasReplyTarget}
+          aiDraftHint={aiDraftHint}
+          onAiDraftHint={setAiDraftHint}
           drafting={drafting}
           onAiDraft={aiDraftReply}
           undoSendSeconds={prefs.undoSendSeconds}
