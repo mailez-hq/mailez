@@ -1,6 +1,9 @@
 package ai
 
 import (
+	"bufio"
+	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -32,6 +35,7 @@ func (h *Handler) registerAI(r fiber.Router) {
 	r.Post("/ai/summarize", h.aiSummarize)
 	r.Post("/ai/draft", h.aiDraft)
 	r.Post("/ai/compose", h.aiCompose)
+	r.Post("/ai/compose/stream", h.aiComposeStream)
 	r.Post("/ai/prioritize", h.aiPrioritize)
 	r.Post("/ai/search", h.aiSearch)
 	r.Post("/ai/translate", h.aiTranslate)
@@ -62,6 +66,48 @@ func (h *Handler) aiCompose(c *fiber.Ctx) error {
 		return core.Fail(c, 502, err, "mail service error")
 	}
 	return c.JSON(draft)
+}
+
+// aiComposeStream is the streaming variant of aiCompose: the compose panel
+// opens immediately and the generated recipients/subject/body arrive as SSE
+// events while the model is still writing.
+// @Summary Stream compose email from instruction
+// @Tags ai
+// @Accept json
+// @Produce text/event-stream
+// @Router /ai/compose/stream [post]
+func (h *Handler) aiComposeStream(c *fiber.Ctx) error {
+	if !h.AI.Enabled() {
+		return c.Status(400).JSON(fiber.Map{"error": "ai is disabled"})
+	}
+	var in struct {
+		Instruction string `json:"instruction"`
+	}
+	if err := c.BodyParser(&in); err != nil || strings.TrimSpace(in.Instruction) == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "instruction is required"})
+	}
+
+	c.Set("Content-Type", "text/event-stream")
+	c.Set("Cache-Control", "no-cache")
+	c.Set("X-Accel-Buffering", "no")
+	c.Set("Connection", "keep-alive")
+
+	instruction := in.Instruction
+	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
+		write := func(ev ComposeEvent) {
+			b, err := json.Marshal(ev)
+			if err != nil {
+				return
+			}
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", b)
+			_ = w.Flush()
+		}
+		if err := h.AI.ComposeStream(c.UserContext(), instruction, write); err != nil {
+			write(ComposeEvent{Type: "error", Text: err.Error()})
+		}
+		write(ComposeEvent{Type: "done"})
+	})
+	return nil
 }
 
 // aiReplies returns short ready-to-send reply suggestions (Smart Reply).

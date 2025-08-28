@@ -719,6 +719,54 @@ export const aiComposeDraft = (instruction: string) =>
     body: JSON.stringify({ instruction }),
   });
 
+export type AiComposeEvent = { type: "to" | "subject" | "body" | "error" | "done"; text?: string };
+
+// aiComposeStream opens the streaming compose endpoint and invokes onEvent
+// for every SSE payload as the model writes.
+export async function aiComposeStream(
+  instruction: string,
+  onEvent: (ev: AiComposeEvent) => void,
+): Promise<void> {
+  const res = await fetch(`${API}/ai/compose/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ instruction }),
+  });
+  if (!res.ok || !res.body) {
+    let msg = res.statusText;
+    try {
+      const body = await res.text();
+      if (body) msg = body;
+    } catch {
+      // keep statusText
+    }
+    throw new Error(msg);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buf.indexOf("\n\n")) >= 0) {
+      const chunk = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      for (const line of chunk.split("\n")) {
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (!payload) continue;
+        try {
+          onEvent(JSON.parse(payload) as AiComposeEvent);
+        } catch {
+          // ignore malformed frames
+        }
+      }
+    }
+  }
+}
+
 export const aiPrioritize = (messages: { uid: number; subject: string; from: string }[]) =>
   api<{ scores: Record<string, number>; categories?: Record<string, string> }>("/ai/prioritize", {
     method: "POST",

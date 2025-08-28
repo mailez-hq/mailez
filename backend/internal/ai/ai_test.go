@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/glebarez/sqlite"
@@ -17,6 +18,10 @@ type fakeProvider struct{ out string }
 func (f fakeProvider) Name() string { return "fake" }
 func (f fakeProvider) Chat(_ context.Context, _, _ string) (string, error) {
 	return f.out, nil
+}
+func (f fakeProvider) ChatStream(_ context.Context, _, _ string, onDelta func(string)) error {
+	onDelta(f.out)
+	return nil
 }
 
 func TestPrioritizeParsesScores(t *testing.T) {
@@ -162,6 +167,37 @@ func TestComposeFromInstructionToleratesFences(t *testing.T) {
 func TestComposeFromInstructionDisabled(t *testing.T) {
 	m := &Manager{}
 	if _, err := m.ComposeFromInstruction(context.Background(), "给小明写封邮件"); err != ErrDisabled {
+		t.Fatalf("expected ErrDisabled, got %v", err)
+	}
+}
+
+func TestComposeStreamEmitsToSubjectBody(t *testing.T) {
+	m := &Manager{envFallback: fakeProvider{out: "TO: 小明\nSUBJECT: 关于下周旅游的取消\nBODY: 小明，你好！\n下周我有事，去不了了。"}}
+	var events []ComposeEvent
+	if err := m.ComposeStream(context.Background(), "给小明写封邮件", func(ev ComposeEvent) {
+		events = append(events, ev)
+	}); err != nil {
+		t.Fatalf("compose stream: %v", err)
+	}
+	var to, subject, body string
+	for _, ev := range events {
+		switch ev.Type {
+		case "to":
+			to += ev.Text
+		case "subject":
+			subject += ev.Text
+		case "body":
+			body += ev.Text
+		}
+	}
+	if to != "小明" || subject != "关于下周旅游的取消" || !strings.Contains(body, "下周我有事") {
+		t.Fatalf("events = %+v", events)
+	}
+}
+
+func TestComposeStreamDisabled(t *testing.T) {
+	m := &Manager{}
+	if err := m.ComposeStream(context.Background(), "x", func(ComposeEvent) {}); err != ErrDisabled {
 		t.Fatalf("expected ErrDisabled, got %v", err)
 	}
 }
