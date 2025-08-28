@@ -11,11 +11,10 @@ import {
   Inbox,
   ListTodo,
   Megaphone,
-  PenLine,
+  ShieldCheck,
   Sparkles,
   Users,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMailStore } from "@/components/mailbox/mail-store";
 import {
@@ -96,13 +95,14 @@ export default function WorkspacePage() {
   const t = useTranslations("home");
   const locale = useLocale();
   const router = useRouter();
-  const { me, unseen, openCompose, setContactsOpen, setCalendarOpen, openSnoozed } = useMailStore();
+  const { me, unseen, setContactsOpen, setCalendarOpen, openSnoozed } = useMailStore();
   const [todoCount, setTodoCount] = useState(0);
   const [contactCount, setContactCount] = useState(0);
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
   const [files, setFiles] = useState<DriveEntry[] | null>(null);
   // "loading" | null (none active) | the published announcement.
   const [announcement, setAnnouncement] = useState<MailAnnouncement | null | "loading">("loading");
+  const [logins, setLogins] = useState<RecentLogin[] | null>(null);
 
   useEffect(() => {
     mailSnoozed()
@@ -156,11 +156,11 @@ export default function WorkspacePage() {
 
   return (
     <div className="h-full overflow-y-auto bg-[radial-gradient(ellipse_at_top,rgba(46,133,85,0.07),transparent_55%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(37,194,160,0.08),transparent_55%)]">
-      <div className="mx-auto w-full max-w-6xl space-y-6 p-6">
+      <div className="w-full space-y-6 p-6">
         {/* Greeting banner */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background ring-1 ring-foreground/5">
           <Sparkles className="pointer-events-none absolute -right-4 -top-4 size-32 text-primary/10" />
-          <div className="flex flex-wrap items-center justify-between gap-4 p-6">
+          <div className="flex flex-wrap items-center gap-4 p-6">
             <div className="flex min-w-0 items-center gap-4">
               <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-lg font-bold text-primary-foreground shadow-sm">
                 {initial}
@@ -171,16 +171,6 @@ export default function WorkspacePage() {
                 </h1>
                 <p className="mt-0.5 text-sm text-muted-foreground">{dateLine}</p>
               </div>
-            </div>
-            <div className="flex shrink-0 gap-2">
-              <Button onClick={() => openCompose()}>
-                <PenLine className="size-4" />
-                {t("compose")}
-              </Button>
-              <Button variant="outline" onClick={() => router.push("/mail/Inbox")}>
-                <Inbox className="size-4" />
-                {t("openMailbox")}
-              </Button>
             </div>
           </div>
         </div>
@@ -219,9 +209,9 @@ export default function WorkspacePage() {
         </div>
 
         {/* Info cards */}
-        <div className="grid gap-4 lg:grid-cols-4">
+        <div className="grid gap-4 lg:grid-cols-2">
           {/* Announcement */}
-          <Card className="lg:col-span-2">
+          <Card>
             <CardHeader className="flex flex-row items-center gap-2 pb-2">
               <CardIcon icon={Megaphone} />
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -280,7 +270,7 @@ export default function WorkspacePage() {
           )}
 
           {/* Today's schedule */}
-          <Card className={quota ? "" : "lg:col-span-3"}>
+          <Card>
             <CardHeader className="flex flex-row items-center gap-2 pb-2">
               <CardIcon icon={CalendarDays} />
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -317,7 +307,7 @@ export default function WorkspacePage() {
           </Card>
 
           {/* Recent files */}
-          <Card className="lg:col-span-4">
+          <Card>
             <CardHeader className="flex flex-row items-center gap-2 pb-2">
               <CardIcon icon={FileText} />
               <CardTitle className="text-sm font-medium text-muted-foreground">
