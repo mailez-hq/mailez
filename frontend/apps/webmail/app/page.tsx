@@ -276,8 +276,8 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Bottom bar: copyright + contact */}
-      <footer className="flex flex-col items-center gap-1 border-t border-border/60 px-5 py-4 text-center text-xs text-muted-foreground md:flex-row md:justify-between md:px-10 md:text-left">
+      {/* Bottom bar: centered copyright + contact */}
+      <footer className="flex flex-col items-center gap-1 border-t border-border/60 px-5 py-4 text-center text-xs text-muted-foreground">
         <p>{brand.copyright?.trim() || `© ${new Date().getFullYear()} Mailez`}</p>
         {brand.contact?.trim() && <p>{brand.contact.trim()}</p>}
       </footer>
