@@ -1,7 +1,14 @@
 // Package license implements offline signed licensing for the Mailez
 // enterprise edition. A license is a signed payload (Ed25519) issued by
 // Mailez HQ that carries the edition, the licensed mailbox count (用户数)
-// and the expiry; the vendor public key is embedded in the binary.
+// and the annual service end date; the vendor public key is embedded in the
+// binary.
+//
+// Business model: the software usage right is PERPETUAL — the mailbox cap is
+// enforced forever. The service (support + version upgrades) is billed
+// annually; the service end date only gates support/upgrade entitlement and
+// is surfaced to the admin console. An expired service never stops the
+// system or blocks mailbox creation within the licensed cap.
 //
 // Without a license the system runs in the built-in dev edition (unlimited),
 // so open-source builds and local development keep working untouched. When a
@@ -30,7 +37,9 @@ const (
 	EditionEnterprise = "enterprise"
 )
 
-// License is the signed payload carried by a license file.
+// License is the signed payload carried by a license file. ExpiresAt is the
+// annual SERVICE end date (support/upgrades), not a usage expiry: the
+// perpetual usage right and the mailbox cap stay valid after it passes.
 type License struct {
 	Version      int      `json:"v"`
 	Edition      string   `json:"edition"`
@@ -158,9 +167,10 @@ func (m *Manager) ExpiresAt() (time.Time, error) {
 // IsEnterprise reports whether the loaded license is the paid edition.
 func (m *Manager) IsEnterprise() bool { return m.lic.Edition == EditionEnterprise }
 
-// IsExpired reports whether the license is past its expiry (dev never
-// expires).
-func (m *Manager) IsExpired(now time.Time) bool {
+// ServiceExpired reports whether the annual service (support/upgrades) is
+// past its end date. The dev edition never expires. A true result does not
+// stop the system — the perpetual usage right remains.
+func (m *Manager) ServiceExpired(now time.Time) bool {
 	if m.lic.Edition != EditionEnterprise || m.lic.ExpiresAt == "" {
 		return false
 	}
@@ -169,14 +179,12 @@ func (m *Manager) IsExpired(now time.Time) bool {
 }
 
 // CheckCapacity verifies the license allows creating one more mailbox.
-// Enterprise licenses are capped by MaxMailboxes; the dev edition and
-// unlimited licenses pass. Expired licenses are refused.
+// Enterprise licenses are capped by MaxMailboxes (perpetual); the dev
+// edition and unlimited licenses pass. Service expiry never blocks
+// provisioning within the licensed cap.
 func (m *Manager) CheckCapacity(db *gorm.DB) error {
 	if !m.IsEnterprise() {
 		return nil
-	}
-	if m.IsExpired(time.Now()) {
-		return fmt.Errorf("license expired %s", m.lic.ExpiresAt)
 	}
 	if m.lic.MaxMailboxes <= 0 {
 		return nil // 0 = unlimited
@@ -197,8 +205,11 @@ type Status struct {
 	Licensee     string   `json:"licensee,omitempty"`
 	MaxMailboxes int      `json:"max_mailboxes"`
 	Used         int64    `json:"used"`
+	// ExpiresAt is the annual service end date (support/upgrades). The
+	// perpetual usage right is unaffected after it passes.
 	ExpiresAt    string   `json:"expires_at,omitempty"`
-	Valid        bool     `json:"valid"`
+	Valid        bool     `json:"valid"` // license signature/edition valid
+	ServiceValid bool     `json:"service_valid"`
 	Features     []string `json:"features,omitempty"`
 	Required     bool     `json:"required"`
 }
@@ -213,7 +224,8 @@ func (m *Manager) Status(db *gorm.DB) Status {
 		ExpiresAt:    m.lic.ExpiresAt,
 		Features:     m.lic.Features,
 		Required:     m.required,
-		Valid:        !m.IsExpired(time.Now()),
+		Valid:        true,
+		ServiceValid: !m.ServiceExpired(time.Now()),
 	}
 	if st.MaxMailboxes > 0 {
 		_ = db.Model(&models.User{}).Count(&st.Used)

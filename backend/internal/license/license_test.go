@@ -81,17 +81,23 @@ func TestTamperedPayloadRejected(t *testing.T) {
 	}
 }
 
-func TestExpired(t *testing.T) {
+func TestServiceExpiryDoesNotBlockUsage(t *testing.T) {
 	env := mustEnvelope(t, enterprise(100, time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)))
 	m, err := Load("", env, true)
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if !m.IsExpired(time.Now()) {
-		t.Fatal("expired license reported valid")
+	if !m.ServiceExpired(time.Now()) {
+		t.Fatal("service should be reported expired")
 	}
-	if err := m.CheckCapacity(testDB(t)); err == nil {
-		t.Fatal("expired license passed capacity check")
+	// Perpetual usage right: the mailbox cap still applies and provisioning
+	// inside the cap must be allowed even with an expired service.
+	if err := m.CheckCapacity(testDB(t)); err != nil {
+		t.Fatalf("service-expired license must not block capacity: %v", err)
+	}
+	st := m.Status(testDB(t))
+	if st.Valid != true || st.ServiceValid != false {
+		t.Fatalf("expected valid usage + expired service, got %+v", st)
 	}
 }
 
@@ -152,7 +158,7 @@ func TestStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 	st := m.Status(testDB(t, "a@x", "b@x"))
-	if st.MaxMailboxes != 3 || st.Used != 2 || !st.Valid || !st.Required {
+	if st.MaxMailboxes != 3 || st.Used != 2 || !st.Valid || !st.ServiceValid || !st.Required {
 		t.Fatalf("unexpected status: %+v", st)
 	}
 }

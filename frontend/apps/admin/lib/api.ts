@@ -69,6 +69,7 @@ export type AdminOverview = {
     used: number;
     expires_at?: string;
     valid: boolean;
+    service_valid: boolean;
     required: boolean;
     features?: string[];
   };
