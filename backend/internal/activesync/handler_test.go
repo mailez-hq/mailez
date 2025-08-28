@@ -22,6 +22,7 @@ import (
 	"gorm.io/gorm/schema"
 
 	"mailez/backend/internal/auth"
+	"mailez/backend/internal/authcache"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/mail"
@@ -360,7 +361,7 @@ func newTestService(t *testing.T) (*fiber.App, *fakeEASGateway, *gorm.DB) {
 	mgr := auth.NewManager(db, auth.NewMemoryStore(), "mailez_session", time.Hour)
 	cfg := core.Config{SecretKey: "test-secret", Domain: "example.com", Hostname: "mail.example.com"}
 	gw := newFakeGateway()
-	svc := New(db, mgr, cfg, gw)
+	svc := New(db, mgr, cfg, gw, authcache.New(0))
 	app := fiber.New(fiber.Config{DisableStartupMessage: true})
 	svc.Register(app)
 	return app, gw, db
