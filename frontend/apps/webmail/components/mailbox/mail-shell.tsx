@@ -107,15 +107,8 @@ export function MailShell({ children }: { children: React.ReactNode }) {
     loadContactsOnce,
     fileInputRef,
     toInputRef,
-    draftTone,
-    setDraftTone,
-    drafting,
-    aiDraftReply,
     aiComposeBusy,
     aiCompose,
-    hasReplyTarget,
-    aiDraftHint,
-    setAiDraftHint,
     prefs,
     setUndoSend,
     scheduleAt,
@@ -292,16 +285,7 @@ export function MailShell({ children }: { children: React.ReactNode }) {
           fileInputRef={fileInputRef}
           toInputRef={toInputRef}
           spellcheck={prefs.spellcheck}
-          draftTone={draftTone}
-          onDraftTone={setDraftTone}
-          aiDraftEnabled={ai.draft}
-          hasReplyTarget={hasReplyTarget}
-          aiDraftHint={aiDraftHint}
-          onAiDraftHint={setAiDraftHint}
           aiComposeBusy={aiComposeBusy}
-          onAiCompose={aiCompose}
-          drafting={drafting}
-          onAiDraft={aiDraftReply}
           undoSendSeconds={prefs.undoSendSeconds}
           onUndoSendSeconds={setUndoSend}
           scheduleAt={scheduleAt}
