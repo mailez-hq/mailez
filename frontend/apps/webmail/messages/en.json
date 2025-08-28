@@ -528,6 +528,28 @@
     "paneWide": "Wide",
     "spellcheck": "Spell check"
   },
+  "home": {
+    "openMailbox": "Open mailbox",
+    "signOut": "Sign out",
+    "compose": "Compose",
+    "greetingMorning": "Good morning, {name}",
+    "greetingAfternoon": "Good afternoon, {name}",
+    "greetingEvening": "Good evening, {name}",
+    "unread": "Unread in inbox",
+    "unreadTotal": "{count} unread across all folders",
+    "todoMail": "To-do mail",
+    "contacts": "Contacts",
+    "reminders": "Reminders",
+    "announcements": "Announcements",
+    "noAnnouncements": "No announcements today",
+    "storage": "Storage",
+    "storageUsed": "{used} of {total} used",
+    "todayEvents": "Today's schedule",
+    "allDay": "All day",
+    "noEvents": "No events today",
+    "recentFiles": "Recent files",
+    "noFiles": "No files yet"
+  },
   "contacts": {
     "title": "Contacts",
     "myContacts": "My contacts",
