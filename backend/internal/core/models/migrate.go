@@ -56,6 +56,13 @@ var migrations = []migration{
 		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Webhook{}) },
 	},
 	{
+		// Webhook notifier token: lets the background poller raise
+		// mail.received events for users without a browser push
+		// subscription (previously webhook-only users never fired).
+		ID: "20260828_webhook_notifier_token",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Webhook{}) },
+	},
+	{
 		// AI provider settings configured through the admin console.
 		ID: "20260826_ai_config",
 		Up: func(db *gorm.DB) error { return db.AutoMigrate(&AiConfig{}) },

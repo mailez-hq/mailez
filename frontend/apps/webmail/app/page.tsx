@@ -53,6 +53,14 @@ export default function Home() {
   const [code, setCode] = useState("");
 
   const check = useCallback(() => {
+    // Only probe authentication on deep links (?next=) where an already
+    // signed-in visitor should be sent straight into the mailbox. A plain
+    // visit to the sign-in page skips the probe: /sso/me would 401 and the
+    // browser would log it as console noise.
+    if (!new URLSearchParams(window.location.search).has("next")) {
+      setLoading(false);
+      return;
+    }
     me()
       .then(() => router.replace(mailboxTarget()))
       .catch(() => {

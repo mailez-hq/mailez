@@ -61,35 +61,57 @@ func (n *Notifier) pollOnce(ctx context.Context) {
 	}
 	var subs []models.PushSubscription
 	if err := n.DB.Find(&subs).Error; err != nil || len(subs) == 0 {
-		return
-	}
-	seen := map[string]bool{}
-	for _, s := range subs {
-		if seen[s.UserEmail] {
-			continue
+		// No browser push subscriptions, but webhook-only users still need
+		// the poller to raise mail.received events.
+		var hookCount int64
+		if err := n.DB.Model(&models.Webhook{}).Where("enabled = ?", true).Count(&hookCount).Error; err != nil || hookCount == 0 {
+			return
 		}
-		seen[s.UserEmail] = true
+	}
+	type notifierTarget struct {
+		email string
+		token string
+	}
+	targets := map[string]notifierTarget{}
+	for _, s := range subs {
 		secret, err := crypto.Decrypt(n.Cfg.SecretKey, s.TokenEnc)
 		if err != nil {
 			log.Printf("push: decrypt token for %s: %v", s.UserEmail, err)
 			continue
 		}
-		counts, err := n.Mail.UnseenCounts(s.UserEmail, secret)
+		targets[s.UserEmail] = notifierTarget{email: s.UserEmail, token: secret}
+	}
+	var hooks []models.Webhook
+	if err := n.DB.Where("enabled = ? AND token_enc <> ''", true).Find(&hooks).Error; err == nil {
+		for _, h := range hooks {
+			if _, ok := targets[h.UserEmail]; ok {
+				continue
+			}
+			secret, derr := crypto.Decrypt(n.Cfg.SecretKey, h.TokenEnc)
+			if derr != nil {
+				log.Printf("push: decrypt webhook token for %s: %v", h.UserEmail, derr)
+				continue
+			}
+			targets[h.UserEmail] = notifierTarget{email: h.UserEmail, token: secret}
+		}
+	}
+	for _, t := range targets {
+		counts, err := n.Mail.UnseenCounts(t.email, t.token)
 		if err != nil {
-			log.Printf("push: unseen for %s: %v", s.UserEmail, err)
+			log.Printf("push: unseen for %s: %v", t.email, err)
 			continue
 		}
 		total := counts["Inbox"]
 		n.mu.Lock()
-		prev, ok := n.last[s.UserEmail]
-		n.last[s.UserEmail] = total
+		prev, ok := n.last[t.email]
+		n.last[t.email] = total
 		n.mu.Unlock()
 		if ok && total > prev {
 			body := fmt.Sprintf("%d 封新邮件", total-prev)
-			if err := Notify(n.DB, key, s.UserEmail, "mailez", body, "/", n.Cfg.Domain); err != nil {
-				log.Printf("push: notify %s: %v", s.UserEmail, err)
+			if err := Notify(n.DB, key, t.email, "mailez", body, "/", n.Cfg.Domain); err != nil {
+				log.Printf("push: notify %s: %v", t.email, err)
 			}
-			DispatchWebhooks(n.DB, s.UserEmail, "mail.received", map[string]any{
+			DispatchWebhooks(n.DB, t.email, "mail.received", map[string]any{
 				"folder":       "Inbox",
 				"new_count":    total - prev,
 				"unseen_total": total,

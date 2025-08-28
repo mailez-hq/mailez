@@ -19,6 +19,8 @@ import (
 
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
+	"mailez/backend/internal/crypto"
+	"mailez/backend/internal/password"
 )
 
 const webhookTimeout = 10 * time.Second
@@ -159,6 +161,11 @@ func (h *Handler) webhookCreate(c *fiber.Ctx) error {
 	if msg != "" {
 		return c.Status(400).JSON(fiber.Map{"error": msg})
 	}
+	if wh.Enabled && contains(strings.Split(wh.Events, ","), "mail.received") {
+		if err := ensureWebhookNotifierToken(h.DB, h.Cfg.SecretKey, user.Email, &wh); err != nil {
+			return core.Fail(c, 500, err, "notifier token failed")
+		}
+	}
 	if err := h.DB.Create(&wh).Error; err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
@@ -209,10 +216,50 @@ func (h *Handler) webhookUpdate(c *fiber.Ctx) error {
 	if wh.Events == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "at least one supported event required"})
 	}
+	if wh.Enabled && contains(strings.Split(wh.Events, ","), "mail.received") {
+		if err := ensureWebhookNotifierToken(h.DB, h.Cfg.SecretKey, user.Email, &wh); err != nil {
+			return core.Fail(c, 500, err, "notifier token failed")
+		}
+	}
 	if err := h.DB.Save(&wh).Error; err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
 	return c.JSON(wh)
+}
+
+// ensureWebhookNotifierToken guarantees the webhook row has an encrypted
+// notifier token so the background poller can observe the mailbox without a
+// browser push subscription. A shared push subscription token is reused when
+// present.
+func ensureWebhookNotifierToken(db *gorm.DB, secretKey, userEmail string, wh *models.Webhook) error {
+	if wh.TokenEnc != "" && wh.TokenID != 0 {
+		return nil
+	}
+	var sub models.PushSubscription
+	if err := db.Where("user_email = ?", userEmail).First(&sub).Error; err == nil && sub.TokenEnc != "" {
+		wh.TokenEnc = sub.TokenEnc
+		wh.TokenID = sub.TokenID
+		return nil
+	}
+	secret, err := core.NewAppToken()
+	if err != nil {
+		return err
+	}
+	hash, err := password.HashPBKDF2SHA256(secret)
+	if err != nil {
+		return err
+	}
+	enc, err := crypto.Encrypt(secretKey, secret)
+	if err != nil {
+		return err
+	}
+	t := models.Token{UserEmail: userEmail, Password: hash, IP: "webhook-notifier"}
+	if err := db.Create(&t).Error; err != nil {
+		return err
+	}
+	wh.TokenEnc = enc
+	wh.TokenID = t.ID
+	return nil
 }
 
 // webhookDelete removes a webhook.
