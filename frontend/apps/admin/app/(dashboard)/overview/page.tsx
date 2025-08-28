@@ -28,28 +28,35 @@ export default function OverviewPage() {
   if (error) return <p className="text-sm text-destructive">{error}</p>;
   if (!data) return <p className="text-sm text-muted-foreground">{t("loading")}</p>;
 
+  // The edition label follows the engine: postdove = community, mailezine =
+  // enterprise. A loaded license is reported separately so a community engine
+  // with an enterprise license never shows a contradictory "企业版" badge.
+  const engineEnterprise = /mailezine/i.test(data.engine);
+  const lic = data.license;
+  const licenseSub = () => {
+    if (!lic) {
+      return engineEnterprise ? `${t("licenseDev")} · ${t("licenseUnlimited")}` : t("licenseFree");
+    }
+    const parts = [
+      lic.max_mailboxes > 0
+        ? t("licenseUsage", { used: lic.used, max: lic.max_mailboxes })
+        : t("licenseUnlimited"),
+      lic.service_valid
+        ? lic.expires_at
+          ? t("licenseServiceEnds", { date: lic.expires_at.slice(0, 10) })
+          : ""
+        : t("licenseServiceExpired"),
+      lic.licensee ? t("licenseLicensee", { name: lic.licensee }) : "",
+    ].filter(Boolean);
+    if (lic.edition === "enterprise" && !engineEnterprise) parts.unshift(t("licenseLoaded"));
+    return parts.join(" · ");
+  };
+
   const cards = [
     {
       key: "license",
-      value:
-        data.license?.edition === "enterprise"
-          ? t("licenseEnterprise")
-          : t("licenseDev"),
-      sub: data.license
-        ? [
-            data.license.max_mailboxes > 0
-              ? t("licenseUsage", { used: data.license.used, max: data.license.max_mailboxes })
-              : t("licenseUnlimited"),
-            data.license.service_valid
-              ? data.license.expires_at
-                ? t("licenseServiceEnds", { date: data.license.expires_at.slice(0, 10) })
-                : ""
-              : t("licenseServiceExpired"),
-            data.license.licensee ? t("licenseLicensee", { name: data.license.licensee }) : "",
-          ]
-            .filter(Boolean)
-            .join(" · ")
-        : "",
+      value: engineEnterprise ? t("licenseEnterprise") : t("licenseCommunity"),
+      sub: licenseSub(),
       icon: BadgeCheck,
     },
     { key: "users", value: `${data.users}`, sub: t("usersEnabled", { n: data.users_enabled }), icon: Users },
@@ -66,7 +73,8 @@ export default function OverviewPage() {
       <div>
         <h1 className="text-xl font-semibold">{t("title")}</h1>
         <p className="text-sm text-muted-foreground">
-          {data.engine} · {data.domain} · {data.hostname}
+          {engineEnterprise ? t("licenseEnterprise") : t("licenseCommunity")} · {data.engine} ·{" "}
+          {data.domain} · {data.hostname}
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
