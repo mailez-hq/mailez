@@ -217,6 +217,18 @@ func (s *Server) routes() {
 
 	v1 := s.App.Group("/api/v1")
 	v1.Get("/health", s.health)
+	// Public mail-server settings for the login-page client-setup hint.
+	// All services share the configured public hostname; the port matrix is
+	// the gateway/engine mail port contract (plain + implicit TLS).
+	v1.Get("/server/settings", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"hostname": s.Cfg.Hostname,
+			"domain":   s.Cfg.Domain,
+			"smtp":     fiber.Map{"plain": 25, "submission": 587, "ssl": 465},
+			"pop3":     fiber.Map{"plain": 110, "ssl": 995},
+			"imap":     fiber.Map{"plain": 143, "ssl": 993},
+		})
+	})
 	s.Auth.RegisterSSO(v1)
 
 	app := core.New(s.DB, s.Auth, s.Cfg)
