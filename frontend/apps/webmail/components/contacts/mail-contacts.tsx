@@ -558,6 +558,8 @@ function ContactDetail({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [saveErr, setSaveErr] = useState("");
+  const [name, setName] = useState(contact.name);
+  const [email, setEmail] = useState(contact.email);
   const [comment, setComment] = useState(contact.comment);
   const [groups, setGroups] = useState(contact.groups);
   const [avatar, setAvatar] = useState(contact.avatar);
@@ -598,6 +600,8 @@ function ContactDetail({
   }, [contact.email]);
 
   useEffect(() => {
+    setName(contact.name);
+    setEmail(contact.email);
     setComment(contact.comment);
     setGroups(contact.groups);
     setAvatar(contact.avatar);
@@ -608,7 +612,7 @@ function ContactDetail({
     setSaving(true);
     setSaveErr("");
     try {
-      const updated = await updateContact(contact.id, { comment, groups, avatar });
+      const updated = await updateContact(contact.id, { name, email, comment, groups, avatar });
       setDirty(false);
       onSaved(updated);
     } catch (e) {
@@ -618,7 +622,7 @@ function ContactDetail({
     }
   }
 
-  const display = { ...contact, comment, groups, avatar };
+  const display = { ...contact, name, email, comment, groups, avatar };
 
   return (
     <div className="rounded-lg border border-border p-3">
@@ -628,8 +632,8 @@ function ContactDetail({
           className="size-10 bg-accent text-sm font-semibold text-accent-foreground"
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{contact.name || contact.email}</p>
-          <p className="truncate text-xs text-muted-foreground">{contact.email}</p>
+          <p className="truncate text-sm font-semibold">{display.name || display.email}</p>
+          <p className="truncate text-xs text-muted-foreground">{display.email}</p>
           <div className="mt-1">
             <GroupBadges groups={groups} />
           </div>
@@ -637,6 +641,31 @@ function ContactDetail({
       </div>
 
       <div className="mt-3 space-y-2">
+        <div>
+          <Label className="text-xs text-muted-foreground">{t("name")}</Label>
+          <Input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setDirty(true);
+            }}
+            placeholder={t("name")}
+            className="mt-1 h-8"
+          />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">{t("email")}</Label>
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setDirty(true);
+            }}
+            placeholder={t("email")}
+            className="mt-1 h-8"
+          />
+        </div>
         <div>
           <Label className="text-xs text-muted-foreground">{t("groups")}</Label>
           <Input
