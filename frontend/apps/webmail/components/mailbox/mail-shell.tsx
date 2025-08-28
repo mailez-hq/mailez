@@ -8,8 +8,12 @@
 // them. All mailbox state lives in the MailStoreProvider that mounts this.
 
 import { useEffect, useState } from "react";
-import { WifiOff } from "lucide-react";
+import { Sparkles, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { MailSettings } from "@/components/settings/mail-settings";
 import { MailContacts } from "@/components/contacts/mail-contacts";
 import { FolderNav } from "@/components/mailbox/folder-nav";
@@ -28,6 +32,8 @@ import { cn } from "@/lib/utils";
 import { useMailStore } from "@/components/mailbox/mail-store";
 
 export function MailShell({ children }: { children: React.ReactNode }) {
+  const [aiPromptOpen, setAiPromptOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
   const {
     t,
     me,
@@ -228,6 +234,12 @@ export function MailShell({ children }: { children: React.ReactNode }) {
         onDeleteFolder={deleteFolder}
         onClearFolder={clearFolder}
         onCompose={() => openCompose()}
+        aiComposeEnabled={ai.draft}
+        aiComposeBusy={aiComposeBusy}
+        onAiCompose={() => {
+          setAiPrompt("");
+          setAiPromptOpen(true);
+        }}
         onSettings={() => openSettingsSection("appearance")}
         onContacts={() => setContactsOpen(true)}
         onSieve={() => setSieveOpen(true)}
@@ -508,6 +520,37 @@ export function MailShell({ children }: { children: React.ReactNode }) {
           )}
         </div>
       )}
+
+      <Dialog open={aiPromptOpen} onOpenChange={setAiPromptOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="size-4 text-ai" />
+              {t("aiCompose")}
+            </DialogTitle>
+            <DialogDescription>{t("aiComposeHint")}</DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            placeholder={t("aiComposePlaceholder")}
+            rows={4}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button
+              type="button"
+              disabled={aiComposeBusy || !aiPrompt.trim()}
+              onClick={() => {
+                aiCompose(aiPrompt.trim());
+                setAiPromptOpen(false);
+              }}
+            >
+              {aiComposeBusy ? t("aiComposeBusy") : t("aiComposeGenerate")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

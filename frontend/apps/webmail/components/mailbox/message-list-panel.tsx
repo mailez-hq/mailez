@@ -61,9 +61,6 @@ export function MessageListPanel({
   onCategoryChange,
   aiSearchEnabled,
   aiPriorityEnabled,
-  aiComposeEnabled,
-  aiComposeBusy,
-  onAiCompose,
   prioritizing,
   priorityOn,
   categories,
@@ -120,9 +117,6 @@ export function MessageListPanel({
   onCategoryChange: (category: string) => void;
   aiSearchEnabled: boolean;
   aiPriorityEnabled: boolean;
-  aiComposeEnabled: boolean;
-  aiComposeBusy: boolean;
-  onAiCompose: (instruction: string) => void;
   prioritizing: boolean;
   priorityOn: boolean;
   categories?: Record<string, string>;
@@ -146,7 +140,6 @@ export function MessageListPanel({
   const [builderOpen, setBuilderOpen] = useState(false);
   const [labelPopoverOpen, setLabelPopoverOpen] = useState(false);
   const [bulkLabelName, setBulkLabelName] = useState("");
-  const [aiPrompt, setAiPrompt] = useState("");
   const activeFilterCount = useMemo(() => {
     if (!searchSpec) return 0;
     return Object.values(searchSpec).filter((v) =>
@@ -301,33 +294,6 @@ export function MessageListPanel({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        {aiComposeEnabled && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!aiPrompt.trim() || aiComposeBusy) return;
-              onAiCompose(aiPrompt.trim());
-              setAiPrompt("");
-            }}
-            className="relative mt-1.5"
-          >
-            <Sparkles className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-ai" />
-            <Input
-              value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder={t("aiComposeQuickPlaceholder")}
-              className="h-8 pl-8 pr-20"
-              disabled={aiComposeBusy}
-            />
-            <button
-              type="submit"
-              disabled={!aiPrompt.trim() || aiComposeBusy}
-              className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded-md bg-ai px-2 py-1 text-[11px] font-medium text-ai-foreground transition-opacity disabled:opacity-50"
-            >
-              {aiComposeBusy ? t("aiComposeBusy") : t("aiComposeGenerate")}
-            </button>
-          </form>
-        )}
         {(showCategoryFilter || aiPriorityEnabled) && (
           <div className="mt-1.5 flex items-center gap-1">
             {showCategoryFilter && (
