@@ -1,5 +1,5 @@
 import type {
-  Alias, Announcement, ArchiveSettings, ArchivedMessage, AuditLog, DkimInfo, LoginResult, Me, Page, SignupDomain,
+  Alias, Announcement, ArchiveSettings, ArchivedMessage, AuditLog, DkimInfo, LoginResult, Me, Page,
   DlpRule, PendingApproval,
 } from "@mailez/types";
 
@@ -111,11 +111,6 @@ export async function logout() {
 export async function me(): Promise<Me> {
   return api<Me>("/sso/me");
 }
-
-// self-registration (public)
-export const signupDomains = () => api<SignupDomain[]>("/signup/domains");
-export const signup = (email: string, pw: string) =>
-  api("/signup", { method: "POST", body: JSON.stringify({ email, pw }) });
 
 // anonymous aliases
 export const anonAliases = () => api<Alias[]>("/anon-aliases");
