@@ -62,6 +62,13 @@ type Config struct {
 	LicenseFile        string
 	License            string
 	LicenseRequired    bool
+	// KVBackend is the engine storage KV backend ("pebble" | "tidb"). It is
+	// reported on the admin overview; the community (postdove) engine stores
+	// mail in Maildir instead and leaves this empty.
+	KVBackend string
+	// BlobBackend is the message-body blob store: "minio" when an S3/MinIO
+	// endpoint is configured, otherwise "local".
+	BlobBackend string
 }
 
 // SupportedMailEngines are the mail engines the control plane can drive.
@@ -116,6 +123,12 @@ func Load() Config {
 		LicenseFile:        env("MAILEZ_LICENSE_FILE", ""),
 		License:            env("MAILEZ_LICENSE", ""),
 		LicenseRequired:    envBool("MAILEZ_LICENSE_REQUIRED", false),
+		KVBackend:          env("MAILEZINE_STORAGE_BACKEND", ""),
+	}
+	if os.Getenv("MAILEZINE_S3_ENDPOINT") != "" {
+		cfg.BlobBackend = "minio"
+	} else {
+		cfg.BlobBackend = "local"
 	}
 	if cfg.MailMtaAddr == "" {
 		cfg.MailMtaAddr = cfg.PostfixAddress + ":25"

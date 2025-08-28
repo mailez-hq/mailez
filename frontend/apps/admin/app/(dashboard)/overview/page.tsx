@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  Archive, BadgeCheck, Database, FileStack, Globe, ShieldAlert, Users,
+  Archive, BadgeCheck, Database, FileStack, Globe, HardDrive, Server, ShieldAlert, Users,
 } from "lucide-react";
 import { adminOverview, type AdminOverview } from "@/lib/api";
 
@@ -33,6 +33,26 @@ export default function OverviewPage() {
   // with an enterprise license never shows a contradictory "企业版" badge.
   const engineEnterprise = /mailezine/i.test(data.engine);
   const lic = data.license;
+  const dbLabel =
+    data.db_driver === "mysql"
+      ? t("dbMysql")
+      : data.db_driver === "sqlite"
+        ? t("dbSqlite")
+        : data.db_driver || t("blobUnknown");
+  const kvLabel =
+    data.kv_backend === "tidb"
+      ? t("kvTidb")
+      : data.kv_backend === "pebble"
+        ? t("kvPebble")
+        : /postdove/i.test(data.engine)
+          ? t("kvMaildir")
+          : t("blobUnknown");
+  const blobLabel =
+    data.blob_backend === "minio"
+      ? t("blobMinio")
+      : data.blob_backend === "local"
+        ? t("blobLocal")
+        : t("blobUnknown");
   const licenseSub = () => {
     if (!lic) {
       return engineEnterprise ? `${t("licenseDev")} · ${t("licenseUnlimited")}` : t("licenseFree");
@@ -76,6 +96,36 @@ export default function OverviewPage() {
           {engineEnterprise ? t("licenseEnterprise") : t("licenseCommunity")} · {data.engine} ·{" "}
           {data.domain} · {data.hostname}
         </p>
+      </div>
+      {/* Infrastructure */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Server className="size-4" />
+          {t("infrastructure")}
+        </div>
+        <div className="mt-3 grid gap-4 sm:grid-cols-3">
+          <div className="flex items-center gap-2.5">
+            <Database className="size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">{t("controlDb")}</p>
+              <p className="mt-0.5 truncate text-sm font-medium">{dbLabel}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <Database className="size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">{t("engineKv")}</p>
+              <p className="mt-0.5 truncate text-sm font-medium">{kvLabel}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <HardDrive className="size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">{t("blobStore")}</p>
+              <p className="mt-0.5 truncate text-sm font-medium">{blobLabel}</p>
+            </div>
+          </div>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {cards.map((card) => {
