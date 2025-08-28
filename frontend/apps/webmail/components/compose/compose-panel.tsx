@@ -154,7 +154,7 @@ export function ComposePanel(props: ComposePanelProps) {
 
   function insertTemplate(tpl: MailTemplate) {
     setTemplatesOpen(false);
-    onBodyChange(`${body}${tpl.html}`, `${bodyText}${tpl.text || ""}`.trim());
+    onBodyChange(`${body}${tpl.html}`, `${bodyText || ""}${tpl.text || ""}`.trim());
   }
 
   return (
@@ -334,7 +334,7 @@ export function ComposePanel(props: ComposePanelProps) {
                 />
               </div>
             )}
-            {aiComposeBusy && !bodyText.trim() && (
+            {aiComposeBusy && !(bodyText || "").trim() && (
               <div className="mb-2 flex items-center gap-2 rounded-md border border-ai/30 bg-ai/5 px-3 py-2 text-xs text-ai">
                 <Loader2 className="size-3.5 shrink-0 animate-spin" />
                 <span>{t("aiComposeStreaming")}</span>
