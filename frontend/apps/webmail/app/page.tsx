@@ -255,12 +255,12 @@ export default function Home() {
             </CardContent>
           </Card>
           {/* Security notice, between the sign-in form and mail settings */}
-          <div className="mt-4 rounded-md bg-muted/60 px-3 py-2 text-left text-xs leading-relaxed text-muted-foreground">
+          <div className="mt-4 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-left text-xs leading-relaxed text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
             <p>{t("noticeClassified", { product: brandTitle })}</p>
             <p>{t("noticeSecurity")}</p>
           </div>
           {settings && (
-            <details className="mt-4 rounded-lg border border-border p-3 text-xs text-muted-foreground">
+            <details open className="mt-4 rounded-lg border border-border p-3 text-xs text-muted-foreground">
               <summary className="cursor-pointer font-medium text-foreground">
                 {t("mailSettings")}
               </summary>
