@@ -11,14 +11,13 @@ import (
 
 // SetFlag adds or removes an IMAP flag (\Seen, \Flagged, ...) by UID.
 func (c *Client) SetFlag(email, token, folder string, uid uint32, flag string, value bool) error {
-	folder = inboxName(folder)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return err
 	}
 	defer cli.Logout()
 
-	if _, err := cli.Select(folder, false); err != nil {
+	if _, err := c.selectFolder(cli, folder, false); err != nil {
 		return fmt.Errorf("imap select %q: %w", folder, err)
 	}
 	seqset := new(imap.SeqSet)
@@ -36,14 +35,13 @@ func (c *Client) SetFlag(email, token, folder string, uid uint32, flag string, v
 
 // MarkAllRead marks every message in a folder as \Seen (one UID batch).
 func (c *Client) MarkAllRead(email, token, folder string) error {
-	folder = inboxName(folder)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return err
 	}
 	defer cli.Logout()
 
-	mbox, err := cli.Select(folder, false)
+	mbox, err := c.selectFolder(cli, folder, false)
 	if err != nil {
 		return fmt.Errorf("imap select %q: %w", folder, err)
 	}
@@ -87,14 +85,13 @@ func (c *Client) SetFlags(email, token, folder string, uid uint32, add, remove [
 	if len(add) == 0 && len(remove) == 0 {
 		return nil
 	}
-	folder = inboxName(folder)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return err
 	}
 	defer cli.Logout()
 
-	if _, err := cli.Select(folder, false); err != nil {
+	if _, err := c.selectFolder(cli, folder, false); err != nil {
 		return fmt.Errorf("imap select %q: %w", folder, err)
 	}
 	seqset := new(imap.SeqSet)
@@ -126,7 +123,6 @@ func (c *Client) MoveMany(email, token, folder string, uids []uint32, destinatio
 	if len(uids) == 0 {
 		return nil
 	}
-	folder = inboxName(folder)
 	destination = inboxName(destination)
 	if err := c.EnsureMailbox(email, token, destination); err != nil {
 		return err
@@ -137,7 +133,7 @@ func (c *Client) MoveMany(email, token, folder string, uids []uint32, destinatio
 	}
 	defer cli.Logout()
 
-	if _, err := cli.Select(folder, false); err != nil {
+	if _, err := c.selectFolder(cli, folder, false); err != nil {
 		return fmt.Errorf("imap select %q: %w", folder, err)
 	}
 	seqset := new(imap.SeqSet)
@@ -162,6 +158,7 @@ func (c *Client) Delete(email, token, folder string, uid uint32) error {
 
 // EnsureMailbox creates the mailbox if it does not exist.
 func (c *Client) EnsureMailbox(email, token, name string) error {
+	name = inboxName(name)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return err
@@ -199,7 +196,7 @@ func (c *Client) ReplaceKeyword(email, token, oldKw, newKw string) error {
 	defer cli.Logout()
 
 	for _, f := range folders {
-		if _, err := cli.Select(inboxName(f), false); err != nil {
+		if _, err := c.selectFolder(cli, f, false); err != nil {
 			continue // unreadable mailbox: skip rather than abort the sweep
 		}
 		uids, err := cli.UidSearch(&imap.SearchCriteria{WithFlags: []string{oldKw}})
@@ -246,7 +243,11 @@ func (c *Client) UnseenCounts(email, token string) (map[string]int, error) {
 	for _, f := range folders {
 		st, err := cli.Status(inboxName(f), []imap.StatusItem{imap.StatusUnseen})
 		if err != nil {
-			continue
+			// Legacy literal "Inbox/..." mailboxes are not reachable through
+			// the canonical spelling; retry with the exact server name.
+			if st, err = cli.Status(f, []imap.StatusItem{imap.StatusUnseen}); err != nil {
+				continue
+			}
 		}
 		// Key by the display spelling so the sidebar badges line up with the
 		// folder tree, which uses the canonical "Inbox" prefix.
@@ -308,6 +309,7 @@ var SystemFolders = map[string]bool{
 // CreateFolder creates a new mailbox, failing when it already exists so the
 // UI can surface the conflict instead of silently succeeding.
 func (c *Client) CreateFolder(email, token, name string) error {
+	name = inboxName(name)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return err
@@ -324,12 +326,23 @@ func (c *Client) RenameFolder(email, token, oldName, newName string) error {
 	if strings.EqualFold(oldName, "inbox") {
 		return errors.New("cannot rename INBOX")
 	}
+	origOld := oldName
+	oldName = inboxName(oldName)
+	newName = inboxName(newName)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return err
 	}
 	defer cli.Logout()
 	if err := cli.Rename(oldName, newName); err != nil {
+		// Legacy literal "Inbox/..." mailbox: retry with the exact server
+		// spelling so renames of folders created before the normalization
+		// fix keep working.
+		if origOld != oldName {
+			if err2 := cli.Rename(origOld, newName); err2 == nil {
+				return nil
+			}
+		}
 		return fmt.Errorf("imap rename %q: %w", oldName, err)
 	}
 	return nil
@@ -340,12 +353,16 @@ func (c *Client) DeleteFolder(email, token, name string) error {
 	if strings.EqualFold(name, "inbox") {
 		return errors.New("cannot delete INBOX")
 	}
+	name = inboxName(name)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return err
 	}
 	defer cli.Logout()
 	if err := cli.Delete(name); err != nil {
+		if err2 := cli.Delete(inboxPath(name)); err2 == nil {
+			return nil
+		}
 		return fmt.Errorf("imap delete %q: %w", name, err)
 	}
 	return nil
@@ -359,7 +376,7 @@ func (c *Client) ClearFolder(email, token, name string) error {
 	}
 	defer cli.Logout()
 
-	mbox, err := cli.Select(inboxName(name), false)
+	mbox, err := c.selectFolder(cli, name, false)
 	if err != nil {
 		return fmt.Errorf("imap select %q: %w", name, err)
 	}

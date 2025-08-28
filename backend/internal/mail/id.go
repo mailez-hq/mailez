@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/emersion/go-imap"
+	"github.com/emersion/go-imap/client"
 )
 
 // msgIDCache is a small in-memory TTL cache keyed by "folder \x00 Message-ID"
@@ -95,6 +96,24 @@ func inboxPath(folder string) string {
 	return strings.Join(parts, "/")
 }
 
+// selectFolder selects the target mailbox, trying the canonical protocol
+// spelling first ("Inbox/Sub" → "INBOX/Sub") and falling back to the literal
+// name when that fails. The fallback covers mailboxes that were historically
+// created with a literal "Inbox/" prefix (a folder literally named "Inbox"):
+// the case-insensitive display normalization would rewrite such a name onto
+// the special INBOX and SELECT would then report "No such mailbox".
+func (c *Client) selectFolder(cli *client.Client, folder string, readonly bool) (*imap.MailboxStatus, error) {
+	norm := inboxName(folder)
+	mbox, err := cli.Select(norm, readonly)
+	if err == nil || norm == folder {
+		return mbox, err
+	}
+	if mbox2, err2 := cli.Select(folder, readonly); err2 == nil {
+		return mbox2, nil
+	}
+	return nil, err
+}
+
 // EncodeMessageID wraps the raw Message-ID (e.g. "<abc123@example.com>") into
 // a URL-safe opaque id. A missing/empty Message-ID yields "." so callers can
 // still build a degenerate (non-stable) route for that rare case.
@@ -150,7 +169,7 @@ func (c *Client) UIDByMessageID(email, token, folder, id string) (uint32, error)
 	}
 	defer cli.Logout()
 
-	if _, err := cli.Select(folder, true); err != nil {
+	if _, err := c.selectFolder(cli, folder, true); err != nil {
 		return 0, fmt.Errorf("imap select %q: %w", folder, err)
 	}
 

@@ -92,14 +92,13 @@ func (c *Client) SearchMessages(email, token, folder, query string) ([]Message, 
 // SearchMessagesSpec returns messages matching a structured query (subject,
 // from, to, body, dates, attachment filter), newest first.
 func (c *Client) SearchMessagesSpec(email, token, folder string, sel SearchQuery) ([]Message, error) {
-	folder = inboxName(folder)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return nil, err
 	}
 	defer cli.Logout()
 
-	if _, err := cli.Select(folder, true); err != nil {
+	if _, err := c.selectFolder(cli, folder, true); err != nil {
 		return nil, fmt.Errorf("imap select %q: %w", folder, err)
 	}
 	criteria := imap.NewSearchCriteria()

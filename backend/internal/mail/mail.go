@@ -176,14 +176,13 @@ func (c *Client) ListMessages(email, token, folder string, page int) ([]Message,
 // whole folder and sort in Go, then slice the page so pagination stays
 // correct across the ordering).
 func (c *Client) ListMessagesSorted(email, token, folder string, page int, sortBy, dir string) ([]Message, int, error) {
-	folder = inboxName(folder)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer cli.Logout()
 
-	mbox, err := cli.Select(folder, true)
+	mbox, err := c.selectFolder(cli, folder, true)
 	if err != nil {
 		return nil, 0, fmt.Errorf("imap select %q: %w", folder, err)
 	}
@@ -312,14 +311,13 @@ func (c *Client) listAllSorted(cli *client.Client, folder string, total uint32, 
 // folder (no bodies). ActiveSync uses it to snapshot a collection for
 // incremental sync; order is the mailbox order.
 func (c *Client) ListAllMessages(email, token, folder string) ([]Message, error) {
-	folder = inboxName(folder)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return nil, err
 	}
 	defer cli.Logout()
 
-	mbox, err := cli.Select(folder, true)
+	mbox, err := c.selectFolder(cli, folder, true)
 	if err != nil {
 		return nil, fmt.Errorf("imap select %q: %w", folder, err)
 	}
@@ -346,14 +344,13 @@ func (c *Client) ListAllMessages(email, token, folder string) ([]Message, error)
 
 // FolderStat returns the SELECT counters for a folder (no body data).
 func (c *Client) FolderStat(email, token, folder string) (FolderStat, error) {
-	folder = inboxName(folder)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return FolderStat{}, err
 	}
 	defer cli.Logout()
 
-	mbox, err := cli.Select(folder, true)
+	mbox, err := c.selectFolder(cli, folder, true)
 	if err != nil {
 		return FolderStat{}, fmt.Errorf("imap select %q: %w", folder, err)
 	}
@@ -362,14 +359,13 @@ func (c *Client) FolderStat(email, token, folder string) (FolderStat, error) {
 
 // GetMessage returns a full message body by UID.
 func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, error) {
-	folder = inboxName(folder)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return nil, err
 	}
 	defer cli.Logout()
 
-	if _, err := cli.Select(folder, true); err != nil {
+	if _, err := c.selectFolder(cli, folder, true); err != nil {
 		return nil, fmt.Errorf("imap select %q: %w", folder, err)
 	}
 
@@ -484,14 +480,13 @@ func parseUnsubscribe(raw []byte) (url string, post bool) {
 // feature. Fetching the whole body works through the same BodySectionName the
 // detail view uses.
 func (c *Client) GetRaw(email, token, folder string, uid uint32) (string, error) {
-	folder = inboxName(folder)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return "", err
 	}
 	defer cli.Logout()
 
-	if _, err := cli.Select(folder, true); err != nil {
+	if _, err := c.selectFolder(cli, folder, true); err != nil {
 		return "", fmt.Errorf("imap select %q: %w", folder, err)
 	}
 	seqset := new(imap.SeqSet)
