@@ -253,6 +253,7 @@ export function MailView() {
             thread={thread}
             threadOpen={threadOpen}
             threadLoading={threadLoading}
+            conversationEnabled={prefs.conversation}
             onToggleThread={toggleThread}
             onSelectThread={selectThreadMessage}
             highlightTerms={highlightTerms(query)}
