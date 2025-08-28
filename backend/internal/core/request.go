@@ -64,12 +64,14 @@ func NewAppToken() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// MailToken issues a temp token for the current session so the IMAP gateway
-// can authenticate without ever touching the user's password.
+// MailToken returns the session's stable temp token so the IMAP gateway can
+// authenticate without ever touching the user's password. The token is reused
+// for the whole session, which lets the engine-side auth cache absorb the
+// control-plane round trip after the first request.
 func (a *App) MailToken(c *fiber.Ctx) (string, error) {
 	user := CurrentUser(c)
 	sid := c.Cookies(a.Auth.SessionName)
-	return a.Auth.CreateTempToken(c.Context(), user.Email, sid)
+	return a.Auth.SessionToken(c.Context(), user.Email, sid)
 }
 
 // MailDial resolves the mailbox connection for a request: the internal gateway
