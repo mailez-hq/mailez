@@ -321,6 +321,36 @@ func main() {
 		check("moved to Trash", false, "delivered message not found for move test")
 	}
 
+	// Conversation view: a reply to the same subject must collapse into one
+	// list row (modern-style grouping).
+	replySubject := "Re: " + subject
+	if code, err := api.json("POST", "/mail/send", map[string]any{
+		"to": []string{opts.user}, "subject": replySubject, "body": "conversation reply",
+	}, nil); err != nil || (code != 200 && code != 201 && code != 202 && code != 204) {
+		failHard("send reply for conversation", fmt.Errorf("status %d: %w", code, err))
+	}
+	replyDelivered := false
+	deadline = time.Now().Add(60 * time.Second)
+	for time.Now().Before(deadline) {
+		if raw, err := imapFindSubject(opts.host, opts.imapPort, opts.user, opts.password, "INBOX", replySubject); err == nil && raw {
+			replyDelivered = true
+			break
+		}
+		time.Sleep(3 * time.Second)
+	}
+	check("conversation reply delivered", replyDelivered, "")
+	var convRows []mailRow
+	if code, err := api.json("GET", "/mail/messages?folder=Inbox&page=0&conversation=1", nil, &convRows); err != nil || code != 200 {
+		failHard("conversation list", fmt.Errorf("status %d: %w", code, err))
+	}
+	convFound := false
+	for _, m := range convRows {
+		if strings.Contains(m.Subject, "e2e-enterprise-") && m.ThreadCount >= 2 {
+			convFound = true
+		}
+	}
+	check("conversation grouping", convFound, "")
+
 	// 5. Contacts CRUD.
 	var contacts []struct {
 		ID    uint   `json:"id"`
@@ -703,11 +733,12 @@ func main() {
 }
 
 type mailRow struct {
-	ID       string   `json:"id"`
-	UID      float64  `json:"uid"`
-	Subject  string   `json:"subject"`
-	Flags    []string `json:"flags"`
-	ThreadID string   `json:"thread_id"`
+	ID          string   `json:"id"`
+	UID         float64  `json:"uid"`
+	Subject     string   `json:"subject"`
+	Flags       []string `json:"flags"`
+	ThreadID    string   `json:"thread_id"`
+	ThreadCount int      `json:"thread_count"`
 }
 
 type apiClient struct {

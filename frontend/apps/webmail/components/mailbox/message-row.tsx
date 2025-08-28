@@ -73,10 +73,16 @@ export function MessageRow({
 }) {
   const t = useTranslations("mail");
   const { labelColors } = useMailStore();
-  const unread = !message.flags.includes("\\Seen");
-  const starred = message.flags.includes("\\Flagged");
+  // Conversation-view rows carry thread-level aggregates: any member unread /
+  // starred flips the whole row, and the sender line lists the participants.
+  const unread = message.thread_unread ?? !message.flags.includes("\\Seen");
+  const starred = message.thread_flagged ?? message.flags.includes("\\Flagged");
   const recalled = message.flags.includes("$RecallSent");
-  const sender = message.from[0]?.name || message.from[0]?.email || "?";
+  const sender =
+    message.thread_senders && message.thread_senders.length > 0
+      ? message.thread_senders.slice(0, 2).join(", ") +
+        (message.thread_senders.length > 2 ? ` +${message.thread_senders.length - 2}` : "")
+      : message.from[0]?.name || message.from[0]?.email || "?";
   const pad = density === "compact" ? "px-2" : "px-3";
 
   return (
