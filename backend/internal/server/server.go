@@ -221,12 +221,36 @@ func (s *Server) routes() {
 	// All services share the configured public hostname; the port matrix is
 	// the gateway/engine mail port contract (plain + implicit TLS).
 	v1.Get("/server/settings", func(c *fiber.Ctx) error {
+		var brand struct {
+			Title     string `json:"title"`
+			Subtitle  string `json:"subtitle"`
+			Tagline   string `json:"tagline"`
+			Feature1  string `json:"feature1"`
+			Feature2  string `json:"feature2"`
+			Feature3  string `json:"feature3"`
+			LogoURL   string `json:"logo_url"`
+			HeroURL   string `json:"hero_url"`
+			Copyright string `json:"copyright"`
+		}
+		var row models.BrandingConfig
+		if err := s.DB.First(&row).Error; err == nil {
+			brand.Title = row.Title
+			brand.Subtitle = row.Subtitle
+			brand.Tagline = row.Tagline
+			brand.Feature1 = row.Feature1
+			brand.Feature2 = row.Feature2
+			brand.Feature3 = row.Feature3
+			brand.LogoURL = row.LogoURL
+			brand.HeroURL = row.HeroURL
+			brand.Copyright = row.Copyright
+		}
 		return c.JSON(fiber.Map{
 			"hostname": s.Cfg.Hostname,
 			"domain":   s.Cfg.Domain,
 			"smtp":     fiber.Map{"plain": 25, "submission": 587, "ssl": 465},
 			"pop3":     fiber.Map{"plain": 110, "ssl": 995},
 			"imap":     fiber.Map{"plain": 143, "ssl": 993},
+			"branding": brand,
 		})
 	})
 	s.Auth.RegisterSSO(v1)

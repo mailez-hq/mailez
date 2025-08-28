@@ -9,7 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LocaleSwitcher } from "@/components/locale-switcher";
-import { ApiError, login, loginTotp, me, serverSettings, type ServerSettings } from "@/lib/api";
+import {
+  ApiError, login, loginTotp, me, serverSettings,
+  type BrandingConfig, type ServerSettings,
+} from "@/lib/api";
 import { readLastFolder, readPreferences } from "@/lib/preferences";
 
 // Where to send a signed-in user: the deep link they asked for (?next=), else
@@ -54,6 +57,17 @@ export default function Home() {
   const [pendingToken, setPendingToken] = useState("");
   const [code, setCode] = useState("");
   const [settings, setSettings] = useState<ServerSettings | null>(null);
+
+  // Enterprise branding from the server (admin console). Empty fields fall
+  // back to the built-in Mailez brand below.
+  const brand: BrandingConfig = settings?.branding ?? {};
+  const brandTitle = brand.title?.trim() || "Mailez";
+  const brandSubtitle = brand.subtitle?.trim() || t("subtitle");
+  const features: { icon: typeof Globe; text: string }[] = [
+    { icon: ShieldCheck, text: brand.feature1?.trim() || t("featSecurity") },
+    { icon: LayoutDashboard, text: brand.feature2?.trim() || t("featWorkspace") },
+    { icon: Globe, text: brand.feature3?.trim() || t("featAnywhere") },
+  ].filter((f) => f.text);
 
   const check = useCallback(() => {
     // Only probe authentication on deep links (?next=) where an already
@@ -123,29 +137,52 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen">
-      {/* Brand panel: gradient showcase, hidden on small screens */}
+      {/* Brand panel: hero image / gradient showcase, hidden on small screens */}
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-gradient-to-br from-[#2F8E6C] to-[#2E6E8E] p-10 text-white lg:flex xl:w-[55%]">
-        <Mail className="pointer-events-none absolute -top-12 -right-12 size-72 text-white/10" />
-        <div className="pointer-events-none absolute -bottom-24 -left-24 size-72 rounded-full bg-white/5" />
-        <span className="relative text-2xl font-extrabold tracking-tight">Mailez</span>
+        {brand.hero_url ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={brand.hero_url}
+              alt=""
+              className="absolute inset-0 size-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/45" />
+          </>
+        ) : (
+          <>
+            <Mail className="pointer-events-none absolute -top-12 -right-12 size-72 text-white/10" />
+            <div className="pointer-events-none absolute -bottom-24 -left-24 size-72 rounded-full bg-white/5" />
+          </>
+        )}
+        <div className="relative flex items-center gap-3">
+          {brand.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={brand.logo_url} alt={brandTitle} className="h-10 w-auto" />
+          ) : (
+            <span className="text-2xl font-extrabold tracking-tight">Mailez</span>
+          )}
+          <div className="leading-tight">
+            <p className="text-xl font-bold">{brandTitle}</p>
+            {brandSubtitle && <p className="text-sm text-white/80">{brandSubtitle}</p>}
+          </div>
+        </div>
         <div className="relative space-y-8">
-          <h1 className="max-w-md text-4xl leading-tight font-bold">{t("tagline")}</h1>
+          <h1 className="max-w-md text-4xl leading-tight font-bold">
+            {brand.tagline?.trim() || t("tagline")}
+          </h1>
           <ul className="space-y-3">
-            <li className="flex items-center gap-3 text-white/85">
-              <ShieldCheck className="size-5 shrink-0" />
-              {t("featSecurity")}
-            </li>
-            <li className="flex items-center gap-3 text-white/85">
-              <LayoutDashboard className="size-5 shrink-0" />
-              {t("featWorkspace")}
-            </li>
-            <li className="flex items-center gap-3 text-white/85">
-              <Globe className="size-5 shrink-0" />
-              {t("featAnywhere")}
-            </li>
+            {features.map(({ icon: Icon, text }) => (
+              <li key={text} className="flex items-center gap-3 text-white/85">
+                <Icon className="size-5 shrink-0" />
+                {text}
+              </li>
+            ))}
           </ul>
         </div>
-        <p className="relative text-sm text-white/60">© {new Date().getFullYear()} Mailez</p>
+        <p className="relative text-sm text-white/60">
+          {brand.copyright?.trim() || `© ${new Date().getFullYear()} Mailez`}
+        </p>
       </div>
 
       {/* Sign-in form panel */}
@@ -154,14 +191,37 @@ export default function Home() {
           <LocaleSwitcher />
         </div>
         <div className="w-full max-w-sm pt-[7vh]">
-          <Card>
-            <CardHeader className="items-center text-center">
-              <span className="text-3xl font-extrabold tracking-tight">
+          {/* Compact brand header on small screens (brand panel is hidden) */}
+          <div className="mb-5 flex items-center justify-center gap-2.5 lg:hidden">
+            {brand.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={brand.logo_url} alt={brandTitle} className="h-8 w-auto" />
+            ) : (
+              <span className="text-2xl font-extrabold tracking-tight">
                 Mail
                 <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
                   ez
                 </span>
               </span>
+            )}
+            <div className="text-left leading-tight">
+              <p className="text-base font-bold">{brandTitle}</p>
+              {brandSubtitle && <p className="text-xs text-muted-foreground">{brandSubtitle}</p>}
+            </div>
+          </div>
+          <Card>
+            <CardHeader className="items-center text-center">
+              {brand.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={brand.logo_url} alt={brandTitle} className="h-10 w-auto" />
+              ) : (
+                <span className="text-3xl font-extrabold tracking-tight">
+                  Mail
+                  <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
+                    ez
+                  </span>
+                </span>
+              )}
               <CardTitle className="text-base font-semibold">{t("title")}</CardTitle>
               <CardDescription>{t("description")}</CardDescription>
             </CardHeader>
