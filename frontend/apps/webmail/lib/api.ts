@@ -386,6 +386,16 @@ export const aiTranslate = (text: string, target: string) =>
 // Global admin announcement banner (204/undefined when none is active).
 export const mailAnnouncement = () => api<MailAnnouncement | undefined>("/announcement");
 
+export type ServerSettings = {
+  hostname: string;
+  domain: string;
+  smtp: { plain: number; submission: number; ssl: number };
+  pop3: { plain: number; ssl: number };
+  imap: { plain: number; ssl: number };
+};
+
+export const serverSettings = () => api<ServerSettings>("/server/settings");
+
 // Label definitions (name + color) persisted per account.
 export const mailLabels = () => api<MailLabel[]>("/mail/labels");
 
@@ -828,6 +838,10 @@ export const totpDisable = (code: string) =>
 
 // Self-service settings (GET /me / PUT /me/settings / PUT /me/password)
 export const meProfile = () => api<MeSettings>("/me");
+
+// Recent successful password sign-ins (latest first), from the login audit trail.
+export type RecentLogin = { time: string; ip: string };
+export const meLogins = () => api<RecentLogin[]>("/me/logins");
 
 export const updateMeSettings = (body: Partial<MeSettings>) =>
   apiPut("/me/settings", body);

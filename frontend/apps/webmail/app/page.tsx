@@ -3,18 +3,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { Globe, LayoutDashboard, Mail, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LocaleSwitcher } from "@/components/locale-switcher";
-import { ApiError, login, loginTotp, me } from "@/lib/api";
-import { readLastFolder } from "@/lib/preferences";
+import { ApiError, login, loginTotp, me, serverSettings, type ServerSettings } from "@/lib/api";
+import { readLastFolder, readPreferences } from "@/lib/preferences";
 
 // Where to send a signed-in user: the deep link they asked for (?next=), else
-// their last-visited folder, else the inbox. next is only trusted when it
-// stays inside the /mail area, so the login page can't be used as an open
-// redirect.
+// the workspace dashboard (unless they opted out), else their last-visited
+// folder / inbox. next is only trusted when it stays inside the /mail area,
+// so the login page can't be used as an open redirect.
 function mailboxTarget(): string {
   try {
     const next = new URLSearchParams(window.location.search).get("next");
@@ -29,6 +30,7 @@ function mailboxTarget(): string {
   } catch {
     // ignore malformed query
   }
+  if (readPreferences().landing === "home") return "/home";
   const last = readLastFolder();
   return last ? `/mail/${encodeURIComponent(last)}` : "/mail/Inbox";
 }
@@ -51,6 +53,7 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [pendingToken, setPendingToken] = useState("");
   const [code, setCode] = useState("");
+  const [settings, setSettings] = useState<ServerSettings | null>(null);
 
   const check = useCallback(() => {
     // Only probe authentication on deep links (?next=) where an already
@@ -70,6 +73,12 @@ export default function Home() {
   }, [router]);
 
   useEffect(check, [check]);
+
+  useEffect(() => {
+    serverSettings()
+      .then(setSettings)
+      .catch(() => setSettings(null));
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -113,11 +122,38 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="absolute top-4 right-4">
-        <LocaleSwitcher />
+    <div className="flex min-h-screen">
+      {/* Brand panel: gradient showcase, hidden on small screens */}
+      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-gradient-to-br from-[#2F8E6C] to-[#2E6E8E] p-10 text-white lg:flex xl:w-[55%]">
+        <Mail className="pointer-events-none absolute -top-12 -right-12 size-72 text-white/10" />
+        <div className="pointer-events-none absolute -bottom-24 -left-24 size-72 rounded-full bg-white/5" />
+        <span className="relative text-2xl font-extrabold tracking-tight">Mailez</span>
+        <div className="relative space-y-8">
+          <h1 className="max-w-md text-4xl leading-tight font-bold">{t("tagline")}</h1>
+          <ul className="space-y-3">
+            <li className="flex items-center gap-3 text-white/85">
+              <ShieldCheck className="size-5 shrink-0" />
+              {t("featSecurity")}
+            </li>
+            <li className="flex items-center gap-3 text-white/85">
+              <LayoutDashboard className="size-5 shrink-0" />
+              {t("featWorkspace")}
+            </li>
+            <li className="flex items-center gap-3 text-white/85">
+              <Globe className="size-5 shrink-0" />
+              {t("featAnywhere")}
+            </li>
+          </ul>
+        </div>
+        <p className="relative text-sm text-white/60">© {new Date().getFullYear()} Mailez</p>
       </div>
-      <Card className="w-full max-w-sm">
+
+      {/* Sign-in form panel */}
+      <div className="relative flex min-w-0 flex-1 items-center justify-center p-4">
+        <div className="absolute top-4 right-4">
+          <LocaleSwitcher />
+        </div>
+        <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
           <span className="text-3xl font-extrabold tracking-tight">
             Mail
@@ -164,8 +200,31 @@ export default function Home() {
               </Button>
             </form>
           )}
+          {settings && (
+            <details className="mt-4 rounded-lg border border-border p-3 text-xs text-muted-foreground">
+              <summary className="cursor-pointer font-medium text-foreground">
+                {t("mailSettings")}
+              </summary>
+              <p className="mt-1">{t("mailSettingsHint")}</p>
+              <ul className="mt-2 space-y-1">
+                <li>
+                  {t("smtpServer")}：<code>{settings.hostname}</code>
+                  <span className="ml-1">（{t("serverPorts", { ports: `${settings.smtp.ssl}/${settings.smtp.submission}` })}）</span>
+                </li>
+                <li>
+                  {t("pop3Server")}：<code>{settings.hostname}</code>
+                  <span className="ml-1">（{t("serverPorts", { ports: `${settings.pop3.plain}/${settings.pop3.ssl}` })}）</span>
+                </li>
+                <li>
+                  {t("imapServer")}：<code>{settings.hostname}</code>
+                  <span className="ml-1">（{t("serverPorts", { ports: `${settings.imap.plain}/${settings.imap.ssl}` })}）</span>
+                </li>
+              </ul>
+            </details>
+          )}
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }
