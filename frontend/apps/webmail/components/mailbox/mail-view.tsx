@@ -112,6 +112,8 @@ export function MailView() {
     priorityCategories,
     togglePriority,
     aiSearching,
+    aiComposeBusy,
+    aiCompose,
     refreshMail,
     refreshing,
     openContextMenu,
@@ -201,6 +203,9 @@ export function MailView() {
           onMenu={() => setSidebarOpen(true)}
           aiSearchEnabled={ai.search}
           aiPriorityEnabled={ai.priority}
+          aiComposeEnabled={ai.draft}
+          aiComposeBusy={aiComposeBusy}
+          onAiCompose={aiCompose}
           prioritizing={prioritizing}
           priorityOn={priorityOn}
           categories={priorityCategories}
