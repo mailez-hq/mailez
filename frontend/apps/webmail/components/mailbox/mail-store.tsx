@@ -846,7 +846,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   useEffect(() => {
     setThread(null);
     setThreadOpen(false);
-    if (!detail?.thread_id) {
+    if (!prefs.conversation || !detail?.thread_id) {
       return;
     }
     const threadKey = `${folder}\x00${detail.thread_id}`;
@@ -875,7 +875,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     return () => {
       cancelled = true;
     };
-  }, [detail?.thread_id, folder]);
+  }, [detail?.thread_id, folder, prefs.conversation]);
 
   // Collect user labels (custom IMAP keywords) from loaded messages so the
   // sidebar and reader can offer them for quick tagging/filtering; the list

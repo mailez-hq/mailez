@@ -385,6 +385,7 @@ export function ReadingPane({
   thread,
   threadOpen,
   threadLoading,
+  conversationEnabled,
   onToggleThread,
   onSelectThread,
   highlightTerms,
@@ -427,6 +428,7 @@ export function ReadingPane({
   thread: MailThread | null;
   threadOpen: boolean;
   threadLoading: boolean;
+  conversationEnabled: boolean;
   onToggleThread: () => void;
   onSelectThread: (uid: number) => void;
   highlightTerms?: string[];
@@ -640,7 +642,10 @@ export function ReadingPane({
   const threadForDetail = thread?.thread_id === detail.thread_id ? thread : null;
   const threadMessages = threadForDetail?.messages ?? [detail];
   const isThreadView = threadMessages.length > 1;
-  const isConversation = !!detail.thread_id;
+  // The conversation view must stay in sync with the list: when the setting
+  // is off, the reading pane shows the single message even if the message
+  // belongs to a thread.
+  const isConversation = conversationEnabled && !!detail.thread_id;
 
   function handleToggleMessage(uid: number) {
     setExpandedUid((prev) => (prev === uid ? null : uid));
