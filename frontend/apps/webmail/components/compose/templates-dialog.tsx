@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LayoutTemplate, Plus, Trash2, X } from "lucide-react";
+import { LayoutTemplate, PenLine, Plus, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +26,7 @@ export function TemplatesDialog({
   const [subject, setSubject] = useState("");
   const [html, setHtml] = useState("");
   const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -33,15 +34,39 @@ export function TemplatesDialog({
     mailTemplates().then(setList).catch(() => {});
   }, [open]);
 
-  async function add() {
+  function startEdit(item: MailTemplate) {
+    setEditingId(item.id);
+    setName(item.name);
+    setSubject(item.subject);
+    setHtml(item.html);
+    setError("");
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setName("");
+    setSubject("");
+    setHtml("");
+    setError("");
+  }
+
+  async function save() {
     setError("");
     if (!name.trim()) return;
     try {
-      const saved = await mailTemplateSave({name: name.trim(), subject, html, text: ""});
-      setList((ls) => [...ls, saved]);
-      setName("");
-      setSubject("");
-      setHtml("");
+      const saved = await mailTemplateSave({
+        id: editingId ?? undefined,
+        name: name.trim(),
+        subject,
+        html,
+        text: "",
+      });
+      setList((ls) =>
+        editingId
+          ? ls.map((x) => (x.id === saved.id ? saved : x))
+          : [...ls, saved],
+      );
+      cancelEdit();
     } catch (e) {
       setError(e instanceof Error ? e.message : "save failed");
     }
@@ -77,6 +102,16 @@ export function TemplatesDialog({
                 type="button"
                 size="xs"
                 variant="ghost"
+                title={t("templateEdit")}
+                className="size-7 shrink-0 p-0 text-muted-foreground hover:text-foreground"
+                onClick={() => startEdit(item)}
+              >
+                <PenLine className="size-3.5" />
+              </Button>
+              <Button
+                type="button"
+                size="xs"
+                variant="ghost"
                 title={t("delete")}
                 className="size-7 shrink-0 p-0 text-muted-foreground hover:text-destructive"
                 onClick={() => remove(item.id)}
@@ -101,10 +136,17 @@ export function TemplatesDialog({
             <Label>{t("templateBody")}</Label>
             <Textarea value={html} onChange={(e) => setHtml(e.target.value)} rows={4} />
           </div>
-          <Button type="button" size="sm" onClick={add} disabled={!name.trim()}>
-            <Plus className="size-3.5" />
-            {t("addTemplate")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button type="button" size="sm" onClick={save} disabled={!name.trim()}>
+              <Plus className="size-3.5" />
+              {editingId ? t("templateSave") : t("addTemplate")}
+            </Button>
+            {editingId && (
+              <Button type="button" size="sm" variant="ghost" onClick={cancelEdit}>
+                {t("templateCancel")}
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

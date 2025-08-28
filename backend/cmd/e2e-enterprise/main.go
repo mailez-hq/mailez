@@ -519,8 +519,50 @@ func main() {
 	}
 	check("template saved", tplSeen, "")
 	if tpl.ID > 0 {
+		// Templates must be editable in place (the UI exposes edit; the
+		// backend accepts id on save).
+		var updated struct {
+			ID      uint   `json:"id"`
+			Subject string `json:"subject"`
+		}
+		if code, err := api.json("POST", "/mail/templates", map[string]any{
+			"id": tpl.ID, "name": templateName + "-v2", "subject": "tpl subject v2", "text": "tpl body v2",
+		}, &updated); err != nil || (code != 200 && code != 201) || updated.ID != tpl.ID || updated.Subject != "tpl subject v2" {
+			failHard("update template", fmt.Errorf("status %d: %w id=%d subj=%q", code, err, updated.ID, updated.Subject))
+		}
+		check("template updated in place", updated.ID == tpl.ID, updated.Subject)
 		if code, err := api.json("DELETE", fmt.Sprintf("/mail/templates/%d", tpl.ID), nil, nil); err != nil || code != 204 {
 			failHard("delete template", fmt.Errorf("status %d: %w", code, err))
+		}
+	}
+
+	// Aggregated accounts must be editable (create → update → delete).
+	{
+		accName := "e2e-acc-" + time.Now().Format("150405")
+		var acc struct {
+			ID uint `json:"id"`
+		}
+		if code, err := api.json("POST", "/accounts", map[string]any{
+			"name": accName, "email": accName + "@example.com",
+			"imap_host": "imap.invalid", "imap_port": 993, "imap_security": "tls",
+			"username": "u", "password": "p",
+		}, &acc); err != nil || (code != 200 && code != 201) || acc.ID == 0 {
+			failHard("create account", fmt.Errorf("status %d: %w", code, err))
+		}
+		var updated struct {
+			ID   uint   `json:"id"`
+			Name string `json:"name"`
+		}
+		if code, err := api.json("PUT", fmt.Sprintf("/accounts/%d", acc.ID), map[string]any{
+			"name": accName + "-v2", "email": accName + "@example.com",
+			"imap_host": "imap.invalid", "imap_port": 993, "imap_security": "tls",
+			"username": "u",
+		}, &updated); err != nil || code != 200 || updated.ID != acc.ID || updated.Name != accName+"-v2" {
+			failHard("update account", fmt.Errorf("status %d: %w", code, err))
+		}
+		check("account updated in place", updated.ID == acc.ID && updated.Name == accName+"-v2", updated.Name)
+		if code, err := api.json("DELETE", fmt.Sprintf("/accounts/%d", acc.ID), nil, nil); err != nil || code != 204 {
+			failHard("delete account", fmt.Errorf("status %d: %w", code, err))
 		}
 	}
 
