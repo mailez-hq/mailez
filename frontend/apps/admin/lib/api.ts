@@ -221,22 +221,48 @@ export const putBranding = (data: Partial<BrandingConfigView>) =>
 
 // AI provider settings (admin console)
 export interface AiConfigView {
+  id: number;
+  name: string;
   enabled: boolean;
+  is_default: boolean;
   provider: string;
   base_url: string;
   model: string;
   has_api_key?: boolean;
+  // api_key is a client-side draft field; never returned by the server.
+  api_key?: string;
+  last_test_at?: string;
+  last_test_ok: boolean;
+  last_test_error?: string;
 }
 
-export const getAIConfig = () => api<AiConfigView>("/config/ai");
+export const getAIConfigs = () => api<AiConfigView[]>("/config/ai");
 
-export const putAIConfig = (input: {
-  enabled?: boolean;
+export const createAIConfig = (input: {
+  name: string;
   provider?: string;
   base_url?: string;
   api_key?: string;
   model?: string;
-}) => apiPut<AiConfigView>("/config/ai", input);
+}) => apiPost<AiConfigView>("/config/ai", input);
+
+export const updateAIConfig = (
+  id: number,
+  input: {
+    name?: string;
+    provider?: string;
+    base_url?: string;
+    api_key?: string;
+    model?: string;
+    enabled?: boolean;
+    is_default?: boolean;
+  },
+) => apiPut<AiConfigView>(`/config/ai/${id}`, input);
+
+export const deleteAIConfig = (id: number) => apiDelete(`/config/ai/${id}`);
+
+export const testAIConfig = (id: number) =>
+  apiPost<AiConfigView>(`/config/ai/${id}/test`, {});
 
 // AD/LDAP directory integration.
 export type LdapConfigView = {

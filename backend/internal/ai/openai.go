@@ -42,6 +42,13 @@ func NewOpenAIProvider(baseURL, apiKey, model string) *OpenAI {
 
 func (o *OpenAI) Name() string { return "openai" }
 
+// Ping verifies the endpoint + key + model work end to end with a minimal
+// one-token request. Used by the admin connection test.
+func (o *OpenAI) Ping(ctx context.Context) error {
+	_, err := o.chat(ctx, "ping", "ping", 1)
+	return err
+}
+
 type chatRequest struct {
 	Model       string        `json:"model"`
 	Messages    []chatMessage `json:"messages"`
@@ -64,6 +71,10 @@ type chatResponse struct {
 
 // Chat calls the chat completions endpoint.
 func (o *OpenAI) Chat(ctx context.Context, system, user string) (string, error) {
+	return o.chat(ctx, system, user, 500)
+}
+
+func (o *OpenAI) chat(ctx context.Context, system, user string, maxTokens int) (string, error) {
 	body, err := json.Marshal(chatRequest{
 		Model: o.model,
 		Messages: []chatMessage{
@@ -71,7 +82,7 @@ func (o *OpenAI) Chat(ctx context.Context, system, user string) (string, error) 
 			{Role: "user", Content: user},
 		},
 		Temperature: 0.3,
-		MaxTokens:   500,
+		MaxTokens:   maxTokens,
 	})
 	if err != nil {
 		return "", err
