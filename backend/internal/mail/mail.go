@@ -220,6 +220,11 @@ func (c *Client) ListMessagesSorted(email, token, folder string, page int, sortB
 	if sortBy != "" && sortBy != "date" {
 		return c.listAllSorted(cli, folder, mbox.Messages, page, sortBy, dir)
 	}
+	if dir == "asc" {
+		// 最旧优先: the fastest path always returns newest-first, so the
+		// ascending page is fetched from the start of the mailbox instead.
+		return c.listDateAsc(cli, mbox.Messages, page)
+	}
 
 	skip := uint32(page) * PageSize
 	if skip >= mbox.Messages {
@@ -270,6 +275,44 @@ func (c *Client) ListMessagesSorted(email, token, folder string, page int, sortB
 		}
 	}
 	return out, int(mbox.Messages), nil
+}
+
+// listDateAsc returns one page of the oldest messages (date ascending). The
+// mailbox stores messages newest-last on disk, so the ascending window is the
+// first PageSize sequences of the folder.
+func (c *Client) listDateAsc(cli *pooledConn, total uint32, page int) ([]Message, int, error) {
+	skip := uint32(page) * PageSize
+	if skip >= total {
+		return []Message{}, int(total), nil
+	}
+	start := skip + 1
+	end := skip + PageSize
+	if end > total {
+		end = total
+	}
+	seqset := new(imap.SeqSet)
+	seqset.AddRange(start, end)
+
+	headerSection := &imap.BodySectionName{Peek: true, BodyPartName: imap.BodyPartName{Specifier: imap.HeaderSpecifier}}
+	messages := make(chan *imap.Message, 10)
+	done := make(chan error, 1)
+	go func() {
+		done <- cli.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure, headerSection.FetchItem()}, messages)
+	}()
+
+	var out []Message
+	for msg := range messages {
+		m := envelopeToMessage(msg)
+		m.Category = classifyFetched(msg, headerSection)
+		out = append(out, m)
+	}
+	if err := <-done; err != nil {
+		return nil, 0, fmt.Errorf("imap fetch: %w", err)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		return out[i].Date.Before(out[j].Date)
+	})
+	return out, int(total), nil
 }
 
 // listAllSorted fetches every message of the folder, sorts by the requested

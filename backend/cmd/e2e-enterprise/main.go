@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -150,6 +151,18 @@ func main() {
 		failHard("message detail", fmt.Errorf("status %d: %w", code, err))
 	}
 	check("message detail", detail.Subject != "", detail.Subject)
+
+	// Sort regression: 最旧优先 (date asc) must actually reverse the list
+	// instead of silently returning newest-first like 最新优先.
+	var newestFirst, oldestFirst []mailRow
+	if code, err := api.json("GET", "/mail/messages?folder=Inbox&page=0&sort=date&dir=desc", nil, &newestFirst); err != nil || code != 200 {
+		failHard("sort date desc", fmt.Errorf("status %d: %w", code, err))
+	}
+	if code, err := api.json("GET", "/mail/messages?folder=Inbox&page=0&sort=date&dir=asc", nil, &oldestFirst); err != nil || code != 200 {
+		failHard("sort date asc", fmt.Errorf("status %d: %w", code, err))
+	}
+	sortDiffers := len(newestFirst) > 0 && len(oldestFirst) > 0 && newestFirst[0].UID != oldestFirst[0].UID
+	check("date asc reverses order", sortDiffers, fmt.Sprintf("desc=%v asc=%v", firstUIDs(newestFirst), firstUIDs(oldestFirst)))
 
 	// Star the message and verify it sticks.
 	if code, err := api.json("POST", "/mail/flag", map[string]any{
@@ -856,4 +869,15 @@ func imapFindSubject(host string, port int, email, password, folder, subject str
 
 func urlQuery(s string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(s, " ", "%20"), "#", "%23")
+}
+
+func firstUIDs(rows []mailRow) string {
+	parts := make([]string, 0, 3)
+	for i, r := range rows {
+		if i >= 3 {
+			break
+		}
+		parts = append(parts, strconv.FormatFloat(r.UID, 'f', 0, 64))
+	}
+	return strings.Join(parts, ",")
 }
