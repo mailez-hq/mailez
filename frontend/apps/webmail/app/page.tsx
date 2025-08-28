@@ -149,22 +149,23 @@ export default function Home() {
       </div>
 
       {/* Sign-in form panel */}
-      <div className="relative flex min-w-0 flex-1 items-center justify-center p-4">
+      <div className="relative flex min-w-0 flex-1 justify-center p-4">
         <div className="absolute top-4 right-4">
           <LocaleSwitcher />
         </div>
-        <Card className="w-full max-w-sm">
-        <CardHeader className="items-center text-center">
-          <span className="text-3xl font-extrabold tracking-tight">
-            Mail
-            <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
-              ez
-            </span>
-          </span>
-          <CardTitle className="text-base font-semibold">{t("title")}</CardTitle>
-          <CardDescription>{t("description")}</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <div className="w-full max-w-sm pt-[7vh]">
+          <Card>
+            <CardHeader className="items-center text-center">
+              <span className="text-3xl font-extrabold tracking-tight">
+                Mail
+                <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
+                  ez
+                </span>
+              </span>
+              <CardTitle className="text-base font-semibold">{t("title")}</CardTitle>
+              <CardDescription>{t("description")}</CardDescription>
+            </CardHeader>
+            <CardContent>
           {pendingToken ? (
             <form onSubmit={onSubmitTotp} className="space-y-4">
               <div className="space-y-2">
@@ -200,6 +201,8 @@ export default function Home() {
               </Button>
             </form>
           )}
+          </CardContent>
+          </Card>
           {settings && (
             <details className="mt-4 rounded-lg border border-border p-3 text-xs text-muted-foreground">
               <summary className="cursor-pointer font-medium text-foreground">
@@ -222,8 +225,7 @@ export default function Home() {
               </ul>
             </details>
           )}
-        </CardContent>
-        </Card>
+        </div>
       </div>
     </div>
   );
