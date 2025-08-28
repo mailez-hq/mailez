@@ -530,7 +530,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     const seq = ++loadSeq.current;
     if (p === 0 && !silent) setLoading(true);
     try {
-      const res = await mailMessages(f, p, sortBy, sortDir);
+      const res = await mailMessages(f, p, sortBy, sortDir, prefs.conversation);
       if (seq !== loadSeq.current) return;
       setMessages(p === 0 ? res.messages : (prev) => [...prev, ...res.messages]);
       setTotal(res.total);
@@ -541,7 +541,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     } finally {
       if (seq === loadSeq.current) setLoading(false);
     }
-  }, [sortBy, sortDir]);
+  }, [sortBy, sortDir, prefs.conversation]);
 
   // changeSort updates the list ordering (date desc/asc, by sender, subject
   // or size) and reloads the current folder.

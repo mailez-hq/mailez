@@ -25,6 +25,7 @@ type PreferencesContextValue = {
   spellcheck: boolean;
   readerFont: ReaderFontSize;
   paneWidth: ReadingPaneWidth;
+  conversation: boolean;
   landing: Landing;
   setTheme: (theme: Theme) => void;
   setDensity: (density: Density) => void;
@@ -35,6 +36,7 @@ type PreferencesContextValue = {
   setSpellcheck: (enabled: boolean) => void;
   setReaderFont: (size: ReaderFontSize) => void;
   setPaneWidth: (width: ReadingPaneWidth) => void;
+  setConversation: (enabled: boolean) => void;
   setLanding: (landing: Landing) => void;
   resolvedDark: boolean;
 };
@@ -109,6 +111,10 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     (paneWidth: ReadingPaneWidth) => update({ ...prefs, paneWidth }),
     [prefs, update],
   );
+  const setConversation = useCallback(
+    (conversation: boolean) => update({ ...prefs, conversation }),
+    [prefs, update],
+  );
   const setLanding = useCallback(
     (landing: Landing) => update({ ...prefs, landing }),
     [prefs, update],
@@ -123,6 +129,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       spellcheck: prefs.spellcheck,
       readerFont: prefs.readerFont,
       paneWidth: prefs.paneWidth,
+      conversation: prefs.conversation,
       landing: prefs.landing,
       setTheme,
       setDensity,
@@ -133,10 +140,11 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       setSpellcheck,
       setReaderFont,
       setPaneWidth,
+      setConversation,
       setLanding,
       resolvedDark,
     }),
-    [prefs, setTheme, setDensity, setAccent, setAi, setNotifications, setUndoSend, setSpellcheck, setReaderFont, setPaneWidth, setLanding, resolvedDark],
+    [prefs, setTheme, setDensity, setAccent, setAi, setNotifications, setUndoSend, setSpellcheck, setReaderFont, setPaneWidth, setConversation, setLanding, resolvedDark],
   );
 
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;

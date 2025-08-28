@@ -398,7 +398,13 @@ func (h *Handler) mailMessages(c *fiber.Ctx) error {
 	if sortBy != "date" && sortBy != "from" && sortBy != "subject" && sortBy != "size" {
 		sortBy = "date"
 	}
-	messages, total, err := h.Mail.With(d).ListMessagesSorted(d.Email, d.Token, folder, page, sortBy, dir)
+	var messages []mail.Message
+	var total int
+	if c.Query("conversation") == "1" || c.Query("conversation") == "true" {
+		messages, total, err = h.Mail.With(d).ListConversationsSorted(d.Email, d.Token, folder, page, sortBy, dir)
+	} else {
+		messages, total, err = h.Mail.With(d).ListMessagesSorted(d.Email, d.Token, folder, page, sortBy, dir)
+	}
 	if err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}
