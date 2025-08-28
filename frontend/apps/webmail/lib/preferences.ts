@@ -37,6 +37,8 @@ export type Preferences = {
   readerFont: ReaderFontSize;
   paneWidth: ReadingPaneWidth;
   conversation: boolean;
+  // autoSignature appends the personal signature to new compose automatically.
+  autoSignature: boolean;
   landing: Landing;
 };
 
@@ -53,6 +55,7 @@ export const DEFAULT_PREFS: Preferences = {
   readerFont: "md",
   paneWidth: "md",
   conversation: true,
+  autoSignature: true,
   landing: "home",
 };
 
@@ -90,6 +93,7 @@ export function readPreferences(): Preferences {
         ? (parsed.paneWidth as ReadingPaneWidth)
         : "md",
       conversation: parsed.conversation !== false,
+      autoSignature: parsed.autoSignature !== false,
       landing: parsed.landing === "inbox" ? "inbox" : "home",
     };
   } catch {
