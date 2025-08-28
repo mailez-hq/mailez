@@ -138,29 +138,32 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* Top bar: enterprise logo + brand name, language switcher on the right */}
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-5 py-4 md:px-10">
-        <div className="flex items-center gap-3">
-          {brand.logo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={brand.logo_url} alt={brandTitle} className="h-9 w-auto" />
-          ) : (
-            <span className="text-2xl font-extrabold tracking-tight">
-              Mail
-              <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
-                ez
+      <header className="border-b border-border/60">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-4 md:px-10">
+          <div className="flex items-center gap-3">
+            {brand.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={brand.logo_url} alt={brandTitle} className="h-9 w-auto" />
+            ) : (
+              <span className="text-2xl font-extrabold tracking-tight">
+                Mail
+                <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
+                  ez
+                </span>
               </span>
-            </span>
-          )}
-          <div className="leading-tight">
-            <p className="text-base font-bold">{brandTitle}</p>
-            {brandSubtitle && <p className="text-xs text-muted-foreground">{brandSubtitle}</p>}
+            )}
+            <div className="leading-tight">
+              <p className="text-base font-bold">{brandTitle}</p>
+              {brandSubtitle && <p className="text-xs text-muted-foreground">{brandSubtitle}</p>}
+            </div>
           </div>
+          <LocaleSwitcher />
         </div>
-        <LocaleSwitcher />
       </header>
 
       {/* Middle: left brand image + right sign-in card */}
-      <main className="flex flex-1 items-center justify-center gap-10 px-5 py-8 md:px-10 lg:py-12">
+      <main className="flex flex-1">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-center gap-10 px-5 py-8 md:px-10 lg:py-12">
         {/* Left brand image, hidden on small screens */}
         <div className="relative hidden h-[540px] w-full max-w-xl overflow-hidden rounded-3xl text-white shadow-xl lg:block">
           {brand.hero_url ? (
@@ -273,6 +276,7 @@ export default function Home() {
               </ul>
             </details>
           )}
+        </div>
         </div>
       </main>
 
