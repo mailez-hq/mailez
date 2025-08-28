@@ -6,7 +6,17 @@ import type { useTranslations } from "next-intl";
 
 // Common folders always sort before custom ones; INBOX is pinned first.
 export const FOLDER_ORDER = ["INBOX", "Sent", "Drafts", "Trash", "Archive", "Junk", "Spam"];
-export const SYSTEM_FOLDERS = new Set(FOLDER_ORDER.map((f) => f.toUpperCase()));
+
+// System mailboxes as created by the engine. Only INBOX is matched
+// case-insensitively; a user-created folder that merely shares a system name
+// in another case ("sent", "trash", ...) is a normal, manageable folder.
+export const SYSTEM_FOLDERS = new Set(["Inbox", "Sent", "Drafts", "Trash", "Archive", "Junk"]);
+
+export function isSystemFolder(name: string): boolean {
+  if (name.includes("/")) return false;
+  const head = name.toUpperCase() === "INBOX" ? "Inbox" : name;
+  return SYSTEM_FOLDERS.has(head);
+}
 
 export function sortFolders(folders: string[]): string[] {
   // Compare case-insensitively: FOLDER_ORDER is Title-case ("Sent") while a
