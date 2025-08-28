@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -94,5 +95,97 @@ func TestLoginLimiter(t *testing.T) {
 	mgr.loginSucceeded(ctx, "a@example.com")
 	if mgr.loginFailed(ctx, "a@example.com") {
 		t.Fatal("counter must reset after a successful login")
+	}
+}
+
+func TestSessionTokenStablePerSession(t *testing.T) {
+	mgr, _ := newTestManager(t)
+	ctx := context.Background()
+	sid, user, err := mgr.Login(ctx, "a@example.com", "correct-horse")
+	if err != nil || user == nil || sid == "" {
+		t.Fatalf("login: sid=%q user=%v err=%v", sid, user, err)
+	}
+
+	tok1, err := mgr.SessionToken(ctx, "a@example.com", sid)
+	if err != nil {
+		t.Fatalf("session token: %v", err)
+	}
+	if !strings.HasPrefix(tok1, "token-") {
+		t.Fatalf("token must carry the token- prefix, got %q", tok1)
+	}
+	if !mgr.VerifyTempToken(ctx, "a@example.com", tok1) {
+		t.Fatal("fresh session token must verify")
+	}
+
+	tok2, err := mgr.SessionToken(ctx, "a@example.com", sid)
+	if err != nil {
+		t.Fatalf("session token (2nd): %v", err)
+	}
+	if tok1 != tok2 {
+		t.Fatalf("session token must be stable, got %q then %q", tok1, tok2)
+	}
+}
+
+func TestSessionTokenDistinctSessions(t *testing.T) {
+	mgr, _ := newTestManager(t)
+	ctx := context.Background()
+	sid1, _, err := mgr.Login(ctx, "a@example.com", "correct-horse")
+	if err != nil {
+		t.Fatalf("login 1: %v", err)
+	}
+	sid2, _, err := mgr.Login(ctx, "a@example.com", "correct-horse")
+	if err != nil {
+		t.Fatalf("login 2: %v", err)
+	}
+	tok1, _ := mgr.SessionToken(ctx, "a@example.com", sid1)
+	tok2, _ := mgr.SessionToken(ctx, "a@example.com", sid2)
+	if tok1 == "" || tok2 == "" || tok1 == tok2 {
+		t.Fatalf("different sessions must get different tokens: %q vs %q", tok1, tok2)
+	}
+}
+
+func TestSessionTokenInvalidatedByLogout(t *testing.T) {
+	mgr, _ := newTestManager(t)
+	ctx := context.Background()
+	sid, _, err := mgr.Login(ctx, "a@example.com", "correct-horse")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	tok, _ := mgr.SessionToken(ctx, "a@example.com", sid)
+	if !mgr.VerifyTempToken(ctx, "a@example.com", tok) {
+		t.Fatal("token must verify before logout")
+	}
+	if err := mgr.Logout(ctx, sid); err != nil {
+		t.Fatalf("logout: %v", err)
+	}
+	if mgr.VerifyTempToken(ctx, "a@example.com", tok) {
+		t.Fatal("token must not verify after logout")
+	}
+}
+
+func TestSessionTokenAfterStoreEvictionMintsFresh(t *testing.T) {
+	mgr, _ := newTestManager(t)
+	ctx := context.Background()
+	sid, _, err := mgr.Login(ctx, "a@example.com", "correct-horse")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	tok1, _ := mgr.SessionToken(ctx, "a@example.com", sid)
+
+	// Simulate the store evicting the token row while the session-token
+	// mapping survives: the next call must mint a fresh valid token instead
+	// of replaying the orphaned one.
+	if err := mgr.Store.Delete(ctx, tokenKeyPrefix+tok1); err != nil {
+		t.Fatalf("delete token: %v", err)
+	}
+	tok2, err := mgr.SessionToken(ctx, "a@example.com", sid)
+	if err != nil {
+		t.Fatalf("session token after eviction: %v", err)
+	}
+	if tok1 == tok2 {
+		t.Fatal("orphaned mapping must not be replayed")
+	}
+	if !mgr.VerifyTempToken(ctx, "a@example.com", tok2) {
+		t.Fatal("fresh token must verify")
 	}
 }
