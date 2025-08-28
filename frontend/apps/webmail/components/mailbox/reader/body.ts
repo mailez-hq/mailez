@@ -56,8 +56,11 @@ export function getSnippet(text: string, maxLength = 120): string {
 
 export function fmtFullDate(d: string) {
   const date = new Date(d);
-  return Number.isNaN(date.getTime())
-    ? d
+  // A zero/absent engine date serializes as "0001-01-01T00:00:00Z" (Go's
+  // zero time) when a message has no Date header. Treat anything before the
+  // common era as "no date" instead of rendering "Jan 1, 0001".
+  return Number.isNaN(date.getTime()) || date.getFullYear() < 100
+    ? ""
     : date.toLocaleString(undefined, {
         year: "numeric",
         month: "short",
@@ -69,7 +72,7 @@ export function fmtFullDate(d: string) {
 
 export function fmtShort(d: string) {
   const date = new Date(d);
-  if (Number.isNaN(date.getTime())) return "";
+  if (Number.isNaN(date.getTime()) || date.getFullYear() < 100) return "";
   const now = new Date();
   if (date.toDateString() === now.toDateString())
     return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
