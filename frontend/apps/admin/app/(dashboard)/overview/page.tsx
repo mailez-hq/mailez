@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  Archive, Database, FileStack, Globe, ShieldAlert, Users,
+  Archive, BadgeCheck, Database, FileStack, Globe, ShieldAlert, Users,
 } from "lucide-react";
 import { adminOverview, type AdminOverview } from "@/lib/api";
 
@@ -29,6 +29,29 @@ export default function OverviewPage() {
   if (!data) return <p className="text-sm text-muted-foreground">{t("loading")}</p>;
 
   const cards = [
+    {
+      key: "license",
+      value:
+        data.license?.edition === "enterprise"
+          ? t("licenseEnterprise")
+          : t("licenseDev"),
+      sub: data.license
+        ? [
+            data.license.max_mailboxes > 0
+              ? t("licenseUsage", { used: data.license.used, max: data.license.max_mailboxes })
+              : t("licenseUnlimited"),
+            data.license.valid
+              ? data.license.expires_at
+                ? t("licenseExpires", { date: data.license.expires_at.slice(0, 10) })
+                : ""
+              : t("licenseExpired"),
+            data.license.licensee ? t("licenseLicensee", { name: data.license.licensee }) : "",
+          ]
+            .filter(Boolean)
+            .join(" · ")
+        : "",
+      icon: BadgeCheck,
+    },
     { key: "users", value: `${data.users}`, sub: t("usersEnabled", { n: data.users_enabled }), icon: Users },
     { key: "domains", value: `${data.domains}`, sub: t("aliases", { n: data.aliases }), icon: Globe },
     { key: "orgContacts", value: `${data.org_contacts}`, sub: t("ldap"), icon: Database },

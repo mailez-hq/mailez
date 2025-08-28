@@ -58,10 +58,18 @@
     "config": "Config",
     "logout": "Logout"
   },
-  "overview": {
-    "title": "System overview",
-    "loading": "Loading...",
-    "users": "Users",
+    "overview": {
+      "title": "System overview",
+      "loading": "Loading...",
+      "license": "License",
+      "licenseEnterprise": "Enterprise",
+      "licenseDev": "Development",
+      "licenseUsage": "{used}/{max} mailboxes",
+      "licenseUnlimited": "Unlimited",
+      "licenseExpired": "Expired",
+      "licenseExpires": "expires {date}",
+      "licenseLicensee": "{name}",
+      "users": "Users",
     "usersEnabled": "{n} enabled",
     "domains": "Domains",
     "aliases": "{n} aliases",

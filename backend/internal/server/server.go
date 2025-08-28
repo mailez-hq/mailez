@@ -221,6 +221,10 @@ func (s *Server) routes() {
 
 	app := core.New(s.DB, s.Auth, s.Cfg)
 	app.LDAP = s.LDAP
+	// Directory auto-provisioning must respect the licensed mailbox cap.
+	if s.LDAP != nil {
+		s.LDAP.CheckCapacity = app.License.CheckCapacity
+	}
 	aiMgr := ai.New(s.DB, s.Cfg)
 	user.RegisterPublic(v1, app)
 	authed := v1.Group("", app.RequireAuth, app.Audit)

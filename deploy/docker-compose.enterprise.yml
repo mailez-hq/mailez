@@ -110,6 +110,9 @@ services:
       - MAIL_SIEVE_ADDR=mailezine:4190
       - FETCH_INTERVAL=300
       - AI_PROVIDER=none
+      # 企业版授权（控制面按邮箱数限制建号）：与引擎共用同一授权文件。
+      - MAILEZ_LICENSE_FILE=/license.lic
+      - MAILEZ_LICENSE_REQUIRED=${MAILEZINE_LICENSE_REQUIRED:-true}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/v1/health"]
       interval: 30s
@@ -120,6 +123,7 @@ services:
       - "127.0.0.1:8081:8080"
     volumes:
       - "./data:/data"
+      - "./licenses:/licenses:ro"
     depends_on:
       redis:
         condition: service_healthy
@@ -206,11 +210,16 @@ services:
       - MAILEZINE_ARCHIVE_ENABLED=true
       - MAILEZINE_DLP_ENABLED=true
       - MAILEZINE_FTS_ENABLED=true
+      # 企业版授权：未配置时引擎以开发版运行；生产请挂载授权文件并打开
+      # MAILEZINE_LICENSE_REQUIRED=true（缺失/无效即拒绝启动）。
+      - MAILEZINE_LICENSE_FILE=/licenses/license.lic
+      - MAILEZINE_LICENSE_REQUIRED=${MAILEZINE_LICENSE_REQUIRED:-true}
       - MAILEZINE_LOG_LEVEL=info
     user: "82:101"
     volumes:
       - "./data/mailezine:/data"
       - "./certs:/certs:ro"
+      - "./licenses:/licenses:ro"
     ports:
       - "127.0.0.1:25:25"
       - "127.0.0.1:465:465"
