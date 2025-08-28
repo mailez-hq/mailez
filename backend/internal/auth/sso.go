@@ -39,6 +39,9 @@ func (m *Manager) ssoLogin(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request"})
 	}
+	// Normalize the identifier so case/whitespace never breaks an exact-match
+	// lookup (the directory fallback below already lowercases).
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	if !m.checkLoginAttempt(c.Context(), c.IP()) {
 		return c.Status(fiber.StatusTooManyRequests).JSON(models.APIError{Error: "too many login attempts, try again later", Code: "rate_limited"})
 	}

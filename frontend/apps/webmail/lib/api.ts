@@ -389,6 +389,8 @@ export const mailAnnouncement = () => api<MailAnnouncement | undefined>("/announ
 export type ServerSettings = {
   hostname: string;
   domain: string;
+  domains: string[];
+  default_domain: string;
   smtp: { plain: number; submission: number; ssl: number };
   pop3: { plain: number; ssl: number };
   imap: { plain: number; ssl: number };

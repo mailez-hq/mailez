@@ -233,6 +233,8 @@ func (s *Server) routes() {
 			Copyright string `json:"copyright"`
 			Contact   string `json:"contact"`
 		}
+		var domains []string
+		s.DB.Model(&models.Domain{}).Order("name asc").Pluck("name", &domains)
 		var row models.BrandingConfig
 		if err := s.DB.First(&row).Error; err == nil {
 			brand.Title = row.Title
@@ -253,6 +255,8 @@ func (s *Server) routes() {
 			"pop3":     fiber.Map{"plain": 110, "ssl": 995},
 			"imap":     fiber.Map{"plain": 143, "ssl": 993},
 			"branding": brand,
+			"domains":  domains,
+			"default_domain": s.Cfg.Domain,
 		})
 	})
 	s.Auth.RegisterSSO(v1)
