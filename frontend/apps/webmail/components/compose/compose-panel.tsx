@@ -50,6 +50,8 @@ export interface ComposePanelProps {
   onDraftTone: (tone: DraftTone) => void;
   aiDraftEnabled: boolean;
   hasReplyTarget: boolean;
+  aiDraftHint: string;
+  onAiDraftHint: (v: string) => void;
   drafting: boolean;
   onAiDraft: () => void;
   undoSendSeconds: number;
@@ -115,6 +117,8 @@ export function ComposePanel(props: ComposePanelProps) {
     onDraftTone,
     aiDraftEnabled,
     hasReplyTarget,
+    aiDraftHint,
+    onAiDraftHint,
     drafting,
     onAiDraft,
     undoSendSeconds,
@@ -479,8 +483,16 @@ export function ComposePanel(props: ComposePanelProps) {
               </button>
             )}
           </div>
-          {aiDraftEnabled && hasReplyTarget && (
+          {aiDraftEnabled && (
             <div className="flex flex-wrap items-center gap-1.5">
+              {!hasReplyTarget && (
+                <Input
+                  value={aiDraftHint}
+                  onChange={(e) => onAiDraftHint(e.target.value)}
+                  placeholder={t("aiDraftHintPlaceholder")}
+                  className="h-8 min-w-[200px] flex-1 text-xs"
+                />
+              )}
               <div className="flex items-center gap-0.5 rounded-full border border-border p-0.5">
                 {(["formal", "concise", "friendly"] as DraftTone[]).map((tone) => (
                   <button

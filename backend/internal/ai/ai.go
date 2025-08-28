@@ -140,14 +140,45 @@ func (m *Manager) DraftReply(ctx context.Context, tone DraftTone, context string
 	if p == nil {
 		return "", ErrDisabled
 	}
-	system := draftSystem
+	system := draftReplySystem(tone)
+	return p.Chat(ctx, system, context)
+}
+
+// DraftNew writes a fresh email body (new mail) from a subject and optional
+// hints describing what the sender wants to say.
+func (m *Manager) DraftNew(ctx context.Context, tone DraftTone, subject, hint string) (string, error) {
+	p := m.load()
+	if p == nil {
+		return "", ErrDisabled
+	}
+	user := "主题：" + subject
+	if strings.TrimSpace(hint) != "" {
+		user += "\n要点：\n" + hint
+	}
+	return p.Chat(ctx, draftNewSystem(tone), user)
+}
+
+func draftReplySystem(tone DraftTone) string {
 	switch tone {
 	case ToneConcise:
-		system = draftConciseSystem
+		return draftConciseSystem
 	case ToneFriendly:
-		system = draftFriendlySystem
+		return draftFriendlySystem
 	}
-	return p.Chat(ctx, system, context)
+	return draftSystem
+}
+
+func draftNewSystem(tone DraftTone) string {
+	switch tone {
+	case ToneConcise:
+		return "You are an email assistant. Write a short, direct NEW email body from the topic and bullet points below. " +
+			"Keep it as concise as possible without being rude, in the same language as the input. Return only the body, no subject, no salutation guessing."
+	case ToneFriendly:
+		return "You are an email assistant. Write a warm, friendly NEW email body from the topic and bullet points below, " +
+			"in the same language as the input. Return only the body, no subject."
+	}
+	return "You are an email assistant. Write a polite NEW email body from the topic and bullet points below. " +
+		"Turn the bullet points into flowing paragraphs, in the same language as the input. Return only the body, no subject."
 }
 
 // SmartReplies returns 2-3 short, ready-to-send reply suggestions for an
