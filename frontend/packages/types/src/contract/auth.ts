@@ -7,6 +7,7 @@ export type Me = {
   quota_bytes?: number;
   quota_bytes_used?: number;
   signature?: string;
+  password_changed_at?: string | null;
 };
 
 export type LoginResult = {
