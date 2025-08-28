@@ -151,7 +151,7 @@ services:
   # mailezine 模式 gateway：同一 nginx 镜像，MAILEZ_ENGINE=mailezine 时
   # agent 渲染 HTTP-only 配置（自动证书走内置 lego）；邮件端口由引擎直发。
   gateway:
-    image: mailez/nginx:local
+    image: mailez/nginx:${MAILEZ_IMAGE_TAG:-local}
     pull_policy: missing
     restart: always
     env_file: mailez.env
@@ -167,7 +167,7 @@ services:
       - backend
 
   mailezine:
-    image: mailez/mailezine:local
+    image: mailez/mailezine:${MAILEZ_IMAGE_TAG:-local}
     build:
       context: ../../mailezine
       dockerfile: Dockerfile
@@ -231,7 +231,7 @@ services:
       - tidb
 
   mail-filter:
-    image: mailez/rspamd:local
+    image: mailez/rspamd:${MAILEZ_IMAGE_TAG:-local}
     pull_policy: missing
     restart: always
     env_file: mailez.env
@@ -249,7 +249,7 @@ services:
       - backend
 
   macro-scanner:
-    image: mailez/macro-scanner:local
+    image: mailez/macro-scanner:${MAILEZ_IMAGE_TAG:-local}
     pull_policy: missing
     hostname: macro-scanner
     restart: always
@@ -257,7 +257,7 @@ services:
       - no-egress
 
   resolver:
-    image: mailez/unbound:local
+    image: mailez/unbound:${MAILEZ_IMAGE_TAG:-local}
     pull_policy: missing
     restart: always
     env_file: mailez.env
