@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  Archive, BadgeCheck, Database, FileStack, Globe, HardDrive, Server, ShieldAlert, Users,
+  Archive, BadgeCheck, Database, FileStack, Globe, HardDrive, Mail, Server, ShieldAlert, Users,
 } from "lucide-react";
 import { adminOverview, type AdminOverview } from "@/lib/api";
 
@@ -33,6 +33,7 @@ export default function OverviewPage() {
   // with an enterprise license never shows a contradictory "企业版" badge.
   const engineEnterprise = /mailezine/i.test(data.engine);
   const lic = data.license;
+  const engineLabel = /mailezine/i.test(data.engine) ? t("engineMailezine") : t("enginePostdove");
   const dbLabel =
     data.db_driver === "mysql"
       ? t("dbMysql")
@@ -93,7 +94,7 @@ export default function OverviewPage() {
       <div>
         <h1 className="text-xl font-semibold">{t("title")}</h1>
         <p className="text-sm text-muted-foreground">
-          {engineEnterprise ? t("licenseEnterprise") : t("licenseCommunity")} · {data.engine} ·{" "}
+          {engineEnterprise ? t("licenseEnterprise") : t("licenseCommunity")} · {engineLabel} ·{" "}
           {data.domain} · {data.hostname}
         </p>
       </div>
@@ -103,7 +104,14 @@ export default function OverviewPage() {
           <Server className="size-4" />
           {t("infrastructure")}
         </div>
-        <div className="mt-3 grid gap-4 sm:grid-cols-3">
+        <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex items-center gap-2.5">
+            <Mail className="size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">{t("mailEngine")}</p>
+              <p className="mt-0.5 truncate text-sm font-medium">{engineLabel}</p>
+            </div>
+          </div>
           <div className="flex items-center gap-2.5">
             <Database className="size-4 shrink-0 text-muted-foreground" />
             <div className="min-w-0">
