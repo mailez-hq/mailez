@@ -12,6 +12,7 @@ import (
 	"mailez/backend/internal/ldap"
 	"mailez/backend/internal/license"
 	"mailez/backend/internal/mail"
+	"mailez/backend/internal/service"
 	"strings"
 )
 
@@ -25,6 +26,9 @@ type App struct {
 	// License is the loaded license manager; without a configured license it
 	// is the built-in unlimited dev edition.
 	License *license.Manager
+	// Service is the loaded technical-service entitlement; nil = no service
+	// subscribed. It is independent of the engine/edition.
+	Service *service.Manager
 }
 
 func New(db *gorm.DB, authMgr *auth.Manager, cfg Config) *App {
@@ -42,12 +46,17 @@ func New(db *gorm.DB, authMgr *auth.Manager, cfg Config) *App {
 		// enforced, so a license file on a community deployment is ignored.
 		lic = license.Community()
 	}
+	svc, err := service.Load(cfg.ServiceFile, cfg.Service)
+	if err != nil {
+		panic("service: " + err.Error())
+	}
 	return &App{
 		DB:   db,
 		Auth: authMgr,
 		Cfg:  cfg,
 		Mail: mail.New(cfg.MailImapAddr, cfg.MailSmtpAddr, cfg.MailSieveAddr),
 		License: lic,
+		Service: svc,
 	}
 }
 

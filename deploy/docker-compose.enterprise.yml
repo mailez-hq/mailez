@@ -119,8 +119,10 @@ services:
       - FETCH_INTERVAL=300
       - AI_PROVIDER=none
       # 企业版授权（控制面按邮箱数限制建号）：与引擎共用同一授权文件。
-      - MAILEZ_LICENSE_FILE=/license.lic
+      - MAILEZ_LICENSE_FILE=/licenses/license.lic
       - MAILEZ_LICENSE_REQUIRED=${MAILEZINE_LICENSE_REQUIRED:-true}
+      # 技术服务证书（可选，社区版/企业版都可订阅）。
+      - MAILEZ_SERVICE_FILE=/licenses/service.lic
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/v1/health"]
       interval: 30s

@@ -5,10 +5,9 @@
 // binary.
 //
 // Business model: the software usage right is PERPETUAL — the mailbox cap is
-// enforced forever. The service (support + version upgrades) is billed
-// annually; the service end date only gates support/upgrade entitlement and
-// is surfaced to the admin console. An expired service never stops the
-// system or blocks mailbox creation within the licensed cap.
+// enforced forever and the license never expires. The annual technical
+// service (support/upgrades) is a separate entitlement (internal/service)
+// that either edition can carry.
 //
 // Without a license the system runs in the built-in dev edition (unlimited),
 // so open-source builds and local development keep working untouched. When a
@@ -24,7 +23,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"gorm.io/gorm"
 
@@ -40,16 +38,15 @@ const (
 	EditionCommunity = "community"
 )
 
-// License is the signed payload carried by a license file. ExpiresAt is the
-// annual SERVICE end date (support/upgrades), not a usage expiry: the
-// perpetual usage right and the mailbox cap stay valid after it passes.
+// License is the signed payload carried by a license file. It is perpetual:
+// edition, mailbox cap and features, with no expiry. Annual service lives in
+// a separate service certificate.
 type License struct {
 	Version      int      `json:"v"`
 	Edition      string   `json:"edition"`
 	Licensee     string   `json:"licensee,omitempty"`
 	MaxMailboxes int      `json:"max_mailboxes"`
 	IssuedAt     string   `json:"issued_at,omitempty"`
-	ExpiresAt    string   `json:"expires_at,omitempty"`
 	Features     []string `json:"features,omitempty"`
 
 	// signature is kept out of the JSON payload.
@@ -166,35 +163,15 @@ func (m *Manager) Edition() string { return m.lic.Edition }
 // MaxMailboxes returns the licensed mailbox count; 0 means unlimited.
 func (m *Manager) MaxMailboxes() int { return m.lic.MaxMailboxes }
 
-// ExpiresAt parses the license expiry; zero time means no expiry.
-func (m *Manager) ExpiresAt() (time.Time, error) {
-	if m.lic.ExpiresAt == "" {
-		return time.Time{}, nil
-	}
-	return time.Parse(time.RFC3339, m.lic.ExpiresAt)
-}
-
 // IsEnterprise reports whether the loaded license is the paid edition.
 func (m *Manager) IsEnterprise() bool { return m.lic.Edition == EditionEnterprise }
 
 // IsCommunity reports whether the free community edition is active.
 func (m *Manager) IsCommunity() bool { return m.lic.Edition == EditionCommunity }
 
-// ServiceExpired reports whether the annual service (support/upgrades) is
-// past its end date. The dev edition never expires. A true result does not
-// stop the system — the perpetual usage right remains.
-func (m *Manager) ServiceExpired(now time.Time) bool {
-	if m.lic.Edition != EditionEnterprise || m.lic.ExpiresAt == "" {
-		return false
-	}
-	exp, err := time.Parse(time.RFC3339, m.lic.ExpiresAt)
-	return err != nil || !exp.After(now)
-}
-
 // CheckCapacity verifies the license allows creating one more mailbox.
-// Enterprise licenses are capped by MaxMailboxes (perpetual); the dev
-// edition and unlimited licenses pass. Service expiry never blocks
-// provisioning within the licensed cap.
+// Enterprise licenses are capped by MaxMailboxes (perpetual); the dev and
+// community editions and unlimited licenses pass.
 func (m *Manager) CheckCapacity(db *gorm.DB) error {
 	if !m.IsEnterprise() {
 		return nil
@@ -218,13 +195,9 @@ type Status struct {
 	Licensee     string   `json:"licensee,omitempty"`
 	MaxMailboxes int      `json:"max_mailboxes"`
 	Used         int64    `json:"used"`
-	// ExpiresAt is the annual service end date (support/upgrades). The
-	// perpetual usage right is unaffected after it passes.
-	ExpiresAt    string   `json:"expires_at,omitempty"`
-	Valid        bool     `json:"valid"` // license signature/edition valid
-	ServiceValid bool     `json:"service_valid"`
-	Features     []string `json:"features,omitempty"`
-	Required     bool     `json:"required"`
+	Valid    bool     `json:"valid"` // license signature/edition valid
+	Features []string `json:"features,omitempty"`
+	Required bool     `json:"required"`
 }
 
 // Status builds the current license snapshot (counts users for the "used"
@@ -234,11 +207,9 @@ func (m *Manager) Status(db *gorm.DB) Status {
 		Edition:      m.lic.Edition,
 		Licensee:     m.lic.Licensee,
 		MaxMailboxes: m.lic.MaxMailboxes,
-		ExpiresAt:    m.lic.ExpiresAt,
 		Features:     m.lic.Features,
 		Required:     m.required,
 		Valid:        true,
-		ServiceValid: !m.ServiceExpired(time.Now()),
 	}
 	if st.MaxMailboxes > 0 {
 		_ = db.Model(&models.User{}).Count(&st.Used)
