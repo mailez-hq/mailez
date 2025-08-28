@@ -3,6 +3,7 @@ package mail
 import (
 	"fmt"
 	"hash/fnv"
+	"io"
 	"sort"
 	"strings"
 
@@ -128,8 +129,12 @@ func (c *Client) Thread(email, token, folder, tid string) ([]Message, error) {
 
 	messages := make(chan *imap.Message, 10)
 	done := make(chan error, 1)
+	// Peek the body so opening a conversation never marks its other members
+	// as read; only the message the user actually opened gets \Seen (through
+	// the detail fetch).
+	section := &imap.BodySectionName{Peek: true}
 	go func() {
-		done <- cli.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure}, messages)
+		done <- cli.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure, section.FetchItem()}, messages)
 	}()
 
 	var out []Message
@@ -137,6 +142,11 @@ func (c *Client) Thread(email, token, folder, tid string) ([]Message, error) {
 		if msg.Envelope != nil && threadID(msg.Envelope.Subject) == tid {
 			m := envelopeToMessage(msg)
 			m.ThreadID = tid
+			if body := msg.GetBody(section); body != nil {
+				if raw, err := io.ReadAll(body); err == nil {
+					applyBody(&m, raw)
+				}
+			}
 			out = append(out, m)
 		}
 	}
