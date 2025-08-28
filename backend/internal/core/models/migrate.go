@@ -313,6 +313,15 @@ var migrations = []migration{
 			return db.AutoMigrate(&BrandingConfig{})
 		},
 	},
+	{
+		// Multi-provider AI admin: AiConfig gains name, is_default and the
+		// connection-test columns (last_test_at/ok/error). The legacy single
+		// row keeps working; the admin console shows it as "默认" until named.
+		ID: "20260828_ai_config_multi_provider",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&AiConfig{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

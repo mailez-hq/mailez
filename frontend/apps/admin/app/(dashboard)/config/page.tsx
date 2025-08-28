@@ -13,8 +13,10 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
-  exportConfig, getAIConfig, getBranding, getLDAPConfig, importConfig,
-  putAIConfig, putBranding, putLDAPConfig, syncLDAP, testLDAP,
+  exportConfig, getAIConfigs, getBranding, getLDAPConfig, importConfig,
+  createAIConfig, deleteAIConfig, testAIConfig, updateAIConfig,
+  putBranding, putLDAPConfig, syncLDAP, testLDAP,
+  type AiConfigView,
   type BrandingConfigView, type ConfigBackup, type ConfigStats,
 } from "@/lib/api";
 
@@ -37,12 +39,8 @@ export default function ConfigPage() {
   const [brandingBusy, setBrandingBusy] = useState(false);
   const [brandingError, setBrandingError] = useState("");
   const [brandingMessage, setBrandingMessage] = useState("");
-  const [aiEnabled, setAiEnabled] = useState(false);
-  const [aiBaseUrl, setAiBaseUrl] = useState("");
-  const [aiApiKey, setAiApiKey] = useState("");
-  const [aiModel, setAiModel] = useState("");
-  const [aiHasKey, setAiHasKey] = useState(false);
-  const [aiBusy, setAiBusy] = useState(false);
+  const [aiProviders, setAiProviders] = useState<AiConfigView[]>([]);
+  const [aiBusyId, setAiBusyId] = useState<number | "new" | null>(null);
   const [aiError, setAiError] = useState("");
   const [aiMessage, setAiMessage] = useState("");
   const [ldap, setLdap] = useState({
@@ -67,13 +65,8 @@ export default function ConfigPage() {
         contact: b.contact || "",
       }))
       .catch(() => {});
-    getAIConfig()
-      .then((c) => {
-        setAiEnabled(c.enabled);
-        setAiBaseUrl(c.base_url);
-        setAiModel(c.model);
-        setAiHasKey(!!c.has_api_key);
-      })
+    getAIConfigs()
+      .then((list) => setAiProviders(list))
       .catch(() => {});
     getLDAPConfig()
       .then((c) =>
@@ -160,25 +153,134 @@ export default function ConfigPage() {
     }
   }
 
-  async function onSaveAI() {
+  function replaceProvider(next: AiConfigView) {
+    setAiProviders((list) => list.map((p) => (p.id === next.id ? next : p)));
+  }
+
+  async function onSaveAI(p: AiConfigView) {
     setAiError(""); setAiMessage("");
-    setAiBusy(true);
+    setAiBusyId(p.id);
     try {
-      const saved = await putAIConfig({
-        enabled: aiEnabled,
-        provider: "openai",
-        base_url: aiBaseUrl,
-        api_key: aiApiKey,
-        model: aiModel,
-      });
-      setAiHasKey(!!saved.has_api_key);
-      setAiApiKey("");
+      const saved = p.id === 0
+        ? await createAIConfig({
+            name: p.name,
+            base_url: p.base_url,
+            api_key: p.api_key,
+            model: p.model,
+          })
+        : await updateAIConfig(p.id, {
+            name: p.name,
+            base_url: p.base_url,
+            api_key: p.api_key,
+            model: p.model,
+          });
+      if (p.id === 0) {
+        setAiProviders((list) => [...list, saved]);
+      } else {
+        replaceProvider(saved);
+      }
       setAiMessage(t("aiSaved"));
     } catch (e) {
       setAiError(e instanceof Error ? e.message : t("aiFailed"));
     } finally {
-      setAiBusy(false);
+      setAiBusyId(null);
     }
+  }
+
+  async function onTestAI(p: AiConfigView) {
+    setAiError(""); setAiMessage("");
+    setAiBusyId(p.id);
+    try {
+      // Persist the current form first so the test runs against these
+      // settings (a changed endpoint/key disables the provider until the
+      // test passes, which is exactly what we want).
+      let saved = p;
+      if (p.id === 0) {
+        saved = await createAIConfig({
+          name: p.name,
+          base_url: p.base_url,
+          api_key: p.api_key,
+          model: p.model,
+        });
+        setAiProviders((list) => [...list, saved]);
+      } else {
+        saved = await updateAIConfig(p.id, {
+          name: p.name,
+          base_url: p.base_url,
+          api_key: p.api_key,
+          model: p.model,
+        });
+        replaceProvider(saved);
+      }
+      const tested = await testAIConfig(saved.id);
+      replaceProvider(tested);
+      if (tested.last_test_ok) {
+        setAiMessage(t("aiTestOk"));
+      } else {
+        setAiError(t("aiTestFail") + (tested.last_test_error ? `：${tested.last_test_error}` : ""));
+      }
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : t("aiFailed"));
+    } finally {
+      setAiBusyId(null);
+    }
+  }
+
+  async function onToggleAIEnabled(p: AiConfigView, enabled: boolean) {
+    setAiError(""); setAiMessage("");
+    setAiBusyId(p.id);
+    try {
+      const saved = await updateAIConfig(p.id, { enabled });
+      replaceProvider(saved);
+      if (enabled) setAiMessage(t("aiEnabledSaved"));
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : t("aiFailed"));
+    } finally {
+      setAiBusyId(null);
+    }
+  }
+
+  async function onSetAIDefault(p: AiConfigView) {
+    setAiError(""); setAiMessage("");
+    setAiBusyId(p.id);
+    try {
+      const saved = await updateAIConfig(p.id, { is_default: true });
+      // Refresh the whole list: the other providers' default flags changed.
+      setAiProviders(await getAIConfigs());
+      setAiMessage(t("aiDefaultSaved"));
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : t("aiFailed"));
+    } finally {
+      setAiBusyId(null);
+    }
+  }
+
+  async function onDeleteAI(p: AiConfigView) {
+    if (!confirm(t("aiDeleteConfirm", { name: p.name }))) return;
+    setAiError(""); setAiMessage("");
+    setAiBusyId(p.id);
+    try {
+      await deleteAIConfig(p.id);
+      setAiProviders((list) => list.filter((x) => x.id !== p.id));
+      setAiMessage(t("aiDeleted"));
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : t("aiFailed"));
+    } finally {
+      setAiBusyId(null);
+    }
+  }
+
+  function onAddAI() {
+    setAiError(""); setAiMessage("");
+    setAiProviders((list) => [
+      ...list,
+      { id: 0, name: "", enabled: false, is_default: false, provider: "openai",
+        base_url: "", model: "", has_api_key: false, api_key: "", last_test_ok: false },
+    ]);
+  }
+
+  function patchProvider(id: number, patch: Partial<AiConfigView>) {
+    setAiProviders((list) => list.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   }
 
   async function onSaveLDAP() {
@@ -399,58 +501,130 @@ export default function ConfigPage() {
       )}
 
       {tab === "ai" && (
-        <Card className="max-w-xl">
-          <CardHeader>
-            <CardTitle className="text-base">{t("ai")}</CardTitle>
-            <CardDescription>{t("aiHint")}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="ai-enabled">{t("aiEnabled")}</Label>
-              <Switch
-                id="ai-enabled"
-                checked={aiEnabled}
-                onCheckedChange={setAiEnabled}
-              />
+        <div className="max-w-2xl space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-medium">{t("ai")}</h3>
+              <p className="text-sm text-muted-foreground">{t("aiHint")}</p>
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="ai-base-url">{t("aiBaseUrl")}</Label>
-              <Input
-                id="ai-base-url"
-                value={aiBaseUrl}
-                onChange={(e) => setAiBaseUrl(e.target.value)}
-                placeholder={t("aiBaseUrlPlaceholder")}
-              />
+            <Button variant="outline" onClick={onAddAI} disabled={aiBusyId !== null}>
+              {t("aiAdd")}
+            </Button>
+          </div>
+          {(aiError || aiMessage) && (
+            <div className="text-sm">
+              {aiError && <p className="text-red-600">{aiError}</p>}
+              {aiMessage && <p className="text-green-600">{aiMessage}</p>}
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="ai-api-key">
-                {t("aiApiKey")}
-                {aiHasKey && <span className="ml-2 text-xs text-muted-foreground">({t("aiApiKeySet")})</span>}
-              </Label>
-              <Input
-                id="ai-api-key"
-                type="password"
-                value={aiApiKey}
-                onChange={(e) => setAiApiKey(e.target.value)}
-                placeholder={t("aiApiKeyPlaceholder")}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="ai-model">{t("aiModel")}</Label>
-              <Input
-                id="ai-model"
-                value={aiModel}
-                onChange={(e) => setAiModel(e.target.value)}
-                placeholder={t("aiModelPlaceholder")}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Button onClick={onSaveAI} disabled={aiBusy}>{t("aiSave")}</Button>
-              {aiError && <p className="text-sm text-red-600">{aiError}</p>}
-              {aiMessage && <p className="text-sm text-green-600">{aiMessage}</p>}
-            </div>
-          </CardContent>
-        </Card>
+          )}
+          {aiProviders.length === 0 && (
+            <Card>
+              <CardContent className="py-6 text-sm text-muted-foreground">{t("aiEmpty")}</CardContent>
+            </Card>
+          )}
+          {aiProviders.map((p) => (
+            <Card key={p.id === 0 ? "new" : p.id}>
+              <CardContent className="space-y-3 pt-4">
+                <div className="flex items-center justify-between gap-3">
+                  <Input
+                    value={p.name}
+                    placeholder={t("aiNamePlaceholder")}
+                    onChange={(e) => patchProvider(p.id, { name: e.target.value })}
+                    className="max-w-xs"
+                  />
+                  <div className="flex items-center gap-3">
+                    <Label htmlFor={`ai-enabled-${p.id}`}>{t("aiEnabled")}</Label>
+                    <Switch
+                      id={`ai-enabled-${p.id}`}
+                      checked={p.enabled}
+                      disabled={!p.last_test_ok || p.id === 0 || aiBusyId !== null}
+                      onCheckedChange={(v) => onToggleAIEnabled(p, v)}
+                    />
+                  </div>
+                </div>
+                {p.id !== 0 && !p.last_test_ok && (
+                  <p className="text-xs text-amber-600">{t("aiEnabledRequiresTest")}</p>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor={`ai-url-${p.id}`}>{t("aiBaseUrl")}</Label>
+                    <Input
+                      id={`ai-url-${p.id}`}
+                      value={p.base_url}
+                      onChange={(e) => patchProvider(p.id, { base_url: e.target.value })}
+                      placeholder={t("aiBaseUrlPlaceholder")}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor={`ai-model-${p.id}`}>{t("aiModel")}</Label>
+                    <Input
+                      id={`ai-model-${p.id}`}
+                      value={p.model}
+                      onChange={(e) => patchProvider(p.id, { model: e.target.value })}
+                      placeholder={t("aiModelPlaceholder")}
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor={`ai-key-${p.id}`}>
+                    {t("aiApiKey")}
+                    {p.has_api_key && !p.api_key && (
+                      <span className="ml-2 text-xs text-muted-foreground">({t("aiApiKeySet")})</span>
+                    )}
+                  </Label>
+                  <Input
+                    id={`ai-key-${p.id}`}
+                    type="password"
+                    value={p.api_key ?? ""}
+                    onChange={(e) => patchProvider(p.id, { api_key: e.target.value })}
+                    placeholder={t("aiApiKeyPlaceholder")}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" onClick={() => onSaveAI(p)} disabled={aiBusyId !== null}>
+                    {t("aiSave")}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => onTestAI(p)} disabled={aiBusyId !== null}>
+                    {aiBusyId === p.id ? t("aiTesting") : t("aiTest")}
+                  </Button>
+                  {p.id !== 0 && p.enabled && (
+                    <Button
+                      size="sm"
+                      variant={p.is_default ? "default" : "secondary"}
+                      onClick={() => onSetAIDefault(p)}
+                      disabled={aiBusyId !== null}
+                    >
+                      {p.is_default ? t("aiIsDefault") : t("aiSetDefault")}
+                    </Button>
+                  )}
+                  {p.id !== 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-red-600"
+                      onClick={() => onDeleteAI(p)}
+                      disabled={aiBusyId !== null}
+                    >
+                      {t("aiDelete")}
+                    </Button>
+                  )}
+                </div>
+                {p.id !== 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {t("aiLastTest")}:{" "}
+                    {p.last_test_at ? new Date(p.last_test_at).toLocaleString() : t("aiNeverTested")}
+                    {" · "}
+                    {p.last_test_ok
+                      ? t("aiTestOkShort")
+                      : p.last_test_error
+                        ? t("aiTestFailShort")
+                        : t("aiTestNone")}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
 
       {tab === "ldap" && (

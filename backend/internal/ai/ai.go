@@ -47,31 +47,36 @@ func New(db *gorm.DB, cfg core.Config) *Manager {
 	return m
 }
 
-// load returns the active provider, preferring the database configuration.
+// load returns the active provider. Among the enabled database rows the
+// default wins; without a marked default the first enabled row is used, so
+// AI keeps working until the admin explicitly picks one. A nil provider
+// means AI is fully disabled.
 func (m *Manager) load() Provider {
 	if m.db != nil {
-		var row models.AiConfig
-		if err := m.db.First(&row).Error; err == nil {
-			if !row.Enabled || row.Provider == "" {
-				return nil
-			}
-			key := ""
-			if row.APIKeyEnc != "" {
-				if k, err := crypto.Decrypt(m.secretKey, row.APIKeyEnc); err == nil {
-					key = k
+		var rows []models.AiConfig
+		if err := m.db.Where("enabled = ?", true).Order("is_default DESC, id").Find(&rows).Error; err == nil {
+			for _, row := range rows {
+				if row.Provider == "" {
+					continue
 				}
-			}
-			base := row.BaseURL
-			if base == "" {
-				base = "https://api.openai.com/v1"
-			}
-			model := row.Model
-			if model == "" {
-				model = "gpt-4o-mini"
-			}
-			switch row.Provider {
-			case "openai":
-				return NewOpenAIProvider(base, key, model)
+				key := ""
+				if row.APIKeyEnc != "" {
+					if k, err := crypto.Decrypt(m.secretKey, row.APIKeyEnc); err == nil {
+						key = k
+					}
+				}
+				base := row.BaseURL
+				if base == "" {
+					base = "https://api.openai.com/v1"
+				}
+				model := row.Model
+				if model == "" {
+					model = "gpt-4o-mini"
+				}
+				switch row.Provider {
+				case "openai":
+					return NewOpenAIProvider(base, key, model)
+				}
 			}
 			return nil
 		}
