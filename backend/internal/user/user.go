@@ -118,13 +118,15 @@ func (h *Handler) createUser(c *fiber.Ctx) error {
 	if err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
+	now := time.Now()
 	u := models.User{
-		Email:         in.Email,
-		Localpart:     localpart,
-		DomainName:    domainName,
-		Password:      hash,
-		QuotaBytes:    in.QuotaBytes,
-		DisplayedName: in.DisplayedName,
+		Email:             in.Email,
+		Localpart:         localpart,
+		DomainName:        domainName,
+		Password:          hash,
+		QuotaBytes:        in.QuotaBytes,
+		DisplayedName:     in.DisplayedName,
+		PasswordChangedAt: &now,
 	}
 	if currentUser(c).GlobalAdmin {
 		u.GlobalAdmin = in.GlobalAdmin
@@ -199,6 +201,8 @@ func (h *Handler) updateUser(c *fiber.Ctx) error {
 			return core.Fail(c, 500, err, "internal error")
 		}
 		u.Password = hash
+		now := time.Now()
+		u.PasswordChangedAt = &now
 	}
 	if in.QuotaBytes != 0 {
 		u.QuotaBytes = in.QuotaBytes

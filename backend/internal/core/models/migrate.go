@@ -291,6 +291,14 @@ var migrations = []migration{
 		},
 	},
 	{
+		// Account security info (账号安全信息): when the password was last
+		// changed, shown next to the recent sign-ins on the workspace home.
+		ID: "20260828_user_password_changed_at",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&User{})
+		},
+	},
+	{
 		// Login-page branding (登录页品牌): enterprise-configurable top-left
 		// logo, left hero image and copy shown on the webmail sign-in page.
 		ID: "20260828_login_branding",

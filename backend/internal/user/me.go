@@ -1,14 +1,18 @@
 package user
 
 import (
+	"time"
+
 	"github.com/gofiber/fiber/v2"
 
 	"mailez/backend/internal/core"
+	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/password"
 )
 
 func (h *Handler) registerMe(r fiber.Router) {
 	r.Get("/me", h.meProfile)
+	r.Get("/me/logins", h.meRecentLogins)
 	r.Put("/me/settings", h.meUpdateSettings)
 	r.Put("/me/password", h.meChangePassword)
 }
@@ -137,8 +141,36 @@ func (h *Handler) meChangePassword(c *fiber.Ctx) error {
 	if err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
-	if err := h.DB.Model(u).Update("password", hash).Error; err != nil {
+	if err := h.DB.Model(u).Updates(map[string]any{
+		"password":            hash,
+		"password_changed_at": time.Now(),
+	}).Error; err != nil {
 		return core.Fail(c, 400, err, "update failed")
 	}
 	return c.SendStatus(204)
+}
+
+// meRecentLogins returns the latest successful password sign-ins of the
+// current user (time + IP), read from the audit trail written by the SSO
+// login endpoints. The workspace home shows them as "recent logins".
+func (h *Handler) meRecentLogins(c *fiber.Ctx) error {
+	u := currentUser(c)
+	rows := make([]meLoginRow, 0, 8)
+	err := h.DB.Model(&models.AuditLog{}).
+		Select("created_at AS time, ip").
+		Where("user = ? AND path IN ? AND status = ?", u.Email,
+			[]string{"/sso/login", "/sso/login/totp"}, fiber.StatusOK).
+		Order("created_at DESC").
+		Limit(8).
+		Scan(&rows).Error
+	if err != nil {
+		return core.Fail(c, 500, err, "query failed")
+	}
+	return c.JSON(rows)
+}
+
+// meLoginRow is one recent sign-in: when and from which IP.
+type meLoginRow struct {
+	Time time.Time `json:"time"`
+	IP   string    `json:"ip"`
 }

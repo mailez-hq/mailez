@@ -238,14 +238,16 @@ func (s *Service) EnsureLocalUser(ctx context.Context, email string) error {
 	if err != nil {
 		return err
 	}
+	now := time.Now()
 	u := models.User{
-		Email:       email,
-		Localpart:   local,
-		DomainName:  domain,
-		Password:    hash,
-		Enabled:     true,
-		QuotaBytes:  d.MaxQuotaBytes,
-		LdapManaged: true,
+		Email:             email,
+		Localpart:         local,
+		DomainName:        domain,
+		Password:          hash,
+		Enabled:           true,
+		QuotaBytes:        d.MaxQuotaBytes,
+		LdapManaged:       true,
+		PasswordChangedAt: &now,
 	}
 	if u.QuotaBytes <= 0 {
 		u.QuotaBytes = 1_000_000_000
