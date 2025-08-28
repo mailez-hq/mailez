@@ -55,9 +55,10 @@ export default function OverviewPage() {
         ? t("blobLocal")
         : t("blobUnknown");
   const licenseSub = () => {
-    if (!lic) {
-      return engineEnterprise ? `${t("licenseDev")} · ${t("licenseUnlimited")}` : t("licenseFree");
-    }
+    // The community edition (postdove) is free: it never shows license info,
+    // even if an enterprise license file happens to be mounted.
+    if (!engineEnterprise) return t("licenseFree");
+    if (!lic) return `${t("licenseDev")} · ${t("licenseUnlimited")}`;
     const parts = [
       lic.max_mailboxes > 0
         ? t("licenseUsage", { used: lic.used, max: lic.max_mailboxes })
@@ -69,7 +70,6 @@ export default function OverviewPage() {
         : t("licenseServiceExpired"),
       lic.licensee ? t("licenseLicensee", { name: lic.licensee }) : "",
     ].filter(Boolean);
-    if (lic.edition === "enterprise" && !engineEnterprise) parts.unshift(t("licenseLoaded"));
     return parts.join(" · ");
   };
 

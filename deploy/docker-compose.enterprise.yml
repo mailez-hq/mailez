@@ -100,6 +100,8 @@ services:
       - REDIS_ADDR=redis:6379
       - MAILEZ_HOSTNAME=mail.example.com
       - MAILEZ_DOMAIN=example.com
+      # 企业版：控制面按 mailezine 引擎识别（版本/授权语义）。
+      - MAILEZ_MAIL_ENGINE=mailezine
       - MAILEZ_SUBNET=192.168.206.0/24
       - MAILEZ_RECIPIENT_DELIMITER=+
       - MAILEZ_MESSAGE_RATELIMIT=200

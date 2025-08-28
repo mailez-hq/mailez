@@ -65,7 +65,6 @@
       "licenseEnterprise": "Enterprise",
       "licenseCommunity": "Community",
       "licenseDev": "Development",
-      "licenseLoaded": "Enterprise license loaded",
       "licenseFree": "Open source · no license required",
       "licenseUsage": "{used}/{max} mailboxes",
       "licenseUnlimited": "Unlimited",
