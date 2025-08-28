@@ -38,6 +38,7 @@
     "bcc": "Bcc",
     "expandRecipients": "Cc / Bcc",
     "collapseRecipients": "Hide Cc / Bcc",
+    "matchCount": "{n} matches",
     "subject": "Subject",
     "body": "Body",
     "bodyPlaceholder": "Write your message...",
