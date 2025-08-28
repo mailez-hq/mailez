@@ -26,6 +26,7 @@ type brandingView struct {
 	LogoURL   string `json:"logo_url"`
 	HeroURL   string `json:"hero_url"`
 	Copyright string `json:"copyright"`
+	Contact   string `json:"contact"`
 	UpdatedAt string `json:"updated_at,omitempty"`
 }
 
@@ -40,6 +41,7 @@ func viewBranding(row *models.BrandingConfig) brandingView {
 		LogoURL:   row.LogoURL,
 		HeroURL:   row.HeroURL,
 		Copyright: row.Copyright,
+		Contact:   row.Contact,
 	}
 	if !row.UpdatedAt.IsZero() {
 		out.UpdatedAt = row.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
@@ -77,6 +79,7 @@ func (h *Handler) putBranding(c *fiber.Ctx) error {
 		LogoURL   string `json:"logo_url"`
 		HeroURL   string `json:"hero_url"`
 		Copyright string `json:"copyright"`
+		Contact   string `json:"contact"`
 	}
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
@@ -95,6 +98,7 @@ func (h *Handler) putBranding(c *fiber.Ctx) error {
 	row.LogoURL = strings.TrimSpace(in.LogoURL)
 	row.HeroURL = strings.TrimSpace(in.HeroURL)
 	row.Copyright = strings.TrimSpace(in.Copyright)
+	row.Contact = strings.TrimSpace(in.Contact)
 	if err := h.DB.Save(&row).Error; err != nil {
 		return core.Fail(c, 500, err, "save failed")
 	}

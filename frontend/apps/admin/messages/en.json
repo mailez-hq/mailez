@@ -453,6 +453,8 @@
   "brandingLogoUrl": "Top-left logo image URL",
   "brandingHeroUrl": "Left hero image URL",
   "brandingCopyright": "Copyright line",
+  "brandingContact": "Contact info (footer)",
+  "brandingContactPlaceholder": "support@example.com | 400-000-0000",
   "brandingPreviewHint": "External URLs or paths served under /uploads work. Save then open the webmail sign-in page to preview.",
   "brandingSave": "Save branding",
   "brandingSaved": "Branding saved",
