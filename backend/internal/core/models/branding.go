@@ -23,6 +23,8 @@ type BrandingConfig struct {
 	HeroURL string `gorm:"size:1024" json:"hero_url"`
 	// Copyright is the footer text, e.g. "Copyright © its.tju.edu.cn, All Rights Reserved".
 	Copyright string `gorm:"size:255" json:"copyright"`
+	// Contact is the footer contact line, e.g. "support@example.com | 400-000-0000".
+	Contact string `gorm:"size:255" json:"contact"`
 	// UpdatedAt reflects the last save (admin console).
 	UpdatedAt time.Time `json:"updated_at"`
 }

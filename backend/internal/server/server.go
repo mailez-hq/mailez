@@ -231,6 +231,7 @@ func (s *Server) routes() {
 			LogoURL   string `json:"logo_url"`
 			HeroURL   string `json:"hero_url"`
 			Copyright string `json:"copyright"`
+			Contact   string `json:"contact"`
 		}
 		var row models.BrandingConfig
 		if err := s.DB.First(&row).Error; err == nil {
@@ -243,6 +244,7 @@ func (s *Server) routes() {
 			brand.LogoURL = row.LogoURL
 			brand.HeroURL = row.HeroURL
 			brand.Copyright = row.Copyright
+			brand.Contact = row.Contact
 		}
 		return c.JSON(fiber.Map{
 			"hostname": s.Cfg.Hostname,

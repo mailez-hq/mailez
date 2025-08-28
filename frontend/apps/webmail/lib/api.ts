@@ -407,6 +407,7 @@ export type BrandingConfig = {
   logo_url?: string;
   hero_url?: string;
   copyright?: string;
+  contact?: string;
 };
 
 export const serverSettings = () => api<ServerSettings>("/server/settings");

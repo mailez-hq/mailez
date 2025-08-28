@@ -453,6 +453,8 @@
   "brandingLogoUrl": "左上角 Logo 图片 URL",
   "brandingHeroUrl": "左侧主图 URL",
   "brandingCopyright": "版权行",
+  "brandingContact": "联系信息（页脚）",
+  "brandingContactPlaceholder": "support@example.com | 400-000-0000",
   "brandingPreviewHint": "支持外部 URL 或本服务 /uploads 下的路径；保存后打开 webmail 首页即可预览。",
   "brandingSave": "保存品牌设置",
   "brandingSaved": "品牌设置已保存",

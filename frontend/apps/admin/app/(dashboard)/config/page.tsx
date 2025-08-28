@@ -32,7 +32,7 @@ export default function ConfigPage() {
   const [backupMessage, setBackupMessage] = useState("");
   const [branding, setBranding] = useState({
     title: "", subtitle: "", tagline: "", feature1: "", feature2: "", feature3: "",
-    logo_url: "", hero_url: "", copyright: "",
+    logo_url: "", hero_url: "", copyright: "", contact: "",
   });
   const [brandingBusy, setBrandingBusy] = useState(false);
   const [brandingError, setBrandingError] = useState("");
@@ -64,6 +64,7 @@ export default function ConfigPage() {
         title: b.title || "", subtitle: b.subtitle || "", tagline: b.tagline || "",
         feature1: b.feature1 || "", feature2: b.feature2 || "", feature3: b.feature3 || "",
         logo_url: b.logo_url || "", hero_url: b.hero_url || "", copyright: b.copyright || "",
+        contact: b.contact || "",
       }))
       .catch(() => {});
     getAIConfig()
@@ -125,6 +126,7 @@ export default function ConfigPage() {
         title: saved.title || "", subtitle: saved.subtitle || "", tagline: saved.tagline || "",
         feature1: saved.feature1 || "", feature2: saved.feature2 || "", feature3: saved.feature3 || "",
         logo_url: saved.logo_url || "", hero_url: saved.hero_url || "", copyright: saved.copyright || "",
+        contact: saved.contact || "",
       });
       setBrandingMessage(t("brandingSaved"));
     } catch (e) {
@@ -375,6 +377,15 @@ export default function ConfigPage() {
                 value={branding.copyright}
                 onChange={(e) => setBranding((b) => ({ ...b, copyright: e.target.value }))}
                 placeholder="Copyright © example.com, All Rights Reserved"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="branding-contact">{t("brandingContact")}</Label>
+              <Input
+                id="branding-contact"
+                value={branding.contact}
+                onChange={(e) => setBranding((b) => ({ ...b, contact: e.target.value }))}
+                placeholder={t("brandingContactPlaceholder")}
               />
             </div>
             <p className="text-xs text-muted-foreground">{t("brandingPreviewHint")}</p>
