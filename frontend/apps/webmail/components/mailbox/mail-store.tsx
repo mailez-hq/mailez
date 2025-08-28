@@ -208,6 +208,11 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [sortDir, setSortDir] = useState("desc");
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  // composeError / composeNotice are scoped to the compose panel only, so
+  // AI draft/compose and send failures never leak into the message list or
+  // the reading pane.
+  const [composeError, setComposeError] = useState("");
+  const [composeNotice, setComposeNotice] = useState("");
 
   // ---- aggregated external accounts (full aggregation client) ----
   const [accountList, setAccountList] = useState<MailAccount[]>([]);
@@ -595,14 +600,14 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     if (!hasContent) return;
     if (draftSavingRef.current) return; // ignore rapid repeated clicks; the first save persists
     draftSavingRef.current = true;
-    setError("");
+    setComposeError("");
     try {
       const res = await mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, attachments);
       draftUidRef.current = res.uid || draftUidRef.current;
       setDraftSaved(true);
       refreshDraftsIfActive();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "save draft failed");
+      setComposeError(e instanceof Error ? e.message : "save draft failed");
     } finally {
       draftSavingRef.current = false;
     }
@@ -1507,6 +1512,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     replyTarget = false,
   ) {
     setHasReplyTarget(replyTarget);
+    setComposeError("");
+    setComposeNotice("");
     // A bare "Write" right after closing a draft restores the saved content
     // instead of starting from scratch (the close path persisted it).
     if (!toAddr && !subj && !html && !text && lastDraftRef.current) {
@@ -1585,7 +1592,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
             setBody((prev) => `${prev}<p>${escHtml(up.filename)}（超大附件）<br/><a href="${escHtml(up.url)}">下载</a></p>`);
             showToast(t("largeAttachmentUploaded", { name: up.filename }));
           } catch {
-            setError(t("largeAttachmentFailed", { name: f.name }));
+            setComposeError(t("largeAttachmentFailed", { name: f.name }));
           }
           continue;
         }
@@ -1594,9 +1601,9 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       if (inline.length === 0) return;
       const ready = await Promise.all(inline.map(readFileAsBase64));
       setAttachments((prev) => [...prev, ...ready]);
-      setError("");
+      setComposeError("");
     } catch {
-      setError(t("attachFailed"));
+      setComposeError(t("attachFailed"));
     }
   }
 
@@ -1790,7 +1797,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
 
   async function aiDraftReply() {
     setDrafting(true);
-    setError("");
+    setComposeError("");
     try {
       let res: { draft: string };
       if (hasReplyTarget && detail) {
@@ -1799,7 +1806,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       } else {
         // New mail: draft from the subject + what the sender wants to say.
         if (!subject.trim() && !aiDraftHint.trim()) {
-          setError(t("aiDraftNeedsInput"));
+          setComposeError(t("aiDraftNeedsInput"));
           setDrafting(false);
           return;
         }
@@ -1808,7 +1815,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       setBody(textToHtml(res.draft));
       setBodyText(res.draft);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "ai draft failed");
+      setComposeError(e instanceof Error ? e.message : "ai draft failed");
     } finally {
       setDrafting(false);
     }
@@ -1818,7 +1825,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   // 旅游了") into a complete compose. The panel opens immediately and the
   // recipients/subject/body stream in while the model is still writing.
   async function aiCompose(instruction: string) {
-    setError("");
+    setComposeError("");
+    setComposeNotice("");
     setAiComposeBusy(true);
     // Fresh compose: clear the form, then open the panel so the user watches
     // the email being written.
@@ -1872,7 +1880,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
           }
           if (resolved.length > 0) setTo(resolved);
           if (unresolved.length > 0) {
-            setError(t("aiComposeUnresolved", { names: unresolved.join("、") }));
+            setComposeNotice(t("aiComposeUnresolved", { names: unresolved.join("、") }));
           }
         } else if (ev.type === "subject" && ev.text) {
           subjectAcc += ev.text;
@@ -1880,13 +1888,13 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
         } else if (ev.type === "body" && ev.text) {
           bodyParts.push(ev.text);
         } else if (ev.type === "error" && ev.text) {
-          setError(ev.text);
+          setComposeError(ev.text);
         }
       });
       clearInterval(timer);
       flushBody();
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("aiComposeFailed"));
+      setComposeError(e instanceof Error ? e.message : t("aiComposeFailed"));
     } finally {
       setAiComposeBusy(false);
     }
@@ -1960,7 +1968,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
+    setComposeError("");
     try {
       let text = bodyText;
       let html = body;
@@ -1998,7 +2006,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       if (mergeOn) {
         const recipients = parseMergeRecipients(mergeText);
         if (recipients.length === 0) {
-          setError(t("mergeNoRecipients"));
+          setComposeError(t("mergeNoRecipients"));
           return;
         }
         const res = await mailMerge({
@@ -2013,7 +2021,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
         closeCompose();
         showToast(t("mergeSent", { count: res.sent }));
         if (res.failed.length > 0) {
-          setError(t("mergeFailed", { count: res.failed.length }));
+          setComposeError(t("mergeFailed", { count: res.failed.length }));
         }
         return;
       }
@@ -2088,7 +2096,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
         refreshUnseen();
       }, delay * 1000 + 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "send failed");
+      setComposeError(err instanceof Error ? err.message : "send failed");
     }
   }
 
@@ -2537,6 +2545,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     bulkFlag,
     loadMore,
     error,
+    composeError,
+    composeNotice,
     saveCurrentSearch,
     saveSearchSpec,
     searchRef,

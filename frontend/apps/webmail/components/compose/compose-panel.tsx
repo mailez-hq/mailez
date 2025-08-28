@@ -30,7 +30,8 @@ export interface ComposePanelProps {
   identities: MailIdentity[];
   from: string;
   onSelectIdentity: (email: string) => void;
-  error: string;
+  composeError: string;
+  composeNotice: string;
   draftSaved: boolean;
   to: string[];
   cc: string[];
@@ -99,7 +100,8 @@ export function ComposePanel(props: ComposePanelProps) {
     identities,
     from,
     onSelectIdentity,
-    error,
+    composeError,
+    composeNotice,
     draftSaved,
     to,
     cc,
@@ -364,8 +366,9 @@ export function ComposePanel(props: ComposePanelProps) {
               spellcheck={spellcheck}
             />
           </div>
-          {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
-          {draftSaved && !error && (
+          {composeError && <p className="mt-2 text-sm text-destructive">{composeError}</p>}
+          {composeNotice && <p className="mt-2 text-sm text-amber-600">{composeNotice}</p>}
+          {draftSaved && !composeError && (
             <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
               <Check className="size-3" />
               {t("draftSaved")}
