@@ -736,7 +736,18 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     // reverse lookup when the row isn't in the mounted list (e.g. fresh deep
     // link where the list hasn't loaded yet).
     const row = messages.find((m) => m.id === pathId || m.uid === Number(pathId));
-    if (row) setSelected(row);
+    if (row) {
+      // Optimistic switch: show the new message's summary right away so the
+      // pane leaves the previous message while the full body loads. Keeping
+      // the stale message on screen until the fetch lands reads as "stuck".
+      setSelected(row);
+      setDetail(row);
+    } else {
+      // Row not loaded yet (deep link / list still fetching): clear the pane
+      // so the loading state is visible instead of stale content.
+      setSelected(null);
+      setDetail(null);
+    }
     // A numeric id is the degenerate uid fallback used when a message has no
     // Message-ID header; routing it through the uid path avoids a pointless
     // (and error-prone) reverse lookup.
