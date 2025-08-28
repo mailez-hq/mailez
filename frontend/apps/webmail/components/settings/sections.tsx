@@ -9,7 +9,7 @@ import {
   type AppToken, type AppTokenResult, type DelegationListing, type MailAccount, type MailDelegation, type MeSettings, type PgpKey, type PgpStatus, type SmimeCert, type SmimeStatus,
   type TotpStatus, type Webhook,
 } from "@/lib/api";
-import type { Accent, Density, Preferences, ReaderFontSize, ReadingPaneWidth, Theme } from "@/lib/preferences";
+import type { Accent, Density, Landing, Preferences, ReaderFontSize, ReadingPaneWidth, Theme } from "@/lib/preferences";
 import { cn } from "@/lib/utils";
 
 const ACCENT_COLORS: Record<Accent, string> = {
@@ -37,6 +37,7 @@ export type SettingsSectionsProps = {
   spellcheck: boolean; setSpellcheck: (v: boolean) => void;
   readerFont: ReaderFontSize; setReaderFont: (v: ReaderFontSize) => void;
   paneWidth: ReadingPaneWidth; setPaneWidth: (v: ReadingPaneWidth) => void;
+  landing: Landing; setLanding: (v: Landing) => void;
   prefs: Preferences; setAi: (ai: Preferences["ai"]) => void; setNotifications: (v: boolean) => void;
   displayedName: string; setDisplayedName: (v: string) => void;
   signature: string; setSignature: (v: string) => void;
@@ -137,7 +138,7 @@ export type SettingsSectionsProps = {
 // MailSettings shell owns all state and passes it down; the extracted JSX
 // is byte-identical to the original single-file implementation.
 export function SettingsSections(props: SettingsSectionsProps) {
-  const { t, section, profile, theme, setTheme, density, setDensity, accent, setAccent, spellcheck, setSpellcheck, readerFont, setReaderFont, paneWidth, setPaneWidth, prefs, setAi, setNotifications, displayedName, setDisplayedName, signature, setSignature, whitelist, setWhitelist, blacklist, setBlacklist, forwardEnabled, setForwardEnabled, forwardDestination, setForwardDestination, forwardKeep, setForwardKeep, replyEnabled, setReplyEnabled, replySubject, setReplySubject, replyBody, setReplyBody, replyStartdate, setReplyStartdate, replyEnddate, setReplyEnddate, spamEnabled, setSpamEnabled, spamMarkAsRead, setSpamMarkAsRead, spamThreshold, setSpamThreshold, saveSettings, savePassword, pgp, setPgp, generating, setGenerating, copied, setCopied, pgpKeys, pgpImportEmail, setPgpImportEmail, pgpImportKeyText, setPgpImportKeyText, pgpImporting, pgpDeleting, onImportPgpKey, onDeletePgpKey, totp, setTotp, totpCode, setTotpCode, totpBusy, setTotpBusy, webhooks, whUrl, setWhUrl, whSecret, setWhSecret, whEvents, setWhEvents, whEnabled, setWhEnabled, whSaving, whTesting, whTestMsg, onAddWebhook, onDeleteWebhook, onToggleWebhook, onTestWebhook, smime, smimeCerts, smimeImportMode, setSmimeImportMode, smimeCertPem, setSmimeCertPem, smimeKeyPem, setSmimeKeyPem, smimeP12B64, setSmimeP12B64, smimeP12Password, setSmimeP12Password, smimeImporting, smimeKeyringEmail, setSmimeKeyringEmail, smimeKeyringCert, setSmimeKeyringCert, smimeKeyringImporting, smimeKeyringDeleting, onImportSmime, onDeleteSmime, onImportSmimeCert, onDeleteSmimeCert, accountList, accName, setAccName, accEmail, setAccEmail, accImapHost, setAccImapHost, accImapPort, setAccImapPort, accImapSecurity, setAccImapSecurity, accSmtpHost, setAccSmtpHost, accSmtpPort, setAccSmtpPort, accSmtpSecurity, setAccSmtpSecurity, accUsername, setAccUsername, accPassword, setAccPassword, accSaving, accTesting, accTestMsg, onAddAccount, onDeleteAccount, onToggleAccount, onTestAccount, delegationList, delEmail, setDelEmail, delCanSend, setDelCanSend, delFullAccess, setDelFullAccess, delSaving, onAddDelegation, onUpdateDelegation, onDeleteDelegation, davTokens, davNewToken, davTokenBusy, onCreateDavToken, onDeleteDavToken, setError, oldPw, setOldPw, newPw, setNewPw, confirmPw, setConfirmPw } = props;
+  const { t, section, profile, theme, setTheme, density, setDensity, accent, setAccent, spellcheck, setSpellcheck, readerFont, setReaderFont, paneWidth, setPaneWidth, landing, setLanding, prefs, setAi, setNotifications, displayedName, setDisplayedName, signature, setSignature, whitelist, setWhitelist, blacklist, setBlacklist, forwardEnabled, setForwardEnabled, forwardDestination, setForwardDestination, forwardKeep, setForwardKeep, replyEnabled, setReplyEnabled, replySubject, setReplySubject, replyBody, setReplyBody, replyStartdate, setReplyStartdate, replyEnddate, setReplyEnddate, spamEnabled, setSpamEnabled, spamMarkAsRead, setSpamMarkAsRead, spamThreshold, setSpamThreshold, saveSettings, savePassword, pgp, setPgp, generating, setGenerating, copied, setCopied, pgpKeys, pgpImportEmail, setPgpImportEmail, pgpImportKeyText, setPgpImportKeyText, pgpImporting, pgpDeleting, onImportPgpKey, onDeletePgpKey, totp, setTotp, totpCode, setTotpCode, totpBusy, setTotpBusy, webhooks, whUrl, setWhUrl, whSecret, setWhSecret, whEvents, setWhEvents, whEnabled, setWhEnabled, whSaving, whTesting, whTestMsg, onAddWebhook, onDeleteWebhook, onToggleWebhook, onTestWebhook, smime, smimeCerts, smimeImportMode, setSmimeImportMode, smimeCertPem, setSmimeCertPem, smimeKeyPem, setSmimeKeyPem, smimeP12B64, setSmimeP12B64, smimeP12Password, setSmimeP12Password, smimeImporting, smimeKeyringEmail, setSmimeKeyringEmail, smimeKeyringCert, setSmimeKeyringCert, smimeKeyringImporting, smimeKeyringDeleting, onImportSmime, onDeleteSmime, onImportSmimeCert, onDeleteSmimeCert, accountList, accName, setAccName, accEmail, setAccEmail, accImapHost, setAccImapHost, accImapPort, setAccImapPort, accImapSecurity, setAccImapSecurity, accSmtpHost, setAccSmtpHost, accSmtpPort, setAccSmtpPort, accSmtpSecurity, setAccSmtpSecurity, accUsername, setAccUsername, accPassword, setAccPassword, accSaving, accTesting, accTestMsg, onAddAccount, onDeleteAccount, onToggleAccount, onTestAccount, delegationList, delEmail, setDelEmail, delCanSend, setDelCanSend, delFullAccess, setDelFullAccess, delSaving, onAddDelegation, onUpdateDelegation, onDeleteDelegation, davTokens, davNewToken, davTokenBusy, onCreateDavToken, onDeleteDavToken, setError, oldPw, setOldPw, newPw, setNewPw, confirmPw, setConfirmPw } = props;
   return (
     <div className="min-w-0 flex-1">
       {PROFILE_SECTIONS.has(section) && (
@@ -218,6 +219,17 @@ export function SettingsSections(props: SettingsSectionsProps) {
                               { value: "system", label: t("themeSystem") },
                             ]}
                             onChange={(v) => setTheme(v as Theme)}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>{t("landing")}</Label>
+                          <Segmented
+                            value={landing}
+                            options={[
+                              { value: "home", label: t("landingHome") },
+                              { value: "inbox", label: t("landingInbox") },
+                            ]}
+                            onChange={(v) => setLanding(v as Landing)}
                           />
                         </div>
                         <div className="space-y-1.5">

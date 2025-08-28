@@ -7,6 +7,9 @@ export type Density = "compact" | "cozy" | "relaxed";
 export type Accent = "blue" | "green" | "purple" | "orange" | "rose";
 export type ReaderFontSize = "sm" | "md" | "lg" | "xl";
 export type ReadingPaneWidth = "narrow" | "md" | "wide";
+// Where a signed-in user lands: the workspace dashboard or straight into
+// the mailbox (their last folder / inbox).
+export type Landing = "home" | "inbox";
 
 // Per-feature AI toggles. A feature switch is only effective while the master
 // switch is on; the backend additionally gates everything behind ai/status.
@@ -30,6 +33,7 @@ export type Preferences = {
   // Reading pane typography / width presets.
   readerFont: ReaderFontSize;
   paneWidth: ReadingPaneWidth;
+  landing: Landing;
 };
 
 export const PREF_KEY = "mailez.prefs";
@@ -44,6 +48,7 @@ export const DEFAULT_PREFS: Preferences = {
   spellcheck: true,
   readerFont: "md",
   paneWidth: "md",
+  landing: "home",
 };
 
 export function readPreferences(): Preferences {
@@ -79,6 +84,7 @@ export function readPreferences(): Preferences {
       paneWidth: ["narrow", "wide"].includes(parsed.paneWidth ?? "")
         ? (parsed.paneWidth as ReadingPaneWidth)
         : "md",
+      landing: parsed.landing === "inbox" ? "inbox" : "home",
     };
   } catch {
     return DEFAULT_PREFS;
