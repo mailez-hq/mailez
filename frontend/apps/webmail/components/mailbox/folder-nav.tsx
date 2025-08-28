@@ -440,6 +440,27 @@ export function FolderNav({
           </Button>
         </div>
 
+        {/* Compose actions: 写邮件 + AI 写邮件, at the very top of the sidebar */}
+        <div className="flex gap-1.5 px-3 pb-2">
+          <Button className="min-w-0 flex-1" onClick={onCompose}>
+            <PenLine className="size-4" />
+            {t("write")}
+          </Button>
+          {aiComposeEnabled && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="shrink-0"
+              onClick={onAiCompose}
+              disabled={aiComposeBusy}
+              title={t("aiCompose")}
+            >
+              <Sparkles className={cn("size-3.5 shrink-0 text-ai", aiComposeBusy && "animate-pulse")} />
+              <span className="sr-only">{t("aiCompose")}</span>
+            </Button>
+          )}
+        </div>
+
         {/* account switcher: own mailbox + delegated mailboxes + external accounts */}
         {onSwitchAccount && onManageAccounts && (
           <div className="relative px-3 pb-2" data-account-menu>
@@ -524,26 +545,6 @@ export function FolderNav({
             )}
           </div>
         )}
-
-        <div className="flex gap-1.5 px-3 pb-2">
-          <Button className="min-w-0 flex-1" onClick={onCompose}>
-            <PenLine className="size-4" />
-            {t("write")}
-          </Button>
-          {aiComposeEnabled && (
-            <Button
-              variant="outline"
-              size="icon"
-              className="shrink-0"
-              onClick={onAiCompose}
-              disabled={aiComposeBusy}
-              title={t("aiCompose")}
-            >
-              <Sparkles className={cn("size-3.5 shrink-0 text-ai", aiComposeBusy && "animate-pulse")} />
-              <span className="sr-only">{t("aiCompose")}</span>
-            </Button>
-          )}
-        </div>
 
         <nav className="mail-scroll flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
           <Link
