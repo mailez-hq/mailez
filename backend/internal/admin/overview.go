@@ -8,6 +8,7 @@ import (
 // registerOverview mounts the admin overview endpoint.
 func (h *Handler) registerOverview(r fiber.Router, mw fiber.Handler) {
 	r.Get("/admin/overview", mw, h.overview)
+	r.Get("/admin/license", mw, h.licenseStatus)
 }
 
 // overview returns the operational summary for the admin console: account
@@ -52,5 +53,17 @@ func (h *Handler) overview(c *fiber.Ctx) error {
 	out["upload_bytes"] = uploadBytes
 	out["drive_bytes"] = driveBytes
 	out["drive_files"] = driveFiles
+	out["license"] = h.License.Status(db)
 	return c.JSON(out)
+}
+
+// licenseStatus returns the current license snapshot (edition, mailbox cap,
+// usage, expiry) for the admin console.
+// @Summary License status
+// @Tags admin
+// @Produce json
+// @Success 200 {object} license.Status
+// @Router /admin/license [get]
+func (h *Handler) licenseStatus(c *fiber.Ctx) error {
+	return c.JSON(h.License.Status(h.DB.WithContext(c.Context())))
 }

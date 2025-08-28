@@ -111,6 +111,9 @@ func (h *Handler) createUser(c *fiber.Ctx) error {
 	if err := h.DB.Model(&models.User{}).Where("email = ?", in.Email).Count(&exists).Error; err == nil && exists > 0 {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "user already exists"})
 	}
+	if err := h.License.CheckCapacity(h.DB); err != nil {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+	}
 	hash, err := password.Hash(in.Password)
 	if err != nil {
 		return core.Fail(c, 500, err, "internal error")

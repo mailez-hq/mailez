@@ -58,10 +58,18 @@
     "config": "配置",
     "logout": "退出"
   },
-  "overview": {
-    "title": "系统概览",
-    "loading": "加载中...",
-    "users": "用户",
+    "overview": {
+      "title": "系统概览",
+      "loading": "加载中...",
+      "license": "授权",
+      "licenseEnterprise": "企业版",
+      "licenseDev": "开发版",
+      "licenseUsage": "{used}/{max} 邮箱",
+      "licenseUnlimited": "不限",
+      "licenseExpired": "已过期",
+      "licenseExpires": "到期 {date}",
+      "licenseLicensee": "{name}",
+      "users": "用户",
     "usersEnabled": "{n} 个启用",
     "domains": "域名",
     "aliases": "{n} 个别名",
