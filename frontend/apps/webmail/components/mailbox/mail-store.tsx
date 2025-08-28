@@ -48,6 +48,40 @@ import {
   textToHtml,
 } from "@/components/mailbox/mail-utils";
 
+// ---- in-memory view cache ----
+// Switching between conversations should be instant: keep recently fetched
+// message details and threads in memory for a short TTL. Flag changes are
+// bounded by the TTL; opening a message invalidates its entry (marks read).
+const detailCache = new Map<string, { at: number; data: MailMessage }>();
+const threadCache = new Map<string, { at: number; data: MailThread }>();
+const VIEW_CACHE_TTL = 30_000;
+const VIEW_CACHE_MAX = 120;
+
+function viewCacheGet<T>(m: Map<string, { at: number; data: T }>, key: string): T | null {
+  const e = m.get(key);
+  if (!e) return null;
+  if (Date.now() - e.at > VIEW_CACHE_TTL) {
+    m.delete(key);
+    return null;
+  }
+  return e.data;
+}
+
+function viewCachePut<T>(m: Map<string, { at: number; data: T }>, key: string, data: T) {
+  if (m.size >= VIEW_CACHE_MAX) {
+    let oldestKey: string | null = null;
+    let oldestAt = Infinity;
+    for (const [k, v] of m) {
+      if (v.at < oldestAt) {
+        oldestAt = v.at;
+        oldestKey = k;
+      }
+    }
+    if (oldestKey) m.delete(oldestKey);
+  }
+  m.set(key, { at: Date.now(), data });
+}
+
 // The store context is intentionally untyped for now: every field mirrors a
 // local inside the provider, and MailView stays a thin view on top of it.
 // A full MailStore interface lands together with the store-splitting refactor.
@@ -766,6 +800,14 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     // A pathId only exists when the URL carries a folder segment, so pathFolder
     // is always set here; TS can't see the invariant, hence the assertion.
     const pf = pathFolder!;
+    const detailKey = `${pf}\x00${pathId}`;
+    const cachedDetail = viewCacheGet(detailCache, detailKey);
+    if (cachedDetail) {
+      setSelected(cachedDetail);
+      setDetail(cachedDetail);
+      setDetailLoading(false);
+      return;
+    }
     const fetch = row
       ? mailMessage(pf, { uid: row.uid })
       : numericId
@@ -774,6 +816,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     fetch
       .then((full) => {
         if (cancelled) return;
+        viewCachePut(detailCache, detailKey, full);
         setSelected(full);
         setDetail(full);
       })
@@ -806,11 +849,20 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     if (!detail?.thread_id) {
       return;
     }
+    const threadKey = `${folder}\x00${detail.thread_id}`;
+    const cachedThread = viewCacheGet(threadCache, threadKey);
+    if (cachedThread) {
+      setThread(cachedThread);
+      setThreadOpen(true);
+      setThreadLoading(false);
+      return;
+    }
     let cancelled = false;
     setThreadLoading(true);
     mailThread(folder, detail.thread_id)
       .then((th) => {
         if (cancelled) return;
+        viewCachePut(threadCache, threadKey, th);
         setThread(th);
         setThreadOpen(true);
       })
@@ -1268,6 +1320,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
 
   function openMessage(m: MailMessage, srcFolder = folder) {
     if (!m.flags.includes("\\Seen")) {
+      detailCache.delete(`${srcFolder}\x00${m.id || m.uid}`);
       mailFlag(srcFolder, m.uid, "\\Seen", true).then(refreshUnseen).catch(() => {});
       m.flags.push("\\Seen");
       setMessages((ms) => ms.map((x) => (x.uid === m.uid ? m : x)));
@@ -1333,6 +1386,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   }
 
   async function setSeen(m: MailMessage, value: boolean) {
+    detailCache.delete(`${folder}\x00${m.id || m.uid}`);
     try {
       await mailFlag(folder, m.uid, "\\Seen", value);
       refreshUnseen();
@@ -1367,6 +1421,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
 
   async function toggleStar(m: MailMessage) {
     const starred = !m.flags.includes("\\Flagged");
+    detailCache.delete(`${folder}\x00${m.id || m.uid}`);
     try {
       await mailFlag(folder, m.uid, "\\Flagged", starred);
       setMessages((ms) =>
