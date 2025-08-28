@@ -758,9 +758,13 @@ export async function aiComposeStream(
         const payload = line.slice(5).trim();
         if (!payload) continue;
         try {
-          onEvent(JSON.parse(payload) as AiComposeEvent);
-        } catch {
-          // ignore malformed frames
+          const ev = JSON.parse(payload) as AiComposeEvent;
+          onEvent(ev);
+        } catch (err) {
+          // Tolerate malformed JSON frames, but never swallow errors thrown
+          // by the consumer (they must surface to the UI).
+          if (err instanceof SyntaxError) continue;
+          throw err;
         }
       }
     }
