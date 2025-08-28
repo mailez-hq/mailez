@@ -28,7 +28,7 @@ import {
   aiReplies, uploadLargeAttachment,
   meProfile, updateMeSettings,
   pgpEncrypt, pgpLookup, pgpSign,
-  type Contact, type DraftTone, type MailAccount, type MailDelegation, type MailIdentity, type MailLabel, type MailMessage, type MailThread, type Me,
+  type CalendarEvent, type Contact, type DraftTone, type MailAccount, type MailDelegation, type MailIdentity, type MailLabel, type MailMessage, type MailThread, type Me,
   type MailSearchSpec, type OutboundAttachment, type ScheduledSend, type SnoozedMessage,
 } from "@/lib/api";
 import {
@@ -321,6 +321,9 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [sieveOpen, setSieveOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  // Event to focus when the calendar drawer opens (set by the workspace
+  // home "today's schedule" list; consumed once by CalendarView).
+  const [calendarFocus, setCalendarFocus] = useState<CalendarEvent | null>(null);
   const [driveOpen, setDriveOpen] = useState(false);
   const [listWidth, setListWidth] = useState(360);
 
@@ -642,6 +645,15 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   // drawer is never hidden behind it; the draft is persisted by closeCompose.
   function openCalendar() {
     if (composeOpen) closeCompose();
+    setCalendarFocus(null);
+    setCalendarOpen(true);
+  }
+
+  // Opening the calendar already focused on a specific event (e.g. clicking
+  // a row on the workspace home): the drawer pops the event dialog directly.
+  function openCalendarEvent(ev: CalendarEvent) {
+    if (composeOpen) closeCompose();
+    setCalendarFocus(ev);
     setCalendarOpen(true);
   }
 
@@ -701,10 +713,12 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   }, [pathFolder, folder]);
 
   // Remember the last-visited folder so login / re-open can restore the
-  // user's position instead of always landing in the inbox.
+  // user's position instead of always landing in the inbox. Only /mail routes
+  // count as folder visits — /home keeps the inbox fallback without clobbering
+  // the stored position.
   useEffect(() => {
-    if (folder) writeLastFolder(folder);
-  }, [folder]);
+    if (folder && pathname?.startsWith("/mail")) writeLastFolder(folder);
+  }, [folder, pathname]);
 
   useEffect(() => {
     if (!pathId) {
@@ -2496,6 +2510,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     markAllRead,
     closeCompose,
     openCalendar,
+    calendarFocus,
+    openCalendarEvent,
     driveOpen,
     setDriveOpen,
     openDrive,

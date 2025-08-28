@@ -23,9 +23,11 @@ import {
   driveTree,
   mailAnnouncement,
   mailSnoozed,
+  meLogins,
   type CalendarEvent,
   type DriveEntry,
   type MailAnnouncement,
+  type RecentLogin,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -95,7 +97,7 @@ export default function WorkspacePage() {
   const t = useTranslations("home");
   const locale = useLocale();
   const router = useRouter();
-  const { me, unseen, setContactsOpen, setCalendarOpen, openSnoozed } = useMailStore();
+  const { me, unseen, setContactsOpen, setCalendarOpen, openCalendarEvent, openSnoozed } = useMailStore();
   const [todoCount, setTodoCount] = useState(0);
   const [contactCount, setContactCount] = useState(0);
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
@@ -129,6 +131,9 @@ export default function WorkspacePage() {
         setFiles(recent);
       })
       .catch(() => setFiles([]));
+    meLogins()
+      .then(setLogins)
+      .catch(() => setLogins([]));
   }, []);
 
   const name = me?.displayed_name || me?.email || "";
@@ -269,6 +274,54 @@ export default function WorkspacePage() {
             </Card>
           )}
 
+          {/* Account security: recent sign-ins + last password change */}
+          <Card>
+            <CardHeader className="flex flex-row items-center gap-2 pb-2">
+              <CardIcon icon={ShieldCheck} />
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {t("security")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs font-medium text-muted-foreground">{t("recentLogins")}</p>
+              {logins === null ? null : logins.length === 0 ? (
+                <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+                  <ShieldCheck className="size-4 opacity-40" />
+                  {t("noLogins")}
+                </div>
+              ) : (
+                <ul className="mt-1 space-y-1">
+                  {logins.slice(0, 3).map((l, i) => (
+                    <li
+                      key={i}
+                      className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/60"
+                    >
+                      <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] font-medium text-primary">
+                        {new Date(l.time).toLocaleString(locale, {
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      <span className="truncate font-mono text-xs text-muted-foreground">
+                        {l.ip}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-2 flex items-center justify-between border-t pt-2 text-sm">
+                <span className="text-muted-foreground">{t("lastPasswordChange")}</span>
+                <span className="font-medium">
+                  {me?.password_changed_at
+                    ? new Date(me.password_changed_at).toLocaleDateString(locale)
+                    : t("neverChanged")}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Today's schedule */}
           <Card>
             <CardHeader className="flex flex-row items-center gap-2 pb-2">
@@ -288,7 +341,9 @@ export default function WorkspacePage() {
                   {events.slice(0, MAX_LIST_ROWS).map((ev) => (
                     <li
                       key={ev.id}
-                      className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/60"
+                      className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/60"
+                      onClick={() => openCalendarEvent(ev)}
+                      title={ev.summary}
                     >
                       <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] font-medium text-primary">
                         {ev.all_day
