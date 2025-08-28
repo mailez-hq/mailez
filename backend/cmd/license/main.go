@@ -2,7 +2,7 @@
 //
 //   go run ./cmd/license genkey                      # print a fresh keypair
 //   go run ./cmd/license issue --out lic.lic \
-//       --licensee "Acme Corp" --mailboxes 500 --expires 2027-08-28T00:00:00Z
+//       --licensee "Acme Corp" --mailboxes 500 --service-end 2027-08-28T00:00:00Z
 //   go run ./cmd/license inspect --in lic.lic
 //
 // The signing key comes from MAILEZ_LICENSE_PRIVATE_KEY (base64 DER PKCS8)
@@ -44,7 +44,7 @@ func main() {
 func usage() {
 	fmt.Fprintln(os.Stderr, `usage:
   license genkey
-  license issue --out FILE [--licensee NAME] --mailboxes N [--expires RFC3339]
+  license issue --out FILE [--licensee NAME] --mailboxes N [--service-end RFC3339]
   license inspect --in FILE`)
 }
 
@@ -97,7 +97,7 @@ func issue(args []string) {
 	out := fs.String("out", "", "output license file")
 	licensee := fs.String("licensee", "", "licensed organization")
 	mailboxes := fs.Int("mailboxes", 0, "max mailboxes (0 = unlimited)")
-	expires := fs.String("expires", "", "expiry RFC3339, e.g. 2027-08-28T00:00:00Z")
+	expires := fs.String("service-end", "", "annual service end RFC3339 (support/upgrades); usage is perpetual")
 	features := fs.String("features", "", "comma-separated feature flags")
 	key := fs.String("key", "", "signing key file (PKCS8 DER)")
 	_ = fs.Parse(args)
@@ -115,7 +115,7 @@ func issue(args []string) {
 	if *expires != "" {
 		t, err := time.Parse(time.RFC3339, *expires)
 		if err != nil {
-			fatal(fmt.Errorf("--expires: %w", err))
+			fatal(fmt.Errorf("--service-end: %w", err))
 		}
 		lic.ExpiresAt = t.UTC().Format(time.RFC3339)
 	}
