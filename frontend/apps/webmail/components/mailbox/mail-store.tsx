@@ -15,7 +15,7 @@ import { setupPushSubscription, teardownPushSubscription } from "@/lib/push";
 import { writeLastFolder } from "@/lib/preferences";
 import { parseMergeRecipients } from "@/lib/mail-merge";
 import {
-  aiComposeStream, aiDraft, aiDraftNew, aiStatus, aiSummarize,
+  aiComposeDraft, aiComposeStream, aiDraft, aiDraftNew, aiStatus, aiSummarize,
   aiPrioritize, aiSearch,
   accounts, delegations, setActiveAccountId, setActiveDelegateEmail,
   contacts, mailFlag, mailMove, mailIdentities,
@@ -1859,7 +1859,11 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       };
       // Throttle editor updates so long outputs stay smooth.
       const timer = setInterval(flushBody, 80);
+      let gotContent = false;
       await aiComposeStream(instruction, (ev) => {
+        if (ev.type === "to" || ev.type === "subject" || ev.type === "body") {
+          gotContent = true;
+        }
         if (ev.type === "to" && ev.text) {
           const resolved: string[] = [];
           const unresolved: string[] = [];
@@ -1893,6 +1897,37 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       });
       clearInterval(timer);
       flushBody();
+      if (!gotContent) {
+        // Streaming produced nothing (proxy buffering or an empty reply):
+        // fall back to the one-shot endpoint so the user still gets the mail.
+        const draft = await aiComposeDraft(instruction);
+        const resolved: string[] = [];
+        const unresolved: string[] = [];
+        for (const raw of draft.to || []) {
+          const name = (raw || "").trim();
+          if (!name) continue;
+          if (name.includes("@")) {
+            resolved.push(name);
+            continue;
+          }
+          const hit = (contactsList || []).find(
+            (c) =>
+              (c.name || "").toLowerCase() === name.toLowerCase() ||
+              (c.name || "").toLowerCase().includes(name.toLowerCase()),
+          );
+          if (hit) resolved.push(hit.email);
+          else unresolved.push(name);
+        }
+        if (resolved.length > 0) setTo(resolved);
+        if (unresolved.length > 0) {
+          setComposeNotice(t("aiComposeUnresolved", { names: unresolved.join("、") }));
+        }
+        if (draft.subject) setSubject(draft.subject);
+        if (draft.body) {
+          setBodyText(draft.body);
+          setBody(textToHtml(draft.body));
+        }
+      }
     } catch (e) {
       setComposeError(e instanceof Error ? e.message : t("aiComposeFailed"));
     } finally {
