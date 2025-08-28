@@ -465,19 +465,26 @@ func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, 
 	if body := msg.GetBody(section); body != nil {
 		raw, err := io.ReadAll(body)
 		if err == nil {
-			out.UnsubscribeURL, out.UnsubscribePost = parseUnsubscribe(raw)
-			out.ReceiptRequested, out.ReceiptTo = parseReceiptRequest(raw)
-			out.Recall = parseRecallNotice(raw)
-			out.BurnAfterMinutes = parseBurnAfter(raw)
-			if textBody, htmlBody, attachments, inv, err := extractBody(bytes.NewReader(raw)); err == nil {
-				out.TextBody = textBody
-				out.HTMLBody = htmlBody
-				out.Attachments = attachments
-				out.Invitation = inv
-			}
+			applyBody(&out, raw)
 		}
 	}
 	return &out, nil
+}
+
+// applyBody parses the raw RFC 5322 source into the message's text/html
+// bodies, attachments, invitation and header-derived flags. Shared by the
+// detail fetch and the conversation (thread) fetch.
+func applyBody(out *Message, raw []byte) {
+	out.UnsubscribeURL, out.UnsubscribePost = parseUnsubscribe(raw)
+	out.ReceiptRequested, out.ReceiptTo = parseReceiptRequest(raw)
+	out.Recall = parseRecallNotice(raw)
+	out.BurnAfterMinutes = parseBurnAfter(raw)
+	if textBody, htmlBody, attachments, inv, err := extractBody(bytes.NewReader(raw)); err == nil {
+		out.TextBody = textBody
+		out.HTMLBody = htmlBody
+		out.Attachments = attachments
+		out.Invitation = inv
+	}
 }
 
 // parseBurnAfter reads X-Mailez-Burn-After (minutes) from a raw message.
