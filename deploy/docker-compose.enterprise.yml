@@ -3,7 +3,7 @@
 # 存储：MySQL（控制面）+ TiDB（引擎 KV）+ MinIO/S3（正文 blob）。
 # 全容器化：backend / frontend-admin / frontend-webmail / gateway(nginx) /
 # mailezine 引擎 + redis/mysql/tidb/minio/rspamd/unbound/macro-scanner。
-# 企业版 = mailezine 引擎（区别于社区版 legacy MTA/IMAP stack）。
+# 企业版 = 分布式存储与 HA（社区版见 docker-compose.community.yml，同引擎单节点）。
 #
 # 用法：
 #   cd deploy
@@ -103,10 +103,9 @@ services:
       # 企业版：控制面按 mailezine 引擎识别（版本/授权语义）。
       - MAILEZ_MAIL_ENGINE=mailezine
       - MAILEZ_SUBNET=${MAILEZ_SUBNET:-192.168.206.0/24}
-      # 引擎地址走服务名（Docker DNS），不依赖固定 IP；POSTFIX_ADDRESS 同时
-      # 决定 MailMtaAddr（outbox/通知投递），必须指向引擎而非 legacy MTA。
-      - DOVECOT_ADDRESS=mailezine
-      - POSTFIX_ADDRESS=mailezine
+      # 引擎地址走服务名（Docker DNS）；MailMtaAddr（outbox/通知投递）
+      # 指向引擎 submission。
+      - MAIL_MTA_ADDR=mailezine:25
       - MAILEZ_RECIPIENT_DELIMITER=+
       - MAILEZ_MESSAGE_RATELIMIT=200
       - MAILEZ_DKIM_SELECTOR=dkim
