@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
 import { Providers } from "@/components/providers";
 import { PreferencesProvider } from "@/components/preferences-provider";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
-import { themeBootstrapScript } from "@/lib/preferences";
+import { parseThemeCookie } from "@/lib/preferences";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -40,16 +39,21 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const cookieLocale = store.get("NEXT_LOCALE")?.value as Locale | undefined;
   const locale: Locale = cookieLocale && locales.includes(cookieLocale) ? cookieLocale : "en";
   const messages = (await import(`../messages/${locale}.json`)).default;
+  // Theme lives in a cookie (mirrored from preferences on every apply) so
+  // the server paints dark/density/accent straight onto <html> — no
+  // bootstrap script and no theme flash. React 19 refuses to execute
+  // scripts rendered through client components, which rules the old
+  // inline-bootstrap approach out entirely.
+  const theme = parseThemeCookie(store.get("mailez.theme")?.value);
 
   return (
-    <html lang={locale} suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html
+      lang={locale}
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable}${theme?.dark ? " dark" : ""}`}
+      {...(theme ? { "data-density": theme.density, "data-accent": theme.accent } : {})}
+    >
       <body className="min-h-screen bg-background font-sans text-foreground">
-        {/* Theme bootstrap: beforeInteractive injects the snippet into the
-            initial HTML on the server so the dark/density classes land
-            before first paint (no flash). A raw <script> tag is not an
-            option in client-rendered components — React never executes it
-            there. */}
-        <Script id="theme-bootstrap" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
         <PreferencesProvider>
           <Providers locale={locale} messages={messages}>
             {children}
