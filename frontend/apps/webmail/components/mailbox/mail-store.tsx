@@ -557,7 +557,10 @@ export function useMailStoreValue(me: Me) {
   }, [ctxMenu, setCtxMenu]);
 
   // logout signs out and returns to the sign-in page (full navigation so all
-  // in-memory mailbox state is dropped).
+  // in-memory mailbox state is dropped). The current location travels as
+  // ?next= so signing back in returns the user to where they left off — the
+  // same return trip the session-expiry bounce offers, minus the banner
+  // (voluntary sign-out needs no explanation).
   async function logout() {
     try {
       await apiLogout();
@@ -565,8 +568,13 @@ export function useMailStoreValue(me: Me) {
       // Full browser navigation on purpose: it drops every module-level
       // cache so a following login as a different user cannot see stale
       // per-mailbox data that survives an SPA route change.
+      const here = window.location.pathname + window.location.search;
+      const dest =
+        here.startsWith("/mail") || here === "/home"
+          ? `/?next=${encodeURIComponent(here)}`
+          : "/";
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.href = "/";
+      window.location.href = dest;
     }
   }
 
