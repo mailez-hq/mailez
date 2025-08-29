@@ -24,6 +24,8 @@
     "submitting": "Signing in...",
     "totp": "Verification code",
     "verify": "Verify",
+    "error": "Sign-in failed",
+    "sessionExpired": "Your session has expired. Please sign in again.",
     "rateLimited": "Too many attempts, please wait a moment before trying again."
   },
   "nav": {

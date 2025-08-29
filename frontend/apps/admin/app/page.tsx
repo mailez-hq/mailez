@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { me } from "@/lib/api";
+import { useTranslations } from "next-intl";
+import { dashboardTarget, me } from "@/lib/api";
 import { Logo } from "@/components/logo";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { LoginForm } from "@/components/login-form";
@@ -11,12 +12,20 @@ import { LoginForm } from "@/components/login-form";
 // webmail app on another port) is detected via /sso/me and redirected to the
 // dashboard, so users don't see a login page after already signing in.
 export default function Home() {
+  const t = useTranslations("login");
   const router = useRouter();
   const [checking, setChecking] = useState(true);
+  // ?expired=1 is set by the API layer when a 401 bounced the user here:
+  // explain the kick instead of dropping them on a silent sign-in form.
+  const [expired] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("expired") === "1",
+  );
 
   useEffect(() => {
     me()
-      .then(() => router.replace("/domains"))
+      .then(() => router.replace(dashboardTarget()))
       .catch(() => {})
       .finally(() => setChecking(false));
   }, [router]);
@@ -46,6 +55,14 @@ export default function Home() {
         </div>
       </div>
       <LoginForm />
+      {expired && (
+        <div
+          role="status"
+          className="mt-4 w-full max-w-sm rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+        >
+          {t("sessionExpired")}
+        </div>
+      )}
     </div>
   );
 }
