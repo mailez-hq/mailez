@@ -36,3 +36,32 @@ func TestEncodeKeywordAtomSafe(t *testing.T) {
 		}
 	}
 }
+
+func TestCanonicalFlag(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		// Bare display names (what API clients post) resolve to system flags.
+		{"seen", `\Seen`},
+		{"flagged", `\Flagged`},
+		{"answered", `\Answered`},
+		{"deleted", `\Deleted`},
+		{"draft", `\Draft`},
+		// Already-canonical and case variants pass through normalized.
+		{`\Seen`, `\Seen`},
+		{`\seen`, `\Seen`},
+		{"FLAGGED", `\Flagged`},
+		{"\\Flagged", `\Flagged`},
+		// Keywords and encoded label names are untouched.
+		{"$MDNSent", "$MDNSent"},
+		{"$Snoozed", "$Snoozed"},
+		{"工作", "工作"},
+		{"Work", "Work"},
+		{"", ""},
+	}
+	for _, tc := range cases {
+		if got := CanonicalFlag(tc.in); got != tc.want {
+			t.Errorf("CanonicalFlag(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}

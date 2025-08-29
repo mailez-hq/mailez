@@ -57,6 +57,10 @@ func newCalApp(t *testing.T, seed func(db *gorm.DB)) *fiber.App {
 		return c.Next()
 	})
 	h.Register(authed)
+	// Mirror the server wiring: the ICS export must be reachable WITHOUT the
+	// session middleware — external subscribers carry only the feed token.
+	// If export.ics ever moves back into Register, these requests 404.
+	h.RegisterPublic(f.Group("/api/v1"))
 	return f
 }
 
