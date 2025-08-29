@@ -1,8 +1,8 @@
 "use client";
 
-import { Archive, Paperclip, Pin, Star, Trash2, BellRing } from "lucide-react";
+import { Archive, Paperclip, Star, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { MailMessage, SnoozedMessage } from "@/lib/api";
+import type { MailMessage } from "@/lib/api";
 import type { Density } from "@/lib/preferences";
 import { Highlight } from "@/components/mailbox/highlight";
 import { isUserLabel, labelColor } from "@/components/mailbox/mail-utils";
@@ -82,7 +82,10 @@ export function MessageRow({
     message.thread_senders && message.thread_senders.length > 0
       ? message.thread_senders.slice(0, 2).join(", ") +
         (message.thread_senders.length > 2 ? ` +${message.thread_senders.length - 2}` : "")
-      : message.from[0]?.name || message.from[0]?.email || "?";
+      // from is an array once the backend contract fix lands; older payloads
+      // could carry null for From-less mails (e.g. system notices), so the
+      // array itself needs the optional chain.
+      : message.from?.[0]?.name || message.from?.[0]?.email || "?";
   const pad = density === "compact" ? "px-2" : "px-3";
 
   return (

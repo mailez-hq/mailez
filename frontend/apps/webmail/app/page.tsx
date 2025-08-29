@@ -49,7 +49,15 @@ export default function Home() {
         ? err.message
         : t("error");
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  // Loading is only ever true while the deep-link auth probe runs, so the
+  // initial value already accounts for plain visits (no ?next= → not loading).
+  // window is guarded for SSR: client components also render on the server
+  // for the initial HTML, where window is undefined.
+  const [loading, setLoading] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).has("next"),
+  );
   const [loginId, setLoginId] = useState("");
   const [domain, setDomain] = useState("");
   const [pw, setPw] = useState("");
@@ -76,7 +84,6 @@ export default function Home() {
     // visit to the sign-in page skips the probe: /sso/me would 401 and the
     // browser would log it as console noise.
     if (!new URLSearchParams(window.location.search).has("next")) {
-      setLoading(false);
       return;
     }
     me()
