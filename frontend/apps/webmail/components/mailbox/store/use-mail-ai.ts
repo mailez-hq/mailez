@@ -61,12 +61,16 @@ export function useMailAi({
     [aiEnabled, prefsAiEnabled, prefsAi],
   );
 
-  async function summarize() {
-    if (!detail) return;
+  // summarize produces the reading-pane summary. The optional threadText lets
+  // the conversation view summarize the whole thread (member bodies joined)
+  // instead of just the opened member; omitting it summarizes the detail.
+  async function summarize(threadText?: string) {
+    const body = threadText ?? detail?.text_body ?? detail?.html_body ?? "";
+    if (!body) return;
     setSummarizing(true);
     setSummary("");
     try {
-      const res = await aiSummarize(detail.text_body || detail.html_body || "");
+      const res = await aiSummarize(body);
       setSummary(res.summary);
     } catch (e) {
       setError(e instanceof Error ? e.message : "summarize failed");

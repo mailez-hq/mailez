@@ -13,6 +13,34 @@ import {
   driveRestore, driveShare, driveTrash, driveTrashEntries, driveTree,
   driveUpload, type DriveEntry,
 } from "@/lib/api";
+import { cn } from "@/lib/utils";
+
+// folderChainTo walks the tree from the root and returns the folder chain
+// ending at folderId (BFS via one driveTree call per level; personal drives
+// are shallow). Empty chain = folder sits at the root (or was not found).
+async function folderChainTo(folderId: number): Promise<DriveEntry[]> {
+  if (folderId === 0) return [];
+  const queue: DriveEntry[][] = [[]];
+  const visited = new Set<number>();
+  while (queue.length > 0) {
+    const chain = queue.shift()!;
+    const parentId = chain.length > 0 ? chain[chain.length - 1].id : 0;
+    let children: DriveEntry[];
+    try {
+      children = await driveTree(parentId);
+    } catch {
+      return [];
+    }
+    for (const c of children) {
+      if (!c.is_dir || visited.has(c.id)) continue;
+      visited.add(c.id);
+      const next = [...chain, c];
+      if (c.id === folderId) return next;
+      queue.push(next);
+    }
+  }
+  return [];
+}
 
 function fmtSize(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -23,7 +51,9 @@ function fmtSize(n: number): string {
 
 // DriveView is the file manager body: breadcrumb navigation, upload/folder
 // creation, per-entry download/share/rename/move/trash and a trash bucket.
-export function DriveView() {
+// `focus` (recent-files card) navigates to the file's folder on mount/change
+// and briefly highlights the row.
+export function DriveView({ focus }: { focus?: DriveEntry | null }) {
   const t = useTranslations("drive");
   const [cwd, setCwd] = useState<DriveEntry[]>([]); // breadcrumb chain
   const [entries, setEntries] = useState<DriveEntry[]>([]);
@@ -39,12 +69,20 @@ export function DriveView() {
   const [renaming, setRenaming] = useState<DriveEntry | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [copied, setCopied] = useState(false);
+  const [highlightId, setHighlightId] = useState<number | null>(null);
 
   const parentId = cwd.length > 0 ? cwd[cwd.length - 1].id : 0;
 
-  const load = useCallback(async () => {
+  // Show the spinner synchronously on folder switches: the render-phase
+  // adjustment reacts one render earlier than an effect would.
+  const [prevParentId, setPrevParentId] = useState(parentId);
+  if (parentId !== prevParentId) {
+    setPrevParentId(parentId);
     setLoading(true);
     setError("");
+  }
+
+  const load = useCallback(async () => {
     try {
       const [list, trashList] = await Promise.all([driveTree(parentId), driveTrash()]);
       setEntries(list);
@@ -57,8 +95,39 @@ export function DriveView() {
   }, [parentId]);
 
   useEffect(() => {
+    // Fetch whenever the folder changes. Every setState inside load() happens
+    // after its await — the lint cannot see through the call boundary.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
+
+  // Focus navigation (workspace recent-files click): resolve the file's
+  // folder chain, navigate there, and flash the row so it's easy to spot.
+  // The regular load effect follows the cwd change; if the file already sits
+  // in the open folder nothing reloads and only the highlight applies.
+  useEffect(() => {
+    if (!focus) return;
+    let cancelled = false;
+    setHighlightId(focus.id);
+    (async () => {
+      setLoading(true);
+      const chain = await folderChainTo(focus.parent_id);
+      if (cancelled) return;
+      setCwd(chain);
+    })();
+    const timer = setTimeout(() => setHighlightId(null), 4000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [focus]);
+
+  // Auto-clear the highlight even if the effect above is torn down early.
+  useEffect(() => {
+    if (highlightId === null) return;
+    const timer = setTimeout(() => setHighlightId(null), 4000);
+    return () => clearTimeout(timer);
+  }, [highlightId]);
 
   const openFolder = (entry: DriveEntry) => {
     setCwd((chain) => [...chain, entry]);
@@ -177,7 +246,10 @@ export function DriveView() {
   const renderEntry = (entry: DriveEntry, isTrash: boolean) => (
     <div
       key={entry.id}
-      className="group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/60"
+      className={cn(
+        "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/60",
+        highlightId === entry.id && "bg-primary/5 ring-1 ring-primary/50",
+      )}
       onDoubleClick={() => entry.is_dir && !isTrash && openFolder(entry)}
     >
       {entry.is_dir ? (

@@ -5,11 +5,19 @@ import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { DriveView } from "@/components/drive/drive-view";
+import type { DriveEntry } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // DriveDrawer slides the cloud drive in from the right edge of the mailbox,
-// mirroring the calendar drawer pattern.
-export function DriveDrawer({ onClose }: { onClose: () => void }) {
+// mirroring the calendar drawer pattern. `focus` (from the workspace
+// recent-files card) tells DriveView which file to navigate to and highlight.
+export function DriveDrawer({
+  focus,
+  onClose,
+}: {
+  focus?: DriveEntry | null;
+  onClose: () => void;
+}) {
   const t = useTranslations("drive");
   const [visible, setVisible] = useState(false);
 
@@ -42,7 +50,7 @@ export function DriveDrawer({ onClose }: { onClose: () => void }) {
           </Button>
         </div>
         <div className="min-h-0 flex-1">
-          <DriveView />
+          <DriveView focus={focus} />
         </div>
       </div>
     </div>

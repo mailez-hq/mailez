@@ -62,9 +62,19 @@ export function SieveEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Show the spinner synchronously when the editor opens (render-phase
+  // adjustment — React-recommended over synchronous setState in an effect);
+  // the actual load below is asynchronous.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setLoading(true);
+      setError("");
+    }
+  }
+
   const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
     try {
       const list = await sieveList();
       setScripts(list);
@@ -86,6 +96,9 @@ export function SieveEditor({
   }, []);
 
   useEffect(() => {
+    // Fetch when the editor opens. Every setState inside load() happens after
+    // its await — the lint cannot see through the call boundary.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (open) load();
   }, [open, load]);
 

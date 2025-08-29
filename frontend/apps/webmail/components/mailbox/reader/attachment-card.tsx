@@ -39,6 +39,8 @@ export function AttachmentCard({ attachment }: { attachment: MailAttachment }) {
   return (
     <div className="w-48 rounded-lg border border-border p-2 transition-colors hover:bg-muted/50">
       {isImage && (
+        // User-supplied data-URI preview: next/image cannot optimize these.
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={`data:${attachment.content_type};base64,${attachment.data}`}
           alt={attachment.filename}

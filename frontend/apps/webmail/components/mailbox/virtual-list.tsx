@@ -48,9 +48,17 @@ export function VirtualList<T>({
     return () => ro.disconnect();
   }, []);
 
+  // Reset the scroll position synchronously whenever the list is re-keyed
+  // (render-phase adjustment — the DOM scroll below still happens in the
+  // effect, which has no state writes).
+  const [prevScrollKey, setPrevScrollKey] = useState(scrollKey);
+  if (scrollKey !== prevScrollKey) {
+    setPrevScrollKey(scrollKey);
+    setScrollTop(0);
+  }
+
   useEffect(() => {
     containerRef.current?.scrollTo({ top: 0 });
-    setScrollTop(0);
   }, [scrollKey]);
 
   const start = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
