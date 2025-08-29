@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 // Package ldap implements directory integration with AD/LDAP: password
 // authentication against the directory (with optional local-user
 // auto-provisioning) and a read-only organization address book synced from

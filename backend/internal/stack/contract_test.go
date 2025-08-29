@@ -30,7 +30,6 @@ import (
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/crypto"
-	"mailez/backend/internal/ldap"
 	"mailez/backend/internal/password"
 )
 
@@ -71,7 +70,7 @@ func newContractHarness(t *testing.T) (*Handler, *fiber.App) {
 		PostfixAddress:     "127.0.0.1",
 	}
 	mgr := auth.NewManager(db, auth.NewMemoryStore(), "mailez_session", time.Hour)
-	h := New(db, mgr, cfg, nil, ldap.New(db, cfg.SecretKey), authcache.New(0))
+	h := New(db, mgr, cfg, nil, nil, authcache.New(0))
 	app := fiber.New()
 	h.Register(app.Group("/stack"))
 	return h, app

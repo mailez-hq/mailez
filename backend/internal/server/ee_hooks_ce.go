@@ -19,6 +19,15 @@ import (
 // eeRegisterRoutes mounts nothing in the community build.
 func eeRegisterRoutes(s *Server, app *core.App, v1, authed, stackGroup fiber.Router) {}
 
+// eeNewDirectorySync returns nil in the community build: no AD/LDAP
+// directory integration.
+func eeNewDirectorySync(db *gorm.DB, secretKey string) core.DirectorySync {
+	return nil
+}
+
+// eeWireAppDirectory wires nothing in the community build.
+func eeWireAppDirectory(s *Server, app *core.App) {}
+
 // eeStartComplianceWorkers starts no workers in the community build; the
 // outbox runs without the content filter.
 func eeStartComplianceWorkers(db *gorm.DB, am *auth.Manager, cfg core.Config, bgCtx context.Context) compose.OutboundScanner {

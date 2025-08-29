@@ -20,7 +20,23 @@ import (
 	"mailez/backend/internal/ee/archive"
 	"mailez/backend/internal/ee/delegation"
 	"mailez/backend/internal/ee/dlp"
+	eeldap "mailez/backend/internal/ee/ldap"
 )
+
+// eeNewDirectorySync builds the AD/LDAP integration (login fallback,
+// auto-provisioning, address-book sync).
+func eeNewDirectorySync(db *gorm.DB, secretKey string) core.DirectorySync {
+	return eeldap.New(db, secretKey)
+}
+
+// eeWireAppDirectory wires the directory integration into the app shell and
+// enforces the licensed mailbox cap on auto-provisioning.
+func eeWireAppDirectory(s *Server, app *core.App) {
+	app.LDAP = s.LDAP
+	if s.LDAP != nil {
+		s.LDAP.SetCapacityChecker(app.License.CheckCapacity)
+	}
+}
 
 // eeRegisterRoutes mounts the enterprise API surfaces: delegation,
 // announcements, compliance archive, DLP, AI assistant and Exchange
@@ -62,5 +78,7 @@ func eeStartComplianceWorkers(db *gorm.DB, am *auth.Manager, cfg core.Config, bg
 	// Compliance archive retention: purge messages past their policy
 	// deadline.
 	go archive.New(appShell).RunRetention(bgCtx)
+	// Organization address book refresh (AD/LDAP) when directory sync is on.
+	go eeldap.RunSyncWorker(bgCtx, db, cfg.SecretKey)
 	return outboundScannerAdapter{svc: dlpSvc}
 }
