@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 // Command eas-e2e runs an ActiveSync smoke test against a running
 // mailez backend: OPTIONS, autodiscover, Provision, FolderSync, incremental
 // Sync, Ping and SendMail over the WBXML transport.
@@ -19,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"mailez/backend/internal/activesync"
+	"mailez/backend/internal/ee/activesync"
 )
 
 const (

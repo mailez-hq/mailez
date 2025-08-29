@@ -1,9 +1,11 @@
+//go:build mailez_ee
+
 package main
 
 import (
 	"os"
 
-	"mailez/backend/internal/agent"
+	"mailez/backend/internal/ee/agent"
 )
 
 // RspamdConfig is the typed view of the environment consumed by the rspamd

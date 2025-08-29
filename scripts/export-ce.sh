@@ -1,0 +1,48 @@
+#!/bin/sh
+# export-ce: generate the public community source tree from the private
+# monorepo (backend + frontend). Usage:
+#
+#   scripts/export-ce.sh [public-remote]
+#
+# Strips every enterprise-only path and paired *_ee.go file, keeps the full
+# commit history (filter-repo is deterministic: unchanged history rewrites
+# to identical SHAs, so pushes to the public mirror stay fast-forward while
+# main is append-only). Requires git-filter-repo.
+set -eu
+
+PUBLIC_URL="${1:-${MAILEZ_PUBLIC_URL:-}}"
+EXPORT_DIR="${MAILEZ_EXPORT_DIR:-build/export-ce}"
+
+command -v git-filter-repo >/dev/null 2>&1 || {
+  echo "export-ce: git-filter-repo not found (pip install git-filter-repo)" >&2
+  exit 1
+}
+
+rm -rf "${EXPORT_DIR}"
+git clone --mirror . "${EXPORT_DIR}"
+cd "${EXPORT_DIR}"
+
+# The CE/EE boundary contract (see backend/FEATURES.md): everything
+# enterprise lives under backend/internal/ee or a paired *_ee.go file.
+git filter-repo \
+  --invert-paths \
+  --path backend/internal/ee/ \
+  --path backend/cmd/mailez-agent/ \
+  --path backend/cmd/eas-e2e/ \
+  --path-glob '*_ee.go' \
+  --path-glob '*_ee_test.go'
+
+if git ls-tree -r --name-only HEAD | grep -E 'backend/internal/ee/|_ee\.go$|_ee_test\.go$'; then
+  echo "export-ce: enterprise paths survived the filter" >&2
+  exit 1
+fi
+
+# Post-condition: the public tree must build and test on its own; run this
+# in the public mirror's CI as a release gate as well.
+
+if [ -n "${PUBLIC_URL}" ]; then
+  git push --mirror "${PUBLIC_URL}"
+  echo "export-ce: pushed ${PUBLIC_URL}"
+else
+  echo "export-ce: filtered mirror ready at ${EXPORT_DIR} (pass a remote to push)"
+fi

@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 package main
 
 import (
@@ -10,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"mailez/backend/internal/agent"
+	"mailez/backend/internal/ee/agent"
 )
 
 func runDovecot() error {
