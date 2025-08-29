@@ -1,7 +1,7 @@
 package compose
 
 // Enterprise mail features: read receipts (RFC 3798), same-system message
-// recall (classic-style X-MS-Recall notices) and mail merge (逐封群发).
+// recall (X-MS-Recall notices) and mail merge (逐封群发).
 import (
 	"fmt"
 	"log"

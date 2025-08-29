@@ -322,7 +322,7 @@ func main() {
 	}
 
 	// Conversation view: a reply to the same subject must collapse into one
-	// list row (modern-style grouping).
+	// list row (thread grouping).
 	replySubject := "Re: " + subject
 	if code, err := api.json("POST", "/mail/send", map[string]any{
 		"to": []string{opts.user}, "subject": replySubject, "body": "conversation reply",
