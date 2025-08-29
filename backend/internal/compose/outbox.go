@@ -24,10 +24,12 @@ import (
 // maxUndoSeconds bounds the send-undo window the client may request.
 const maxUndoSeconds = 30
 
-// sentSaver is the narrow IMAP-append surface the outbox worker needs to keep
-// a copy in the sender's Sent folder; *mail.Client implements it.
+// sentSaver is the narrow mail-client surface the outbox worker needs:
+// appending the Sent copy on the internal gateway and raw submission to
+// external aggregated accounts; *mail.Client implements it.
 type sentSaver interface {
 	AppendRaw(email, token, folder, raw string, flags []string) error
+	SubmitRaw(d mail.Dial, from string, recipients []string, raw string) error
 }
 
 // OutboxWorker delivers due outbox entries through the local MTA. Submitting
@@ -172,7 +174,9 @@ func (w *OutboxWorker) deliverExternal(o models.Outbox, recipients []string) err
 		return err
 	}
 	d := mail.ExternalDial(acc.Email, acc.SmtpHost, acc.SmtpPort, acc.SmtpSecurity, acc.Username, pw)
-	return mail.New("", "", "").SubmitRaw(d, o.FromAddr, recipients, o.RawMessage)
+	// Reuse the worker's client so the FETCH_INSECURE TLS policy applies to
+	// external submission too.
+	return w.Mail.SubmitRaw(d, o.FromAddr, recipients, o.RawMessage)
 }
 
 // deliverOutbox submits a parked message to the local MTA; trailing CRLF is

@@ -11,6 +11,7 @@ import (
 
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/crypto"
+	"mailez/backend/internal/mail"
 	"mailez/backend/internal/password"
 )
 
@@ -30,6 +31,12 @@ type appendCall struct {
 func (f *fakeSentSaver) AppendRaw(email, token, folder, raw string, flags []string) error {
 	f.appends = append(f.appends, appendCall{email: email, folder: folder, raw: raw})
 	f.lastToken = token
+	return nil
+}
+
+// SubmitRaw satisfies the widened sentSaver interface (external submission
+// reuse); the tests never exercise the external path.
+func (f *fakeSentSaver) SubmitRaw(d mail.Dial, from string, recipients []string, raw string) error {
 	return nil
 }
 

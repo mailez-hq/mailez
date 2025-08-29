@@ -145,7 +145,7 @@ type EventWatcher struct {
 // NewEventWatcher builds a watcher for the given hub.
 func NewEventWatcher(cfg core.Config, hub *Hub) *EventWatcher {
 	return &EventWatcher{
-		Mail:     mail.New(cfg.MailImapAddr, "", ""),
+		Mail:     mail.New(cfg.MailImapAddr, "", "").SetInsecureTLS(cfg.FetchInsecure),
 		Hub:      hub,
 		Interval: time.Duration(cfg.EventsInterval) * time.Second,
 		baseline: make(map[string]map[string]mail.FolderStat),

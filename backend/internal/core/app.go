@@ -54,7 +54,8 @@ func New(db *gorm.DB, authMgr *auth.Manager, cfg Config) *App {
 		DB:   db,
 		Auth: authMgr,
 		Cfg:  cfg,
-		Mail: mail.New(cfg.MailImapAddr, cfg.MailSmtpAddr, cfg.MailSieveAddr),
+		Mail: mail.New(cfg.MailImapAddr, cfg.MailSmtpAddr, cfg.MailSieveAddr).
+			SetInsecureTLS(cfg.FetchInsecure),
 		License: lic,
 		Service: svc,
 	}

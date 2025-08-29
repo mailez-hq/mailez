@@ -84,7 +84,10 @@ func (h *Handler) pushSubscribe(c *fiber.Ctx) error {
 	var tokenHash string
 	needToken := true
 	var existing models.PushSubscription
-	if err := h.DB.Where("user_email = ?", user.Email).First(&existing).Error; err == nil {
+	// Reuse the stored credential only when a usable copy exists: a revoked
+	// token (cascade clears token_enc) must re-mint, or the poller would
+	// keep failing IMAP login with a dead secret forever.
+	if err := h.DB.Where("user_email = ?", user.Email).First(&existing).Error; err == nil && existing.TokenEnc != "" {
 		tokenEnc, tokenID = existing.TokenEnc, existing.TokenID
 		needToken = false
 	} else {
@@ -126,6 +129,16 @@ func (h *Handler) pushSubscribe(c *fiber.Ctx) error {
 					"p256dh": in.Keys.P256dh, "auth": in.Keys.Auth,
 					"token_enc": tokenEnc, "token_id": tokenID,
 				}).Error
+		}
+		if needToken {
+			// A fresh credential serves every endpoint of this user: older
+			// subscription rows may still carry a revoked copy from before
+			// the cascade; propagate so all devices heal at once.
+			if err := tx.Model(&models.PushSubscription{}).
+				Where("user_email = ? AND (token_enc = '' OR token_id = 0)", user.Email).
+				Updates(map[string]any{"token_enc": tokenEnc, "token_id": tokenID}).Error; err != nil {
+				return err
+			}
 		}
 		sub := models.PushSubscription{
 			UserEmail: user.Email,
@@ -177,7 +190,17 @@ func (h *Handler) pushUnsubscribe(c *fiber.Ctx) error {
 			removed = true
 		}
 		if removed && len(subs) == 1 {
-			return tx.Delete(&models.Token{}, "id = ?", subs[0].TokenID).Error
+			// The notifier token may be shared with webhooks
+			// (ensureWebhookNotifierToken reuses it): dropping it here would
+			// kill their credentials too. Only delete when nothing else
+			// references it.
+			var hookCount int64
+			if err := tx.Model(&models.Webhook{}).Where("token_id = ?", subs[0].TokenID).Count(&hookCount).Error; err != nil {
+				return err
+			}
+			if hookCount == 0 {
+				return tx.Delete(&models.Token{}, "id = ?", subs[0].TokenID).Error
+			}
 		}
 		return nil
 	}); err != nil {
