@@ -363,7 +363,11 @@ export function ReadingPane({
   // loadReplies fetches Smart Reply suggestions; forText lets the thread
   // view request suggestions for the newest member instead of the opened one.
   async function loadReplies(forText?: string) {
-    const text = (forText ?? detail.text_body ?? "").trim();
+    // Guard the input: a bare onClick pass-through would hand us a
+    // MouseEvent, and any non-string must fall back rather than crash
+    // on .trim().
+    const source = typeof forText === "string" ? forText : detail.text_body;
+    const text = (typeof source === "string" ? source : "").trim();
     if (!text) return;
     setRepliesLoading(true);
     try {
@@ -670,7 +674,7 @@ export function ReadingPane({
                 quickReplyAll={quickReplyAll}
                 setQuickReplyAll={setQuickReplyAll}
                 aiEnabled={aiEnabled}
-                onLoadReplies={loadReplies}
+                onLoadReplies={() => loadReplies()}
                 repliesLoading={repliesLoading}
                 setQuickReplyOpen={setQuickReplyOpen}
                 quickReplyText={quickReplyText}
