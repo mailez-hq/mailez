@@ -23,16 +23,19 @@ git clone --mirror . "${EXPORT_DIR}"
 cd "${EXPORT_DIR}"
 
 # The CE/EE boundary contract (see backend/FEATURES.md): everything
-# enterprise lives under backend/internal/ee or a paired *_ee.go file.
+# enterprise lives under backend/internal/ee, frontend ee/ directories, or
+# a paired *_ee.go file.
 git filter-repo \
   --invert-paths \
   --path backend/internal/ee/ \
   --path backend/cmd/mailez-agent/ \
   --path backend/cmd/eas-e2e/ \
+  --path frontend/apps/webmail/ee/ \
+  --path frontend/apps/admin/ee/ \
   --path-glob '*_ee.go' \
   --path-glob '*_ee_test.go'
 
-if git ls-tree -r --name-only HEAD | grep -E 'backend/internal/ee/|_ee\.go$|_ee_test\.go$'; then
+if git ls-tree -r --name-only HEAD | grep -E 'backend/internal/ee/|frontend/apps/[^/]*/ee/|_ee\.go$|_ee_test\.go$'; then
   echo "export-ce: enterprise paths survived the filter" >&2
   exit 1
 fi

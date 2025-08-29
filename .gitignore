@@ -35,3 +35,6 @@ Thumbs.db
 # IDE
 .idea/
 .vscode/
+
+# Edition modules materialized by scripts/set-edition.mjs (build artifact)
+frontend/apps/*/edition/
