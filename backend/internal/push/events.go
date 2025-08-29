@@ -232,8 +232,11 @@ func (w *EventWatcher) checkEmail(email string) {
 				continue
 			}
 			// New mail advances UIDNEXT (and usually the message count)
-			// regardless of read state; flag-only changes don't fire.
-			if cur.UidNext > old.UidNext || cur.Messages > old.Messages {
+			// regardless of read state; a growing UNSEEN count also fires,
+			// because a snooze wake-up (engine sweeper) resurfaces an old
+			// message as unread and the client must refresh then too.
+			// Other flag-only changes (read/archive) don't fire.
+			if cur.UidNext > old.UidNext || cur.Messages > old.Messages || cur.Unseen > old.Unseen {
 				changed = append(changed, folder)
 			}
 		}
