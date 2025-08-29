@@ -9,6 +9,7 @@ import (
 	"mailez/backend/internal/authcache"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/ldap"
+	"mailez/backend/internal/push"
 )
 
 // Handler implements the internal API consumed by nginx (auth_request) and the
@@ -25,6 +26,10 @@ type Handler struct {
 	// authCache memoizes successful HTTP Basic verifications (webdav auth
 	// requests from nginx), which would otherwise pay bcrypt per request.
 	authCache *authcache.Cache
+	// Notifier/EventWatcher receive engine delivery receipts (nil disables
+	// the kick; the endpoint still answers 202).
+	Notifier     *push.Notifier
+	EventWatcher *push.EventWatcher
 }
 
 func New(db *gorm.DB, authMgr *auth.Manager, cfg core.Config, rdb *redis.Client, ldapSvc *ldap.Service, cache *authcache.Cache) *Handler {
@@ -55,4 +60,5 @@ func (h *Handler) Register(r fiber.Router) {
 	h.registerRspamd(r)
 	h.registerFetch(r)
 	h.registerAutoconfig(r)
+	h.registerNotify(r)
 }
