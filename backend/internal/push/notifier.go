@@ -19,7 +19,8 @@ import (
 
 // Notifier polls unseen counts for users with push subscriptions and raises a
 // notification when the INBOX count grows. The first poll only establishes the
-// baseline so users are not spammed on restart.
+// baseline so users are not spammed on restart. Delivery receipts from the
+// engine call Kick for the same check without waiting for the tick.
 type Notifier struct {
 	DB   *gorm.DB
 	Cfg  core.Config
@@ -28,6 +29,7 @@ type Notifier struct {
 	mu      sync.Mutex
 	last    map[string]int
 	repaired map[string]time.Time // last self-heal attempt per user (rate limit)
+	kicks   map[string]time.Time  // last delivery-receipt kick per user (coalesce)
 }
 
 func NewNotifier(db *gorm.DB, cfg core.Config) *Notifier {
@@ -153,38 +155,99 @@ func (n *Notifier) pollOnce(ctx context.Context) {
 		}
 	}
 	for _, t := range targets {
-		counts, err := n.Mail.UnseenCounts(t.email, t.token)
-		if err != nil {
-			if isAuthFailure(err) {
-				// Dead credential (token revoked on one side): re-mint so
-				// the poll heals instead of retrying a dead secret every
-				// interval. Rate-limited to one attempt per user per hour.
-				if n.mayRepair(t.email) {
-					if rerr := n.repairNotifierToken(t.email); rerr != nil {
-						log.Printf("push: re-mint notifier token for %s: %v", t.email, rerr)
-					} else {
-						log.Printf("push: re-minted notifier token for %s after auth failure", t.email)
-					}
+		n.checkTarget(ctx, key, t.email, t.token)
+	}
+}
+
+// checkTarget runs the unseen-delta check and fan-out for one account. The
+// poll loop and the delivery-receipt Kick share it so their behaviour cannot
+// drift.
+func (n *Notifier) checkTarget(ctx context.Context, key *models.VapidKey, email, token string) {
+	counts, err := n.Mail.UnseenCounts(email, token)
+	if err != nil {
+		if isAuthFailure(err) {
+			// Dead credential (token revoked on one side): re-mint so
+			// the poll heals instead of retrying a dead secret every
+			// interval. Rate-limited to one attempt per user per hour.
+			if n.mayRepair(email) {
+				if rerr := n.repairNotifierToken(email); rerr != nil {
+					log.Printf("push: re-mint notifier token for %s: %v", email, rerr)
+				} else {
+					log.Printf("push: re-minted notifier token for %s after auth failure", email)
 				}
 			}
-			log.Printf("push: unseen for %s: %v", t.email, err)
-			continue
 		}
-		total := counts["Inbox"]
-		n.mu.Lock()
-		prev, ok := n.last[t.email]
-		n.last[t.email] = total
+		log.Printf("push: unseen for %s: %v", email, err)
+		return
+	}
+	total := counts["Inbox"]
+	n.mu.Lock()
+	prev, ok := n.last[email]
+	n.last[email] = total
+	n.mu.Unlock()
+	if ok && total > prev {
+		body := fmt.Sprintf("%d 封新邮件", total-prev)
+		if err := Notify(n.DB, key, email, "mailez", body, "/", n.Cfg.Domain); err != nil {
+			log.Printf("push: notify %s: %v", email, err)
+		}
+		DispatchWebhooks(n.DB, email, "mail.received", map[string]any{
+			"folder":       "Inbox",
+			"new_count":    total - prev,
+			"unseen_total": total,
+		})
+	}
+}
+
+// Kick checks one account immediately (engine delivery receipt). It
+// coalesces within kickWindow so a burst of receipts for one account costs
+// at most one IMAP round trip, and runs asynchronously: the HTTP caller gets
+// its 202 without waiting on the mailbox.
+func (n *Notifier) Kick(ctx context.Context, email string) {
+	if email == "" {
+		return
+	}
+	n.mu.Lock()
+	if n.kicks == nil {
+		n.kicks = map[string]time.Time{}
+	}
+	if t, ok := n.kicks[email]; ok && time.Since(t) < kickWindow {
 		n.mu.Unlock()
-		if ok && total > prev {
-			body := fmt.Sprintf("%d 封新邮件", total-prev)
-			if err := Notify(n.DB, key, t.email, "mailez", body, "/", n.Cfg.Domain); err != nil {
-				log.Printf("push: notify %s: %v", t.email, err)
-			}
-			DispatchWebhooks(n.DB, t.email, "mail.received", map[string]any{
-				"folder":       "Inbox",
-				"new_count":    total - prev,
-				"unseen_total": total,
-			})
+		return
+	}
+	n.kicks[email] = time.Now()
+	n.mu.Unlock()
+
+	go func() {
+		token := n.tokenFor(email)
+		if token == "" {
+			return
+		}
+		key, err := EnsureVAPID(n.DB)
+		if err != nil {
+			log.Printf("push: vapid: %v", err)
+			return
+		}
+		n.checkTarget(ctx, key, email, token)
+	}()
+}
+
+// kickWindow bounds receipt-driven rechecks for one account.
+const kickWindow = 2 * time.Second
+
+// tokenFor resolves the background mailbox credential of the account: the
+// push subscription's, falling back to the webhook notifier token.
+func (n *Notifier) tokenFor(email string) string {
+	var sub models.PushSubscription
+	if err := n.DB.Where("user_email = ?", email).First(&sub).Error; err == nil {
+		if secret, err := crypto.Decrypt(n.Cfg.SecretKey, sub.TokenEnc); err == nil && secret != "" {
+			return secret
 		}
 	}
+	var hook models.Webhook
+	if err := n.DB.Where("user_email = ? AND enabled = ? AND token_enc <> ''", email, true).First(&hook).Error; err == nil {
+		if secret, err := crypto.Decrypt(n.Cfg.SecretKey, hook.TokenEnc); err == nil && secret != "" {
+			return secret
+		}
+	}
+	return ""
 }
