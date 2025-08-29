@@ -149,7 +149,7 @@ func TestRespondDeclineRemovesEvent(t *testing.T) {
 func TestSendInvite(t *testing.T) {
 	_, fake, f := newTestInvite(t)
 	resp := postJSON(t, f, "/api/v1/invites/send", map[string]any{
-		"to": []string{"bob@example.com", "carol@example.com"},
+		"to":      []string{"bob@example.com", "carol@example.com"},
 		"summary": "产品评审", "location": "线上", "start": "2026-09-02T02:00:00Z",
 		"end": "2026-09-02T03:00:00Z", "description": "评审新功能",
 	})

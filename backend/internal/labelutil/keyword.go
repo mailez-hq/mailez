@@ -50,16 +50,16 @@ func EncodeKeyword(name string) string {
 // silently creates a custom *keyword* named "seen" that no UNSEEN count, flag
 // filter or expunge ever matches.
 var systemFlags = map[string]string{
-	"seen":      "\\Seen",
-	"\\seen":    "\\Seen",
-	"flagged":   "\\Flagged",
-	"\\flagged": "\\Flagged",
-	"answered":  "\\Answered",
+	"seen":       "\\Seen",
+	"\\seen":     "\\Seen",
+	"flagged":    "\\Flagged",
+	"\\flagged":  "\\Flagged",
+	"answered":   "\\Answered",
 	"\\answered": "\\Answered",
-	"deleted":   "\\Deleted",
-	"\\deleted": "\\Deleted",
-	"draft":     "\\Draft",
-	"\\draft":   "\\Draft",
+	"deleted":    "\\Deleted",
+	"\\deleted":  "\\Deleted",
+	"draft":      "\\Draft",
+	"\\draft":    "\\Draft",
 }
 
 // CanonicalFlag resolves a user-supplied flag name to its canonical system

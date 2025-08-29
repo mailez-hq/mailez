@@ -26,10 +26,10 @@ type Notifier struct {
 	Cfg  core.Config
 	Mail *mail.Client
 
-	mu      sync.Mutex
-	last    map[string]int
+	mu       sync.Mutex
+	last     map[string]int
 	repaired map[string]time.Time // last self-heal attempt per user (rate limit)
-	kicks   map[string]time.Time  // last delivery-receipt kick per user (coalesce)
+	kicks    map[string]time.Time // last delivery-receipt kick per user (coalesce)
 }
 
 func NewNotifier(db *gorm.DB, cfg core.Config) *Notifier {

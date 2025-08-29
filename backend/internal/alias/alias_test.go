@@ -105,9 +105,9 @@ func TestAliasDistributionGroupMembers(t *testing.T) {
 	}
 	defer getResp.Body.Close()
 	var got struct {
-		Email    string                `json:"email"`
-		Name     string                `json:"name"`
-		Members  []models.AliasMember  `json:"members"`
+		Email   string               `json:"email"`
+		Name    string               `json:"name"`
+		Members []models.AliasMember `json:"members"`
 	}
 	if err := json.NewDecoder(getResp.Body).Decode(&got); err != nil {
 		t.Fatalf("decode get: %v", err)
@@ -133,9 +133,9 @@ func TestAliasDistributionGroupMembers(t *testing.T) {
 		t.Fatalf("put status = %d, body %s", putResp.StatusCode, b)
 	}
 	var updated struct {
-		Name       string                `json:"name"`
+		Name        string               `json:"name"`
 		Destination string               `json:"destination"`
-		Members    []models.AliasMember  `json:"members"`
+		Members     []models.AliasMember `json:"members"`
 	}
 	if err := json.NewDecoder(putResp.Body).Decode(&updated); err != nil {
 		t.Fatalf("decode put: %v", err)

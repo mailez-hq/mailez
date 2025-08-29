@@ -16,7 +16,7 @@ func (h *Handler) registerNotify(r fiber.Router) {
 
 // notifyDeliveredIn mirrors mailezine/internal/notify's receipt payload.
 type notifyDeliveredIn struct {
-	Account   string `json:"account"`
+	Account    string `json:"account"`
 	Deliveries []struct {
 		Mailbox string `json:"mailbox"`
 		UID     uint32 `json:"uid"`

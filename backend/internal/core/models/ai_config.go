@@ -10,9 +10,9 @@ import "time"
 // key is encrypted with the control-plane secret (crypto.Encrypt), like fetch
 // passwords.
 type AiConfig struct {
-	ID      uint   `gorm:"primaryKey" json:"id"`
+	ID uint `gorm:"primaryKey" json:"id"`
 	// Name is the admin-facing display name, e.g. "DeepSeek 生产".
-	Name string `gorm:"size:64;not null;default:''" json:"name"`
+	Name    string `gorm:"size:64;not null;default:''" json:"name"`
 	Enabled bool   `json:"enabled"`
 	// IsDefault marks the provider used when several are enabled. Only an
 	// enabled (tested) provider may be the default.

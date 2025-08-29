@@ -87,11 +87,11 @@ const (
 // pool holds so it stays below the engine's per-listener limit (256 default).
 func newPoolRegistry() *poolRegistry {
 	return &poolRegistry{
-		pools:           make(map[string]*userPool),
-		idleMaxPerUser:  envInt("MAILEZ_IMAP_POOL_SIZE", defaultPoolIdlePerUser),
-		globalIdleMax:   int64(envInt("MAILEZ_IMAP_POOL_GLOBAL", defaultPoolGlobalIdle)),
-		idleTTL:         envDuration("MAILEZ_IMAP_POOL_IDLE", defaultPoolIdleTTL),
-		livenessMinAge:  2 * time.Second,
+		pools:          make(map[string]*userPool),
+		idleMaxPerUser: envInt("MAILEZ_IMAP_POOL_SIZE", defaultPoolIdlePerUser),
+		globalIdleMax:  int64(envInt("MAILEZ_IMAP_POOL_GLOBAL", defaultPoolGlobalIdle)),
+		idleTTL:        envDuration("MAILEZ_IMAP_POOL_IDLE", defaultPoolIdleTTL),
+		livenessMinAge: 2 * time.Second,
 	}
 }
 

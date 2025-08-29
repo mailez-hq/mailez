@@ -195,9 +195,9 @@ type Status struct {
 	Licensee     string   `json:"licensee,omitempty"`
 	MaxMailboxes int      `json:"max_mailboxes"`
 	Used         int64    `json:"used"`
-	Valid    bool     `json:"valid"` // license signature/edition valid
-	Features []string `json:"features,omitempty"`
-	Required bool     `json:"required"`
+	Valid        bool     `json:"valid"` // license signature/edition valid
+	Features     []string `json:"features,omitempty"`
+	Required     bool     `json:"required"`
 }
 
 // Status builds the current license snapshot (counts users for the "used"

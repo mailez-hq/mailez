@@ -31,7 +31,7 @@ func ParseInvitation(raw []byte) *Invitation {
 		return nil
 	}
 	out := &Invitation{
-		ICS:    string(raw),
+		ICS: string(raw),
 	}
 	for _, p := range cal.CalendarProperties {
 		if p.IANAToken == string(ics.ComponentPropertyMethod) {
