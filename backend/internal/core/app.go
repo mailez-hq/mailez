@@ -54,7 +54,7 @@ type App struct {
 func New(db *gorm.DB, authMgr *auth.Manager, cfg Config) *App {
 	var lic *license.Manager
 	if strings.EqualFold(cfg.MailEngine, "mailezine") {
-		// Enterprise engine: the license gates mailbox capacity and refuses
+		// mailezine engine: the license gates mailbox capacity and refuses
 		// startup when required but missing/invalid.
 		m, err := license.Load(cfg.LicenseFile, cfg.License, cfg.LicenseRequired)
 		if err != nil {
@@ -62,8 +62,9 @@ func New(db *gorm.DB, authMgr *auth.Manager, cfg Config) *App {
 		}
 		lic = m
 	} else {
-		// Community edition (postdove) is free: no license is loaded or
-		// enforced, so a license file on a community deployment is ignored.
+		// Defensive: server startup restricts MAILEZ_MAIL_ENGINE to
+		// mailezine; anything reaching this branch falls back to the
+		// free tier with no license enforced.
 		lic = license.Community()
 	}
 	svc, err := service.Load(cfg.ServiceFile, cfg.Service)

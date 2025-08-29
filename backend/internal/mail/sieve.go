@@ -43,9 +43,8 @@ func (c *Client) openSieve(email, token string) (*sieve, error) {
 		return nil, fmt.Errorf("sieve greeting: %w", err)
 	}
 	// The engine (mailezine) requires TLS before AUTH and advertises
-	// STARTTLS; the postdove gateway proxy speaks plaintext on the internal
-	// link. Try STARTTLS first and fall back to plaintext so both engines
-	// work.
+	// STARTTLS; container-internal links may also stay plaintext. Try
+	// STARTTLS first and fall back to plaintext so both link modes work.
 	if err := s.startTLS(); err != nil {
 		log.Printf("sieve %s: STARTTLS unavailable, continuing in plaintext: %v", c.SieveAddr, err)
 	}
