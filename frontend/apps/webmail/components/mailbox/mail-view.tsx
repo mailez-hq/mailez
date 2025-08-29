@@ -133,7 +133,6 @@ export function MailView() {
     replyWithQuote,
     replyAll,
     replyFrom,
-    replyAllFrom,
     forwardFrom,
     editDraft,
     forward,
@@ -254,7 +253,6 @@ export function MailView() {
             onReplyAll={replyAll}
             onForward={forward}
             onReplyThread={replyFrom}
-            onReplyAllThread={replyAllFrom}
             onForwardThread={forwardFrom}
             onArchive={() => archiveMessage(detail)}
             onDelete={() => removeMessage(detail)}

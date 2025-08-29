@@ -22,6 +22,7 @@ import {
 import {
   fmtFullDate, fmtShort, getSnippet, parseBody,
 } from "@/components/mailbox/reader/body";
+import { foldHtmlQuotes } from "@/components/mailbox/reader/html-quotes";
 import { Highlight } from "@/components/mailbox/highlight";
 import { sanitizeMailHTML } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
@@ -81,10 +82,15 @@ export function ThreadMessage({
   const htmlBody = useMemo(() => {
     if (!message.html_body) return "";
     const clean = sanitizeMailHTML(message.html_body);
-    return remoteImages && !remoteLoaded
-      ? blockRemoteImages(clean)
-      : clean;
-  }, [message.html_body, remoteImages, remoteLoaded]);
+    const guarded =
+      remoteImages && !remoteLoaded
+        ? blockRemoteImages(clean)
+        : clean;
+    // Fold quoted history into <details> - the engine turns "> " lines into
+    // blockquotes, which would otherwise re-render the whole thread history
+    // inside every member.
+    return foldHtmlQuotes(guarded, t("quotedText"));
+  }, [message.html_body, remoteImages, remoteLoaded, t]);
 
   if (!isExpanded) {
     return (
