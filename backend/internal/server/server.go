@@ -37,7 +37,6 @@ import (
 	"mailez/backend/internal/drive"
 	"mailez/backend/internal/fetch"
 	"mailez/backend/internal/invite"
-	"mailez/backend/internal/ldap"
 	"mailez/backend/internal/mail"
 	"mailez/backend/internal/mailbox"
 	"mailez/backend/internal/push"
@@ -61,7 +60,7 @@ type Server struct {
 	Redis    *redis.Client
 	Cfg      core.Config
 	Auth     *auth.Manager
-	LDAP     *ldap.Service
+	LDAP     core.DirectorySync
 	internal *stack.Handler
 	// events fans mailbox-change events to open webmail SSE connections.
 	events *push.Hub
@@ -150,11 +149,12 @@ func New(cfg core.Config) *Server {
 			log.Printf("login alert to %s: %v", email, err)
 		}
 	}
-	// AD/LDAP directory integration: shared by login, mail-proxy auth and the
-	// organization address book sync.
-	ldapSvc := ldap.New(db, cfg.SecretKey)
-	s.Auth.LDAP = ldapSvc
-	s.LDAP = ldapSvc
+	// AD/LDAP directory integration (login fallback, mail-proxy auth,
+	// address-book sync) is an enterprise capability: the seam returns nil
+	// in the community build.
+	dirSync := eeNewDirectorySync(db, cfg.SecretKey)
+	s.Auth.LDAP = dirSync
+	s.LDAP = dirSync
 	basicAuthCache := authcache.New(basicAuthCacheTTL())
 	s.basicAuthCache = basicAuthCache
 	// Push notifier (new-mail notifications for subscribed clients) and the
@@ -162,7 +162,7 @@ func New(cfg core.Config) *Server {
 	// delivery receipts can kick either one immediately.
 	notifier := push.NewNotifier(db, cfg)
 	eventWatcher := push.NewEventWatcher(cfg, s.events)
-	s.internal = stack.New(db, s.Auth, cfg, rdb, ldapSvc, basicAuthCache)
+	s.internal = stack.New(db, s.Auth, cfg, rdb, dirSync, basicAuthCache)
 	s.internal.Notifier = notifier
 	s.internal.EventWatcher = eventWatcher
 	s.routes()
@@ -175,8 +175,6 @@ func New(cfg core.Config) *Server {
 	// capability: the seam returns nil in the community build.
 	dlpScanner := eeStartComplianceWorkers(db, s.Auth, cfg, bgCtx)
 	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey, dlpScanner, mail.New(cfg.MailImapAddr, "", "").SetInsecureTLS(cfg.FetchInsecure)).Run(bgCtx)
-	// Organization address book refresh (AD/LDAP) when directory sync is on.
-	go ldap.RunSyncWorker(bgCtx, db, cfg.SecretKey)
 	// Calendar event reminders: mail the owner when start - reminder arrives.
 	go calendar.NewReminderWorker(db, cfg).Run(bgCtx)
 	// Large-attachment relay cleanup: delete expired uploads.
@@ -292,11 +290,8 @@ func (s *Server) routes() {
 	s.Auth.RegisterSSO(v1)
 
 	app := core.New(s.DB, s.Auth, s.Cfg)
-	app.LDAP = s.LDAP
-	// Directory auto-provisioning must respect the licensed mailbox cap.
-	if s.LDAP != nil {
-		s.LDAP.CheckCapacity = app.License.CheckCapacity
-	}
+	// AD/LDAP wiring (app.LDAP + licensed capacity guard) is edition-seamed.
+	eeWireAppDirectory(s, app)
 	user.RegisterPublic(v1, app)
 	// The ICS export is fetched by external calendar clients with only the
 	// HMAC feed token, so it must sit outside RequireAuth. Order matters:
