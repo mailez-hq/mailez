@@ -162,13 +162,15 @@ func TestDelegationMailDial(t *testing.T) {
 		d, err := h.App.MailDial(c)
 		if err != nil {
 			dialErr = err.Error()
-			return c.Status(500).SendString(dialErr)
+			// Same mapping the real /mail/* handlers use, so this test
+			// proves the wire behaviour: a refused grant is 403, not 500.
+			return core.DialFailure(c, err)
 		}
 		dialEmail = d.Email
 		return c.SendStatus(204)
 	})
 
-	// Send-only grant: mailbox access is refused.
+	// Send-only grant: mailbox access is refused with 403.
 	if err := h.DB.Create(&models.MailDelegation{
 		OwnerEmail: "alice@example.com", DelegateEmail: "bob@example.com",
 		CanSend: true, FullAccess: false,
@@ -177,7 +179,7 @@ func TestDelegationMailDial(t *testing.T) {
 	}
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/_dial", nil)
 	req.Header.Set("X-Delegate-Email", "alice@example.com")
-	if resp, err := app.Test(req, 5000); err != nil || resp.StatusCode != 500 {
+	if resp, err := app.Test(req, 5000); err != nil || resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("send-only dial: %v %v", err, resp)
 	} else {
 		resp.Body.Close()

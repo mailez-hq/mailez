@@ -52,6 +52,24 @@ func TestBuildMessageCustomFrom(t *testing.T) {
 	}
 }
 
+// TestDraftBccHeader pins the Drafts-copy behaviour: blind recipients are
+// preserved as a Bcc header on the stored draft, and no header appears when
+// there are none (transmitted messages never carry Bcc — see the injection
+// test above).
+func TestDraftBccHeader(t *testing.T) {
+	h := draftBccHeader([]string{"x@x.test", "y@x.test"})
+	if len(h) != 1 || h[0].Key != "Bcc" || h[0].Value != "x@x.test, y@x.test" {
+		t.Fatalf("draftBccHeader = %+v", h)
+	}
+	if got := draftBccHeader(nil); got != nil {
+		t.Fatalf("draftBccHeader(nil) = %+v, want nil", got)
+	}
+	msg := BuildMessage("a@x.test", []string{"b@x.test"}, nil, "hi", "body", "", nil, draftBccHeader([]string{"h@x.test"})...)
+	if !strings.Contains(msg, "Bcc: h@x.test\r\n") {
+		t.Errorf("draft missing Bcc header:\n%s", msg)
+	}
+}
+
 func TestBuildMessageAttachmentsAndRecipients(t *testing.T) {
 	msg := BuildMessage(
 		"a@x.test",

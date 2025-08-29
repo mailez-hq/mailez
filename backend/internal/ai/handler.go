@@ -306,7 +306,7 @@ func (h *Handler) aiSearch(c *fiber.Ctx) error {
 
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	q := mail.SearchQuery{
 		Text:          spec.Keywords,

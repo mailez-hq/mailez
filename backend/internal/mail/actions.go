@@ -274,9 +274,11 @@ func (a appendLiteral) Len() int { return a.Reader.Len() }
 // SaveDraft appends a message to Drafts with the \Draft flag. When replaceUID
 // is non-zero the previous draft is removed first (auto-save keeps exactly one
 // draft per compose session). The new message's UID is returned when known.
-// to/cc keep the recipients and attachments keep the files, so reopening the
-// draft restores the whole compose state.
-func (c *Client) SaveDraft(email, token string, to, cc []string, subject, text, html string, attachments []Attachment, replaceUID uint32) (uint32, error) {
+// to/cc/bcc keep the recipients and attachments keep the files, so reopening
+// the draft restores the whole compose state. Bcc is stored as a header on the
+// Drafts copy only — the send path never carries it into a transmitted
+// message (recipients travel in the envelope).
+func (c *Client) SaveDraft(email, token string, to, cc, bcc []string, subject, text, html string, attachments []Attachment, replaceUID uint32) (uint32, error) {
 	if err := c.EnsureMailbox(email, token, "Drafts"); err != nil {
 		return 0, err
 	}
@@ -298,7 +300,7 @@ func (c *Client) SaveDraft(email, token string, to, cc []string, subject, text, 
 		}
 	}
 
-	msg := BuildMessage(email, to, cc, subject, text, html, attachments)
+	msg := BuildMessage(email, to, cc, subject, text, html, attachments, draftBccHeader(bcc)...)
 	if err := cli.Append("Drafts", []string{"\\Draft"}, time.Now(), appendLiteral{strings.NewReader(msg)}); err != nil {
 		return 0, fmt.Errorf("imap append draft: %w", err)
 	}
@@ -307,6 +309,15 @@ func (c *Client) SaveDraft(email, token string, to, cc []string, subject, text, 
 		return 0, nil // uid unknown; caller just saves again without replacing
 	}
 	return st.UidNext - 1, nil
+}
+
+// draftBccHeader preserves blind recipients on the Drafts copy so reopening
+// the draft (here or in any IMAP client) restores them.
+func draftBccHeader(bcc []string) []Header {
+	if len(bcc) == 0 {
+		return nil
+	}
+	return []Header{{Key: "Bcc", Value: strings.Join(bcc, ", ")}}
 }
 
 // IsSystemFolder reports whether name is one of the engine-created system
