@@ -52,19 +52,32 @@ func newCalApp(t *testing.T, seed func(db *gorm.DB)) *fiber.App {
 	app.Mail = &calFake{}
 	h := New(app)
 	f := fiber.New()
+	// Mirror the server wiring ORDER exactly: fiber implements
+	// Group(prefix, handlers...) as Use-style middleware on the merged
+	// prefix, so routes registered after the "authenticated" group inherit
+	// its middleware. The public registration must come first, and the fake
+	// auth middleware must actually reject — a pass-through fake let the
+	// original ordering bug ship (external subscribers 401'd).
+	h.RegisterPublic(f.Group("/api/v1"))
 	authed := f.Group("/api/v1", func(c *fiber.Ctx) error {
+		if c.Get("X-Test-Session") == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "authentication required"})
+		}
 		c.Locals("user", &models.User{Email: "bob@example.com", DomainName: "example.com", Enabled: true})
 		return c.Next()
 	})
 	h.Register(authed)
-	// Mirror the server wiring: the ICS export must be reachable WITHOUT the
-	// session middleware — external subscribers carry only the feed token.
-	// If export.ics ever moves back into Register, these requests 404.
-	h.RegisterPublic(f.Group("/api/v1"))
 	return f
 }
 
 func doCal(t *testing.T, app *fiber.App, method, path, body string) (*http.Response, string) {
+	t.Helper()
+	return doCalHeaders(t, app, method, path, body, true)
+}
+
+// doCalHeaders optionally strips the fake session header so a route can be
+// proven reachable without authentication (the export.ics contract).
+func doCalHeaders(t *testing.T, app *fiber.App, method, path, body string, session bool) (*http.Response, string) {
 	t.Helper()
 	var r *http.Request
 	if body == "" {
@@ -72,6 +85,9 @@ func doCal(t *testing.T, app *fiber.App, method, path, body string) (*http.Respo
 	} else {
 		r = httptest.NewRequest(method, path, strings.NewReader(body))
 		r.Header.Set("Content-Type", "application/json")
+	}
+	if session {
+		r.Header.Set("X-Test-Session", "1")
 	}
 	resp, err := app.Test(r)
 	if err != nil {
@@ -150,15 +166,16 @@ func TestCalendarExportToken(t *testing.T) {
 			Start: &start, ICS: "BEGIN:VCALENDAR\r\nEND:VCALENDAR",
 		})
 	})
-	// Bad token rejected.
-	resp, _ := doCal(t, app, http.MethodGet, "/api/v1/calendar/export.ics?email=alice@example.com&token=bad", "")
+	// Bad token rejected — and reachable WITHOUT any session header: an
+	// external calendar client carries only the feed token.
+	resp, _ := doCalHeaders(t, app, http.MethodGet, "/api/v1/calendar/export.ics?email=alice@example.com&token=bad", "", false)
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("bad token status = %d", resp.StatusCode)
 	}
-	// Good token streams the calendar.
+	// Good token streams the calendar, still without a session.
 	token := feedToken("alice@example.com", "test-secret")
-	resp2, body2 := doCal(t, app, http.MethodGet,
-		"/api/v1/calendar/export.ics?email=alice@example.com&token="+token, "")
+	resp2, body2 := doCalHeaders(t, app, http.MethodGet,
+		"/api/v1/calendar/export.ics?email=alice@example.com&token="+token, "", false)
 	if resp2.StatusCode != http.StatusOK {
 		t.Fatalf("export status = %d", resp2.StatusCode)
 	}
