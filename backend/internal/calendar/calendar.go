@@ -137,9 +137,7 @@ func (h *Handler) Register(r fiber.Router) {
 	r.Post("/calendar/events", h.createEvent)
 	r.Put("/calendar/events/:id", h.updateEvent)
 	r.Delete("/calendar/events/:id", h.deleteEvent)
-	r.Get("/calendar/shares", h.listShares)
-	r.Post("/calendar/shares", h.createShare)
-	r.Delete("/calendar/shares/:id", h.deleteShare)
+	h.registerShares(r)
 	r.Get("/calendar/feed", h.calendarFeed)
 }
 

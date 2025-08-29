@@ -22,14 +22,9 @@ var currentUser = core.CurrentUser
 // @Router /calendar/events [get]
 func (h *Handler) listEvents(c *fiber.Ctx) error {
 	user := currentUser(c)
-	// Own events plus events from calendars shared with this account.
-	owners := []string{user.Email}
-	var shares []models.CalendarShare
-	if err := h.DB.Where("sharee_email = ?", user.Email).Find(&shares).Error; err == nil {
-		for _, s := range shares {
-			owners = append(owners, s.OwnerEmail)
-		}
-	}
+	// Own events plus (enterprise) events from calendars shared with this
+	// account.
+	owners, shares := h.visibleCalendars(user.Email)
 	q := h.DB.Where("user_email IN ?", owners)
 	if from := c.Query("from"); from != "" {
 		if t, err := time.Parse(time.RFC3339, from); err == nil {
