@@ -1,7 +1,6 @@
 # Go
 backend/bin/
 backend/*.exe
-backend/dev-start.ps1
 *.log
 
 # Node
