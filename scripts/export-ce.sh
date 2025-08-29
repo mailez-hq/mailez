@@ -22,6 +22,11 @@ rm -rf "${EXPORT_DIR}"
 git clone --mirror . "${EXPORT_DIR}"
 cd "${EXPORT_DIR}"
 
+# A cloned mirror carries private auxiliary refs (refs/stash etc.) that
+# filter-repo does not rewrite — they must never reach the public remote.
+git for-each-ref --format='%(refname)' refs/stash refs/notes refs/replace \
+  | while read -r ref; do git update-ref -d "${ref}"; done
+
 # The CE/EE boundary contract (see backend/FEATURES.md): everything
 # enterprise lives under backend/internal/ee, frontend ee/ directories, or
 # a paired *_ee.go file.
@@ -44,7 +49,9 @@ fi
 # in the public mirror's CI as a release gate as well.
 
 if [ -n "${PUBLIC_URL}" ]; then
-  git push --mirror "${PUBLIC_URL}"
+  # Restricted refspec (never --mirror): branches and tags only, so any
+  # auxiliary ref that reappears locally cannot be pushed by accident.
+  git push --force "${PUBLIC_URL}" 'refs/heads/*:refs/heads/*' 'refs/tags/*:refs/tags/*'
   echo "export-ce: pushed ${PUBLIC_URL}"
 else
   echo "export-ce: filtered mirror ready at ${EXPORT_DIR} (pass a remote to push)"
