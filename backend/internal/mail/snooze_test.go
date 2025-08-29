@@ -131,7 +131,8 @@ func fakeIMAPServer(t *testing.T, folders map[string][]fakeIMAPMsg) string {
 				w(fmt.Sprintf("* OK [UIDNEXT %d] next", maxUID+1))
 				w(tag + " OK [READ-ONLY] done")
 
-			case verb == "UID_SEARCH" || verb == "SEARCH":				msgs := folders[current]
+			case verb == "UID_SEARCH" || verb == "SEARCH":
+				msgs := folders[current]
 				var hits []string
 				for _, m := range msgs {
 					snoozed := false

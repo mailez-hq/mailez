@@ -83,4 +83,3 @@ func TestExtractBodyDetectsCalendarPart(t *testing.T) {
 		t.Errorf("calendar part must not be listed as an attachment: %v", attachments)
 	}
 }
-

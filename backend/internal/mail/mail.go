@@ -26,28 +26,28 @@ import (
 
 // Message is the API-facing representation of a mail.
 type Message struct {
-	UID           uint32       `json:"uid"`
-	ID            string       `json:"id"`
-	Seq           uint32       `json:"seq"`
-	Subject       string       `json:"subject"`
-	From          []Address    `json:"from"`
-	To            []Address    `json:"to"`
-	Cc            []Address    `json:"cc,omitempty"`
-	Bcc           []Address    `json:"bcc,omitempty"`
-	Date          time.Time    `json:"date"`
-	Flags         []string     `json:"flags"`
-	HasAttachment bool         `json:"has_attachment"`
-	Size          int64        `json:"size,omitempty"`
-	ThreadID      string       `json:"thread_id,omitempty"`
-	ThreadCount   int          `json:"thread_count,omitempty"`
-	ThreadLatest  bool         `json:"thread_latest,omitempty"`
+	UID           uint32    `json:"uid"`
+	ID            string    `json:"id"`
+	Seq           uint32    `json:"seq"`
+	Subject       string    `json:"subject"`
+	From          []Address `json:"from"`
+	To            []Address `json:"to"`
+	Cc            []Address `json:"cc,omitempty"`
+	Bcc           []Address `json:"bcc,omitempty"`
+	Date          time.Time `json:"date"`
+	Flags         []string  `json:"flags"`
+	HasAttachment bool      `json:"has_attachment"`
+	Size          int64     `json:"size,omitempty"`
+	ThreadID      string    `json:"thread_id,omitempty"`
+	ThreadCount   int       `json:"thread_count,omitempty"`
+	ThreadLatest  bool      `json:"thread_latest,omitempty"`
 	// ThreadUnread / ThreadFlagged are conversation-level aggregates: any
 	// member unread / starred (conversation view rows only).
-	ThreadUnread  bool     `json:"thread_unread,omitempty"`
-	ThreadFlagged bool     `json:"thread_flagged,omitempty"`
+	ThreadUnread  bool `json:"thread_unread,omitempty"`
+	ThreadFlagged bool `json:"thread_flagged,omitempty"`
 	// ThreadSenders lists the distinct senders of the conversation
 	// (conversation view rows only).
-	ThreadSenders []string `json:"thread_senders,omitempty"`
+	ThreadSenders []string     `json:"thread_senders,omitempty"`
 	Folder        string       `json:"folder,omitempty"`
 	TextBody      string       `json:"text_body,omitempty"`
 	HTMLBody      string       `json:"html_body,omitempty"`

@@ -489,7 +489,7 @@ func TestOpenLDAPLiveResolve(t *testing.T) {
 	cfg := models.LdapConfig{
 		ID: 1, Enabled: true, Host: "127.0.0.1", Port: 1389, Security: "none",
 		BaseDN: "ou=people,dc=example,dc=com", UserFilter: "(objectClass=person)",
-		BindDN: "cn=admin,dc=example,dc=com",
+		BindDN:   "cn=admin,dc=example,dc=com",
 		MailAttr: "mail", UIDAttr: "uid", UpnAttr: "userPrincipalName",
 		EmailDomain: "example.com", NameAttr: "cn", AutoCreate: true, SyncMinutes: 60,
 		SyncGroups: true, GroupFilter: "(objectClass=groupOfNames)",

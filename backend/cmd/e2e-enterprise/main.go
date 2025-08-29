@@ -610,7 +610,7 @@ func main() {
 	}
 
 	var sched struct {
-		OutboxID uint `json:"outbox_id"`
+		OutboxID  uint `json:"outbox_id"`
 		Scheduled bool `json:"scheduled"`
 	}
 	schedSubject := "e2e-scheduled-" + time.Now().Format("150405")

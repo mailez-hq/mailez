@@ -10,7 +10,9 @@ import (
 // Ed25519 verification key embedded in the binary.
 //
 // The value below is the Mailez HQ DEV key. Production builds replace it via
-//   go build -ldflags "-X mailez/backend/internal/license.publicKeyB64=<b64>"
+//
+//	go build -ldflags "-X mailez/backend/internal/license.publicKeyB64=<b64>"
+//
 // The matching private key lives only in the vendor's secret store and never
 // ships in source, images or docs.
 var publicKeyB64 = "MCowBQYDK2VwAyEAp23i5ECVobMMoopuFqZdYEkCJLaCg5kYMxsU1Vtq5GA="
