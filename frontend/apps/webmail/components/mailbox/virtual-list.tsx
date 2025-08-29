@@ -37,6 +37,11 @@ export function VirtualList<T>({
   const [viewportH, setViewportH] = useState(0);
   const [pull, setPull] = useState(0);
   const pullRef = useRef({ start: 0, active: false });
+  // Scroll updates are coalesced into animation frames: setState per scroll
+  // event re-renders the window on every pixel, rAF caps it to the frame
+  // rate and keeps long mailboxes smooth.
+  const rafRef = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -80,7 +85,14 @@ export function VirtualList<T>({
   return (
     <div
       ref={containerRef}
-      onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+      onScroll={(e) => {
+        if (rafRef.current) return;
+        const top = e.currentTarget.scrollTop;
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = 0;
+          setScrollTop(top);
+        });
+      }}
       onTouchStart={(e) => {
         if (!onPullRefresh || !containerRef.current || containerRef.current.scrollTop > 0) return;
         pullRef.current = { start: e.touches[0].clientY, active: true };

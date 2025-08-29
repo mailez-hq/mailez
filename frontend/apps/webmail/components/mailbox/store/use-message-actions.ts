@@ -63,11 +63,28 @@ export function useMessageActions({
   loadMessages: (folder: string, page?: number, silent?: boolean) => Promise<void>;
   openCompose: (toAddr?: string, subj?: string, html?: string, text?: string, focus?: "to" | "editor", replyTarget?: boolean) => void;
 }) {
+  // groupUidsByFolder resolves each uid to its owning folder: cross-folder
+  // search results (searchAll / AI search) span folders and IMAP uids are
+  // only unique within one folder — acting on them with the open folder's
+  // name would hit an unrelated message that happens to share the uid.
+  function groupUidsByFolder(uids: number[]): Map<string, number[]> {
+    const byUid = new Map(messages.map((m) => [m.uid, m.folder || folder]));
+    const groups = new Map<string, number[]>();
+    for (const u of uids) {
+      const f = byUid.get(u) || folder;
+      const list = groups.get(f);
+      if (list) list.push(u);
+      else groups.set(f, [u]);
+    }
+    return groups;
+  }
+
   // moveTo moves messages to a folder and offers an undo that moves them back.
   async function moveTo(uids: number[], destination: string, successLabel: string) {
     setError("");
     try {
-      await mailMove(folder, uids, destination);
+      const groups = groupUidsByFolder(uids);
+      await Promise.all([...groups].map(([src, us]) => mailMove(src, us, destination)));
       refreshUnseen();
       const uidSet = new Set(uids);
       setMessages((ms) => ms.filter((x) => !uidSet.has(x.uid)));
@@ -81,10 +98,10 @@ export function useMessageActions({
         setDetail(null);
       }
       showToast(successLabel, () => {
-        const src = folder;
-        mailMove(destination, uids, src)
+        // Undo returns each batch to the folder it came from.
+        Promise.all([...groups].map(([src, us]) => mailMove(destination, us, src)))
           .catch(() => {})
-          .finally(() => loadMessages(src));
+          .finally(() => loadMessages(folder));
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "move failed");
@@ -135,10 +152,13 @@ export function useMessageActions({
     }
   }
 
-  function openMessage(m: MailMessage, srcFolder = folder) {
+  function openMessage(m: MailMessage, srcFolder?: string) {
+    // Cross-folder rows carry their owning folder; the open folder is only
+    // the fallback for plain folder browsing.
+    const f = srcFolder ?? m.folder ?? folder;
     if (!m.flags.includes("\\Seen")) {
-      detailCache.delete(`${srcFolder}\x00${m.id || m.uid}`);
-      mailFlag(srcFolder, m.uid, "\\Seen", true).then(refreshUnseen).catch(() => {});
+      detailCache.delete(`${f}\x00${m.id || m.uid}`);
+      mailFlag(f, m.uid, "\\Seen", true).then(refreshUnseen).catch(() => {});
       m.flags.push("\\Seen");
       setMessages((ms) => ms.map((x) => (x.uid === m.uid ? applySeenState(x, true) : x)));
       // A multi-member thread's unread dot is a server-side aggregate that
@@ -147,14 +167,14 @@ export function useMessageActions({
       // Skipped while searching (results are not the folder list).
       const row = messages.find((x) => x.uid === m.uid);
       if (!searching && row?.thread_unread && row.thread_count && row.thread_count > 1) {
-        void loadMessages(folder, 0, true);
+        void loadMessages(f, 0, true);
       }
     }
     // Navigate to the message route; MailView follows the /mail/[folder]/[id]
     // URL (pathId effect) to load and show the reading pane. The stable id
     // keeps every view routable, shareable and survives mailbox moves. The
     // folder is URL-encoded so nested names (Parent/Child) stay one segment.
-    router.push(`/mail/${encodeURIComponent(srcFolder)}/${m.id || m.uid}`);
+    router.push(`/mail/${encodeURIComponent(f)}/${m.id || m.uid}`);
   }
 
   function removeMessage(m: MailMessage) {
@@ -186,7 +206,8 @@ export function useMessageActions({
     const ids = [...selectedUids];
     setError("");
     try {
-      await Promise.all(ids.map((uid) => mailFlag(folder, uid, flag, value)));
+      const groups = groupUidsByFolder(ids);
+      await Promise.all([...groups].map(([src, us]) => us.map((uid) => mailFlag(src, uid, flag, value))).flat());
       refreshUnseen();
       setMessages((ms) =>
         ms.map((m) =>
@@ -202,9 +223,10 @@ export function useMessageActions({
   }
 
   async function setSeen(m: MailMessage, value: boolean) {
-    detailCache.delete(`${folder}\x00${m.id || m.uid}`);
+    const f = m.folder || folder;
+    detailCache.delete(`${f}\x00${m.id || m.uid}`);
     try {
-      await mailFlag(folder, m.uid, "\\Seen", value);
+      await mailFlag(f, m.uid, "\\Seen", value);
       refreshUnseen();
       const apply = (x: MailMessage) => (x.uid === m.uid ? applySeenState(x, value) : x);
       setMessages((ms) => ms.map(apply));
@@ -216,9 +238,10 @@ export function useMessageActions({
 
   async function toggleStar(m: MailMessage) {
     const starred = !m.flags.includes("\\Flagged");
-    detailCache.delete(`${folder}\x00${m.id || m.uid}`);
+    const f = m.folder || folder;
+    detailCache.delete(`${f}\x00${m.id || m.uid}`);
     try {
-      await mailFlag(folder, m.uid, "\\Flagged", starred);
+      await mailFlag(f, m.uid, "\\Flagged", starred);
       setMessages((ms) =>
         ms.map((x) =>
           x.uid === m.uid
@@ -251,8 +274,9 @@ export function useMessageActions({
   // Pinned messages stay at the top of the list via the $Pin keyword.
   async function togglePin(m: MailMessage) {
     const pinned = !isPinned(m);
+    const f = m.folder || folder;
     try {
-      await mailFlag(folder, m.uid, PIN_FLAG, pinned);
+      await mailFlag(f, m.uid, PIN_FLAG, pinned);
       setMessages((ms) =>
         ms.map((x) =>
           x.uid === m.uid
