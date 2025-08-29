@@ -1,5 +1,3 @@
-//go:build mailez_ee
-
 package main
 
 import (
@@ -11,7 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"mailez/backend/internal/ee/agent"
+	"mailez/backend/internal/agent"
 )
 
 const unboundConfPath = "/etc/unbound/unbound.conf"
