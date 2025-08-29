@@ -125,10 +125,14 @@ export function useMailStoreValue(me: Me) {
   const pathFolder = segs[1] ? decodeURIComponent(segs[1]) : null;
   const pathId = segs.length > 2 ? decodeURIComponent(segs[2]) : null;
 
-  const [prevPathFolder, setPrevPathFolder] = useState(pathFolder);
-  if (pathFolder !== prevPathFolder) {
+  // null initial value is load-bearing: on the first mount the URL folder
+  // must win over the "Inbox" default, otherwise a direct load / refresh of
+  // /mail/<folder> (deep link, F5, login redirect) renders the inbox list
+  // under the wrong URL.
+  const [prevPathFolder, setPrevPathFolder] = useState<string | null>(null);
+  if (pathFolder && pathFolder !== prevPathFolder) {
     setPrevPathFolder(pathFolder);
-    if (pathFolder && pathFolder !== folder) setFolder(pathFolder);
+    if (pathFolder !== folder) setFolder(pathFolder);
   }
 
   // ---- reading pane: opened message detail + conversation ----
