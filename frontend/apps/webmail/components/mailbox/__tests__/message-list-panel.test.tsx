@@ -118,4 +118,27 @@ describe("MessageListPanel", () => {
     fireEvent.click(screen.getByTitle("star"));
     expect(onStar).toHaveBeenCalledWith(expect.objectContaining({ uid: 7 }));
   });
+
+  // Regression (search-all / snoozed lists): IMAP uids are unique only per
+  // folder, so a merged cross-folder list can carry the same uid twice. The
+  // row key must qualify with the source folder or React flags duplicate
+  // keys and may duplicate/omit rows.
+  it("keys rows uniquely when two folders share a uid", () => {
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const rows = [
+        makeMsg({ uid: 5, id: "a5", seq: 5, subject: "Inbox copy", folder: "Inbox" }),
+        makeMsg({ uid: 5, id: "b5", seq: 5, subject: "Sent copy", folder: "Sent" }),
+      ];
+      renderMailStore(<MessageListPanel {...baseProps({ messages: rows, displayMessages: rows, total: 2 })} />);
+      expect(screen.getByText("Inbox copy")).toBeInTheDocument();
+      expect(screen.getByText("Sent copy")).toBeInTheDocument();
+      const keyWarnings = errSpy.mock.calls.filter((c) =>
+        String(c[0] ?? "").includes("same key"),
+      );
+      expect(keyWarnings).toHaveLength(0);
+    } finally {
+      errSpy.mockRestore();
+    }
+  });
 });
