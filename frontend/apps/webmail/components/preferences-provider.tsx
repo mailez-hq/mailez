@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_PREFS,
   applyPreferences,
@@ -50,6 +50,10 @@ const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFS);
   const [resolvedDark, setResolvedDark] = useState(false);
+  // Current prefs for event handlers registered once on mount (the media
+  // listener must not capture stale state).
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
 
   useEffect(() => {
     const initial = readPreferences();
@@ -63,14 +67,9 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => {
-      setPrefs((p) => {
-        if (p.theme === "system") {
-          const dark = mq.matches;
-          setResolvedDark(dark);
-          document.documentElement.classList.toggle("dark", dark);
-        }
-        return p;
-      });
+      if (prefsRef.current.theme !== "system") return;
+      applyPreferences(prefsRef.current);
+      setResolvedDark(resolveTheme("system") === "dark");
     };
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
