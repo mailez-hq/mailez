@@ -4,17 +4,21 @@
 
 # mailez — mail easy
 
-Self-hosted email for teams who want their own mail server: send and receive
-mail with your own domain, keep your data in your own hands, and enjoy a
-webmail that actually feels good to use. One command deploys the whole thing —
-mail delivery, spam filtering, authentication, admin console and webmail.
+Self-hosted email that scales with you: from a personal mailbox of one to
+ten-thousand-person organizations — teams, enterprises and public-sector
+agencies alike. Send and receive mail with your own domain, keep your data in
+your own hands, and enjoy a webmail that actually feels good to use. One
+command deploys the whole thing — mail delivery, spam filtering,
+authentication, admin console and webmail.
 
 ## Who is it for?
 
-- Teams and companies that want their own domain mail without handing their
-  data to third-party mail services
-- Anyone who wants a self-hosted, privacy-first alternative that doesn't
-  require a Linux mail expert to run
+- **Individuals** — a mailbox that is truly yours, not rented from a mail provider
+- **Teams and companies** — domain mail for everyone, with data kept 100% in-house
+- **Public sector** — strict data-sovereignty and privacy requirements, fully covered
+
+The common ground: self-hosted and privacy-first, with no Linux mail expert
+required to run it.
 
 ## What you get
 
