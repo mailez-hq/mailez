@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Globe, LayoutDashboard, Mail, ShieldCheck } from "lucide-react";
@@ -41,7 +41,16 @@ function mailboxTarget(): string {
 
 // The root route is the sign-in page. An already-authenticated visitor is
 // sent straight into the mailbox; after a successful login we route into it.
-export default function Home() {
+export default function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  // Unwrap the router-provided searchParams promise during render: the
+  // server render and hydration see the SAME value, so state derived from
+  // it cannot mismatch. (Reading window.location in a useState initializer
+  // is the classic hydration trap: server gets false, client gets true.)
+  const sp = use(searchParams);
   const t = useTranslations("login");
   const loginError = (err: unknown) =>
     err instanceof ApiError && err.code === "rate_limited"
@@ -51,14 +60,9 @@ export default function Home() {
         : t("error");
   const router = useRouter();
   // Loading is only ever true while the deep-link auth probe runs, so the
-  // initial value already accounts for plain visits (no ?next= → not loading).
-  // window is guarded for SSR: client components also render on the server
-  // for the initial HTML, where window is undefined.
-  const [loading, setLoading] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      new URLSearchParams(window.location.search).has("next"),
-  );
+  // initial value already accounts for plain visits (no ?next= → not
+  // loading).
+  const [loading, setLoading] = useState(sp.next !== undefined);
   const [loginId, setLoginId] = useState("");
   const [domain, setDomain] = useState("");
   const [pw, setPw] = useState("");
@@ -70,11 +74,7 @@ export default function Home() {
   const [settings, setSettings] = useState<ServerSettings | null>(null);
   // ?expired=1 is set by the API layer when a 401 bounced the user here:
   // explain the kick instead of dropping them on a silent sign-in form.
-  const [expired] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      new URLSearchParams(window.location.search).get("expired") === "1",
-  );
+  const [expired] = useState(sp.expired === "1");
 
   // Enterprise branding from the server (admin console). Empty fields fall
   // back to the built-in Mailez brand below.
