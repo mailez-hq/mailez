@@ -136,6 +136,8 @@
     "back": "返回",
     "expandQuote": "展开引用",
     "collapseQuote": "收起引用",
+    "quotedText": "显示引用的文字",
+    "popOutCompose": "完整撰写",
     "collapseMessage": "收起邮件",
     "quoteLines": "引用 {count} 行",
     "threadCount": "会话（{count}）",
