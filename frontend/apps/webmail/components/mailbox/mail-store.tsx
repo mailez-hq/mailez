@@ -104,6 +104,7 @@ export function useMailStoreValue(me: Me) {
     folders, unseen, setUnseen, refreshUnseen, loadFolders,
     createFolder, renameFolder, deleteFolder, clearFolder, spamFolder,
   } = useFolderMgmt({
+    email: me.email,
     folder,
     loadMessages,
     selectFolder: (f: string) => selectFolderRef.current(f),
