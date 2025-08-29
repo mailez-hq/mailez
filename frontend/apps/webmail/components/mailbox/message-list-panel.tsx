@@ -461,7 +461,10 @@ export function MessageListPanel({
           scrollKey={`${folder}-${searching}`}
           onEndReached={onLoadMore}
           onPullRefresh={onRefresh}
-          getKey={(m) => m.uid}
+          // IMAP UIDs are only unique per mailbox: search-all results mix
+          // folders, so two different messages can share a uid. Qualify the
+          // key with the source folder when the row carries one.
+          getKey={(m) => (m.folder ? `${m.folder}/${m.uid}` : m.uid)}
           className="flex-1"
           renderRow={(m, i) => (
             <MessageRow
