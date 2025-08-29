@@ -33,6 +33,34 @@ jobs:
         run: go test ./... -count=1
       - name: Coverage summary
         run: go test ./... -coverprofile=/tmp/cover.out >/dev/null && go tool cover -func=/tmp/cover.out | tail -1
+      - name: CE purity
+        run: |
+          deps=$(go list -deps ./... | grep -c 'mailez/backend/internal/ee' || true)
+          if [ "$deps" != "0" ]; then
+            echo "CE build reaches backend/internal/ee — forbidden"
+            go list -deps ./... | grep 'mailez/backend/internal/ee'
+            exit 1
+          fi
+
+  # Enterprise edition battery — private CI only (the public CE mirror has
+  # no backend/internal/ee at all).
+  backend-ee:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Build (EE)
+        run: go build -tags mailez_ee ./...
+      - name: Vet (EE)
+        run: go vet -tags mailez_ee ./...
+      - name: Test (EE)
+        run: go test -tags mailez_ee ./... -count=1
 
   frontend-webmail:
     runs-on: ubuntu-latest
@@ -45,7 +73,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: frontend/apps/webmail/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
       - name: Install
         run: npm ci
       - name: Typecheck
@@ -68,7 +96,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: frontend/apps/admin/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
       - name: Install
         run: npm ci
       - name: Typecheck

@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 package main
 
 import (
@@ -11,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"mailez/backend/internal/agent"
+	"mailez/backend/internal/ee/agent"
 )
 
 // postfixTables maps socketmap table names to the control-plane URL suffix.

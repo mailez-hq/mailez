@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 package main
 
 import (
@@ -5,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"mailez/backend/internal/agent"
+	"mailez/backend/internal/ee/agent"
 )
 
 // PostfixConfig is the typed, validated view of the environment consumed by

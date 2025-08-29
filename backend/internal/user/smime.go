@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 package user
 
 import (
@@ -10,7 +12,7 @@ import (
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/crypto"
-	"mailez/backend/internal/smime"
+	"mailez/backend/internal/ee/smime"
 )
 
 // registerS/MIME mounts the S/MIME surface: certificate management for the

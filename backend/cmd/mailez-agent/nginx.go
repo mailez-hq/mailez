@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 package main
 
 import (
@@ -8,7 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"mailez/backend/internal/agent"
+	"mailez/backend/internal/ee/agent"
 )
 
 func runNginx() error {

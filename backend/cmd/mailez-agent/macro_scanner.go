@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 package main
 
 import (
@@ -7,7 +9,7 @@ import (
 	"os/signal"
 	"strconv"
 
-	"mailez/backend/internal/macro"
+	"mailez/backend/internal/ee/macro"
 )
 
 func runMacroScanner() error {
