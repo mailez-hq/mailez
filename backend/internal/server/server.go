@@ -301,6 +301,14 @@ func (s *Server) routes() {
 	}
 	aiMgr := ai.New(s.DB, s.Cfg)
 	user.RegisterPublic(v1, app)
+	// The ICS export is fetched by external calendar clients with only the
+	// HMAC feed token, so it must sit outside RequireAuth. Order matters:
+	// fiber implements Group(prefix, handlers...) as Use-style middleware on
+	// the merged prefix, so every route registered on v1 AFTER the authed
+	// group below inherits RequireAuth — public routes must come first
+	// (same pattern as /health, /server/settings and user.RegisterPublic).
+	calendarHandler := calendar.New(app)
+	calendarHandler.RegisterPublic(v1)
 	authed := v1.Group("", app.RequireAuth, app.Audit)
 
 	user.New(app).Register(authed)
@@ -313,11 +321,7 @@ func (s *Server) routes() {
 	sieve.New(app).Register(authed)
 	admin.New(app).Register(authed)
 	announcement.New(app).Register(authed)
-	calendarHandler := calendar.New(app)
 	calendarHandler.Register(authed)
-	// The ICS export is fetched by external calendar clients with only the
-	// HMAC feed token — it must sit outside RequireAuth.
-	calendarHandler.RegisterPublic(v1)
 	archive.New(app).Register(authed)
 	dlp.New(app).Register(authed)
 	invite.New(app).Register(authed)
