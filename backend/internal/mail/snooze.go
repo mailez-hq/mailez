@@ -70,6 +70,11 @@ func (c *Client) SnoozedMessages(email, token string) ([]SnoozedMessage, error) 
 				_ = c.Snooze(email, token, folder, msgs[i].UID, nil)
 				continue
 			}
+			// Tag the source folder (same convention as search-all): the
+			// snoozed view merges every mailbox, and uids are only unique
+			// per folder - without the tag, wake-ups target the wrong
+			// folder and list rows collide on duplicate keys.
+			msgs[i].Folder = folder
 			out = append(out, SnoozedMessage{Message: msgs[i], Until: until})
 		}
 	}
