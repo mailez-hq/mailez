@@ -20,7 +20,21 @@ func EnsureWorkerToken(ctx context.Context, db *gorm.DB, secretKey, email string
 	var row models.WorkerToken
 	if err := db.WithContext(ctx).Where("user_email = ?", email).First(&row).Error; err == nil && row.TokenEnc != "" {
 		if secret, derr := crypto.Decrypt(secretKey, row.TokenEnc); derr == nil {
-			return secret, nil
+			// The stored secret is only as alive as its Token row: a revoked
+			// row (user / admin token deletion) leaves an undecryptable-to-
+			// nobody credential that IMAP login rejects forever. Verify the
+			// secret still matches a live outbox-worker hash before reusing.
+			var hashes []string
+			if err := db.WithContext(ctx).Model(&models.Token{}).
+				Where("user_email = ? AND ip = ?", email, "outbox-worker").
+				Pluck("password", &hashes).Error; err == nil {
+				for _, h := range hashes {
+					if password.VerifyPBKDF2SHA256(h, secret) {
+						return secret, nil
+					}
+				}
+			}
+			// Fall through: mint a replacement so the loop self-heals.
 		}
 	}
 	secret, err := NewAppToken()
