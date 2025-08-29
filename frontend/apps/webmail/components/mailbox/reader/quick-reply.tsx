@@ -68,7 +68,7 @@ export function QuickReply({
         {aiEnabled && (
           <button
             type="button"
-            onClick={onLoadReplies}
+            onClick={() => onLoadReplies()}
             disabled={repliesLoading}
             title={t("smartReply")}
             className="flex items-center gap-1 rounded-full border border-ai/20 bg-ai/10 px-2 py-0.5 text-[11px] text-ai transition-colors hover:bg-ai/20"
