@@ -1,6 +1,6 @@
 {{- if eq .Engine "mailezine" }}
 # mailezine mode: the engine classifies over HTTP (checkv2), so run a
-# normal scanner worker instead of the postdove milter.
+# normal scanner worker.
 enabled = true;
 bind_socket = "*:11333";
 mime = true;

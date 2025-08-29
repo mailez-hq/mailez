@@ -33,7 +33,6 @@ git for-each-ref --format='%(refname)' refs/stash refs/notes refs/replace \
 git filter-repo \
   --invert-paths \
   --path backend/internal/ee/ \
-  --path backend/cmd/mailez-agent/ \
   --path backend/cmd/eas-e2e/ \
   --path frontend/apps/webmail/ee/ \
   --path frontend/apps/admin/ee/ \

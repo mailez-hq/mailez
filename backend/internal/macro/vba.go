@@ -1,4 +1,4 @@
-//go:build mailez_ee
+
 
 // Package macro scans MS Office documents for VBA macros. It speaks the
 // OLEFY/1.0 TCP protocol and returns olevba-compatible JSON so rspamd's

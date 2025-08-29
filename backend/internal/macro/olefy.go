@@ -1,4 +1,4 @@
-//go:build mailez_ee
+
 
 package macro
 

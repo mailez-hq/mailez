@@ -1,5 +1,3 @@
-//go:build mailez_ee
-
 package main
 
 import (

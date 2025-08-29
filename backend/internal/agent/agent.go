@@ -1,5 +1,3 @@
-//go:build mailez_ee
-
 // Package agent provides the shared runtime for the mailez mail
 // container agents: typed env parsing, atomic config writes, and child
 // process supervision with graceful signal forwarding.

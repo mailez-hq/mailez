@@ -1,5 +1,3 @@
-//go:build mailez_ee
-
 package main
 
 import (
@@ -9,28 +7,21 @@ import (
 	"strings"
 	"text/template"
 
-	"mailez/backend/internal/ee/agent"
+	"mailez/backend/internal/agent"
 )
 
 //go:embed templates/nginx/*.tmpl
 var nginxTemplates embed.FS
 
-// renderNginxAll renders every nginx/legacy-imap-proxy config into a
-// destination -> content map. tls.conf is only produced when TLS is enabled
-// (nginx.conf includes it conditionally). Both engine modes share the same
-// HTTP/ACME nginx server; the legacy IMAP login proxy only exists in postdove
-// mode (the mailezine engine authenticates by itself).
+// renderNginxAll renders every nginx config into a destination -> content
+// map. tls.conf is only produced when TLS is enabled (nginx.conf includes it
+// conditionally). The nginx gateway is HTTP/ACME only; the mailezine engine
+// terminates the mail protocols itself.
 func renderNginxAll(cfg NginxConfig) (map[string][]byte, error) {
 	type file struct{ tmpl, dest string }
 	files := []file{
 		{"templates/nginx/nginx.conf.tmpl", "/etc/nginx/nginx.conf"},
 		{"templates/nginx/proxy.conf.tmpl", "/etc/nginx/proxy.conf"},
-	}
-	if cfg.Engine != "mailezine" {
-		files = append(files,
-			file{"templates/nginx/legacy-imap-proxy.conf.tmpl", "/etc/legacy IMAP/proxy.conf"},
-			file{"templates/nginx/login.lua.tmpl", "/etc/legacy IMAP/login.lua"},
-		)
 	}
 	if cfg.TLS != nil {
 		files = append(files, file{"templates/nginx/tls.conf.tmpl", "/etc/nginx/tls.conf"})
