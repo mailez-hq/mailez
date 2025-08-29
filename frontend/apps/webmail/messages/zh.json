@@ -18,6 +18,7 @@
     "totp": "验证码",
     "verify": "验证",
     "error": "登录失败",
+    "sessionExpired": "登录已过期，请重新登录。",
     "rateLimited": "尝试次数过多，请稍等片刻再试。",
     "mailSettings": "邮箱设置（客户端配置）",
     "smtpServer": "SMTP 服务器",

@@ -18,6 +18,7 @@
     "totp": "Verification code",
     "verify": "Verify",
     "error": "Login failed",
+    "sessionExpired": "Your session has expired. Please sign in again.",
     "rateLimited": "Too many attempts, please wait a moment before trying again.",
     "mailSettings": "Mail server settings",
     "smtpServer": "SMTP server",
