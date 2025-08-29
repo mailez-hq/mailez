@@ -198,5 +198,5 @@ mailezine = mailez 的第一方引擎（引擎 C），**参照 reference server 
 
 ## 9. 相关文档
 
-- 同类评估：`docs/engines/peer-evaluation.md`、`docs/engines/reference-evaluation.md`
+- 同类评估：`docs/engines/peer-evaluation.md`
 - 引擎抽象：`backend/internal/stack/directory.go`、`backend/internal/core/config.go`
