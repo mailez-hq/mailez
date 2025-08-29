@@ -299,6 +299,7 @@
     "templateCancel": "取消",
     "manageTemplates": "管理模板",
     "toastSent": "已发送",
+    "viewSent": "查看已发送",
     "receiptRequest": "请求已读回执",
     "receiptRequested": "发件人请求已读回执",
     "sendReceipt": "发送已读回执",

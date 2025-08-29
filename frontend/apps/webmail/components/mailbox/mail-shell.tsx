@@ -493,9 +493,24 @@ export function MailShell({ children }: { children: React.ReactNode }) {
       {toast && (
         <div
           key={toast.id}
-          className="fixed bottom-4 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-3 rounded-lg border border-border bg-popover px-4 py-2 text-sm text-popover-foreground shadow-lg"
+          role="status"
+          aria-live="polite"
+          className="toast-in fixed bottom-4 left-4 z-[60] flex items-center gap-3 rounded-lg border border-border bg-popover px-4 py-2 text-sm text-popover-foreground shadow-lg"
         >
           <span>{toast.label}</span>
+          {toast.link && (
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => {
+                const link = toast?.link;
+                setToast(null);
+                if (link) selectFolder(link.folder);
+              }}
+            >
+              {toast.link.label}
+            </Button>
+          )}
           {toast.onUndo && (
             <Button
               size="xs"
