@@ -120,6 +120,10 @@ services:
       - MAIL_IMAP_ADDR=mailezine:143
       - MAIL_SMTP_ADDR=mailezine:1587
       - MAIL_SIEVE_ADDR=mailezine:4190
+      # 删除用户时级联清除引擎侧数据(管理 API,compose 网络内可达)。secret
+      # 必须与 mailezine 服务的 MAILEZINE_MANAGEMENT_SECRET 同值。
+      - MAIL_ENGINE_MGMT_ADDR=mailezine:8090
+      - MAIL_ENGINE_MGMT_SECRET=${MAILEZ_STACK_SECRET:?set in mailez.env}
       - FETCH_INTERVAL=300
       - AI_PROVIDER=none
       # 企业版授权（控制面按邮箱数限制建号）：与引擎共用同一授权文件。
@@ -191,6 +195,10 @@ services:
       dockerfile: Dockerfile
     pull_policy: missing
     restart: always
+    # mailez.env 同时供给 backend 与引擎:MAILEZINE_STACK_SECRET 必须与
+    # backend 侧的 MAILEZ_STACK_SECRET 保持同值——空值时 /stack 内部 API
+    # 不鉴权(仅限本地开发),生产部署必须设置(见 mailez.env.example)。
+    env_file: mailez.env
     environment:
       - MAILEZINE_BACKEND_ADDRESS=backend:8080
       - MAILEZ_BACKEND_ADDRESS=backend
@@ -221,6 +229,10 @@ services:
       - MAILEZINE_TLS_KEY_FILE=/certs/letsencrypt/live/mailez/privkey.pem
       - MAILEZINE_OUTBOUND_ENABLED=true
       - MAILEZINE_OUTBOUND_PORT=25
+      # 管理 API(8090,compose 网络内):backend 删除用户时经此级联清除
+      # 引擎数据;secret 与 backend 的 MAIL_ENGINE_MGMT_SECRET 同值。
+      - MAILEZINE_MANAGEMENT_ADDR=:8090
+      - MAILEZINE_MANAGEMENT_SECRET=${MAILEZ_STACK_SECRET:?set in mailez.env}
       - MAILEZINE_ARCHIVE_ENABLED=true
       - MAILEZINE_DLP_ENABLED=true
       - MAILEZINE_FTS_ENABLED=true
@@ -244,11 +256,19 @@ services:
       - "127.0.0.1:993:993"
       - "127.0.0.1:4190:4190"
     depends_on:
-      - gateway
-      - mail-filter
-      - resolver
-      - minio
-      - tidb
+      gateway:
+        condition: service_started
+      mail-filter:
+        condition: service_started
+      resolver:
+        condition: service_started
+      # TiDB/MinIO must be READY (not merely started) before the engine
+      # opens its stores: unistore first boot takes seconds, and racing it
+      # crash-loops the engine on connection refused.
+      minio:
+        condition: service_healthy
+      tidb:
+        condition: service_healthy
 
   mail-filter:
     image: mailez/rspamd:${MAILEZ_IMAGE_TAG:-local}
