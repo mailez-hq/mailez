@@ -180,17 +180,28 @@ func (c *Client) UIDByMessageID(email, token, folder, id string) (uint32, error)
 		done <- cli.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope}, msgs)
 	}()
 
+	found := uint32(0)
 	for m := range msgs {
 		if m.Envelope == nil {
 			continue
 		}
 		if strings.Trim(strings.TrimSpace(m.Envelope.MessageId), "<>") == want {
 			c.msgIDToUID.put(key, m.Uid)
-			return m.Uid, nil
+			found = m.Uid
+			break
 		}
+	}
+	// Never return while the Fetch producer is still running: abandoning it
+	// leaks the goroutine (blocked on the channel) and hands a mid-command
+	// connection back to the pool, where every later command on it hangs.
+	// Drain the remainder so Fetch completes and the connection is clean.
+	for range msgs {
 	}
 	if err := <-done; err != nil {
 		return 0, fmt.Errorf("imap fetch envelopes: %w", err)
+	}
+	if found != 0 {
+		return found, nil
 	}
 	return 0, errors.New("message not found")
 }

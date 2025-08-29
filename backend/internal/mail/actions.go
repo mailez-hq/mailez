@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/emersion/go-imap"
+
+	"mailez/backend/internal/mail/imaputf7"
 )
 
 // SetFlag adds or removes an IMAP flag (\Seen, \Flagged, ...) by UID.
@@ -250,8 +252,10 @@ func (c *Client) UnseenCounts(email, token string) (map[string]int, error) {
 			}
 		}
 		// Key by the display spelling so the sidebar badges line up with the
-		// folder tree, which uses the canonical "Inbox" prefix.
-		out[inboxPath(f)] = int(st.Unseen)
+		// folder tree, which uses the canonical "Inbox" prefix. Decode the
+		// wire name (modified UTF-7) so the keys match the decoded folder
+		// tree; the wire call above used the raw server spelling.
+		out[inboxPath(imaputf7.FolderName(f))] = int(st.Unseen)
 	}
 	return out, nil
 }

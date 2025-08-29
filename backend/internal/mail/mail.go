@@ -20,6 +20,8 @@ import (
 
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
+
+	"mailez/backend/internal/mail/imaputf7"
 )
 
 // Message is the API-facing representation of a mail.
@@ -114,6 +116,12 @@ type Client struct {
 	// pool reuses authenticated IMAP connections per account. nil disables
 	// pooling (defensive zero-value Client), keeping the stateless gateway.
 	pool *poolRegistry
+
+	// insecureTLS relaxes certificate verification for EXTERNAL aggregated
+	// accounts only (opt-in, FETCH_INSECURE). Internal engine links are
+	// trusted by deployment; external servers must verify by default or a
+	// network attacker can harvest user credentials and mail.
+	insecureTLS bool
 }
 
 // New creates a mail gateway client.
@@ -126,6 +134,13 @@ func New(imapAddr, smtpAddr, sieveAddr string) *Client {
 	}
 }
 
+// SetInsecureTLS opts external aggregated-account dials out of TLS
+// certificate verification (chainable). Internal links are unaffected.
+func (c *Client) SetInsecureTLS(v bool) *Client {
+	c.insecureTLS = v
+	return c
+}
+
 func (c *Client) tlsConfig() *tls.Config {
 	return &tls.Config{InsecureSkipVerify: true} // internal connections only
 }
@@ -135,7 +150,7 @@ func (c *Client) tlsConfig() *tls.Config {
 // dial their own server with the stored credentials, unpooled.
 func (c *Client) openIMAP(email, token string) (*pooledConn, error) {
 	if c.dial.External {
-		cli, err := openExternalIMAP(c.dial)
+		cli, err := c.openExternalIMAP(c.dial)
 		if err != nil {
 			return nil, err
 		}
@@ -188,9 +203,12 @@ func (c *Client) ListFolders(email, token string) ([]string, error) {
 	// matches the other folders' Title-case names. The prefix of nested paths
 	// ("INBOX/Sub") is normalized too: without it the sidebar would build a
 	// separate "INBOX" tree node next to "Inbox" and show the inbox twice.
-	// Every IMAP call later normalizes back via inboxName().
+	// Every IMAP call later normalizes back via inboxName(). Wire names are
+	// modified UTF-7 (RFC 3501 §5.1.3); decode so non-ASCII folder names are
+	// not shown as "&XfJT0ZAB-" — the engine accepts raw UTF-8 on the way
+	// back, so SELECT/CREATE can keep using the decoded spelling.
 	for m := range mailboxes {
-		folders = append(folders, inboxPath(m.Name))
+		folders = append(folders, inboxPath(imaputf7.FolderName(m.Name)))
 	}
 	if err := <-done; err != nil {
 		return nil, fmt.Errorf("imap list: %w", err)

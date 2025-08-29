@@ -53,19 +53,23 @@ func ExternalDial(email, host string, port int, security, username, password str
 // and any number of aggregated external accounts.
 func (c *Client) With(d Dial) Gateway {
 	return &Client{
-		IMAPAddr:  c.IMAPAddr,
-		SMTPAddr:  c.SMTPAddr,
-		SieveAddr: c.SieveAddr,
-		dial:      d,
-		pool:      c.pool,
+		IMAPAddr:    c.IMAPAddr,
+		SMTPAddr:    c.SMTPAddr,
+		SieveAddr:   c.SieveAddr,
+		dial:        d,
+		pool:        c.pool,
+		insecureTLS: c.insecureTLS,
 	}
 }
 
 // openExternalIMAP dials an external server, upgrades the transport per its
-// security policy and logs in with the stored credentials.
-func openExternalIMAP(d Dial) (*client.Client, error) {
+// security policy and logs in with the stored credentials. Certificate
+// verification follows the client's insecureTLS opt-in: external servers are
+// on the public internet and unverified TLS would leak the stored password
+// and mail to any active attacker on the path.
+func (c *Client) openExternalIMAP(d Dial) (*client.Client, error) {
 	addr := net.JoinHostPort(d.Host, strconv.Itoa(d.Port))
-	tlsCfg := &tls.Config{InsecureSkipVerify: true, ServerName: d.Host}
+	tlsCfg := &tls.Config{InsecureSkipVerify: c.insecureTLS, ServerName: d.Host}
 	var cli *client.Client
 	var err error
 	switch d.Security {
