@@ -29,10 +29,6 @@ const ACL_RIGHTS: { right: string; label: string }[] = [
   { right: "a", label: "aclAdminister" },
 ];
 
-function rightsToSet(rights: string): Set<string> {
-  return new Set(rights.split("").filter(Boolean));
-}
-
 function rightsFromSet(set: Set<string>): string {
   // canonical RFC order keeps the stored string stable
   return ACL_RIGHTS.map((r) => r.right).filter((r) => set.has(r)).join("");
@@ -68,12 +64,22 @@ export function FolderACLDialog({
       });
   };
 
-  useEffect(() => {
+  // Reset the grant form on open transitions (render-phase adjustment —
+  // React-recommended over an effect, catches every open path).
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
-      load();
       setIdentifier("");
       setRights(new Set());
     }
+  }
+
+  useEffect(() => {
+    // Reload the ACL list on open. Every setState inside load() happens in
+    // .then callbacks — the lint cannot see through the call boundary.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (open) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, folder]);
 

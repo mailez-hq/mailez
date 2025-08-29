@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, Pencil, Plus, Tag, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,11 @@ export function LabelManager({
   const [renameTo, setRenameTo] = useState("");
   const [confirming, setConfirming] = useState("");
 
-  useEffect(() => {
+  // Clear editing state when the manager closes (render-phase adjustment —
+  // React-recommended over an effect, catches every close path).
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (!open) {
       setError("");
       setNewName("");
@@ -76,7 +80,7 @@ export function LabelManager({
       setRenaming("");
       setConfirming("");
     }
-  }, [open]);
+  }
 
   // Every label row is manageable: defined labels carry a persisted color,
   // while keywords seen on messages without a definition row (orphan tags)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -32,27 +32,24 @@ export function CommandPalette({
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
 
-  useEffect(() => {
+  // Reset the query whenever the palette opens (render-phase adjustment —
+  // React-recommended over an effect, catches every open path).
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setQuery("");
       setSelected(0);
     }
-  }, [open]);
+  }
 
   // When the user types free text, pin a "semantic search" entry on top so
   // natural-language queries (spec 6.4) can be run straight from the palette.
-  const aiItem: PaletteAction | null =
-    aiSearchEnabled && onAiSearch && query.trim()
-      ? {
-          id: "ai-search",
-          label: `${t("aiSearch")}: ${query.trim()}`,
-          icon: <Sparkles className="size-4" />,
-          run: () => onAiSearch(query.trim()),
-        }
-      : null;
-
+  // Built inside the memo so the filtered list only recomputes when its real
+  // inputs change.
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const trimmed = query.trim();
+    const q = trimmed.toLowerCase();
     const base = q
       ? actions.filter(
           (a) =>
@@ -60,8 +57,17 @@ export function CommandPalette({
             (a.keywords || "").toLowerCase().includes(q),
         )
       : actions;
+    const aiItem: PaletteAction | null =
+      aiSearchEnabled && onAiSearch && trimmed
+        ? {
+            id: "ai-search",
+            label: `${t("aiSearch")}: ${trimmed}`,
+            icon: <Sparkles className="size-4" />,
+            run: () => onAiSearch(trimmed),
+          }
+        : null;
     return aiItem ? [aiItem, ...base] : base;
-  }, [query, actions, aiItem]);
+  }, [query, actions, aiSearchEnabled, onAiSearch, t]);
 
   function run(action: PaletteAction | undefined) {
     if (!action) return;
