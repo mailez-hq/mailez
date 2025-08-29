@@ -3,6 +3,7 @@
 import type { Dispatch, SetStateAction } from "react";
 
 import { mailMove, mailRecall, mailRecallApply, mailReadAll, mailReceipt, mailSendReply } from "@/lib/api";
+import type { MailToastLink } from "./use-toast";
 import type { Translate } from "./use-folder-mgmt";
 
 /**
@@ -17,7 +18,7 @@ export function useQuickActions({
   t,
 }: {
   setError: Dispatch<SetStateAction<string>>;
-  showToast: (label: string, onUndo?: () => void, duration?: number) => void;
+  showToast: (label: string, onUndo?: () => void, duration?: number, link?: MailToastLink) => void;
   refreshMail: () => void | Promise<void>;
   t: Translate;
 }) {
@@ -34,7 +35,7 @@ export function useQuickActions({
     setError("");
     try {
       await mailSendReply(to, cc, subject, text, inReplyTo, references);
-      showToast(t("toastSent"));
+      showToast(t("toastSent"), undefined, 6000, { label: t("viewSent"), folder: "Sent" });
       refreshMail();
       return true;
     } catch (e) {
