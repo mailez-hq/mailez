@@ -44,12 +44,12 @@ func (s *Service) Register(r fiber.Router) {
 	r.Post("/drive/folders", s.createFolder)
 	r.Post("/drive/upload", s.upload)
 	r.Get("/drive/download/:id", s.download)
-	r.Get("/drive/share/:id", s.share)
 	r.Post("/drive/rename", s.rename)
 	r.Post("/drive/move", s.move)
 	r.Post("/drive/trash", s.trash)
 	r.Post("/drive/restore", s.restore)
 	r.Post("/drive/trash/empty", s.emptyTrash)
+	s.registerShare(r)
 }
 
 func view(f *models.DriveFile) fiber.Map {
@@ -191,8 +191,7 @@ func (s *Service) download(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
 	user := core.CurrentUser(c)
-	token := c.Query("token")
-	if !strings.EqualFold(row.UserEmail, user.Email) && (row.ShareToken == "" || token != row.ShareToken) {
+	if !s.shareAuthorize(&row, user.Email, c.Query("token")) {
 		return c.SendStatus(fiber.StatusForbidden)
 	}
 	rc, err := s.Store.Get(c.Context(), row.StoredPath)
@@ -206,32 +205,6 @@ func (s *Service) download(c *fiber.Ctx) error {
 		return core.Fail(c, 500, err, "stream error")
 	}
 	return nil
-}
-
-// share creates (or reuses) a share link for a file.
-// @Summary Share drive file
-// @Tags drive
-// @Produce json
-// @Router /drive/share/{id} [get]
-func (s *Service) share(c *fiber.Ctx) error {
-	user := core.CurrentUser(c)
-	id, err := strconv.ParseUint(c.Params("id"), 10, 64)
-	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
-	}
-	var row models.DriveFile
-	if err := s.DB.First(&row, "id = ? AND user_email = ?", id, user.Email).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "not found"})
-	}
-	if row.ShareToken == "" {
-		row.ShareToken = hex.EncodeToString(randomBytes(12))
-		if err := s.DB.Model(&row).Update("share_token", row.ShareToken).Error; err != nil {
-			return core.Fail(c, 500, err, "db error")
-		}
-	}
-	return c.JSON(fiber.Map{
-		"url": c.BaseURL() + "/api/v1/drive/download/" + strconv.FormatUint(uint64(row.ID), 10) + "?token=" + row.ShareToken,
-	})
 }
 
 // rename renames an entry.
