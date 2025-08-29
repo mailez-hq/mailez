@@ -62,11 +62,8 @@ func (h *Handler) Register(r fiber.Router) {
 	r.Get("/auth/admin", h.authAdmin)
 	r.Get("/auth/basic", h.authBasic)
 	r.Get("/auth/email", h.authEmail)
-	h.registerPostfix(r)
-	h.registerDovecot(r)
 	h.registerDirectory(r)
 	h.registerRspamd(r)
 	h.registerFetch(r)
-	h.registerAutoconfig(r)
 	h.registerNotify(r)
 }

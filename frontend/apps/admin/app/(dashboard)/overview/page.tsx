@@ -28,12 +28,12 @@ export default function OverviewPage() {
   if (error) return <p className="text-sm text-destructive">{error}</p>;
   if (!data) return <p className="text-sm text-muted-foreground">{t("loading")}</p>;
 
-  // The edition label follows the engine: postdove = community, mailezine =
-  // enterprise. A loaded license is reported separately so a community engine
-  // with an enterprise license never shows a contradictory "企业版" badge.
-  const engineEnterprise = /mailezine/i.test(data.engine);
+  // mailezine is the only engine; the edition follows the license
+  // (community = free single-node tier, dev = built-in unlimited,
+  // enterprise = licensed). A loaded license is reported separately.
   const lic = data.license;
-  const engineLabel = /mailezine/i.test(data.engine) ? t("engineMailezine") : t("enginePostdove");
+  const communityEdition = lic?.edition === "community";
+  const engineLabel = t("engineMailezine");
   const dbLabel =
     data.db_driver === "mysql"
       ? t("dbMysql")
@@ -45,9 +45,7 @@ export default function OverviewPage() {
       ? t("kvTidb")
       : data.kv_backend === "pebble"
         ? t("kvPebble")
-        : /postdove/i.test(data.engine)
-          ? t("kvMaildir")
-          : t("blobUnknown");
+        : t("blobUnknown");
   const blobLabel =
     data.blob_backend === "minio"
       ? t("blobMinio")
@@ -55,9 +53,9 @@ export default function OverviewPage() {
         ? t("blobLocal")
         : t("blobUnknown");
   const licenseSub = () => {
-    // The community edition (postdove) is free: it never shows license info,
-    // even if an enterprise license file happens to be mounted.
-    if (!engineEnterprise) return t("licenseFree");
+    // The community edition is free: it never shows license info, even if
+    // an enterprise license file happens to be mounted.
+    if (communityEdition) return t("licenseFree");
     if (!lic) return `${t("licenseDev")} · ${t("licenseUnlimited")}`;
     const parts = [
       lic.max_mailboxes > 0
@@ -93,7 +91,7 @@ export default function OverviewPage() {
   const cards = [
     {
       key: "license",
-      value: engineEnterprise ? t("licenseEnterprise") : t("licenseCommunity"),
+      value: communityEdition ? t("licenseCommunity") : t("licenseEnterprise"),
       sub: licenseSub(),
       icon: BadgeCheck,
     },
@@ -112,7 +110,7 @@ export default function OverviewPage() {
       <div>
         <h1 className="text-xl font-semibold">{t("title")}</h1>
         <p className="text-sm text-muted-foreground">
-          {engineEnterprise ? t("licenseEnterprise") : t("licenseCommunity")} · {engineLabel} ·{" "}
+          {communityEdition ? t("licenseCommunity") : t("licenseEnterprise")} · {engineLabel} ·{" "}
           {data.domain} · {data.hostname}
         </p>
       </div>
