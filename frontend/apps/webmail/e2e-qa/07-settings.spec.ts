@@ -18,7 +18,7 @@ test.describe("settings — every section opens and persists", () => {
     const dark = page.getByRole("button", { name: /Dark/i }).first();
     if (await dark.isVisible({ timeout: 5_000 }).catch(() => false)) {
       await dark.click();
-      await expect(page.locator("html")).toHaveAttribute(/class|data-theme/, /dark/, { timeout: 10_000 }).catch(() => {});
+      await expect(page.locator("html")).toHaveAttribute("class", /dark/, { timeout: 10_000 }).catch(() => {});
       const light = page.getByRole("button", { name: /Light/i }).first();
       await light.click();
     }

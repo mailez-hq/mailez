@@ -110,7 +110,7 @@ test.describe("admin mail objects", () => {
       const newBtn = page.getByRole("button", { name: "New alias" }).first();
       // The first domains fetch can race with session settling; reload once.
       await newBtn
-        .waitFor({ state: "enabled", timeout: 8_000 })
+        .waitFor({ state: "visible", timeout: 8_000 })
         .catch(() => page.reload().then(() => page.waitForLoadState("domcontentloaded")));
       await expect(newBtn).toBeEnabled({ timeout: 20_000 });
       // The dialog remounts while state settles — retry the whole open+fill+submit
