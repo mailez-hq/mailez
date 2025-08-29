@@ -12,6 +12,20 @@ import (
 	"mailez/backend/internal/mail"
 )
 
+// decodeThreadHeaderID normalizes a client-supplied In-Reply-To/References
+// value: bracketed ids pass through, base64url routable ids decode to the raw
+// "<id@host>", anything else is kept as-is (tolerant passthrough).
+func decodeThreadHeaderID(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" || strings.HasPrefix(s, "<") {
+		return s
+	}
+	if raw, err := mail.DecodeMessageID(s); err == nil && raw != "" {
+		return raw
+	}
+	return s
+}
+
 // mailSaveDraft stores a working draft in Drafts; replace_uid (the UID of the
 // previous auto-save) replaces it so each compose session keeps one draft.
 // mailSaveDraft stores a working draft in Drafts.
@@ -82,6 +96,12 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 	if err := c.BodyParser(&in); err != nil || len(in.To) == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "to is required"})
 	}
+	// Threading headers may arrive as the base64url routable id the webmail
+	// uses in URLs (the quick-reply path predates this); turn those back
+	// into the raw "<id@host>" wire form so our own — and every other
+	// system's — conversation grouping can follow them.
+	in.InReplyTo = decodeThreadHeaderID(in.InReplyTo)
+	in.References = decodeThreadHeaderID(in.References)
 	from := in.From
 	if from == "" {
 		from = d.Email

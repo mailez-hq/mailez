@@ -289,12 +289,14 @@ export const mailSend = (
   sendAt?: string,
   receiptRequested = false,
   burnAfterMinutes = 0,
+  inReplyTo?: string,
+  references?: string,
 ) =>
   api<{ queued?: boolean; outbox_id?: number; undo_seconds?: number; scheduled?: boolean }>(
     "/mail/send",
     {
       method: "POST",
-      body: JSON.stringify({ to, cc, bcc, subject, body, html, from, attachments, undo_seconds: undoSeconds, send_at: sendAt, receipt_requested: receiptRequested, burn_after_minutes: burnAfterMinutes }),
+      body: JSON.stringify({ to, cc, bcc, subject, body, html, from, attachments, undo_seconds: undoSeconds, send_at: sendAt, receipt_requested: receiptRequested, burn_after_minutes: burnAfterMinutes, in_reply_to: inReplyTo, references }),
     },
   );
 
