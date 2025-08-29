@@ -213,7 +213,7 @@ func (h *Handler) mailLabelRename(c *fiber.Ctx) error {
 	}
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	if err := h.Mail.With(d).ReplaceKeyword(d.Email, d.Token, oldKw, newKw); err != nil {
 		return core.Fail(c, 502, err, "mail service error")
@@ -250,7 +250,7 @@ func (h *Handler) mailLabelDelete(c *fiber.Ctx) error {
 	}
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	if err := h.Mail.With(d).ReplaceKeyword(d.Email, d.Token, kw, ""); err != nil {
 		return core.Fail(c, 502, err, "mail service error")

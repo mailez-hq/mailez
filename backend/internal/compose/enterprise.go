@@ -34,7 +34,7 @@ func (h *Handler) registerEnterprise(r fiber.Router) {
 func (h *Handler) mailSendReceipt(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		Folder string `json:"folder"`
@@ -93,7 +93,7 @@ func (h *Handler) mailSendReceipt(c *fiber.Ctx) error {
 func (h *Handler) mailRecall(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		Folder string `json:"folder"`
@@ -146,7 +146,7 @@ func (h *Handler) mailRecall(c *fiber.Ctx) error {
 func (h *Handler) mailRecallApply(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		MessageID string `json:"message_id"`
@@ -196,7 +196,7 @@ type mergeRecipient struct {
 func (h *Handler) mailMerge(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		From        string            `json:"from"`

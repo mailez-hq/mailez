@@ -19,7 +19,7 @@ type Gateway interface {
 	// AppendRaw stores a pre-built RFC 5322 message in a folder via IMAP
 	// APPEND (ActiveSync SaveInSentItems copies).
 	AppendRaw(email, token, folder, raw string, flags []string) error
-	SaveDraft(email, token string, to, cc []string, subject, text, html string, attachments []Attachment, replaceUID uint32) (uint32, error)
+	SaveDraft(email, token string, to, cc, bcc []string, subject, text, html string, attachments []Attachment, replaceUID uint32) (uint32, error)
 
 	// Mailbox
 	ListFolders(email, token string) ([]string, error)

@@ -25,12 +25,13 @@ import (
 func (h *Handler) mailSaveDraft(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		Subject     string            `json:"subject"`
 		To          core.StringList   `json:"to"`
 		Cc          core.StringList   `json:"cc"`
+		Bcc         core.StringList   `json:"bcc"`
 		Text        string            `json:"text"`
 		HTML        string            `json:"html"`
 		ReplaceUID  uint32            `json:"replace_uid"`
@@ -39,7 +40,7 @@ func (h *Handler) mailSaveDraft(c *fiber.Ctx) error {
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
 	}
-	uid, err := h.Mail.With(d).SaveDraft(d.Email, d.Token, in.To, in.Cc, in.Subject, in.Text, in.HTML, in.Attachments, in.ReplaceUID)
+	uid, err := h.Mail.With(d).SaveDraft(d.Email, d.Token, in.To, in.Cc, in.Bcc, in.Subject, in.Text, in.HTML, in.Attachments, in.ReplaceUID)
 	if err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}
@@ -60,7 +61,7 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 	user := currentUser(c)
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		From        string            `json:"from"`
