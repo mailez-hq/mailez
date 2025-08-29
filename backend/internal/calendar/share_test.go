@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 package calendar
 
 import (
