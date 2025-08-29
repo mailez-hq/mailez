@@ -19,7 +19,9 @@ command -v git-filter-repo >/dev/null 2>&1 || {
 }
 
 rm -rf "${EXPORT_DIR}"
-git clone --mirror . "${EXPORT_DIR}"
+# --no-local: a hardlinked local clone makes filter-repo bail out (and would
+# rewrite the source objects); force a real object copy.
+git clone --mirror --no-local . "${EXPORT_DIR}"
 cd "${EXPORT_DIR}"
 
 # A cloned mirror carries private auxiliary refs (refs/stash etc.) that
