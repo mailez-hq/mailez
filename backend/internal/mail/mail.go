@@ -745,6 +745,14 @@ func envelopeToMessage(msg *imap.Message) Message {
 		out.Cc = addresses(msg.Envelope.Cc)
 		out.ID = EncodeMessageID(msg.Envelope.MessageId)
 	}
+	// JSON contract: from/to/flags are arrays, never null. A message whose
+	// ENVELOPE carries no From (e.g. system notices) would otherwise
+	// serialize a nil slice as null and crash frontend row rendering at
+	// message.from[0]. addresses() already guarantees from/to/cc; flags can
+	// still be nil when the FETCH response omits the FLAGS item.
+	if out.Flags == nil {
+		out.Flags = []string{}
+	}
 	// A mail without a Message-ID header has no stable key to derive the
 	// routable id from. Fall back to the numeric UID so the row still gets a
 	// valid (non-degenerate) id that the frontend can route by; the uid is
@@ -759,7 +767,9 @@ func envelopeToMessage(msg *imap.Message) Message {
 }
 
 func addresses(list []*imap.Address) []Address {
-	var out []Address
+	// Start from an allocated (non-nil) slice so an empty address list
+	// serializes as [] instead of null (see envelopeToMessage).
+	out := make([]Address, 0, len(list))
 	for _, a := range list {
 		out = append(out, Address{Name: a.PersonalName, Email: a.MailboxName + "@" + a.HostName})
 	}
