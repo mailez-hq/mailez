@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Archive, Paperclip, Star, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { MailMessage } from "@/lib/api";
@@ -40,7 +41,10 @@ function fmtTime(d: string) {
   return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
-export function MessageRow({
+// Memoized with the default shallow compare: rows take message-taking
+// handlers (stable store callbacks passed straight through by the list), so
+// an unchanged row skips re-rendering while the store churns elsewhere.
+export const MessageRow = memo(function MessageRow({
   message,
   index,
   density,
@@ -63,11 +67,11 @@ export function MessageRow({
   selected: boolean;
   selectedInBulk: boolean;
   cursorActive: boolean;
-  onOpen: () => void;
-  onToggleSelect: () => void;
-  onDelete: () => void;
-  onArchive: () => void;
-  onStar: () => void;
+  onOpen: (m: MailMessage) => void;
+  onToggleSelect: (m: MailMessage) => void;
+  onDelete: (m: MailMessage) => void;
+  onArchive: (m: MailMessage) => void;
+  onStar: (m: MailMessage) => void;
   highlightTerms?: string[];
   onContextMenu?: (e: React.MouseEvent, message: MailMessage) => void;
 }) {
@@ -98,10 +102,10 @@ export function MessageRow({
         e.dataTransfer.setData("text/plain", String(message.uid));
         e.dataTransfer.effectAllowed = "move";
       }}
-      onClick={onOpen}
+      onClick={() => onOpen(message)}
       onKeyDown={(e) => {
         e.stopPropagation();
-        if (e.key === "Enter") onOpen();
+        if (e.key === "Enter") onOpen(message);
       }}
       className={cn(
         "group flex h-full w-full cursor-pointer items-center gap-2 border-b border-border transition-colors",
@@ -117,7 +121,7 @@ export function MessageRow({
         type="checkbox"
         checked={selectedInBulk}
         onClick={(e) => e.stopPropagation()}
-        onChange={onToggleSelect}
+        onChange={() => onToggleSelect(message)}
         className="size-4 shrink-0 accent-[var(--primary)] sm:size-3.5"
         title={t("select")}
       />
@@ -202,7 +206,7 @@ export function MessageRow({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onArchive();
+            onArchive(message);
           }}
           title={t("archive")}
           className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
@@ -212,7 +216,7 @@ export function MessageRow({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onStar();
+            onStar(message);
           }}
           title={starred ? t("unstar") : t("star")}
           className={cn(
@@ -225,7 +229,7 @@ export function MessageRow({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onDelete();
+            onDelete(message);
           }}
           title={t("delete")}
           className="rounded p-1 text-muted-foreground transition-colors hover:text-destructive"
@@ -236,4 +240,4 @@ export function MessageRow({
       <span className="sr-only">{index + 1}</span>
     </div>
   );
-}
+});

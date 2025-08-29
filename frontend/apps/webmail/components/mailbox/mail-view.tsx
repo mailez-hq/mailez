@@ -6,7 +6,7 @@
 // sidebar, banners, global overlays) is MailShell in mail-shell.tsx, which
 // also hosts the /home workspace as a sibling content area.
 
-import { useState, useSyncExternalStore } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { Inbox as InboxIcon, Loader2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { highlightTerms } from "@/components/mailbox/highlight";
@@ -15,6 +15,7 @@ import { ReadingPane } from "@/components/mailbox/reading-pane";
 import { isMuted } from "@/components/mailbox/mail-utils";
 import { cn } from "@/lib/utils";
 import { useMailStore } from "@/components/mailbox/mail-store";
+import type { MailMessage } from "@/lib/api";
 
 // No external source to subscribe to: the client snapshot is re-read on every
 // render, which is all the welcome-hint needs.
@@ -155,6 +156,13 @@ export function MailView() {
     unsubscribeAction,
   } = useMailStore();
 
+  // Stable list-row handler: an inline closure here would change identity on
+  // every MailView render and defeat MessageRow's memoization for all rows.
+  const openFromList = useCallback(
+    (m: MailMessage) => openMessage(m, m.folder || folder),
+    [openMessage, folder],
+  );
+
   return (
     <>
       <div
@@ -181,7 +189,7 @@ export function MailView() {
           selectedUids={selectedUids}
           cursor={cursor}
           openId={selected?.id}
-          onOpen={(m) => openMessage(m, m.folder || folder)}
+          onOpen={openFromList}
           onToggleSelect={toggleSelect}
           onDelete={removeMessage}
           onStar={toggleStar}
