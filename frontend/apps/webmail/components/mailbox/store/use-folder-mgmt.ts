@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 
 import { mailFolders, mailFolderClear, mailFolderCreate, mailFolderDelete, mailFolderRename, mailUnseen } from "@/lib/api";
+import { readCachedFolders, writeCachedFolders } from "@/lib/folders-cache";
 
 /** Translated labels for the folder-management toasts (next-intl "mail" ns). */
 export type Translate = (key: string, values?: Record<string, string | number | Date>) => string;
@@ -14,6 +15,7 @@ export type Translate = (key: string, values?: Record<string, string | number | 
  * rename/delete redirect of the currently open folder.
  */
 export function useFolderMgmt({
+  email,
   folder,
   loadMessages,
   selectFolder,
@@ -21,6 +23,7 @@ export function useFolderMgmt({
   showToast,
   t,
 }: {
+  email: string;
   folder: string;
   loadMessages: (folder: string, page?: number, silent?: boolean) => Promise<void>;
   selectFolder: (f: string) => void;
@@ -31,18 +34,31 @@ export function useFolderMgmt({
   const [folders, setFolders] = useState<string[]>([]);
   const [unseen, setUnseen] = useState<Record<string, number>>({});
 
+  // Hydrate from the per-account cache so the sidebar paints populated on
+  // the first frame (see lib/folders-cache.ts); the mount-time loadFolders
+  // below revalidates. An effect, not a useState initializer, so the server
+  // render and hydration stay identical (localStorage is client-only).
+  useEffect(() => {
+    const cached = readCachedFolders(email);
+    if (cached?.length) setFolders(cached);
+  }, [email]);
+
   const refreshUnseen = useCallback(() => {
     mailUnseen().then(setUnseen).catch(() => {});
   }, []);
 
   const loadFolders = useCallback(async () => {
+    // Unseen counts don't depend on the folder list — fetch them in
+    // parallel instead of after the folders response lands.
+    refreshUnseen();
     try {
-      setFolders(await mailFolders());
+      const list = await mailFolders();
+      writeCachedFolders(email, list);
+      setFolders(list);
     } catch (e) {
       setError(e instanceof Error ? e.message : "load folders failed");
     }
-    refreshUnseen();
-  }, [refreshUnseen, setError]);
+  }, [email, refreshUnseen, setError]);
 
   async function createFolder(name: string) {
     setError("");
