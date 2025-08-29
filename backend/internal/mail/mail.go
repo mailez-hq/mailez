@@ -569,7 +569,12 @@ func (c *Client) ListAllMessages(email, token, folder string) ([]Message, error)
 	return out, nil
 }
 
-// FolderStat returns the SELECT counters for a folder (no body data).
+// FolderStat returns the mailbox counters (no body data). It uses STATUS,
+// not SELECT: SELECT's obsolete [UNSEEN n] response code carries the FIRST
+// UNSEEN SEQUENCE NUMBER, not a count, and go-imap v1 does not parse it —
+// every counter read through SELECT reported Unseen=0, so unseen-only
+// changes (snooze wake-ups resurfacing mail as unread) were invisible to
+// the event watcher. STATUS UNSEEN is the authoritative count.
 func (c *Client) FolderStat(email, token, folder string) (FolderStat, error) {
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
@@ -577,11 +582,11 @@ func (c *Client) FolderStat(email, token, folder string) (FolderStat, error) {
 	}
 	defer cli.Logout()
 
-	mbox, err := c.selectFolder(cli, folder, true)
+	st, err := cli.Status(folder, []imap.StatusItem{imap.StatusMessages, imap.StatusUnseen, imap.StatusUidNext})
 	if err != nil {
-		return FolderStat{}, fmt.Errorf("imap select %q: %w", folder, err)
+		return FolderStat{}, fmt.Errorf("imap status %q: %w", folder, err)
 	}
-	return FolderStat{Messages: mbox.Messages, Unseen: mbox.Unseen, UidNext: mbox.UidNext}, nil
+	return FolderStat{Messages: st.Messages, Unseen: st.Unseen, UidNext: st.UidNext}, nil
 }
 
 // GetMessage returns a full message body by UID.
