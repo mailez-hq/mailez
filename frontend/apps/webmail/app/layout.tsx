@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import { Providers } from "@/components/providers";
 import { PreferencesProvider } from "@/components/preferences-provider";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
@@ -42,10 +43,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang={locale} suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable}`}>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
-      </head>
       <body className="min-h-screen bg-background font-sans text-foreground">
+        {/* Theme bootstrap: beforeInteractive injects the snippet into the
+            initial HTML on the server so the dark/density classes land
+            before first paint (no flash). A raw <script> tag is not an
+            option in client-rendered components — React never executes it
+            there. */}
+        <Script id="theme-bootstrap" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
         <PreferencesProvider>
           <Providers locale={locale} messages={messages}>
             {children}
