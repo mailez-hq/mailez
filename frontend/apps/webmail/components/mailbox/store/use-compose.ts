@@ -20,7 +20,7 @@ import {
 } from "@/components/mailbox/mail-utils";
 import { composeSignature } from "@/lib/compose-signature";
 import { parseMergeRecipients } from "@/lib/mail-merge";
-import { useToast } from "./use-toast";
+import type { MailToastLink } from "./use-toast";
 
 function fmtDate(d: string) {
   return new Date(d).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -32,8 +32,9 @@ function fmtDate(d: string) {
  * and signatures, AI draft/compose, and the send pipeline (PGP, mail merge,
  * scheduled send, undo window).
  *
- * `t` and `showToast` come from the same providers the store uses, so the
- * hook calls them directly instead of threading them through props.
+ * `t` comes from the same provider the store uses; `showToast` is threaded
+ * in from the store so compose confirmations land on the one toast instance
+ * MailShell renders.
  */
 export function useCompose({
   folder,
@@ -42,6 +43,7 @@ export function useCompose({
   prefs,
   loadMessages,
   refreshUnseen,
+  showToast,
 }: {
   folder: string;
   detail: MailMessage | null;
@@ -53,9 +55,11 @@ export function useCompose({
   };
   loadMessages: (folder: string, page?: number, silent?: boolean) => Promise<void>;
   refreshUnseen: () => void;
+  // Shared from the mail store: the toast state that MailShell actually
+  // renders. useToast() here would create a second, unrendered instance.
+  showToast: (label: string, onUndo?: () => void, duration?: number, link?: MailToastLink) => void;
 }) {
   const t = useTranslations("mail");
-  const { showToast } = useToast();
 
   // composeError / composeNotice are scoped to the compose panel only, so
   // AI draft/compose and send failures never leak into the message list or

@@ -283,6 +283,9 @@ export function useMailStoreValue(me: Me) {
     prefs,
     loadMessages,
     refreshUnseen,
+    // The RENDERED toast lives in this store's useToast instance; compose
+    // must share it, not spin up its own (an unrendered) instance.
+    showToast,
   });
 
   // ---- realtime: online status, push subscription, SSE mail events ----
