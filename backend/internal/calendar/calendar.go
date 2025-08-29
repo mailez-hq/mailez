@@ -141,5 +141,14 @@ func (h *Handler) Register(r fiber.Router) {
 	r.Post("/calendar/shares", h.createShare)
 	r.Delete("/calendar/shares/:id", h.deleteShare)
 	r.Get("/calendar/feed", h.calendarFeed)
+}
+
+// RegisterPublic mounts the token-authenticated calendar routes that
+// external subscribers (Apple/Google Calendar) fetch without a webmail
+// session. exportICS authenticates with its own HMAC feed token; mounting
+// it behind RequireAuth would 401 every external subscriber before the
+// token check could ever run. /calendar/feed stays authenticated — it
+// hands the token-embedded URL to the logged-in owner.
+func (h *Handler) RegisterPublic(r fiber.Router) {
 	r.Get("/calendar/export.ics", h.exportICS)
 }

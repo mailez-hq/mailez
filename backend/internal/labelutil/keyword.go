@@ -43,3 +43,32 @@ func EncodeKeyword(name string) string {
 	}
 	return b.String()
 }
+
+// systemFlags maps every accepted spelling of an IMAP system flag (RFC 3501
+// §2.3.2: case-insensitive; clients also send the bare display name) to its
+// canonical wire form. Without this mapping an API caller posting flag:"seen"
+// silently creates a custom *keyword* named "seen" that no UNSEEN count, flag
+// filter or expunge ever matches.
+var systemFlags = map[string]string{
+	"seen":      "\\Seen",
+	"\\seen":    "\\Seen",
+	"flagged":   "\\Flagged",
+	"\\flagged": "\\Flagged",
+	"answered":  "\\Answered",
+	"\\answered": "\\Answered",
+	"deleted":   "\\Deleted",
+	"\\deleted": "\\Deleted",
+	"draft":     "\\Draft",
+	"\\draft":   "\\Draft",
+}
+
+// CanonicalFlag resolves a user-supplied flag name to its canonical system
+// flag when it names one (case-insensitive, leading backslash optional).
+// Everything else — custom keywords, encoded label names — is returned
+// unchanged for the label-keyword fallback to handle.
+func CanonicalFlag(name string) string {
+	if v, ok := systemFlags[strings.ToLower(name)]; ok {
+		return v
+	}
+	return name
+}
