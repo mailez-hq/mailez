@@ -151,7 +151,7 @@ func envelopeRecipients(h netmail.Header) []string {
 // submission server without rebuilding it; the outbox worker uses it to deliver
 // parked messages from external (aggregated) accounts.
 func (c *Client) SubmitRaw(d Dial, from string, recipients []string, raw string) error {
-	conn, err := openExternalSMTP(d)
+	conn, err := c.openExternalSMTP(d)
 	if err != nil {
 		return err
 	}
@@ -192,7 +192,7 @@ func submitSMTP(conn *smtp.Client, from string, recipients []string, msg string)
 // accounts use the gateway with the per-session temp token.
 func (c *Client) openSMTP(email, token string) (*smtp.Client, error) {
 	if c.dial.External {
-		return openExternalSMTP(c.dial)
+		return c.openExternalSMTP(c.dial)
 	}
 	host := c.SMTPAddr
 	serverHost := host
@@ -222,10 +222,12 @@ func (c *Client) openSMTP(email, token string) (*smtp.Client, error) {
 }
 
 // openExternalSMTP connects to an external submission server honouring its
-// security policy and authenticates with the stored credentials.
-func openExternalSMTP(d Dial) (*smtp.Client, error) {
+// security policy and authenticates with the stored credentials. Certificate
+// verification follows the client's insecureTLS opt-in (public internet
+// servers must verify by default).
+func (c *Client) openExternalSMTP(d Dial) (*smtp.Client, error) {
 	addr := net.JoinHostPort(d.Host, strconv.Itoa(d.Port))
-	tlsCfg := &tls.Config{InsecureSkipVerify: true, ServerName: d.Host}
+	tlsCfg := &tls.Config{InsecureSkipVerify: c.insecureTLS, ServerName: d.Host}
 	var raw net.Conn
 	var err error
 	switch d.Security {

@@ -53,7 +53,8 @@ func (c *Client) SnoozedMessages(email, token string) ([]SnoozedMessage, error) 
 		return nil, err
 	}
 	now := time.Now()
-	var out []SnoozedMessage
+	// Non-nil empty slice: JSON null (nil slice) violates the array contract.
+	out := make([]SnoozedMessage, 0)
 	for _, folder := range folders {
 		msgs, err := c.SearchMessagesSpec(email, token, folder, SearchQuery{Labels: []string{SnoozeFlag}})
 		if err != nil {
