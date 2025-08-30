@@ -75,6 +75,7 @@ export function MailShell({ children }: { children: React.ReactNode }) {
     composeError,
     composeNotice,
     ai,
+    aiLocked,
     draftSaved,
     composeOpen,
     receiptOn,
@@ -234,6 +235,7 @@ export function MailShell({ children }: { children: React.ReactNode }) {
         onClearFolder={clearFolder}
         onCompose={() => openCompose()}
         aiComposeEnabled={ai.draft}
+        aiComposeLocked={aiLocked}
         aiComposeBusy={aiComposeBusy}
         onAiCompose={() => {
           setAiPrompt("");

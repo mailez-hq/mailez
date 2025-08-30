@@ -32,6 +32,7 @@ export function MessageActions({
   quickReplyOpen,
   setQuickReplyOpen,
   aiEnabled,
+  aiLocked,
   summaryOpen,
   setSummaryOpen,
   summarizing,
@@ -52,6 +53,8 @@ export function MessageActions({
   quickReplyOpen: boolean;
   setQuickReplyOpen: Dispatch<SetStateAction<boolean>>;
   aiEnabled: boolean;
+  /** Enterprise-only deployment: keep the AI button visible but locked. */
+  aiLocked?: boolean;
   summaryOpen: boolean;
   setSummaryOpen: Dispatch<SetStateAction<boolean>>;
   summarizing: boolean;
@@ -97,7 +100,7 @@ export function MessageActions({
         <MessageSquarePlus className="size-3.5" />
         {t("quickReply")}
       </Button>
-      {aiEnabled && (
+      {aiEnabled ? (
         <Button
           size="sm"
           variant={summaryOpen || summarizing || summary ? "secondary" : "outline"}
@@ -114,7 +117,14 @@ export function MessageActions({
           <Sparkles className="size-3.5" />
           {summarizing ? t("summarizing") : summary ? t("aiSummary") : t("summarize")}
         </Button>
-      )}
+      ) : aiLocked ? (
+        /* Community edition: the summary entry stays visible but locked so
+           users can see what the enterprise edition adds. */
+        <Button size="sm" variant="outline" className="opacity-60" disabled title={t("aiLockedTitle")}>
+          <Sparkles className="size-3.5" />
+          {t("summarize")}
+        </Button>
+      ) : null}
       <div className="ml-auto flex items-center gap-1">
         <Button size="sm" variant="ghost" onClick={onLoadRaw} title={t("viewRaw")}>
           <FileCode className="size-3.5" />

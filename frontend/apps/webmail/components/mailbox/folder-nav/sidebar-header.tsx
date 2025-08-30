@@ -11,12 +11,14 @@ export function SidebarHeader({
   onClose,
   onCompose,
   aiComposeEnabled,
+  aiComposeLocked,
   aiComposeBusy,
   onAiCompose,
 }: {
   onClose: () => void;
   onCompose: () => void;
   aiComposeEnabled: boolean;
+  aiComposeLocked?: boolean;
   aiComposeBusy: boolean;
   onAiCompose: () => void;
 }) {
@@ -48,7 +50,7 @@ export function SidebarHeader({
           <PenLine className="size-4" />
           {t("write")}
         </Button>
-        {aiComposeEnabled && (
+        {aiComposeEnabled ? (
           <Button
             variant="outline"
             size="icon"
@@ -60,7 +62,20 @@ export function SidebarHeader({
             <Sparkles className={cn("size-3.5 shrink-0 text-ai", aiComposeBusy && "animate-pulse")} />
             <span className="sr-only">{t("aiCompose")}</span>
           </Button>
-        )}
+        ) : aiComposeLocked ? (
+          /* Community edition: the AI entry stays visible but locked so users
+             can see what the enterprise edition adds. */
+          <Button
+            variant="outline"
+            size="icon"
+            className="shrink-0 opacity-60"
+            disabled
+            title={t("aiLockedTitle")}
+          >
+            <Sparkles className="size-3.5 shrink-0" />
+            <span className="sr-only">{t("aiLockedTitle")}</span>
+          </Button>
+        ) : null}
       </div>
     </>
   );
