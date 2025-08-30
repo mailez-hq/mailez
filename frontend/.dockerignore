@@ -1,0 +1,10 @@
+# Monorepo build context: node_modules, build output and caches must never
+# enter the image or the context transfer.
+**/node_modules
+**/.next
+**/out
+**/dist
+**/*.tsbuildinfo
+**/npm-debug.log
+**/test-results
+**/playwright-report

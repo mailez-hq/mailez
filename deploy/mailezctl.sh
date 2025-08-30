@@ -31,7 +31,7 @@ case "$TARGET" in
     ;;
 esac
 
-ARGS=(-f "$FILE")
+ARGS=(--env-file mailez.env -f "$FILE")
 case "$ACTION" in
   up)     ARGS+=(up -d --build) ;;
   down)   ARGS+=(down) ;;

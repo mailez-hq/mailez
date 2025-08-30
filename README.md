@@ -130,11 +130,19 @@ TLS is off by default for local testing. For production, follow
 [`deploy/certs/README.md`](deploy/certs/README.md) to enable automatic
 certificates.
 
-After the stack is up, verify the whole mail path works end to end:
+After the stack is up, provision the admin account **inside the container**
+(the backend image ships a one-shot seeder; no local Go required):
+
+```sh
+docker compose -f deploy/docker-compose.community.yml exec backend mailez-seed
+# default: admin@example.com / MailezDemo2026! — override with
+# MAILEZ_ADMIN_EMAIL / MAILEZ_ADMIN_PASSWORD before seeding
+```
+
+Then verify the whole mail path end to end (requires Go on the host):
 
 ```sh
 cd backend
-go run ./cmd/seed   # creates the admin account once
 go run ./cmd/e2e    # sends a test mail, checks delivery, DKIM and spam filtering
 ```
 

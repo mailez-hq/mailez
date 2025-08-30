@@ -37,7 +37,7 @@ $file = switch ($Target) {
     default      { "docker-compose.dev.yml" }
 }
 
-$compose = @("docker", "compose", "-f", $file)
+$compose = @("docker", "compose", "--env-file", "mailez.env", "-f", $file)
 switch ($Action) {
     "up"     { $compose += @("up", "-d", "--build") }
     "down"   { $compose += @("down") }
