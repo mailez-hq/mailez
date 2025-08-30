@@ -16,6 +16,7 @@ import { usePreferences } from "@/components/preferences-provider";
 import { useNewMailNotification } from "@/components/mailbox/use-new-mail-notification";
 import { writeLastFolder } from "@/lib/preferences";
 import {
+  ApiError,
   mailMessage,
   logout as apiLogout,
   type CalendarEvent, type DriveEntry, type MailMessage, type Me,
@@ -505,7 +506,18 @@ export function useMailStoreValue(me: Me) {
         setSummary("");
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "load message failed");
+        if (cancelled) return;
+        if (e instanceof ApiError && e.status === 404) {
+          // The message vanished server-side (deleted from another client,
+          // or the mailbox was rebuilt). Show a friendly note instead of the
+          // raw error and drop back to the folder list.
+          setError(t("messageGone"));
+          setSelected(null);
+          setDetail(null);
+          router.push(`/mail/${encodeURIComponent(pf)}`);
+          return;
+        }
+        setError(e instanceof Error ? e.message : "load message failed");
       })
       .finally(() => {
         if (!cancelled) setDetailLoading(false);
