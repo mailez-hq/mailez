@@ -1,10 +1,12 @@
 # Edition split: community (CE) / enterprise (EE)
 
-The mailez backend ships in two editions from one repository. The community
-edition is the open-source webmail/console core; the enterprise edition adds
-compliance, collaboration-at-scale, identity integration and AI. The split
-is enforced by the compiler: EE code lives only under `backend/internal/ee/`
-(plus paired `*_ee.go` assembly files), guarded by the `mailez_ee` build tag.
+The mailez backend ships in two editions from one repository. Both editions
+run the same mailezine engine and the same protocols; the community edition
+is the open-source webmail/console core on single-node storage, while the
+enterprise edition adds distributed storage readiness, compliance,
+collaboration-at-scale, identity integration and AI. The split is enforced
+by the compiler: EE code lives only under `backend/internal/ee/` (plus
+paired `*_ee.go` assembly files), guarded by the `mailez_ee` build tag.
 
 | Capability | CE | EE |
 |---|---|---|
@@ -34,11 +36,9 @@ gitignored build artifact) from `ee/` (default) or `ce-stubs/`
 summary; admin announcement/archive/DLP pages (thin route shells
 re-export the edition module).
 
-\* LDAP stays in CE for this pass — its wiring reaches `core.App` and the
-stack handler; moving it needs an interface seam and is scheduled as
-follow-up work. Calendar/drive stay CE-side as mixed packages (personal
-features are community; shared/team features need a package-level split
-before they can move).
+\* Calendar/drive stay CE-side as mixed packages (personal features are
+community; shared/team features need a package-level split before they can
+move).
 
 Rules (same contract as the mailezine engine):
 
