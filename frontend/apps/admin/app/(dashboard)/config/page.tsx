@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import {
+  IS_COMMUNITY_BUILD,
   exportConfig, getAIConfigs, getBranding, getLDAPConfig, importConfig,
   createAIConfig, deleteAIConfig, testAIConfig, updateAIConfig,
   putBranding, putLDAPConfig, syncLDAP, testLDAP,
@@ -360,11 +361,18 @@ export default function ConfigPage() {
     }
   }
 
+  // AI configuration and AD/LDAP directory integration are enterprise
+  // surfaces; the community build neither fetches them (the endpoints do
+  // not exist on a CE backend) nor shows the tabs.
   const tabs: { key: ConfigTab; label: string }[] = [
     { key: "backup", label: t("backup") },
     { key: "branding", label: t("branding") },
-    { key: "ai", label: t("ai") },
-    { key: "ldap", label: t("ldap") },
+    ...(IS_COMMUNITY_BUILD
+      ? []
+      : [
+          { key: "ai" as ConfigTab, label: t("ai") },
+          { key: "ldap" as ConfigTab, label: t("ldap") },
+        ]),
   ];
 
   return (

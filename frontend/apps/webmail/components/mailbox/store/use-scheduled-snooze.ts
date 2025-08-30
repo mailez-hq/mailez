@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 
 import { mailSnooze, mailSnoozed, mailScheduled, mailUndoSend, type MailMessage, type MailSearchSpec, type ScheduledSend, type SnoozedMessage } from "@/lib/api";
 import type { Translate } from "./use-folder-mgmt";
@@ -25,6 +25,8 @@ export function useScheduledSnooze({
   setError,
   showToast,
   refreshMail,
+  searchSeqRef,
+  loadSeq,
   t,
 }: {
   folder: string;
@@ -41,6 +43,11 @@ export function useScheduledSnooze({
   setError: Dispatch<SetStateAction<string>>;
   showToast: (label: string, onUndo?: () => void, duration?: number) => void;
   refreshMail: () => void | Promise<void>;
+  /** Same sequence guards the folder/search loaders use: opening the
+   * snoozed view replaces the list, so any in-flight folder load or search
+   * response must be invalidated, and vice versa. */
+  searchSeqRef: RefObject<number>;
+  loadSeq: RefObject<number>;
   t: Translate;
 }) {
   const [scheduled, setScheduled] = useState<ScheduledSend[]>([]);
@@ -103,6 +110,11 @@ export function useScheduledSnooze({
   // openSnoozed switches to the Snoozed virtual view, listing every message
   // parked by the user until a later time.
   async function openSnoozed() {
+    // Invalidate any in-flight folder load / keyword search, exactly like
+    // runSearchWithSpec does: their late responses must not clobber this
+    // view, and this request must lose to anything the user starts next.
+    const seq = ++searchSeqRef.current;
+    loadSeq.current++;
     setActiveView("snoozed");
     setActiveLabel("");
     setSearchSpec(null);
@@ -113,6 +125,7 @@ export function useScheduledSnooze({
     setDetail(null);
     try {
       const list = await mailSnoozed();
+      if (seq !== searchSeqRef.current) return; // superseded by a newer view
       setSnoozedMsgs(list);
       setMessages(list as unknown as MailMessage[]);
       setTotal(list.length);
