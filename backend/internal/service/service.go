@@ -45,13 +45,18 @@ type Manager struct {
 }
 
 // Load reads MAILEZ_SERVICE_FILE / MAILEZ_SERVICE and verifies it. Without a
-// configured certificate the manager is nil (no service). An explicitly
-// provided certificate must always verify — never silently drop it.
+// configured certificate the manager is nil (no service). A configured path
+// whose file does not exist counts as "not subscribed" (compose files ship
+// the mount by default; operators add the file when they subscribe). A file
+// that exists must always verify — never silently drop a real certificate.
 func Load(file, inline string) (*Manager, error) {
 	raw := strings.TrimSpace(inline)
 	if raw == "" && file != "" {
 		b, err := os.ReadFile(file)
 		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil, nil
+			}
 			return nil, fmt.Errorf("service: read %s: %w", file, err)
 		}
 		raw = strings.TrimSpace(string(b))
