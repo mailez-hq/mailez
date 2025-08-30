@@ -154,6 +154,10 @@ services:
     build:
       context: ../frontend
       dockerfile: apps/admin/Dockerfile
+      # Edition is baked at build time (Dockerfile ARG default is ce);
+      # the enterprise stack must ship enterprise frontends.
+      args:
+        MAILEZ_EDITION: ee
     restart: always
     environment:
       - API_TARGET=http://backend:8080
@@ -167,6 +171,8 @@ services:
     build:
       context: ../frontend
       dockerfile: apps/webmail/Dockerfile
+      args:
+        MAILEZ_EDITION: ee
     restart: always
     environment:
       - API_TARGET=http://backend:8080

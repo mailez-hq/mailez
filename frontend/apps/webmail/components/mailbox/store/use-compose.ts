@@ -123,6 +123,14 @@ export function useCompose({
   // of updating the first one.
   const draftSavingRef = useRef(false);
 
+  // Current folder by reference: delayed post-send callbacks (undo-window
+  // reload) must target whatever folder the user is browsing when they
+  // fire, not the one captured at send time.
+  const folderRef = useRef(folder);
+  useEffect(() => {
+    folderRef.current = folder;
+  });
+
   // load the From identities (own address + aliases with DKIM status)
   useEffect(() => {
     mailIdentities()
@@ -597,6 +605,10 @@ export function useCompose({
     });
     setComposeOpen(true);
     setComposeFocus("editor");
+    // Throttle editor updates so long outputs stay smooth. Declared outside
+    // the try so the finally below clears it even when the stream rejects —
+    // a leaked 80ms interval would run flushBody forever.
+    let flushTimer: ReturnType<typeof setInterval> | undefined;
     try {
       let contactsList = allContacts;
       if (!contactsList) {
@@ -613,46 +625,45 @@ export function useCompose({
         setBodyText(text);
         setBody(textToHtml(text));
       };
-      // Throttle editor updates so long outputs stay smooth.
-      const timer = setInterval(flushBody, 80);
+      flushTimer = setInterval(flushBody, 80);
       let gotContent = false;
       await aiComposeStream(instruction, (ev) => {
         if (ev.type === "to" || ev.type === "subject" || ev.type === "body") {
           gotContent = true;
         }
         if (ev.type === "to" && ev.text) {
-          const resolved: string[] = [];
-          const unresolved: string[] = [];
-          for (const raw of ev.text.split(",")) {
-            const name = (raw || "").trim();
-            if (!name) continue;
-            if (name.includes("@")) {
-              resolved.push(name);
-              continue;
+            const resolved: string[] = [];
+            const unresolved: string[] = [];
+            for (const raw of ev.text.split(",")) {
+              const name = (raw || "").trim();
+              if (!name) continue;
+              if (name.includes("@")) {
+                resolved.push(name);
+                continue;
+              }
+              const hit = (contactsList || []).find(
+                (c) =>
+                  (c.name || "").toLowerCase() === name.toLowerCase() ||
+                  (c.name || "").toLowerCase().includes(name.toLowerCase()),
+              );
+              if (hit) resolved.push(hit.email);
+              else unresolved.push(name);
             }
-            const hit = (contactsList || []).find(
-              (c) =>
-                (c.name || "").toLowerCase() === name.toLowerCase() ||
-                (c.name || "").toLowerCase().includes(name.toLowerCase()),
-            );
-            if (hit) resolved.push(hit.email);
-            else unresolved.push(name);
+            if (resolved.length > 0) setTo(resolved);
+            if (unresolved.length > 0) {
+              setComposeNotice(t("aiComposeUnresolved", { names: unresolved.join("、") }));
+            }
+          } else if (ev.type === "subject" && ev.text) {
+            subjectAcc += ev.text;
+            setSubject(subjectAcc);
+          } else if (ev.type === "body" && ev.text) {
+            bodyParts.push(ev.text);
+          } else if (ev.type === "error" && ev.text) {
+            setComposeError(ev.text);
           }
-          if (resolved.length > 0) setTo(resolved);
-          if (unresolved.length > 0) {
-            setComposeNotice(t("aiComposeUnresolved", { names: unresolved.join("、") }));
-          }
-        } else if (ev.type === "subject" && ev.text) {
-          subjectAcc += ev.text;
-          setSubject(subjectAcc);
-        } else if (ev.type === "body" && ev.text) {
-          bodyParts.push(ev.text);
-        } else if (ev.type === "error" && ev.text) {
-          setComposeError(ev.text);
-        }
-      });
-      clearInterval(timer);
-      flushBody();
+        });
+        if (flushTimer !== undefined) clearInterval(flushTimer);
+        flushBody();
       if (!gotContent) {
         // Streaming produced nothing (proxy buffering or an empty reply):
         // fall back to the one-shot endpoint so the user still gets the mail.
@@ -687,6 +698,9 @@ export function useCompose({
     } catch (e) {
       setComposeError(e instanceof Error ? e.message : t("aiComposeFailed"));
     } finally {
+      // Clear on every exit path: a rejected stream must not leave the
+      // 80ms flush interval running for the rest of the session.
+      if (flushTimer !== undefined) clearInterval(flushTimer);
       setAiComposeBusy(false);
     }
   }
@@ -820,9 +834,11 @@ export function useCompose({
       // elapses, then delivers it. Refresh the current folder after that
       // window so a sent-and-delivered message shows up without requiring a
       // manual refresh, and flip the toast to the final confirmation — the
-      // two-phase "Sending… → Sent" rhythm.
+      // two-phase "Sending… → Sent" rhythm. The folder is read through a
+      // ref at fire time: the user may switch folders during the undo
+      // window and a captured folder would clobber the new view.
       setTimeout(() => {
-        loadMessages(folder, 0, true);
+        loadMessages(folderRef.current, 0, true);
         refreshUnseen();
         showToast(t("toastSent"), undefined, 6000, { label: t("viewSent"), folder: "Sent" });
       }, delay * 1000 + 2000);

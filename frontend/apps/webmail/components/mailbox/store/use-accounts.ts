@@ -78,6 +78,12 @@ export function useAccounts(
     // next account would serve the previous mailbox's details.
     detailCache.clear();
     threadCache.clear();
+    // Re-scope the api module BEFORE the scoped loads below: the effects
+    // that mirror activeAccount/activeDelegate into the module run only
+    // after the next render, so the synchronous loadFolders/loadMessages
+    // would otherwise fire against the previous mailbox.
+    setActiveAccountId(id);
+    setActiveDelegateEmail(null);
     setActiveAccount(id);
     setActiveDelegate(null);
     resetView({});
@@ -97,6 +103,9 @@ export function useAccounts(
     switchInFlight.current = true;
     detailCache.clear();
     threadCache.clear();
+    // Same ordering rationale as switchAccount: scope first, then load.
+    setActiveDelegateEmail(email);
+    setActiveAccountId(null);
     setActiveAccount(null);
     setActiveDelegate(email);
     resetView({ includeLabel: true });
