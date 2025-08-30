@@ -62,8 +62,8 @@ Rules (same contract as the mailezine engine):
 - `cmd/mailez-agent` and `internal/{agent,macro}` are shared
   infrastructure (the mail images' container entrypoint and the macro
   scanner used by every compose profile), so they live in the community
-  tree; only the legacy MTA/IMAP stack engine drivers were removed with the
-  legacy stack.
+  tree; only the legacy pre-mailezine engine drivers were removed with the
+  old stack.
 
 Not yet split (follow-up, mixed concerns or in-flight user work):
 
