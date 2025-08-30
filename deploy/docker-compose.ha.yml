@@ -27,6 +27,9 @@ services:
   backend:
     deploy:
       replicas: 2
+    # 多副本不能绑固定宿主端口（第二副本 bind 冲突）：backend 只经
+    # gateway 内网访问。!override 覆盖 enterprise 档的端口列表。
+    ports: !override []
     environment:
       # 超大附件 + 云盘落 MinIO：上传与下载可落在不同副本。
       - MAILEZ_DRIVE_BACKEND=minio
@@ -34,7 +37,12 @@ services:
   frontend-admin:
     deploy:
       replicas: 2
+    ports: !override []
 
   frontend-webmail:
     deploy:
       replicas: 2
+    ports: !override []
+    # webmail 在 HA 下经 gateway 访问：operator 在 deploy/overrides/nginx/
+    # 放一个 webmail.conf（见 docs/scaling.md 附录），单副本调试可
+    # `docker compose up -d frontend-webmail` 后用 docker port 直连。
