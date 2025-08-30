@@ -5,7 +5,9 @@
 import { chromium } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 
-const OUT = "../../../mailez-website/static/img/shots";
+// Four levels up from frontend/apps/webmail lands on mailez-hq, where the
+// website repo lives beside the product repo.
+const OUT = "../../../../mailez-website/static/img/shots";
 mkdirSync(OUT, { recursive: true });
 
 async function shot(page, name) {
