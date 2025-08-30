@@ -3,7 +3,7 @@
 #
 # Three self-contained compose files:
 #   dev        = docker-compose.dev.yml        (SQLite + Pebble + local FS)
-#   community  = docker-compose.community.yml  (mailezine + MySQL)
+#   community  = docker-compose.community.yml  (mailezine + SQLite control plane)
 #   enterprise = docker-compose.enterprise.yml (mailezine + MySQL + TiDB + MinIO/S3)
 #
 # Usage:
