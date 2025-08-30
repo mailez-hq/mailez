@@ -112,7 +112,7 @@ func Load() Config {
 		MailMtaAddr:          env("MAIL_MTA_ADDR", ""),
 		UploadDir:            env("MAILEZ_UPLOAD_DIR", "uploads"),
 		DriveBackend:         env("MAILEZ_DRIVE_BACKEND", "local"),
-		MinioEndpoint:        env("MAILEZINE_S3_ENDPOINT", "minio:9000"),
+		MinioEndpoint:        env("MAILEZINE_S3_ENDPOINT", ""),
 		MinioAccessKey:       env("MAILEZINE_S3_ACCESS_KEY", ""),
 		MinioSecretKey:       env("MAILEZINE_S3_SECRET_KEY", ""),
 		MinioBucket:          env("MAILEZINE_S3_BUCKET", "mailezine"),
@@ -138,16 +138,15 @@ func Load() Config {
 		ServiceFile:          env("MAILEZ_SERVICE_FILE", ""),
 		Service:              env("MAILEZ_SERVICE", ""),
 	}
-	// Distributed deployments opt into TiDB KV + MinIO/S3 blobs via env;
-	// single-node keeps the pebble/local-FS defaults and reports no KV.
-	// Explicit env overrides always win.
+	// Distributed deployments opt into TiDB KV + MinIO/S3 blobs by setting
+	// MAILEZINE_STORAGE_BACKEND / MAILEZINE_S3_* explicitly (the enterprise
+	// compose does). Single-node community/dev deployments keep the
+	// pebble/local-FS defaults — the engine has no TiDB or MinIO to report.
 	cfg.KVBackend = env("MAILEZINE_STORAGE_BACKEND", "")
 	if cfg.KVBackend == "" && cfg.MailEngine == "mailezine" {
-		cfg.KVBackend = "tidb"
+		cfg.KVBackend = "pebble"
 	}
 	if os.Getenv("MAILEZINE_S3_ENDPOINT") != "" {
-		cfg.BlobBackend = "minio"
-	} else if cfg.MailEngine == "mailezine" {
 		cfg.BlobBackend = "minio"
 	} else {
 		cfg.BlobBackend = "local"

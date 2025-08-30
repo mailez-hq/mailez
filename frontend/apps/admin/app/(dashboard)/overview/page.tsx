@@ -33,6 +33,15 @@ export default function OverviewPage() {
   // enterprise = licensed). A loaded license is reported separately.
   const lic = data.license;
   const communityEdition = lic?.edition === "community";
+  // The built-in dev license ("no file mounted, unrestricted") is not the
+  // commercial enterprise edition — label it as the development tier so a
+  // community deployment never advertises itself as 企业版.
+  const devEdition = lic?.edition === "dev";
+  const editionLabel = communityEdition
+    ? t("licenseCommunity")
+    : devEdition
+      ? t("licenseDev")
+      : t("licenseEnterprise");
   const engineLabel = t("engineMailezine");
   const dbLabel =
     data.db_driver === "mysql"
@@ -56,7 +65,9 @@ export default function OverviewPage() {
     // The community edition is free: it never shows license info, even if
     // an enterprise license file happens to be mounted.
     if (communityEdition) return t("licenseFree");
-    if (!lic) return `${t("licenseDev")} · ${t("licenseUnlimited")}`;
+    // The dev license is built-in: no mailbox cap, no service contract to
+    // expire — reporting "service expired" here would be misleading.
+    if (!lic || devEdition) return `${t("licenseDev")} · ${t("licenseUnlimited")}`;
     const parts = [
       lic.max_mailboxes > 0
         ? t("licenseUsage", { used: lic.used, max: lic.max_mailboxes })
@@ -91,7 +102,7 @@ export default function OverviewPage() {
   const cards = [
     {
       key: "license",
-      value: communityEdition ? t("licenseCommunity") : t("licenseEnterprise"),
+      value: editionLabel,
       sub: licenseSub(),
       icon: BadgeCheck,
     },
@@ -110,7 +121,7 @@ export default function OverviewPage() {
       <div>
         <h1 className="text-xl font-semibold">{t("title")}</h1>
         <p className="text-sm text-muted-foreground">
-          {communityEdition ? t("licenseCommunity") : t("licenseEnterprise")} · {engineLabel} ·{" "}
+          {editionLabel} · {engineLabel} ·{" "}
           {data.domain} · {data.hostname}
         </p>
       </div>
