@@ -102,11 +102,18 @@ func (f *Fetcher) recordError(fetch *models.Fetch, err error) {
 // server) is what keeps a same-day re-poll from re-delivering mail; a
 // UIDVALIDITY change resets it because the server renumbered every message.
 func (f *Fetcher) fetchIMAP(fetch *models.Fetch, password string) error {
-	cli, err := client.Dial(net.JoinHostPort(fetch.Host, strconv.Itoa(fetch.Port)))
+	// Bounded dial + session: one dead remote must not stall the serial
+	// poll loop (and every account behind it) indefinitely. The dialer
+	// bounds connect; the client's per-command Timeout bounds each
+	// request/response exchange (zero = wait forever, the default).
+	connTimeout := 2 * time.Minute
+	dialer := &net.Dialer{Timeout: connTimeout}
+	cli, err := client.DialWithDialer(dialer, net.JoinHostPort(fetch.Host, strconv.Itoa(fetch.Port)))
 	if err != nil {
 		return err
 	}
 	defer cli.Logout()
+	cli.Timeout = connTimeout
 	if fetch.TLS {
 		if err := cli.StartTLS(&tls.Config{InsecureSkipVerify: f.Insecure, ServerName: fetch.Host}); err != nil {
 			return err

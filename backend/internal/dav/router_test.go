@@ -146,3 +146,60 @@ func TestDAVAuthAndDiscovery(t *testing.T) {
 		t.Fatalf("contact count: %d", count)
 	}
 }
+
+// TestDAVCrossAccountIDOR locks the dispatch-level ownership check: every
+// addressbook/calendar path segment must name the authenticated user, or a
+// valid credential could read/overwrite/delete another account's data.
+func TestDAVCrossAccountIDOR(t *testing.T) {
+	db, app := newDAVApp(t)
+	// A second victim user with existing data.
+	if err := db.Create(&models.User{
+		Email: "bob@example.com", Localpart: "bob", DomainName: "example.com",
+		Password: mustHash(t, "bobsecret"), Enabled: true,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&models.Contact{
+		UserEmail: "bob@example.com", DavUID: "secret-1", Name: "Victim Card", Email: "victim@example.com",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	alice := basic("alice@example.com", "secret123")
+
+	// Cross-account reads are forbidden at the router, never reaching the
+	// backend scoped by the path user.
+	for _, tc := range []struct{ method, path string }{
+		{"PROPFIND", "/dav/addressbooks/bob@example.com/"},
+		{"PROPFIND", "/dav/addressbooks/bob@example.com/default/"},
+		{http.MethodGet, "/dav/addressbooks/bob@example.com/default/secret-1.vcf"},
+		{http.MethodPut, "/dav/addressbooks/bob@example.com/default/evil.vcf"},
+		{http.MethodDelete, "/dav/addressbooks/bob@example.com/default/secret-1.vcf"},
+		{"REPORT", "/dav/addressbooks/bob@example.com/default/"},
+		{"PROPFIND", "/dav/calendars/bob@example.com/"},
+		{http.MethodPut, "/dav/calendars/bob@example.com/default/evil.ics"},
+		{http.MethodDelete, "/dav/calendars/bob@example.com/default/x.ics"},
+	} {
+		resp := davReq(t, app, tc.method, tc.path, "", alice)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusForbidden {
+			t.Fatalf("%s %s: want 403, got %d", tc.method, tc.path, resp.StatusCode)
+		}
+	}
+
+	// The victim's data is intact.
+	var n int64
+	if err := db.Model(&models.Contact{}).Where("user_email = ? AND dav_uid = ?", "bob@example.com", "secret-1").Count(&n).Error; err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("victim contact survived: %d", n)
+	}
+
+	// Own path still works.
+	vcard := "BEGIN:VCARD\r\nVERSION:3.0\r\nUID:a-1\r\nFN:Alice\r\nEND:VCARD\r\n"
+	resp := davReq(t, app, http.MethodPut, "/dav/addressbooks/alice@example.com/default/a-1.vcf", vcard, alice)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("own PUT: %d", resp.StatusCode)
+	}
+}
