@@ -44,8 +44,8 @@ export default function DlpPage() {
   const [rules, setRules] = useState<DlpRule[]>([]);
   const [editing, setEditing] = useState<Partial<DlpRule> | null>(null);
   const [saving, setSaving] = useState(false);
-  // Served domains for the scope input's datalist (free text still works —
-  // the dropdown previously offered only hardcoded placeholder domains).
+  // Served domains suggested for the scope input's datalist; free text
+  // still works.
   const [domainOptions, setDomainOptions] = useState<string[]>([]);
 
   const [approvals, setApprovals] = useState<PendingApproval[]>([]);

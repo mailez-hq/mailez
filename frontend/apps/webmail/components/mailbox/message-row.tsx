@@ -76,8 +76,8 @@ export const MessageRow = memo(function MessageRow({
   onContextMenu?: (e: React.MouseEvent, message: MailMessage) => void;
 }) {
   const t = useTranslations("mail");
-  // Only the tiny label-colors context: subscribing to the whole store here
-  // would re-render every memoized row on each store churn.
+  // The tiny label-colors context only: subscribing to the whole store here
+  // would defeat the row memo.
   const labelColors = useLabelColors();
   // Conversation-view rows carry thread-level aggregates: any member unread /
   // starred flips the whole row, and the sender line lists the participants.

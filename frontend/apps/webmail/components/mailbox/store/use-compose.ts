@@ -819,8 +819,8 @@ export function useCompose({
       }
 
       // Server-side undo window: the backend parks the message in its outbox
-      // and delivers it when the window elapses, so closing the tab no longer
-      // loses the send.
+      // and delivers it when the window elapses, so a closed tab does not
+      // lose the send.
       const res = await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, delay, undefined, receiptOn, burnAfter, replyHeadersRef.current?.inReplyTo, replyHeadersRef.current?.references);
       removeEditedDraft(draftUidRef.current);
       const outboxId = res?.outbox_id;

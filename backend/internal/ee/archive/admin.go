@@ -242,9 +242,8 @@ func (s *Service) exportMessages(c *fiber.Ctx) error {
 		q = q.Where("LOWER(subject) LIKE ? OR LOWER(`from`) LIKE ? OR LOWER(`to`) LIKE ? OR LOWER(message_id) LIKE ?",
 			like, like, like, like)
 	}
-	// Same optional filters as listMessages: an export must honor the exact
-	// filter set the admin reviewed on screen, or a compliance export can
-	// contain a different message set than the search results.
+	// Same optional filters as listMessages: the export must cover the same
+	// message set as the search.
 	if v := c.Query("date_from"); v != "" {
 		if t, err := parseQueryTime(v); err == nil {
 			q = q.Where("date >= ?", t)

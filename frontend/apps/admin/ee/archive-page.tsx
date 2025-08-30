@@ -204,8 +204,8 @@ export default function ArchivePage() {
   }
 
   function exportMbox() {
-    // Mirror loadMessages' filter mapping exactly: a compliance export must
-    // contain the same message set the admin just reviewed on screen.
+    // Mirror loadMessages' filter mapping: the export must cover the same
+    // message set as the on-screen search.
     const params: Record<string, string> = {};
     if (applied.direction) params.direction = applied.direction;
     if (applied.domain) params.domain = applied.domain;
