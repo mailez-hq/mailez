@@ -180,6 +180,7 @@
     "colRecipients": "To",
     "colRule": "Rule",
     "scopeAll": "All domains",
+  "scopeDomain": "Specific domain",
     "actionBlock": "Block",
     "actionHold": "Approval",
     "sevLow": "Low",

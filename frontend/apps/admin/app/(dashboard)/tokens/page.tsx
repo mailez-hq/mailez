@@ -31,7 +31,11 @@ export default function TokensPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [users, setUsers] = useState<User[]>([]);
+  // Page-level error (load/delete) renders outside the modal: a delete that
+  // fails with the dialog closed must stay visible. Form errors use
+  // formError inside the dialog.
   const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [ip, setIp] = useState("");
@@ -61,7 +65,7 @@ export default function TokensPage() {
       setCopied(false);
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "create failed");
+      setFormError(err instanceof Error ? err.message : "create failed");
     }
   }
 
@@ -85,7 +89,7 @@ export default function TokensPage() {
       <PageHeader title={t("title")} description={t("desc")}>
         <Dialog
           open={open}
-          onOpenChange={(v) => { setOpen(v); if (!v) setSecret(""); }}
+          onOpenChange={(v) => { setOpen(v); if (!v) setSecret(""); if (v) setFormError(""); }}
         >
           <DialogTrigger render={<Button><Plus />{t("new")}</Button>} />
           <DialogContent>
@@ -132,7 +136,7 @@ export default function TokensPage() {
                   <Label>{t("ip")}</Label>
                   <Input value={ip} onChange={(e) => setIp(e.target.value)} placeholder="1.2.3.4" />
                 </div>
-                {error && <p className="text-sm text-red-600">{error}</p>}
+                {formError && <p className="text-sm text-red-600">{formError}</p>}
                 <DialogFooter>
                   <Button type="submit">{ct("create")}</Button>
                 </DialogFooter>
@@ -141,6 +145,8 @@ export default function TokensPage() {
           </DialogContent>
         </Dialog>
       </PageHeader>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <Card>
         <CardHeader><CardTitle className="text-base">{t("accounts")}</CardTitle></CardHeader>

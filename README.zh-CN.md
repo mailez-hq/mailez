@@ -141,7 +141,9 @@ go run ./cmd/e2e
   MySQL/TiDB/MinIO）与授权功能上有别
 - 更多细节：[`docs/dev-setup.md`](docs/dev-setup.md)、
   [`docs/architecture.md`](docs/architecture.md)、
-  [`docs/webmail-ui-spec.md`](docs/webmail-ui-spec.md)
+  [`docs/webmail-ui-spec.md`](docs/webmail-ui-spec.md)；
+  版本/档位间升级（含 MySQL→SQLite 控制面切换与社区版→企业版路径）：
+  [`docs/upgrades.md`](docs/upgrades.md)
 
 ## 许可证
 
