@@ -1,3 +1,9 @@
+// Type-level augmentation only: this import makes tsc know the DOM
+// matchers on vitest's Assertion. Its runtime side effect (extending the
+// expect instance it resolves) did not reach the test files under
+// vitest 4, hence the explicit extend below — keep both.
+import "@testing-library/jest-dom/vitest";
+
 // Explicit extend instead of "@testing-library/jest-dom/vitest": with
 // vitest 4 the side-effect import resolves a different expect instance in
 // some module graphs and the DOM matchers never reach the test files.
