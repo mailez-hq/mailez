@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -52,12 +53,15 @@ const FontSize = TextStyle.extend({
   },
 });
 
-const FONT_FAMILIES = [
-  { label: "默认字体", value: "" },
+// Font family entries: labelKey resolves through the mail.editor catalog
+// (default/mono/CJK entries are localized); universal font names stay
+// literal so they render identically in every locale.
+const FONT_FAMILIES: Array<{ labelKey?: string; label?: string; value: string }> = [
+  { labelKey: "fontDefault", value: "" },
   { label: "Arial", value: "Arial, Helvetica, sans-serif" },
   { label: "Georgia", value: "Georgia, 'Times New Roman', serif" },
-  { label: "等宽", value: "Consolas, 'Courier New', monospace" },
-  { label: "微软雅黑", value: "'Microsoft YaHei', 'PingFang SC', sans-serif" },
+  { labelKey: "fontMono", value: "Consolas, 'Courier New', monospace" },
+  { labelKey: "fontYahei", value: "'Microsoft YaHei', 'PingFang SC', sans-serif" },
 ];
 
 const FONT_SIZES = ["12px", "14px", "16px", "18px", "22px", "28px"];
@@ -85,6 +89,9 @@ export function ComposeEditor({
   autoFocus?: boolean;
   spellcheck?: boolean;
 }) {
+  // Toolbar labels/tooltips live under mail.editor in the catalogs — the
+  // toolbar was previously hardcoded Chinese regardless of locale.
+  const t = useTranslations("mail.editor");
   // TipTap's deferred editor creation (immediatelyRender:false on Next.js)
   // emits one update right after mount, normalizing the document. That
   // normalization must not count as a user edit (it would dirty the store
@@ -258,22 +265,22 @@ export function ComposeEditor({
         }}
       />
       <div className="flex shrink-0 flex-wrap items-center gap-0.5 border-b bg-muted/40 px-2 py-1">
-        {toolBtn(state.bold, () => editor.chain().focus().toggleBold().run(), <Bold className="h-3.5 w-3.5" />)}
-        {toolBtn(state.italic, () => editor.chain().focus().toggleItalic().run(), <Italic className="h-3.5 w-3.5" />)}
-        {toolBtn(state.underline, () => editor.chain().focus().toggleUnderline().run(), <Underline className="h-3.5 w-3.5" />)}
-        {toolBtn(state.strike, () => editor.chain().focus().toggleStrike().run(), <Strikethrough className="h-3.5 w-3.5" />)}
+        {toolBtn(state.bold, () => editor.chain().focus().toggleBold().run(), <Bold className="h-3.5 w-3.5" />, t("bold"))}
+        {toolBtn(state.italic, () => editor.chain().focus().toggleItalic().run(), <Italic className="h-3.5 w-3.5" />, t("italic"))}
+        {toolBtn(state.underline, () => editor.chain().focus().toggleUnderline().run(), <Underline className="h-3.5 w-3.5" />, t("underline"))}
+        {toolBtn(state.strike, () => editor.chain().focus().toggleStrike().run(), <Strikethrough className="h-3.5 w-3.5" />, t("strike"))}
         <span className="mx-1 h-4 w-px bg-border" />
-        {toolBtn(state.h2, () => editor.chain().focus().toggleHeading({level: 2}).run(), <Heading2 className="h-3.5 w-3.5" />)}
-        {toolBtn(state.h3, () => editor.chain().focus().toggleHeading({level: 3}).run(), <Heading3 className="h-3.5 w-3.5" />)}
+        {toolBtn(state.h2, () => editor.chain().focus().toggleHeading({level: 2}).run(), <Heading2 className="h-3.5 w-3.5" />, t("h2"))}
+        {toolBtn(state.h3, () => editor.chain().focus().toggleHeading({level: 3}).run(), <Heading3 className="h-3.5 w-3.5" />, t("h3"))}
         <span className="mx-1 h-4 w-px bg-border" />
-        {toolBtn(state.bullet, () => editor.chain().focus().toggleBulletList().run(), <List className="h-3.5 w-3.5" />)}
-        {toolBtn(state.ordered, () => editor.chain().focus().toggleOrderedList().run(), <ListOrdered className="h-3.5 w-3.5" />)}
-        {toolBtn(state.quote, () => editor.chain().focus().toggleBlockquote().run(), <Quote className="h-3.5 w-3.5" />)}
-        {toolBtn(state.code, () => editor.chain().focus().toggleCodeBlock().run(), <Code2 className="h-3.5 w-3.5" />)}
-        {toolBtn(state.link, toggleLink, <LinkIcon className="h-3.5 w-3.5" />)}
+        {toolBtn(state.bullet, () => editor.chain().focus().toggleBulletList().run(), <List className="h-3.5 w-3.5" />, t("bulletList"))}
+        {toolBtn(state.ordered, () => editor.chain().focus().toggleOrderedList().run(), <ListOrdered className="h-3.5 w-3.5" />, t("orderedList"))}
+        {toolBtn(state.quote, () => editor.chain().focus().toggleBlockquote().run(), <Quote className="h-3.5 w-3.5" />, t("quote"))}
+        {toolBtn(state.code, () => editor.chain().focus().toggleCodeBlock().run(), <Code2 className="h-3.5 w-3.5" />, t("code"))}
+        {toolBtn(state.link, toggleLink, <LinkIcon className="h-3.5 w-3.5" />, t("link"))}
         <span className="mx-1 h-4 w-px bg-border" />
         <select
-          title="字体"
+          title={t("font")}
           value={state.textStyle.fontFamily ?? ""}
           onChange={(e) => {
             const v = e.target.value;
@@ -283,11 +290,11 @@ export function ComposeEditor({
           className="h-7 rounded border border-border bg-background px-1 text-xs"
         >
           {FONT_FAMILIES.map((f) => (
-            <option key={f.value || "default"} value={f.value}>{f.label}</option>
+            <option key={f.value || "default"} value={f.value}>{f.labelKey ? t(f.labelKey) : f.label}</option>
           ))}
         </select>
         <select
-          title="字号"
+          title={t("fontSize")}
           value={state.textStyle.fontSize ?? ""}
           onChange={(e) => {
             const v = e.target.value;
@@ -296,13 +303,13 @@ export function ComposeEditor({
           }}
           className="h-7 rounded border border-border bg-background px-1 text-xs"
         >
-          <option value="">字号</option>
+          <option value="">{t("fontSize")}</option>
           {FONT_SIZES.map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
         <label
-          title="文字颜色"
+          title={t("textColor")}
           className="relative flex h-7 w-7 cursor-pointer items-center justify-center rounded text-xs hover:bg-muted"
         >
           <span className="text-sm font-semibold">A</span>
@@ -314,7 +321,7 @@ export function ComposeEditor({
           />
         </label>
         <label
-          title="高亮颜色"
+          title={t("highlight")}
           className="relative flex h-7 w-7 cursor-pointer items-center justify-center rounded text-xs hover:bg-muted"
         >
           <span className="rounded-sm bg-yellow-200 px-1 text-sm font-semibold">A</span>
@@ -327,7 +334,7 @@ export function ComposeEditor({
         </label>
         <span className="mx-1 h-4 w-px bg-border" />
         <div className="relative">
-          {toolBtn(emojiOpen, () => setEmojiOpen((v) => !v), <Smile className="h-3.5 w-3.5" />, "Emoji")}
+          {toolBtn(emojiOpen, () => setEmojiOpen((v) => !v), <Smile className="h-3.5 w-3.5" />, t("emoji"))}
           {emojiOpen && (
             <div className="absolute top-full left-0 z-30 mt-1 grid w-56 grid-cols-8 gap-0.5 rounded-lg border border-border bg-popover p-1.5 shadow-lg">
               {EMOJIS.map((e) => (
@@ -344,13 +351,13 @@ export function ComposeEditor({
           )}
         </div>
         {/* eslint-disable-next-line react-hooks/refs */}
-        {toolBtn(false, pickImage, <ImagePlus className="h-3.5 w-3.5" />, "插入图片")}
+        {toolBtn(false, pickImage, <ImagePlus className="h-3.5 w-3.5" />, t("insertImage"))}
         {!state.table
-          ? toolBtn(false, () => editor.chain().focus().insertTable({rows: 3, cols: 3, withHeaderRow: true}).run(), <TableIcon className="h-3.5 w-3.5" />, "插入表格")
-          : toolBtn(false, () => editor.chain().focus().deleteTable().run(), <Trash2 className="h-3.5 w-3.5" />, "删除表格")}
+          ? toolBtn(false, () => editor.chain().focus().insertTable({rows: 3, cols: 3, withHeaderRow: true}).run(), <TableIcon className="h-3.5 w-3.5" />, t("insertTable"))
+          : toolBtn(false, () => editor.chain().focus().deleteTable().run(), <Trash2 className="h-3.5 w-3.5" />, t("deleteTable"))}
         <span className="mx-1 h-4 w-px bg-border" />
-        {toolBtn(false, () => editor.chain().focus().undo().run(), <Undo2 className="h-3.5 w-3.5" />)}
-        {toolBtn(false, () => editor.chain().focus().redo().run(), <Redo2 className="h-3.5 w-3.5" />)}
+        {toolBtn(false, () => editor.chain().focus().undo().run(), <Undo2 className="h-3.5 w-3.5" />, t("undo"))}
+        {toolBtn(false, () => editor.chain().focus().redo().run(), <Redo2 className="h-3.5 w-3.5" />, t("redo"))}
       </div>
       <EditorContent
         editor={editor}

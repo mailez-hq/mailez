@@ -68,6 +68,11 @@ type Config struct {
 	LicenseFile      string
 	License          string
 	LicenseRequired  bool
+	// Edition is the runtime deployment tier ("community"/"ce" | "ee" | "").
+	// It mirrors the frontend MAILEZ_EDITION build marker: community
+	// deployments fall back to the community license (not the unlimited
+	// dev license) when no enterprise license is mounted.
+	Edition string
 	// KVBackend is the engine storage KV backend ("pebble" | "tidb"). It is
 	// reported on the admin overview; single-node deployments default to
 	// pebble with local-FS blobs.
@@ -135,6 +140,10 @@ func Load() Config {
 		LicenseFile:          env("MAILEZ_LICENSE_FILE", ""),
 		License:              env("MAILEZ_LICENSE", ""),
 		LicenseRequired:      envBool("MAILEZ_LICENSE_REQUIRED", false),
+		// Edition mirrors the frontend MAILEZ_EDITION build marker at
+		// runtime: "community"/"ce" tells the backend its no-license
+		// fallback is a community deployment, not a developer checkout.
+		Edition:              env("MAILEZ_EDITION", ""),
 		ServiceFile:          env("MAILEZ_SERVICE_FILE", ""),
 		Service:              env("MAILEZ_SERVICE", ""),
 	}

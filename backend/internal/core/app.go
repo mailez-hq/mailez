@@ -54,13 +54,22 @@ type App struct {
 func New(db *gorm.DB, authMgr *auth.Manager, cfg Config) *App {
 	var lic *license.Manager
 	if strings.EqualFold(cfg.MailEngine, "mailezine") {
-		// mailezine engine: the license gates mailbox capacity and refuses
-		// startup when required but missing/invalid.
-		m, err := license.Load(cfg.LicenseFile, cfg.License, cfg.LicenseRequired)
-		if err != nil {
-			panic("license: " + err.Error())
+		edition := strings.ToLower(strings.TrimSpace(cfg.Edition))
+		community := edition == "community" || edition == "ce"
+		if community && cfg.LicenseFile == "" && cfg.License == "" {
+			// A community deployment without a mounted license reports (and
+			// runs as) the community edition — not the built-in unlimited
+			// dev license, which would label the admin overview "dev".
+			lic = license.Community()
+		} else {
+			// mailezine engine: the license gates mailbox capacity and
+			// refuses startup when required but missing/invalid.
+			m, err := license.Load(cfg.LicenseFile, cfg.License, cfg.LicenseRequired)
+			if err != nil {
+				panic("license: " + err.Error())
+			}
+			lic = m
 		}
-		lic = m
 	} else {
 		// Defensive: server startup restricts MAILEZ_MAIL_ENGINE to
 		// mailezine; anything reaching this branch falls back to the
