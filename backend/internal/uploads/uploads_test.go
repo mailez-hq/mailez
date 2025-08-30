@@ -2,6 +2,7 @@ package uploads
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"mime/multipart"
@@ -121,7 +122,7 @@ func TestCleanupRemovesExpired(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatal(err)
 	}
-	svc.cleanup()
+	svc.cleanup(context.Background())
 	var count int64
 	db.Model(&models.UploadedFile{}).Count(&count)
 	if count != 0 {

@@ -11,6 +11,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	"mailez/backend/internal/cluster"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 )
@@ -46,11 +47,15 @@ func (s *Service) RegisterStack(r fiber.Router) {
 }
 
 // RunExpiry auto-rejects approvals past their expiry deadline so held mail
-// never waits forever; the sender is notified once.
+// never waits forever; the sender is notified once. A DB lease keeps the
+// sweep singleton when several backend replicas run.
 func (s *Service) RunExpiry(ctx context.Context) {
 	t := time.NewTicker(15 * time.Minute)
 	defer t.Stop()
 	run := func() {
+		if !cluster.TryHold(s.DB, "dlp_expiry", cluster.LeaseTTL) {
+			return
+		}
 		var due []models.PendingApproval
 		if err := s.DB.WithContext(ctx).
 			Where("status = ? AND expires_at IS NOT NULL AND expires_at <= ?", "pending", time.Now()).

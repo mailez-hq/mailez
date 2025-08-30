@@ -9,6 +9,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"mailez/backend/internal/cluster"
 	"mailez/backend/internal/core/models"
 )
 
@@ -25,6 +26,11 @@ func RunSyncWorker(ctx context.Context, db *gorm.DB, secretKey string) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
+			// Singleton via DB lease: only one replica refreshes the
+			// directory when several backend replicas run.
+			if !cluster.TryHold(db, "ldap_sync", cluster.LeaseTTL) {
+				continue
+			}
 			var cfg models.LdapConfig
 			if err := db.First(&cfg).Error; err != nil {
 				continue

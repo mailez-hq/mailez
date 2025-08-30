@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 
+	"mailez/backend/internal/cluster"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 )
@@ -43,10 +44,14 @@ func (s *Service) RegisterStack(r fiber.Router) {
 
 // RunRetention deletes messages whose retention deadline has passed, and
 // cleans up stale per-domain overrides for domains that no longer exist.
+// A DB lease keeps the sweep singleton when several backend replicas run.
 func (s *Service) RunRetention(ctx context.Context) {
 	t := time.NewTicker(6 * time.Hour)
 	defer t.Stop()
 	run := func() {
+		if !cluster.TryHold(s.DB, "archive_retention", cluster.LeaseTTL) {
+			return
+		}
 		res := s.DB.WithContext(ctx).
 			Where("expires_at IS NOT NULL AND expires_at <= ?", time.Now()).
 			Delete(&models.ArchivedMessage{})

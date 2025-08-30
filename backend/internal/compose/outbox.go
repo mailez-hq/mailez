@@ -89,17 +89,38 @@ func (w *OutboxWorker) Run(ctx context.Context) {
 }
 
 // flush delivers every pending entry whose undo window has elapsed.
+//
+// Delivery is guarded by an atomic claim (pending → sending) so several
+// backend replicas can run this worker concurrently without double
+// deliveries; a replica that dies mid-delivery leaves a stale claim that
+// a later flush reclaims after claimTimeout. The claim window also closes
+// the cancel race: a user cancel (pending → cancelled) loses cleanly once
+// the entry is claimed.
 func (w *OutboxWorker) flush() {
+	const claimTimeout = 5 * time.Minute
+	now := time.Now().UTC()
+	// Reclaim entries a dead replica claimed but never finished.
+	w.DB.Model(&models.Outbox{}).
+		Where("status = ? AND claimed_at IS NOT NULL AND claimed_at < ?", "sending", now.Add(-claimTimeout)).
+		Updates(map[string]any{"status": "pending", "claimed_at": nil})
+
 	var due []models.Outbox
 	// Compare against UTC: SQLite compares these DATETIME columns as strings,
 	// so the stored value and the query parameter must use the same zone
 	// offset. enqueue() stores UTC; a local-zone time.Now() here would make
 	// future scheduled sends compare as already-due and fire immediately.
-	if err := w.DB.Where("status = ? AND send_after <= ?", "pending", time.Now().UTC()).
+	if err := w.DB.Where("status = ? AND send_after <= ?", "pending", now).
 		Order("send_after").Limit(10).Find(&due).Error; err != nil {
 		return
 	}
 	for _, o := range due {
+		// Atomic claim: exactly one replica wins each entry.
+		claim := w.DB.Model(&models.Outbox{}).
+			Where("id = ? AND status = ?", o.ID, "pending").
+			Updates(map[string]any{"status": "sending", "claimed_at": now})
+		if claim.Error != nil || claim.RowsAffected != 1 {
+			continue
+		}
 		recipients := strings.Split(o.Recipients, ",")
 		// Outbound content filter (敏感词/审批): internal messages are
 		// scanned before submission; a block rejects, a hold parks the

@@ -16,6 +16,7 @@ import (
 	"github.com/emersion/go-imap/client"
 	"gorm.io/gorm"
 
+	"mailez/backend/internal/cluster"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/crypto"
 )
@@ -52,6 +53,12 @@ func (f *Fetcher) Run(ctx context.Context) {
 }
 
 func (f *Fetcher) fetchAll() {
+	// Singleton via DB lease: several backend replicas may run, but only
+	// the lease holder polls external mailboxes (a duplicate poll would
+	// double-download the same upstream messages).
+	if !cluster.TryHold(f.DB, "fetch", cluster.LeaseTTL) {
+		return
+	}
 	var fetches []models.Fetch
 	if err := f.DB.
 		Joins("JOIN user ON user.email = fetch.user_email").
