@@ -23,6 +23,13 @@ const API_TARGET = process.env.API_TARGET || "http://localhost:8080";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@mailez/ui", "@mailez/types"],
+  // Client-side edition marker: shared pages (config tabs) check it to hide
+  // enterprise-only surfaces instead of firing requests that can only 404
+  // against a community backend.
+  env: {
+    NEXT_PUBLIC_MAILEZ_EDITION:
+      (process.env.MAILEZ_EDITION ?? "ee").toLowerCase() === "ce" ? "ce" : "ee",
+  },
   async rewrites() {
     return [
       { source: "/api/v1/:path*", destination: `${API_TARGET}/api/v1/:path*` },

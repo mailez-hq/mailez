@@ -237,6 +237,8 @@ export function useMailStoreValue(me: Me) {
     setSelected,
     setDetail,
     setCursor,
+    searchSeqRef,
+    loadSeq,
   });
 
   // ---- compose: form, draft persistence, reply seeding, send pipeline ----
@@ -352,6 +354,8 @@ export function useMailStoreValue(me: Me) {
     setError,
     showToast,
     refreshMail,
+    searchSeqRef,
+    loadSeq,
     t,
   });
 

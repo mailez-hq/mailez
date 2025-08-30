@@ -35,13 +35,19 @@ export default function OverviewPage() {
   const communityEdition = lic?.edition === "community";
   // The built-in dev license ("no file mounted, unrestricted") is not the
   // commercial enterprise edition — label it as the development tier so a
-  // community deployment never advertises itself as 企业版.
+  // community deployment never advertises itself as 企业版. A backend that
+  // omits the license block entirely is also NOT enterprise (the contract
+  // marks it optional): fall back to the community label, never upgrade a
+  // missing license into an enterprise claim.
   const devEdition = lic?.edition === "dev";
-  const editionLabel = communityEdition
+  const enterpriseEdition = lic?.edition === "enterprise";
+  const editionLabel = communityEdition || !lic
     ? t("licenseCommunity")
     : devEdition
       ? t("licenseDev")
-      : t("licenseEnterprise");
+      : enterpriseEdition
+        ? t("licenseEnterprise")
+        : t("licenseCommunity");
   const engineLabel = t("engineMailezine");
   const dbLabel =
     data.db_driver === "mysql"
@@ -63,11 +69,12 @@ export default function OverviewPage() {
         : t("blobUnknown");
   const licenseSub = () => {
     // The community edition is free: it never shows license info, even if
-    // an enterprise license file happens to be mounted.
-    if (communityEdition) return t("licenseFree");
+    // an enterprise license file happens to be mounted. A missing license
+    // block is treated the same way (see editionLabel above).
+    if (communityEdition || !lic) return t("licenseFree");
     // The dev license is built-in: no mailbox cap, no service contract to
     // expire — reporting "service expired" here would be misleading.
-    if (!lic || devEdition) return `${t("licenseDev")} · ${t("licenseUnlimited")}`;
+    if (devEdition) return `${t("licenseDev")} · ${t("licenseUnlimited")}`;
     const parts = [
       lic.max_mailboxes > 0
         ? t("licenseUsage", { used: lic.used, max: lic.max_mailboxes })
