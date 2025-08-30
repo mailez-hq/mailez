@@ -21,7 +21,7 @@ verify-ee: backend-verify-ee
 
 ## e2e: end-to-end smoke against a running stack (dev compose + backend on 8080)
 e2e:
-	cd backend && go run ./cmd/e2e -api-port 8080 -smtp-port 25 -imap-port 1143 --domain e2e.example.com --alias team
+	cd backend && go run ./cmd/e2e -api-port 8080 -smtp-port 25 -imap-port 143 --domain e2e.example.com --alias team
 
 ## images: build all mail images (shared + engines) with the Go builder
 images:

@@ -128,10 +128,29 @@ containerized and publish:
 | http://localhost:8081 | Backend API (for developers) |
 | 25/465/587/143/993/4190 … | Mail protocols (SMTP / IMAP / ManageSieve) |
 
+Two prerequisites before the first `up`:
+
+- **Sibling checkout.** The mailezine engine image builds from the sibling
+  repository — clone both side by side:
+  `git clone …/mailez && git clone …/mailezine` (the compose build context
+  points at `../../mailezine`).
+- **Linux hosts: data-directory ownership.** The backend runs as uid 1000
+  and the engine as uid 82; Docker creates `deploy/data/` root-owned on
+  first start, which crash-loops both. Pre-create it once:
+  `mkdir -p deploy/data && sudo chown -R 1000:82 deploy/data`.
+  (Docker Desktop mounts handle this automatically.)
+
+Note that the mail ports above bind to loopback by default (safe for
+evaluations); a real deployment publishes them on the external interface
+via the compose port mappings.
+
 `mailezctl` reads `deploy/mailez.env` (copy `mailez.env.example`, then set
-`MAILEZ_SECRET_KEY` and `MAILEZ_STACK_SECRET`). Host port mappings are
-overridable there too (`MAILEZ_HTTP_PORT`, `MAILEZ_ADMIN_PORT`, …) for
-machines where 80/443/8082 are already taken.
+`MAILEZ_SECRET_KEY` and `MAILEZ_STACK_SECRET`). Raw `docker compose`
+invocations must pass `--env-file mailez.env` — the `${MAILEZ_STACK_SECRET:?}`
+interpolation reads shell env and `--env-file` only, never the services'
+`env_file`. Host port mappings are overridable there too
+(`MAILEZ_HTTP_PORT`, `MAILEZ_ADMIN_PORT`, …) for machines where
+80/443/8082 are already taken.
 
 TLS is off by default for local testing. For production, follow
 [`deploy/certs/README.md`](deploy/certs/README.md) to enable automatic
@@ -141,7 +160,7 @@ After the stack is up, provision the admin account **inside the container**
 (the backend image ships a one-shot seeder; no local Go required):
 
 ```sh
-docker compose -f deploy/docker-compose.community.yml exec backend mailez-seed
+docker compose --env-file deploy/mailez.env -f deploy/docker-compose.community.yml exec backend mailez-seed
 # default: admin@example.com / MailezDemo2026! — override with
 # MAILEZ_ADMIN_EMAIL / MAILEZ_ADMIN_PASSWORD before seeding
 ```
