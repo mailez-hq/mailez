@@ -156,18 +156,38 @@ export function useMessageActions({
     // Cross-folder rows carry their owning folder; the open folder is only
     // the fallback for plain folder browsing.
     const f = srcFolder ?? m.folder ?? folder;
-    if (!m.flags.includes("\\Seen")) {
+    // A conversation row stands for its whole thread: the row's
+    // representative member can already be read while older members are
+    // not, so "open = read" must cover the thread, not just the click
+    // target — otherwise the row's unread dot and the folder's unseen
+    // count never clear no matter how often the thread is opened.
+    const threadId =
+      m.thread_unread && m.thread_count && m.thread_count > 1 ? m.thread_id : undefined;
+    if (!m.flags.includes("\\Seen") || threadId) {
       detailCache.delete(`${f}\x00${m.id || m.uid}`);
-      mailFlag(f, m.uid, "\\Seen", true).then(refreshUnseen).catch(() => {});
-      m.flags.push("\\Seen");
-      setMessages((ms) => ms.map((x) => (x.uid === m.uid ? applySeenState(x, true) : x)));
-      // A multi-member thread's unread dot is a server-side aggregate that
-      // cannot be derived from the opened message alone: reload the folder so
-      // reading the last unread member clears the row's unread indicator.
-      // Skipped while searching (results are not the folder list).
-      const row = messages.find((x) => x.uid === m.uid);
-      if (!searching && row?.thread_unread && row.thread_count && row.thread_count > 1) {
-        void loadMessages(f, 0, true);
+      if (!m.flags.includes("\\Seen")) {
+        mailFlag(f, m.uid, "\\Seen", true).then(refreshUnseen).catch(() => {});
+        m.flags.push("\\Seen");
+        setMessages((ms) => ms.map((x) => (x.uid === m.uid ? applySeenState(x, true) : x)));
+      }
+      if (threadId) {
+        void (async () => {
+          try {
+            const th = await mailThread(f, threadId);
+            await Promise.all(
+              th.messages
+                .filter((t) => !t.flags.includes("\\Seen"))
+                .map((t) => mailFlag(f, t.uid, "\\Seen", true).catch(() => {})),
+            );
+          } catch {
+            // Listing the thread failed; keep the row's own state as-is.
+          }
+          refreshUnseen();
+          // The thread's unread dot is a server-side aggregate; reload the
+          // folder so clearing the last unread member clears the row too.
+          // Skipped while searching (results are not the folder list).
+          if (!searching) void loadMessages(f, 0, true);
+        })();
       }
     }
     // Navigate to the message route; MailView follows the /mail/[folder]/[id]
