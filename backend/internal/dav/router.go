@@ -24,10 +24,9 @@ import (
 
 // Server wires the DAV endpoints.
 type Server struct {
-	DB      *gorm.DB
-	Card    *carddav.Server
-	Cal     *caldav.Server
-	Handler *webdav.Server
+	DB   *gorm.DB
+	Card *carddav.Server
+	Cal  *caldav.Server
 	// AuthCache memoizes successful Basic-auth credential checks so DAV
 	// clients that poll every few seconds do not burn a bcrypt verification
 	// on every request.
@@ -47,7 +46,6 @@ func New(db *gorm.DB, cache *authcache.Cache) *Server {
 		DB:        db,
 		Card:      card,
 		Cal:       cal,
-		Handler:   &webdav.Server{Capabilities: []string{"addressbook", "calendar-access"}},
 		AuthCache: cache,
 	}
 }
@@ -136,13 +134,39 @@ func (s *Server) dispatch(c *fiber.Ctx) error {
 	case strings.HasPrefix(path, "/dav/principals/"):
 		return s.servePrincipal(c, path)
 	case strings.HasPrefix(path, "/dav/addressbooks"):
-		s.Handler.Backend = s.Card
-		return s.Handler.Handle(c)
+		if !s.pathUserAllowed(c, path, "/dav/addressbooks/") {
+			return c.SendStatus(fiber.StatusForbidden)
+		}
+		// A per-request server instance: swapping Backend on a shared one
+		// raced between concurrent addressbook/calendar requests.
+		handler := &webdav.Server{Capabilities: []string{"addressbook"}, Backend: s.Card}
+		return handler.Handle(c)
 	case strings.HasPrefix(path, "/dav/calendars"):
-		s.Handler.Backend = s.Cal
-		return s.Handler.Handle(c)
+		if !s.pathUserAllowed(c, path, "/dav/calendars/") {
+			return c.SendStatus(fiber.StatusForbidden)
+		}
+		handler := &webdav.Server{Capabilities: []string{"calendar-access"}, Backend: s.Cal}
+		return handler.Handle(c)
 	}
 	return c.SendStatus(fiber.StatusNotFound)
+}
+
+// pathUserAllowed enforces that the {user} segment of a DAV collection path
+// names the authenticated user. The protocol backends scope every query by
+// that segment, so without this check any valid DAV credential (mailbox
+// password or app token) could read, overwrite or delete another account's
+// address books and calendars (cross-account IDOR).
+func (s *Server) pathUserAllowed(c *fiber.Ctx, path, prefix string) bool {
+	rest := strings.TrimPrefix(path, prefix)
+	seg := rest
+	if i := strings.IndexByte(rest, '/'); i >= 0 {
+		seg = rest[:i]
+	}
+	seg = strings.TrimSuffix(seg, "/")
+	if decoded, err := url.PathUnescape(seg); err == nil {
+		seg = decoded
+	}
+	return seg != "" && strings.EqualFold(seg, webdav.UserFrom(c.UserContext()))
 }
 
 // serveRoot answers discovery PROPFIND on /dav/ with the current user's

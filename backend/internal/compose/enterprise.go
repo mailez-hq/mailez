@@ -11,6 +11,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	"mailez/backend/internal/alias"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/mail"
 )
@@ -194,6 +195,7 @@ type mergeRecipient struct {
 // @Success 200 {object} map[string]interface{}
 // @Router /mail/merge [post]
 func (h *Handler) mailMerge(c *fiber.Ctx) error {
+	user := currentUser(c)
 	d, err := h.MailDial(c)
 	if err != nil {
 		return core.DialFailure(c, err)
@@ -215,6 +217,17 @@ func (h *Handler) mailMerge(c *fiber.Ctx) error {
 	from := in.From
 	if from == "" {
 		from = d.Email
+	}
+	// Identity policy must match mailSend: an external aggregated account
+	// may only send as its own address; the internal account may send as
+	// itself or one of its aliases. Without this check a merge request
+	// could mail-merge as any address (envelope + displayed From).
+	if d.External {
+		if !strings.EqualFold(from, d.Email) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "cannot send as this identity"})
+		}
+	} else if !alias.MaySendAs(h.App, user, from) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "cannot send as this identity"})
 	}
 	sent := 0
 	var failed []fiber.Map

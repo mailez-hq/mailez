@@ -1,9 +1,13 @@
 package user
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -12,6 +16,7 @@ import (
 
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
+	"mailez/backend/internal/drive"
 	"mailez/backend/internal/password"
 )
 
@@ -294,7 +299,10 @@ func (h *Handler) purgeEngineAccount(email string) {
 		return
 	}
 	req.Header.Set("Authorization", "Bearer "+h.Cfg.MailEngineMgmtSecret)
-	resp, err := http.DefaultClient.Do(req)
+	// A hung engine management endpoint must not block the DELETE request
+	// indefinitely (http.DefaultClient has no timeout).
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("user delete: engine purge for %s failed: %v", email, err)
 		return
@@ -321,9 +329,76 @@ func (h *Handler) deleteUser(c *fiber.Ctx) error {
 	if !h.CanManageDomain(currentUser(c), u.DomainName) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "no access to this domain"})
 	}
+	// Purge dependent rows before the user row: the schema carries RESTRICT
+	// foreign keys on tokens/fetches (MySQL rejects the user delete
+	// otherwise) and SQLite would silently orphan every dependent — plus
+	// drive/upload blobs, which no row would reference afterwards.
+	if err := h.purgeUserData(email); err != nil {
+		return core.Fail(c, 500, err, "purge user data failed")
+	}
 	if err := h.DB.Delete(&models.User{}, "email = ?", email).Error; err != nil {
 		return core.Fail(c, 400, err, "delete failed")
 	}
 	h.purgeEngineAccount(email)
 	return c.SendStatus(204)
+}
+
+// purgeUserData removes every dependent row owned by the user, then the
+// stored blobs those rows pointed at. Blob deletion is best-effort after
+// the transaction: a failed unlink must not abort the user deletion and
+// leave the account half-present.
+func (h *Handler) purgeUserData(email string) error {
+	var driveFiles []models.DriveFile
+	if err := h.DB.Where("user_email = ?", email).Find(&driveFiles).Error; err != nil {
+		return err
+	}
+	var uploads []models.UploadedFile
+	if err := h.DB.Where("user_email = ?", email).Find(&uploads).Error; err != nil {
+		return err
+	}
+	err := h.DB.Transaction(func(tx *gorm.DB) error {
+		// Rows are independent of each other; the transaction makes the
+		// set atomic against the RESTRICT foreign keys on tokens/fetches.
+		for _, tbl := range []any{
+			&models.Token{}, &models.Fetch{}, &models.Account{}, &models.DriveFile{},
+			&models.UploadedFile{}, &models.Contact{}, &models.CalendarEvent{},
+			&models.Webhook{}, &models.PushSubscription{}, &models.PGPKey{}, &models.SmimeCert{},
+			&models.Label{},
+		} {
+			if err := tx.Where("user_email = ?", email).Delete(tbl).Error; err != nil {
+				return err
+			}
+		}
+		// Delegations carry the owner in owner_email (user_email would be
+		// the grantee side).
+		if err := tx.Where("owner_email = ?", email).Delete(&models.MailDelegation{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	// Drive blobs (FS or MinIO depending on config).
+	store, storeErr := drive.NewStore(h.Cfg)
+	if storeErr != nil {
+		log.Printf("user delete: drive store unavailable, blobs for %s left in place: %v", email, storeErr)
+	} else {
+		for _, f := range driveFiles {
+			if err := store.Delete(context.Background(), f.StoredPath); err != nil {
+				log.Printf("user delete: drive blob %s for %s: %v", f.StoredPath, email, err)
+			}
+		}
+	}
+	// Upload blobs live under the upload dir keyed by StoredPath.
+	uploadRoot := h.Cfg.UploadDir
+	if uploadRoot == "" {
+		uploadRoot = "uploads"
+	}
+	for _, u := range uploads {
+		if err := os.Remove(filepath.Join(uploadRoot, u.StoredPath)); err != nil && !errors.Is(err, os.ErrNotExist) {
+			log.Printf("user delete: upload blob %s for %s: %v", u.StoredPath, email, err)
+		}
+	}
+	return nil
 }

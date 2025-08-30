@@ -10,6 +10,7 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -76,6 +77,11 @@ type Server struct {
 func New(cfg core.Config) *Server {
 	if cfg.Env == "production" && weakSecrets[cfg.SecretKey] {
 		log.Fatal("refusing to start in production with a placeholder SECRET_KEY; set a strong secret")
+	}
+	// An empty stack secret would leave /stack unauthenticated (the
+	// internal API hands out decrypted fetch passwords and DKIM keys).
+	if cfg.Env == "production" && strings.TrimSpace(cfg.StackSecret) == "" {
+		log.Fatal("refusing to start in production without MAILEZ_STACK_SECRET; the internal /stack API would be unauthenticated")
 	}
 	if !slices.Contains(core.SupportedMailEngines, cfg.MailEngine) {
 		log.Fatalf("unsupported MAILEZ_MAIL_ENGINE %q (supported: %v)", cfg.MailEngine, core.SupportedMailEngines)

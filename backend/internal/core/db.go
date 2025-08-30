@@ -26,6 +26,12 @@ func OpenDB(driver, dsn, logLevel string) (*gorm.DB, error) {
 	case "mysql":
 		dialector = gormmysql.Open(dsn)
 	default:
+		// WAL + a generous busy timeout: the control plane runs background
+		// writers (outbox flush, notifier, reminder sweeps, uploads cleanup)
+		// next to API reads; the driver defaults (journal_mode=DELETE,
+		// busy_timeout=5000) surface sporadic "database is locked" 500s
+		// once a write burst outlives the 5s window.
+		dsn = dsn + "_pragma=journal_mode(WAL)&_pragma=busy_timeout(10000)&_pragma=synchronous(NORMAL)"
 		dialector = glebarezsqlite.Open(dsn)
 	}
 	return gorm.Open(dialector, &gorm.Config{
