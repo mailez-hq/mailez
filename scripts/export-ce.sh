@@ -24,6 +24,10 @@ rm -rf "${EXPORT_DIR}"
 git clone --mirror --no-local . "${EXPORT_DIR}"
 cd "${EXPORT_DIR}"
 
+# The community README ships instead of the internal one; capture its
+# expected content from the source HEAD for the post-condition below.
+CE_README="$(git show HEAD:README.ce.md)"
+
 # A cloned mirror carries private auxiliary refs (refs/stash etc.) that
 # filter-repo does not rewrite — they must never reach the public remote.
 git for-each-ref --format='%(refname)' refs/stash refs/notes refs/replace \
@@ -32,7 +36,8 @@ git for-each-ref --format='%(refname)' refs/stash refs/notes refs/replace \
 # The CE/EE boundary contract (see backend/FEATURES.md): everything
 # enterprise lives under backend/internal/ee, frontend ee/ directories, or
 # a paired *_ee.go file. The export tool itself is private monorepo
-# process tooling and must not appear in its own output.
+# process tooling and must not appear in its own output, and the private
+# README.md is replaced by README.ce.md (second pass below).
 git filter-repo \
   --invert-paths \
   --path backend/internal/ee/ \
@@ -40,11 +45,19 @@ git filter-repo \
   --path frontend/apps/webmail/ee/ \
   --path frontend/apps/admin/ee/ \
   --path scripts/export-ce.sh \
+  --path README.md \
   --path-glob '*_ee.go' \
   --path-glob '*_ee_test.go'
 
+# Second pass: publish the community README under the canonical name.
+git filter-repo --force --path-rename README.ce.md:README.md
+
 if git ls-tree -r --name-only HEAD | grep -E 'backend/internal/ee/|frontend/apps/[^/]*/ee/|_ee\.go$|_ee_test\.go$|^scripts/export-ce\.sh$'; then
   echo "export-ce: enterprise paths survived the filter" >&2
+  exit 1
+fi
+if [ "$(git show HEAD:README.md)" != "$CE_README" ]; then
+  echo "export-ce: README.md is not the community README (README.ce.md)" >&2
   exit 1
 fi
 
