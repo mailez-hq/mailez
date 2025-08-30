@@ -8,16 +8,17 @@ at `/certs`). Two files are expected:
 
 ## Development
 
-Generate a self-signed pair for local testing:
+Generate a self-signed pair for local testing (the scripts live in
+`deploy/scripts/`, next to `mailezctl`):
 
 ```sh
-./scripts/generate-certs.sh mail.example.com
+../scripts/generate-certs.sh mail.example.com
 ```
 
 or on Windows:
 
 ```powershell
-.\scripts\generate-certs.ps1 -Hostname mail.example.com
+..\scripts\generate-certs.ps1 -Hostname mail.example.com
 ```
 
 Then switch `MAILEZ_TLS=cert` in `deploy/mailez.env` and restart `gateway`.

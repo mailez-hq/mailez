@@ -27,7 +27,10 @@ jobs:
         run: |
           cp mailez.env.example mailez.env
           printf 'MAILEZ_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> mailez.env
-          docker compose -f docker-compose.community.yml up -d --build
+          printf 'MAILEZ_STACK_SECRET=%s\n' "$(openssl rand -hex 32)" >> mailez.env
+          # --env-file is required: compose ${VAR:?} interpolation reads
+          # shell env and the --env-file only, never the services' env_file.
+          docker compose --env-file mailez.env -f docker-compose.community.yml up -d --build
 
       - name: Wait for the backend
         run: |
@@ -42,12 +45,12 @@ jobs:
           docker ps -a
           exit 1
 
+      # The community stack defaults to SQLite; seed inside the container
+      # (the image ships mailez-seed) instead of host Go against MySQL.
       - name: Seed the admin account
-        working-directory: backend
-        env:
-          DB_DRIVER: mysql
-          DB_DSN: mailez:mailez@tcp(127.0.0.1:13306)/mailez?charset=utf8mb4&parseTime=True&loc=Local
-        run: go run ./cmd/seed
+        working-directory: deploy
+        run: |
+          docker compose --env-file mailez.env -f docker-compose.community.yml exec -T backend mailez-seed
 
       # The suite drives a dedicated throwaway account, not the seeded admin.
       - name: Create the e2e user

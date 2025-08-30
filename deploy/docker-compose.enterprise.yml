@@ -7,11 +7,19 @@
 #
 # 用法：
 #   cd deploy
-#   docker compose -f docker-compose.enterprise.yml up -d --build
-#   docker compose -f docker-compose.enterprise.yml ps / logs / down
+#   cp mailez.env.example mailez.env   # 并设置 MAILEZ_SECRET_KEY / MAILEZ_STACK_SECRET
+#   docker compose --env-file mailez.env -f docker-compose.enterprise.yml up -d --build
+#   docker compose --env-file mailez.env -f docker-compose.enterprise.yml ps / logs / down
+#
+# 注意 --env-file mailez.env：compose 的 ${VAR:?} 插值只读 shell 环境与
+# --env-file 指定的文件，不读服务的 env_file，缺了它 stack secret 会直接
+# 报错退出（mailezctl 脚本已内置该参数）。
+#
+# 企业版需要有效的 license：deploy/licenses/license.lic（自签方式见
+# README 的企业版授权章节），默认 MAILEZINE_LICENSE_REQUIRED=true。
 #
 # 首次部署需初始化管理员（backend 镜像内置一次性 seed 器）：
-#   docker compose -f docker-compose.enterprise.yml exec backend mailez-seed
+#   docker compose --env-file mailez.env -f docker-compose.enterprise.yml exec backend mailez-seed
 # 默认 admin@example.com / MailezDemo2026!，可用 MAILEZ_ADMIN_EMAIL /
 # MAILEZ_ADMIN_PASSWORD 覆盖。
 
@@ -100,8 +108,13 @@ services:
       - DB_DRIVER=mysql
       - DB_DSN=mailez:mailez@tcp(mysql:3306)/mailez?charset=utf8mb4&parseTime=True&loc=Local
       - REDIS_ADDR=redis:6379
-      - MAILEZ_HOSTNAME=mail.example.com
-      - MAILEZ_DOMAIN=example.com
+      # Domain values come from mailez.env via interpolation — pinning them
+      # here would silently override the operator's env file.
+      - MAILEZ_HOSTNAME=${MAILEZ_HOSTNAME:-mail.${MAILEZ_DOMAIN:-example.com}}
+      - MAILEZ_DOMAIN=${MAILEZ_DOMAIN:-example.com}
+      # Production tier: enables the weak-secret guard (refuses placeholder
+      # SECRET_KEY / empty STACK_SECRET).
+      - MAILEZ_ENV=production
       # 企业版：控制面按 mailezine 引擎识别（版本/授权语义）。
       - MAILEZ_MAIL_ENGINE=mailezine
       - MAILEZ_SUBNET=${MAILEZ_SUBNET:-192.168.206.0/24}
@@ -293,6 +306,9 @@ services:
 
   mail-filter:
     image: mailez/rspamd:${MAILEZ_IMAGE_TAG:-local}
+    build:
+      context: ..
+      dockerfile: deploy/images/rspamd/Dockerfile
     pull_policy: missing
     restart: always
     env_file: mailez.env
@@ -311,6 +327,9 @@ services:
 
   macro-scanner:
     image: mailez/macro-scanner:${MAILEZ_IMAGE_TAG:-local}
+    build:
+      context: ..
+      dockerfile: deploy/images/macro-scanner/Dockerfile
     pull_policy: missing
     hostname: macro-scanner
     restart: always
@@ -319,6 +338,9 @@ services:
 
   resolver:
     image: mailez/unbound:${MAILEZ_IMAGE_TAG:-local}
+    build:
+      context: ..
+      dockerfile: deploy/images/unbound/Dockerfile
     pull_policy: missing
     restart: always
     env_file: mailez.env
