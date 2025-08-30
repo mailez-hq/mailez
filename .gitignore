@@ -22,6 +22,12 @@ deploy/*.env.bench.bak
 deploy/certs/*
 !deploy/certs/README.md
 
+# Legacy stack backup — contains private keys and HSM blobs, never commit
+deploy/.backup-legacy/
+
+# Runtime license files (per-deployment, issued at install time)
+deploy/licenses/
+
 # Data (local dev persistence)
 data/
 *.db
