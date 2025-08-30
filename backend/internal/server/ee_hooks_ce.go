@@ -16,8 +16,30 @@ import (
 	"mailez/backend/internal/core"
 )
 
-// eeRegisterRoutes mounts nothing in the community build.
-func eeRegisterRoutes(s *Server, app *core.App, v1, authed, stackGroup fiber.Router) {}
+// eeRegisterRoutes mounts inert stand-ins for the enterprise read surfaces
+// the clients probe unconditionally (webmail banner, delegation/calendar
+// share listings, S/MIME state). Each answers with its canonical empty
+// shape, so a community backend — including an EE webmail pointed at one —
+// degrades to "no data" instead of 404 noise in the browser console.
+// Writes are deliberately not stubbed: community UIs expose no entry
+// points, and stray EE write attempts should fail loudly.
+func eeRegisterRoutes(s *Server, app *core.App, v1, authed, stackGroup fiber.Router) {
+	authed.Get("/announcement", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusNoContent)
+	})
+	authed.Get("/delegations", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{"granted": []any{}, "received": []any{}})
+	})
+	authed.Get("/calendar/shares", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{"owned": []any{}, "granted": []any{}})
+	})
+	authed.Get("/me/smime", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{"has_cert": false})
+	})
+	authed.Get("/me/smime/certs", func(c *fiber.Ctx) error {
+		return c.JSON([]any{})
+	})
+}
 
 // eeNewDirectorySync returns nil in the community build: no AD/LDAP
 // directory integration.
