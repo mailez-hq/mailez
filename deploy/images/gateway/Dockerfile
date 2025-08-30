@@ -15,7 +15,7 @@ RUN go build -trimpath -ldflags="-s -w" -o /out/mailez-agent ./cmd/mailez-agent
 # mail ports itself). ACME is handled by the embedded lego client.
 FROM alpine:3.21
 
-ARG VERSION
+ARG VERSION=dev
 LABEL version=$VERSION
 ARG APK_MIRROR="mirrors.aliyun.com"
 
