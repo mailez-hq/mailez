@@ -44,5 +44,5 @@ Thumbs.db
 # Edition modules materialized by scripts/set-edition.mjs (build artifact)
 frontend/apps/*/edition/
 
-# Local CE mirror exports (scripts/export-ce.sh output)
+# Local CE mirror exports (private export tooling output)
 build/

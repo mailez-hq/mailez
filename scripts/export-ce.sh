@@ -31,17 +31,19 @@ git for-each-ref --format='%(refname)' refs/stash refs/notes refs/replace \
 
 # The CE/EE boundary contract (see backend/FEATURES.md): everything
 # enterprise lives under backend/internal/ee, frontend ee/ directories, or
-# a paired *_ee.go file.
+# a paired *_ee.go file. The export tool itself is private monorepo
+# process tooling and must not appear in its own output.
 git filter-repo \
   --invert-paths \
   --path backend/internal/ee/ \
   --path backend/cmd/eas-e2e/ \
   --path frontend/apps/webmail/ee/ \
   --path frontend/apps/admin/ee/ \
+  --path scripts/export-ce.sh \
   --path-glob '*_ee.go' \
   --path-glob '*_ee_test.go'
 
-if git ls-tree -r --name-only HEAD | grep -E 'backend/internal/ee/|frontend/apps/[^/]*/ee/|_ee\.go$|_ee_test\.go$'; then
+if git ls-tree -r --name-only HEAD | grep -E 'backend/internal/ee/|frontend/apps/[^/]*/ee/|_ee\.go$|_ee_test\.go$|^scripts/export-ce\.sh$'; then
   echo "export-ce: enterprise paths survived the filter" >&2
   exit 1
 fi
