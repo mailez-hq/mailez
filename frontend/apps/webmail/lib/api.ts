@@ -125,6 +125,10 @@ export class ApiError extends Error {
 const COMMUNITY_BUILD =
   (process.env.NEXT_PUBLIC_MAILEZ_EDITION ?? "ee").toLowerCase() === "ce";
 
+// Edition marker for components that hide enterprise-only UI wholesale
+// (e.g. the calendar share button). Keep in sync with COMMUNITY_BUILD.
+export const IS_COMMUNITY_BUILD = COMMUNITY_BUILD;
+
 // A 401 on an authed surface means the session cookie expired or was
 // revoked server-side. Instead of letting every poll toast errors forever,
 // bounce to the login screen once; the guard flag stops in-flight request
@@ -451,7 +455,10 @@ export const aiTranslate = (text: string, target: string) =>
   apiPost<{translation: string}>("/ai/translate", {text, target});
 
 // Global admin announcement banner (204/undefined when none is active).
-export const mailAnnouncement = () => api<MailAnnouncement | undefined>("/announcement");
+// Enterprise-only surface; the community build resolves "no announcement"
+// locally instead of firing a request the community backend can only stub.
+export const mailAnnouncement = (): Promise<MailAnnouncement | undefined> =>
+  COMMUNITY_BUILD ? Promise.resolve(undefined) : api<MailAnnouncement | undefined>("/announcement");
 
 export type ServerSettings = {
   hostname: string;
@@ -630,7 +637,12 @@ export const calendarEventDelete = (id: number) =>
   api<void>(`/calendar/events/${id}`, { method: "DELETE" });
 
 // Calendar sharing and ICS subscription.
-export const calendarShares = () => api<CalendarShareListing>("/calendar/shares");
+// Calendar sharing is an enterprise capability; the community build
+// resolves the empty listing locally (mirrors the backend CE stub).
+export const calendarShares = (): Promise<CalendarShareListing> =>
+  COMMUNITY_BUILD
+    ? Promise.resolve({ owned: [], granted: [] })
+    : api<CalendarShareListing>("/calendar/shares");
 
 export const calendarShareCreate = (shareeEmail: string, readOnly: boolean) =>
   apiPost<CalendarShare>("/calendar/shares", { sharee_email: shareeEmail, read_only: readOnly });
@@ -940,8 +952,12 @@ export const webhookDelete = (id: number) =>
 export const webhookTest = (id: number) =>
   api<{ ok: boolean; status: number; error?: string }>(`/webhooks/${id}/test`, { method: "POST" });
 
-// S/MIME (certificate management + CMS encrypt/decrypt/sign/verify)
-export const smimeStatus = () => api<SmimeStatus>("/me/smime");
+// S/MIME (certificate management + CMS encrypt/decrypt/sign/verify).
+// Enterprise-only: the community build short-circuits the two reads the
+// settings shell probes unconditionally; the write/import helpers are only
+// reachable from the (stubbed) enterprise settings section.
+export const smimeStatus = (): Promise<SmimeStatus> =>
+  COMMUNITY_BUILD ? Promise.resolve({ has_cert: false }) : api<SmimeStatus>("/me/smime");
 
 export const smimeImport = (inp: {
   cert_pem?: string;
@@ -956,7 +972,8 @@ export const smimeImport = (inp: {
 
 export const smimeDelete = () => api<void>("/me/smime", { method: "DELETE" });
 
-export const smimeListCerts = () => api<SmimeCert[]>("/me/smime/certs");
+export const smimeListCerts = (): Promise<SmimeCert[]> =>
+  COMMUNITY_BUILD ? Promise.resolve([]) : api<SmimeCert[]>("/me/smime/certs");
 
 export const smimeImportCert = (email: string, certPem: string) =>
   api<SmimeCert>("/me/smime/certs", {

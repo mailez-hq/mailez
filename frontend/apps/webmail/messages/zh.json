@@ -75,6 +75,7 @@
     "loading": "加载中…",
     "noMessages": "暂无邮件",
     "noMatches": "无匹配结果",
+    "messageGone": "这封邮件已不存在，可能已在其他设备上删除",
     "selectMessage": "选择一封邮件",
     "welcomeHint": "欢迎使用 Mailez — 按 ? 查看快捷键",
     "welcomeDismiss": "知道了",

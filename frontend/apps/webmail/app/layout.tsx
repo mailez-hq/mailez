@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
@@ -21,12 +21,16 @@ export const metadata: Metadata = {
   title: "Mailez Webmail",
   description: "Mailez webmail — mail easy",
   manifest: "/manifest.webmanifest",
-  themeColor: "#2E6E8E",
   appleWebApp: {
     capable: true,
     title: "Mailez",
     statusBarStyle: "default",
   },
+};
+
+// Next 16 moved themeColor out of metadata into the viewport export.
+export const viewport: Viewport = {
+  themeColor: "#2E6E8E",
 };
 
 // Supported locales; the language lives in the NEXT_LOCALE cookie only and the
