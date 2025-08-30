@@ -7,7 +7,7 @@ import type { MailMessage } from "@/lib/api";
 import type { Density } from "@/lib/preferences";
 import { Highlight } from "@/components/mailbox/highlight";
 import { isUserLabel, labelColor } from "@/components/mailbox/mail-utils";
-import { useMailStore } from "@/components/mailbox/mail-store";
+import { useLabelColors } from "@/components/mailbox/mail-store";
 import { cn } from "@/lib/utils";
 
 export const ROW_HEIGHTS: Record<Density, number> = {
@@ -76,7 +76,9 @@ export const MessageRow = memo(function MessageRow({
   onContextMenu?: (e: React.MouseEvent, message: MailMessage) => void;
 }) {
   const t = useTranslations("mail");
-  const { labelColors } = useMailStore();
+  // Only the tiny label-colors context: subscribing to the whole store here
+  // would re-render every memoized row on each store churn.
+  const labelColors = useLabelColors();
   // Conversation-view rows carry thread-level aggregates: any member unread /
   // starred flips the whole row, and the sender line lists the participants.
   const unread = message.thread_unread ?? !message.flags.includes("\\Seen");

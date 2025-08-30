@@ -204,12 +204,17 @@ export default function ArchivePage() {
   }
 
   function exportMbox() {
+    // Mirror loadMessages' filter mapping exactly: a compliance export must
+    // contain the same message set the admin just reviewed on screen.
     const params: Record<string, string> = {};
     if (applied.direction) params.direction = applied.direction;
     if (applied.domain) params.domain = applied.domain;
     if (applied.from) params.from = applied.from;
     if (applied.to) params.to = applied.to;
     if (applied.q) params.q = applied.q;
+    if (applied.date_from) params.date_from = applied.date_from;
+    if (applied.date_to) params.date_to = applied.date_to;
+    if (applied.reviewed) params.reviewed = applied.reviewed;
     window.location.href = archiveExportUrl(params);
   }
 

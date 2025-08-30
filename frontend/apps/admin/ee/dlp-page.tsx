@@ -20,7 +20,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  createDlpRule, decideApproval, deleteDlpRule, dlpApproval, dlpApprovals,
+  api, createDlpRule, decideApproval, deleteDlpRule, dlpApproval, dlpApprovals,
   dlpRules, me, updateDlpRule,
 } from "@/lib/api";
 import type { DlpRule, PendingApproval } from "@/lib/types";
@@ -44,6 +44,9 @@ export default function DlpPage() {
   const [rules, setRules] = useState<DlpRule[]>([]);
   const [editing, setEditing] = useState<Partial<DlpRule> | null>(null);
   const [saving, setSaving] = useState(false);
+  // Served domains for the scope input's datalist (free text still works —
+  // the dropdown previously offered only hardcoded placeholder domains).
+  const [domainOptions, setDomainOptions] = useState<string[]>([]);
 
   const [approvals, setApprovals] = useState<PendingApproval[]>([]);
   const [status, setStatus] = useState("pending");
@@ -63,6 +66,12 @@ export default function DlpPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "load failed");
     }
+  }, []);
+
+  useEffect(() => {
+    api<{ data: Array<{ name: string }> }>("/domains?page=1&limit=500")
+      .then((r) => setDomainOptions(r.data.map((d: { name: string }) => d.name)))
+      .catch(() => {});
   }, []);
 
   const loadApprovals = useCallback(async () => {
@@ -338,15 +347,33 @@ export default function DlpPage() {
                 </div>
                 <div>
                   <Label>{t("colScope")}</Label>
-                  <select
-                    value={editing.scope || "all"}
-                    onChange={(e) => setEditing({ ...editing, scope: e.target.value })}
-                    className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1.5"
-                  >
-                    <option value="all">{t("scopeAll")}</option>
-                    <option value="domain:example.com">example.com</option>
-                    <option value="domain:other.com">other.com</option>
-                  </select>
+                  <div className="mt-1 flex gap-2">
+                    <select
+                      value={editing.scope && editing.scope !== "all" ? "domain" : "all"}
+                      onChange={(e) =>
+                        setEditing({ ...editing, scope: e.target.value === "domain" ? `domain:` : "all" })}
+                      className="w-2/5 rounded-md border border-input bg-background px-2 py-1.5"
+                    >
+                      <option value="all">{t("scopeAll")}</option>
+                      <option value="domain">{t("scopeDomain")}</option>
+                    </select>
+                    {editing.scope && editing.scope !== "all" && (
+                      <>
+                        <input
+                          list="dlp-scope-domains"
+                          value={editing.scope.replace(/^domain:/, "")}
+                          onChange={(e) => setEditing({ ...editing, scope: `domain:${e.target.value.trim()}` })}
+                          placeholder="example.com"
+                          className="w-3/5 rounded-md border border-input bg-background px-2 py-1.5"
+                        />
+                        <datalist id="dlp-scope-domains">
+                          {domainOptions.map((d) => (
+                            <option key={d} value={d} />
+                          ))}
+                        </datalist>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
               {editing.action === "hold" && (

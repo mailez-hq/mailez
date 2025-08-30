@@ -30,7 +30,10 @@ export default function AliasesPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+  // Page-level error (load/delete) renders outside the modal; form errors
+  // use formError inside the dialog.
   const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
   const [open, setOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Alias | null>(null);
 
@@ -71,7 +74,7 @@ export default function AliasesPage() {
       setEmail(""); setName(""); setDestination(""); setWildcard(false); setDisabled(false);
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "create failed");
+      setFormError(err instanceof Error ? err.message : "create failed");
     }
   }
 
@@ -98,7 +101,7 @@ export default function AliasesPage() {
   return (
     <div className="space-y-4">
       <PageHeader title={t("title")} description={t("desc")}>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) setFormError(""); }}>
           <DialogTrigger
             render={(
               <Button onClick={() => { setEditTarget(null); setEmail(""); setName(""); setDestination(""); setWildcard(false); setDisabled(false); }}>
@@ -136,7 +139,7 @@ export default function AliasesPage() {
                   <Switch checked={disabled} onCheckedChange={setDisabled} />
                 </div>
               )}
-              {error && <p className="text-sm text-red-600">{error}</p>}
+              {formError && <p className="text-sm text-red-600">{formError}</p>}
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>{ct("cancel")}</Button>
                 <Button type="submit">{editTarget ? t("save") : ct("create")}</Button>
@@ -145,6 +148,8 @@ export default function AliasesPage() {
           </DialogContent>
         </Dialog>
       </PageHeader>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <Card>
         <CardHeader><CardTitle className="text-base">{t("forwardingRules")}</CardTitle></CardHeader>

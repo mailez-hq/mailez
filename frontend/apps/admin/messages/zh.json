@@ -180,6 +180,7 @@
     "colRecipients": "收件人",
     "colRule": "命中规则",
     "scopeAll": "全部域名",
+  "scopeDomain": "指定域名",
     "actionBlock": "拦截",
     "actionHold": "审批",
     "sevLow": "低",

@@ -242,6 +242,24 @@ func (s *Service) exportMessages(c *fiber.Ctx) error {
 		q = q.Where("LOWER(subject) LIKE ? OR LOWER(`from`) LIKE ? OR LOWER(`to`) LIKE ? OR LOWER(message_id) LIKE ?",
 			like, like, like, like)
 	}
+	// Same optional filters as listMessages: an export must honor the exact
+	// filter set the admin reviewed on screen, or a compliance export can
+	// contain a different message set than the search results.
+	if v := c.Query("date_from"); v != "" {
+		if t, err := parseQueryTime(v); err == nil {
+			q = q.Where("date >= ?", t)
+		}
+	}
+	if v := c.Query("date_to"); v != "" {
+		if t, err := parseQueryTime(v); err == nil {
+			q = q.Where("date <= ?", t)
+		}
+	}
+	if v := c.Query("reviewed"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			q = q.Where("reviewed = ?", b)
+		}
+	}
 	const exportLimit = 5000
 	var rows []models.ArchivedMessage
 	if err := q.Order("archived_at").Limit(exportLimit).Find(&rows).Error; err != nil {

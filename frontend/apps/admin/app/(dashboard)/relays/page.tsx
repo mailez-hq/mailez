@@ -28,7 +28,10 @@ export default function RelaysPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+  // Page-level error (load/delete) renders outside the modal; form errors
+  // use formError inside the dialog.
   const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
   const [open, setOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Relay | null>(null);
   const [name, setName] = useState("");
@@ -66,7 +69,7 @@ export default function RelaysPage() {
       setName(""); setSmtp("");
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "save failed");
+      setFormError(err instanceof Error ? err.message : "save failed");
     }
   }
 
@@ -83,7 +86,7 @@ export default function RelaysPage() {
   return (
     <div className="space-y-4">
       <PageHeader title={t("title")} description={t("desc")}>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) setFormError(""); }}>
           <DialogTrigger render={<Button><Plus />{t("new")}</Button>} />
           <DialogContent>
             <form onSubmit={create} className="space-y-4">
@@ -108,7 +111,7 @@ export default function RelaysPage() {
                   placeholder="smtp.example.com"
                 />
               </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
+              {formError && <p className="text-sm text-red-600">{formError}</p>}
               <DialogFooter>
                 <Button type="submit">{editTarget ? ct("edit") : ct("create")}</Button>
               </DialogFooter>
@@ -116,6 +119,8 @@ export default function RelaysPage() {
           </DialogContent>
         </Dialog>
       </PageHeader>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <Card>
         <CardHeader><CardTitle className="text-base">{t("served")}</CardTitle></CardHeader>
