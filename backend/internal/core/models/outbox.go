@@ -15,8 +15,13 @@ type Outbox struct {
 	Recipients   string    `gorm:"type:text" json:"-"` // comma-separated envelope rcpt (to+cc+bcc)
 	RawMessage   string    `gorm:"type:text" json:"-"`
 	SendAfter    time.Time `gorm:"index;index:idx_outbox_status_send_after,priority:2" json:"send_after"`
-	Status       string    `gorm:"size:16;index;index:idx_outbox_status_send_after,priority:1;default:pending" json:"status"` // pending|sent|failed|cancelled
-	Error        string    `gorm:"size:255" json:"error,omitempty"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	Status       string    `gorm:"size:16;index;index:idx_outbox_status_send_after,priority:1;default:pending" json:"status"` // pending|sending|sent|failed|cancelled
+	// ClaimedAt marks a pending entry atomically claimed by a worker
+	// replica (pending → sending). Stale claims older than a few minutes
+	// are reclaimed, so a replica that dies mid-delivery cannot lose the
+	// message — multi-replica safety without a leader.
+	ClaimedAt  *time.Time `gorm:"index" json:"-"`
+	Error      string     `gorm:"size:255" json:"error,omitempty"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
 }

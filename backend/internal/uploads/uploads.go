@@ -11,11 +11,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"mime/multipart"
-	"os"
-	"path/filepath"
+	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -23,6 +22,7 @@ import (
 
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
+	"mailez/backend/internal/drive"
 )
 
 // Retention is how long an uploaded relay file is kept (rolling expiry).
@@ -32,11 +32,25 @@ const Retention = 30 * 24 * time.Hour
 type Service struct {
 	DB  *gorm.DB
 	Cfg core.Config
+
+	once     sync.Once
+	blobs    drive.Store
+	blobsErr error
 }
 
 // New assembles the uploads service.
 func New(db *gorm.DB, cfg core.Config) *Service {
 	return &Service{DB: db, Cfg: cfg}
+}
+
+// backend lazily builds the blob backend: MinIO/S3 when the deployment
+// configures it (MAILEZ_DRIVE_BACKEND=minio), the local upload dir
+// otherwise. Sharing the object store is what lets the relay work behind
+// several backend replicas: an upload may land on one replica and be
+// downloaded from another.
+func (s *Service) backend() (drive.Store, error) {
+	s.once.Do(func() { s.blobs, s.blobsErr = drive.NewUploadsStore(s.Cfg) })
+	return s.blobs, s.blobsErr
 }
 
 // Register mounts the upload routes under the authenticated group.
@@ -45,18 +59,6 @@ func (s *Service) Register(r fiber.Router) {
 	r.Get("/uploads/:id", s.meta)
 	r.Get("/uploads/:id/download", s.download)
 	r.Delete("/uploads/:id", s.remove)
-}
-
-// dir returns the storage root, creating it on demand.
-func (s *Service) dir() (string, error) {
-	root := s.Cfg.UploadDir
-	if root == "" {
-		root = "uploads"
-	}
-	if err := os.MkdirAll(root, 0o750); err != nil {
-		return "", err
-	}
-	return root, nil
 }
 
 // upload stores one file and returns a token-protected download link.
@@ -72,26 +74,25 @@ func (s *Service) upload(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "file is required"})
 	}
-	root, err := s.dir()
+	store, err := s.backend()
 	if err != nil {
 		return core.Fail(c, 500, err, "storage error")
 	}
 	name := sanitizeName(fh.Filename)
-	key := randomKey(12)
-	rel := filepath.Join(user.Email, key+"-"+name)
-	abs := filepath.Join(root, rel)
-	if err := os.MkdirAll(filepath.Dir(abs), 0o750); err != nil {
-		return core.Fail(c, 500, err, "storage error")
-	}
+	// The key is the on-disk relative path used by the local backend, so
+	// keys stay compatible with files uploaded before the S3 backend
+	// existed ("email/nonce-name" under the upload dir).
+	objKey := user.Email + "/" + randomKey(12) + "-" + name
 	src, err := fh.Open()
 	if err != nil {
 		return core.Fail(c, 500, err, "storage error")
 	}
 	defer src.Close()
-	sum, size, err := writeFile(abs, src)
-	if err != nil {
+	h := sha256.New()
+	if err := store.Put(c.Context(), objKey, io.TeeReader(src, h), fh.Size, fh.Header.Get("Content-Type")); err != nil {
 		return core.Fail(c, 500, err, "storage error")
 	}
+	sum, size := hex.EncodeToString(h.Sum(nil)), fh.Size
 	expires := time.Now().Add(Retention)
 	row := models.UploadedFile{
 		UserEmail:   user.Email,
@@ -99,11 +100,11 @@ func (s *Service) upload(c *fiber.Ctx) error {
 		ContentType: fh.Header.Get("Content-Type"),
 		Size:        size,
 		SHA256:      sum,
-		StoredPath:  rel,
+		StoredPath:  objKey,
 		ExpiresAt:   &expires,
 	}
 	if err := s.DB.Create(&row).Error; err != nil {
-		_ = os.Remove(abs)
+		_ = store.Delete(c.Context(), objKey)
 		return core.Fail(c, 500, err, "db error")
 	}
 	return c.JSON(fiber.Map{
@@ -156,19 +157,18 @@ func (s *Service) download(c *fiber.Ctx) error {
 	if !s.tokenValid(row.UserEmail, row.ID, c.Query("token")) {
 		return c.SendStatus(fiber.StatusForbidden)
 	}
-	root, err := s.dir()
+	store, err := s.backend()
 	if err != nil {
 		return core.Fail(c, 500, err, "storage error")
 	}
-	abs := filepath.Join(root, row.StoredPath)
-	f, err := os.Open(abs)
+	rc, err := store.Get(c.Context(), row.StoredPath)
 	if err != nil {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
-	defer f.Close()
+	defer rc.Close()
 	c.Set("Content-Type", "application/octet-stream")
 	c.Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, sanitizeName(row.Filename)))
-	if _, err := io.Copy(c.Response().BodyWriter(), f); err != nil {
+	if _, err := io.Copy(c.Response().BodyWriter(), rc); err != nil {
 		return core.Fail(c, 500, err, "stream error")
 	}
 	return nil
@@ -189,8 +189,9 @@ func (s *Service) remove(c *fiber.Ctx) error {
 	if err := s.DB.First(&row, "id = ? AND user_email = ?", id, user.Email).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "not found"})
 	}
-	root, _ := s.dir()
-	_ = os.Remove(filepath.Join(root, row.StoredPath))
+	if store, err := s.backend(); err == nil {
+		_ = store.Delete(c.Context(), row.StoredPath)
+	}
 	if err := s.DB.Delete(&row).Error; err != nil {
 		return core.Fail(c, 500, err, "db error")
 	}
@@ -215,7 +216,7 @@ func (s *Service) tokenValid(email string, id uint, token string) bool {
 }
 
 func sanitizeName(name string) string {
-	name = filepath.Base(strings.TrimSpace(name))
+	name = path.Base(strings.TrimSpace(name))
 	if name == "" || name == "." || name == "/" {
 		return "attachment.bin"
 	}
@@ -228,18 +229,4 @@ func randomKey(n int) string {
 		return strconv.FormatInt(time.Now().UnixNano(), 36)
 	}
 	return hex.EncodeToString(b)
-}
-
-func writeFile(dst string, src multipart.File) (string, int64, error) {
-	out, err := os.Create(dst)
-	if err != nil {
-		return "", 0, err
-	}
-	defer out.Close()
-	h := sha256.New()
-	n, err := io.Copy(io.MultiWriter(out, h), src)
-	if err != nil {
-		return "", 0, err
-	}
-	return hex.EncodeToString(h.Sum(nil)), n, nil
 }
