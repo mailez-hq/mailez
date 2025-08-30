@@ -72,6 +72,17 @@ All notable changes to mailez are documented here. The format follows
   memoized row subscribed to the whole mailbox store context for label
   colors; the color map now lives in its own context whose identity changes
   only when label definitions change
+- Webmail: the compose rich-text toolbar was hardcoded Chinese regardless
+  of locale (titles, font-family labels, the size dropdown); every control
+  is now localized and gained a tooltip (24 new `mail.editor` keys per
+  locale)
+- Public self-signup is rate limited per IP (10/hour, shared store counter
+  with login limiting) — an unauthenticated write endpoint previously let
+  a bot provision accounts at line rate
+- Community deployments report the community edition on the admin overview
+  instead of "dev": `MAILEZ_EDITION=community` (set by the community
+  compose) makes the no-license fallback `Community()` rather than the
+  built-in unlimited dev license
 - Mailezine: `EXAMINE` is now actually read-only — STORE/COPY/MOVE/EXPUNGE
   and APPEND into the examined mailbox return `NO`, FETCH body sections no
   longer implicitly set `\Seen`, CLOSE degrades to UNSELECT, and the
@@ -83,6 +94,11 @@ All notable changes to mailez are documented here. The format follows
   the client IP that relay/auth decisions trust; the header read is also
   bounded (30s deadline, 128-byte line cap) so a silent or padding peer
   cannot hold connections open
+- Mailezine: outbound multi-recipient delivery semantics are now pinned as
+  at-least-once (per-recipient queue state, retries only pending
+  recipients): a connection lost after DATA may duplicate on retry —
+  documented at the failure point and in DECISIONS D47 instead of being an
+  undocumented surprise
 - e2e CI seeds via in-container `mailez-seed` (matches the SQLite default)
 - Website: EN locale links keep the `/en` prefix (navbar and page CTAs
   previously navigated back to the Chinese pages); EN Mailezine page says

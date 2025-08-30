@@ -85,6 +85,8 @@ services:
       # Production tier: enables the weak-secret guard (refuses placeholder
       # SECRET_KEY / empty STACK_SECRET).
       - MAILEZ_ENV=production
+      # 社区版标记：无 license 文件时按 community（而非 dev）报告与运行。
+      - MAILEZ_EDITION=community
       - MAILEZ_SUBNET=${MAILEZ_SUBNET:-192.168.206.0/24}
       - MAILEZ_RECIPIENT_DELIMITER=+
       - MAILEZ_MESSAGE_RATELIMIT=200

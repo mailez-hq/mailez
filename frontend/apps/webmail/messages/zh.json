@@ -89,6 +89,7 @@
     "subject": "主题",
     "body": "正文",
     "bodyPlaceholder": "在此输入邮件内容...",
+    "editor": { "bold": "粗体", "italic": "斜体", "underline": "下划线", "strike": "删除线", "h2": "标题 2", "h3": "标题 3", "bulletList": "无序列表", "orderedList": "有序列表", "quote": "引用", "code": "代码块", "link": "链接", "font": "字体", "fontSize": "字号", "textColor": "文字颜色", "highlight": "高亮颜色", "emoji": "表情", "insertImage": "插入图片", "insertTable": "插入表格", "deleteTable": "删除表格", "undo": "撤销", "redo": "重做", "fontDefault": "默认字体", "fontMono": "等宽", "fontYahei": "微软雅黑" },
     "send": "发送",
     "saveDraft": "保存草稿",
     "reply": "回复",

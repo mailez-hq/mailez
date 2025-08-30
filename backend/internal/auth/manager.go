@@ -74,6 +74,18 @@ func (m *Manager) SetLoginLimits(perIP, fail int) {
 	}
 }
 
+// RateAllow is a generic fixed-window counter over the auth store so other
+// public endpoints (e.g. self-signup) can share the login rate-limiting
+// machinery: it reports whether key under scope is still under limit within
+// window. A nil store (disabled sessions) or a store error fails open, and
+// limit <= 0 disables the check — mirroring checkLoginAttempt semantics.
+func (m *Manager) RateAllow(ctx context.Context, scope, key string, limit int, window time.Duration) bool {
+	if m.Store == nil || limit <= 0 {
+		return true
+	}
+	return m.incr(ctx, "mailez:rate:"+scope+":"+key, window) <= limit
+}
+
 // rememberLoginIP tracks the IP the account logged in from; it returns true
 // when this IP is new (the caller should raise a security alert).
 func (m *Manager) rememberLoginIP(ctx context.Context, email, ip string) bool {
