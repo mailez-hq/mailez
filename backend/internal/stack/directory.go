@@ -156,7 +156,7 @@ func (h *Handler) directorySender(c *fiber.Ctx) error {
 		}
 	}
 	// allow_spoofing lets the user themselves send as any address of their
-	// own domain (the grant no longer leaks to other authenticated users).
+	// own domain.
 	if !allowed {
 		var u models.User
 		if err := h.DB.WithContext(c.Context()).First(&u, "email = ?", user).Error; err == nil && u.AllowSpoofing {

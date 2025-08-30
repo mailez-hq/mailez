@@ -126,8 +126,8 @@ func TestMailMove(t *testing.T) {
 }
 
 // Regression: the /mail/flag API speaks display names too. A bare "seen"
-// used to reach the IMAP wire verbatim and silently create a custom keyword
-// that never touched the real \Seen state (unread badges never moved).
+// must not reach the IMAP wire verbatim: it would silently create a custom
+// keyword that never touches the real \Seen state (unread badges never move).
 func TestMailFlagCanonicalizesSystemFlags(t *testing.T) {
 	app, fake := newTestApp(t, &fakeGateway{})
 	post := func(body string) {

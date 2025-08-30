@@ -58,7 +58,7 @@ var migrations = []migration{
 	{
 		// Webhook notifier token: lets the background poller raise
 		// mail.received events for users without a browser push
-		// subscription (previously webhook-only users never fired).
+		// subscription.
 		ID: "20260828_webhook_notifier_token",
 		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Webhook{}) },
 	},

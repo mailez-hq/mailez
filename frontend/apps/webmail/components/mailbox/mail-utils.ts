@@ -194,10 +194,9 @@ export function serializeBlockquote(text: string): string {
 
 // normalizeQuoteBody cleans a quoted original before it becomes "> " lines:
 // CRLF/CR line endings become LF, and runs of 3+ consecutive blank lines
-// collapse to a single blank line. The blank-line collapse neutralizes the
-// runs accumulated by older reply pipelines inside stored messages, so
-// replying to an old polluted message no longer reproduces them. Ordinary
-// single (and double) blank lines are left untouched.
+// collapse to a single blank line (also neutralizing runs accumulated by
+// older reply pipelines inside stored messages). Ordinary single (and
+// double) blank lines are left untouched.
 export function normalizeQuoteBody(text: string): string {
   return text
     .replace(/\r\n/g, "\n")
