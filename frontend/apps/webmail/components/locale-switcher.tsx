@@ -13,6 +13,9 @@ export function LocaleSwitcher() {
   const router = useRouter();
 
   function switchTo(code: string) {
+    // document.cookie is a DOM setter, not a variable assignment — the
+    // compiler lint cannot tell them apart here.
+    // eslint-disable-next-line react-hooks/immutability
     document.cookie = `NEXT_LOCALE=${code}; path=/; max-age=31536000; samesite=lax`;
     router.refresh();
   }

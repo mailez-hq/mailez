@@ -41,11 +41,19 @@ export function ShareDialog({
     }
   }, []);
 
+  // Clear the stale error and reload on open (error reset is a render-phase
+  // adjustment — React-recommended over synchronous setState in an effect).
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) setError("");
+  }
+
   useEffect(() => {
-    if (open) {
-      setError("");
-      load();
-    }
+    // Reload on open: load()'s setStates all happen after await — the lint
+    // cannot see through the call boundary.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (open) load();
   }, [open, load]);
 
   const add = async () => {
