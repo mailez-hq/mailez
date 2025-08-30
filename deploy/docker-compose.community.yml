@@ -126,6 +126,9 @@ services:
   # 渲染 HTTP-only 配置（自动证书走内置 lego）；邮件端口由引擎直发。
   gateway:
     image: mailez/nginx:${MAILEZ_IMAGE_TAG:-local}
+    build:
+      context: ..
+      dockerfile: deploy/images/gateway/Dockerfile
     pull_policy: missing
     restart: always
     env_file: mailez.env
@@ -157,6 +160,8 @@ services:
       - MAILEZINE_DIRECTORY_MODE=mailez
       - MAILEZINE_AUTH_MODE=mailez
       # 社区版单节点存储：pebble KV + 本地 FS blob（默认，无需 TiDB/MinIO）。
+      - MAILEZINE_STORAGE_BACKEND=pebble
+      - MAILEZINE_ROCKS_PATH=/data/rocks
       # 反垃圾走引擎内置基础档（Authentication-Results + DNSBL + 名单，
       # MAILEZINE_JUNK_* 可调）；企业版以 MAILEZINE_RSPAMD_URL 启用 rspamd 高级档。
       - MAILEZINE_DKIM_VAULT_URL=http://backend:8080/stack/rspamd/vault
@@ -170,8 +175,11 @@ services:
       - MAILEZINE_SMTPS_ADDR=:465
       - MAILEZINE_IMAPS_ADDR=:993
       - MAILEZINE_POP3S_ADDR=:995
-      - MAILEZINE_TLS_CERT_FILE=/certs/letsencrypt/live/mailez/nginx-chain.pem
-      - MAILEZINE_TLS_KEY_FILE=/certs/letsencrypt/live/mailez/privkey.pem
+      # TLS 默认关闭（与 README 一致）。启用隐式 TLS（465/993/995）时设：
+      #   MAILEZINE_TLS_CERT_FILE=/certs/letsencrypt/live/mailez/nginx-chain.pem
+      #   MAILEZINE_TLS_KEY_FILE=/certs/letsencrypt/live/mailez/privkey.pem
+      - MAILEZINE_TLS_CERT_FILE=
+      - MAILEZINE_TLS_KEY_FILE=
       - MAILEZINE_OUTBOUND_ENABLED=true
       - MAILEZINE_OUTBOUND_PORT=25
       # 管理 API(8090,compose 网络内):backend 删除用户时经此级联清除
@@ -187,6 +195,7 @@ services:
     ports:
       - "127.0.0.1:25:25"
       - "127.0.0.1:465:465"
+      - "127.0.0.1:587:1587"
       - "127.0.0.1:1587:1587"
       - "127.0.0.1:110:110"
       - "127.0.0.1:995:995"

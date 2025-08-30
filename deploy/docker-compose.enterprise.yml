@@ -143,6 +143,7 @@ services:
     volumes:
       - "./data:/data"
       - "./licenses:/licenses:ro"
+      - "./certs:/certs"
     depends_on:
       redis:
         condition: service_healthy
@@ -179,6 +180,9 @@ services:
   # agent 渲染 HTTP-only 配置（自动证书走内置 lego）；邮件端口由引擎直发。
   gateway:
     image: mailez/nginx:${MAILEZ_IMAGE_TAG:-local}
+    build:
+      context: ..
+      dockerfile: deploy/images/gateway/Dockerfile
     pull_policy: missing
     restart: always
     env_file: mailez.env
@@ -198,6 +202,8 @@ services:
     build:
       context: ../../mailezine
       dockerfile: Dockerfile
+      args:
+        MAILEZ_EDITION: ee
     pull_policy: missing
     restart: always
     # mailez.env 同时供给 backend 与引擎:MAILEZINE_STACK_SECRET 必须与
@@ -230,8 +236,11 @@ services:
       - MAILEZINE_SMTPS_ADDR=:465
       - MAILEZINE_IMAPS_ADDR=:993
       - MAILEZINE_POP3S_ADDR=:995
-      - MAILEZINE_TLS_CERT_FILE=/certs/letsencrypt/live/mailez/nginx-chain.pem
-      - MAILEZINE_TLS_KEY_FILE=/certs/letsencrypt/live/mailez/privkey.pem
+      # TLS 默认关闭；启用隐式 TLS（465/993/995）时在 mailez.env 设置：
+      #   MAILEZINE_TLS_CERT_FILE=/certs/letsencrypt/live/mailez/nginx-chain.pem
+      #   MAILEZINE_TLS_KEY_FILE=/certs/letsencrypt/live/mailez/privkey.pem
+      - MAILEZINE_TLS_CERT_FILE=
+      - MAILEZINE_TLS_KEY_FILE=
       - MAILEZINE_OUTBOUND_ENABLED=true
       - MAILEZINE_OUTBOUND_PORT=25
       # 管理 API(8090,compose 网络内):backend 删除用户时经此级联清除
@@ -254,6 +263,7 @@ services:
     ports:
       - "127.0.0.1:25:25"
       - "127.0.0.1:465:465"
+      - "127.0.0.1:587:1587"
       - "127.0.0.1:1587:1587"
       - "127.0.0.1:110:110"
       - "127.0.0.1:995:995"
