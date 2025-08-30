@@ -53,6 +53,7 @@ export function FolderNav({
   onClearFolder,
   onCompose,
   aiComposeEnabled,
+  aiComposeLocked,
   aiComposeBusy,
   onAiCompose,
   onSettings,
@@ -96,6 +97,7 @@ export function FolderNav({
   onClearFolder: (name: string) => void;
   onCompose: () => void;
   aiComposeEnabled: boolean;
+  aiComposeLocked?: boolean;
   aiComposeBusy: boolean;
   onAiCompose: () => void;
   onSettings: () => void;
@@ -210,6 +212,7 @@ export function FolderNav({
           onClose={onClose}
           onCompose={onCompose}
           aiComposeEnabled={aiComposeEnabled}
+          aiComposeLocked={aiComposeLocked}
           aiComposeBusy={aiComposeBusy}
           onAiCompose={onAiCompose}
         />

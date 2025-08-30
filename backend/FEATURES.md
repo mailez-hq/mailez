@@ -26,6 +26,7 @@ paired `*_ee.go` assembly files), guarded by the `mailez_ee` build tag.
 | ActiveSync | | ✓ `internal/ee/activesync` |
 | S/MIME (certs, sign/encrypt) | | ✓ `internal/ee/smime` |
 | Macro scanner (attachment VBA analysis) | ✓ `internal/macro` | ✓ |
+| Mail-data backup (engine snapshots, config export/import) | ✓ | ✓ |
 
 Backend frontends (next.js): enterprise UI modules live in
 `frontend/apps/<app>/ee/` and are materialized into `edition/` (a

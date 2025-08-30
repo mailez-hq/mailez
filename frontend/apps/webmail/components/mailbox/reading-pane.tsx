@@ -38,6 +38,7 @@ export function ReadingPane({
   detail,
   detailLoading,
   aiEnabled,
+  aiLocked,
   summary,
   summarizing,
   onSummarize,
@@ -79,6 +80,8 @@ export function ReadingPane({
   detail: MailMessage;
   detailLoading: boolean;
   aiEnabled: boolean;
+  /** Enterprise-only deployment: render locked AI entry points instead of hiding them. */
+  aiLocked?: boolean;
   summary: string;
   summarizing: boolean;
   onSummarize: (threadText?: string) => void;
@@ -687,6 +690,7 @@ export function ReadingPane({
               quickReplyOpen={quickReplyOpen}
               setQuickReplyOpen={setQuickReplyOpen}
               aiEnabled={aiEnabled}
+              aiLocked={aiLocked}
               summaryOpen={summaryOpen}
               setSummaryOpen={setSummaryOpen}
               summarizing={summarizing}

@@ -115,6 +115,7 @@ export function MailView() {
     saveCurrentSearch,
     searchRef,
     ai,
+  aiLocked,
     prioritizing,
     priorityOn,
     priorityCategories,
@@ -245,6 +246,7 @@ export function MailView() {
             detail={detail}
             detailLoading={detailLoading}
             aiEnabled={ai.summary}
+            aiLocked={aiLocked}
             summary={summary}
             summarizing={summarizing}
             onSummarize={summarize}

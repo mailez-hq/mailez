@@ -118,6 +118,7 @@
     "loadRemoteImages": "Load images",
     "summarize": "AI Summary",
     "summarizing": "Summarizing…",
+    "aiLockedTitle": "The AI assistant is an enterprise feature: providers are configured centrally by your administrator (on-premises models supported); users cannot connect external services themselves.",
     "aiGenerated": "AI-generated — verify before relying on it",
     "aiPriority": "AI priority",
     "more": "More",
