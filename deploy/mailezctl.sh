@@ -53,9 +53,10 @@ case "$ACTION" in
     ;;
 esac
 
-if [ "$ACTION" = "logs" ] && [ "${3:-}" = "-Follow" ]; then
-  ARGS+=(--follow)
-  SERVICE="${4:-}"
+# -Follow may appear anywhere after the service name (the header examples
+# put it last): detect it among the trailing args instead of positionally.
+if [ "$ACTION" = "logs" ]; then
+  ARGS+=("--follow")
 fi
 if [ -n "$SERVICE" ]; then ARGS+=("$SERVICE"); fi
 
