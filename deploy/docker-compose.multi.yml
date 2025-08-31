@@ -1,0 +1,80 @@
+# mailez 引擎多活档（叠加在 docker-compose.enterprise.yml 之上）。
+#
+# 目标形态：引擎(mailezine) N 副本对同一份共享存储（TiDB KV + MinIO/S3
+# blob）全服务多活——SMTP 收发、IMAP/POP3、ManageSieve 在任意副本上服务
+# 任意账户；没有 leader/standby（与 docker-compose.ha.yml 互斥）。
+#
+# 多活依赖本仓库引擎侧的三个机制（mailezine >= 本版本）：
+#   1. 出站队列按消息认领（MAILEZINE_CLUSTER_MODE=multi）：每条投递在
+#      KV 事务里原子认领（owner + 租期），崩溃后租约到期被其他副本接管
+#      （接管计一次尝试，crash-loop 不会无限重投）；认领丢失者写回会被
+#      fencing 丢弃；
+#   2. 单例后台 worker 跨节点租约（snooze sweeper 等）：任意时刻全集群
+#      只有一个副本执行，副本失联后租约过期自动接管（at-least-once）；
+#   3. 邮箱写路径走 TiDB 事务冲突检测 + 重放（mailezine 既有能力），
+#      UID/modseq 分配多进程安全。
+#
+# 用法：
+#   cd deploy
+#   docker compose --env-file mailez.env \
+#     -f docker-compose.enterprise.yml -f docker-compose.multi.yml up -d --build
+#   # 副本数（默认 2）：
+#   MAILEZ_ENGINE_REPLICAS=3 docker compose --env-file mailez.env \
+#     -f docker-compose.enterprise.yml -f docker-compose.multi.yml up -d
+#
+# 端口与流量：
+# - mailezine 副本不再绑宿主端口；邮件端口（25/587/1587/465/143/993/
+#   110/995/4190）由 engine-lb 统一发布，Docker DNS 展开全部副本、逐副本
+#   健康检查、约 10s 感知副本上下线。TLS 由引擎终止，LB 纯 TCP 透传。
+# - backend → 引擎（IMAP/SMTP/Sieve/管理 API）经服务名解析，天然轮询
+#   全部副本。
+# - 生产跨机部署：用云 L4 LB / keepalived VIP 替换 engine-lb，并把
+#   MAILEZINE_PROXY_PROTOCOL 配上以保留真实客户端 IP；MX 记录指向 LB。
+#
+# 已知取舍（详见 docs/scaling.md §多活）：
+# - FTS：bleve 索引是节点本地的，多活档禁用，搜索回退全扫描（结果正确、
+#   略慢）；changelog 追踪的分布式索引在路线图上；
+# - 投递语义 at-least-once：租约过期瞬间的接管可能造成个别重复投递
+#   （与单机崩溃恢复语义一致）；
+# - NODE_ID 必须留空：compose 副本共享同一份 environment，引擎按容器
+#   hostname 自动生成唯一 ID；若手工配同值会破坏认领 fencing。
+
+services:
+
+  mailezine:
+    deploy:
+      replicas: ${MAILEZ_ENGINE_REPLICAS:-2}
+    # 多副本不能绑固定宿主端口（第二副本 bind 冲突）：邮件端口统一由
+    # engine-lb 发布。!override 覆盖 enterprise 档的端口列表。
+    ports: !override []
+    environment:
+      - MAILEZINE_CLUSTER_MODE=multi
+      # 副本共享 env：留空让引擎按容器 hostname 自动生成（见上）。
+      - MAILEZINE_CLUSTER_NODE_ID=
+      # 多活禁用节点本地 FTS（搜索回退扫描），见“已知取舍”。
+      - MAILEZINE_FTS_ENABLED=false
+    # 状态全在 TiDB/MinIO：本地 /data（pebble 路径 / FTS 索引）不再使用；
+    # 证书与授权仍按副本只读挂载。archive 合规 spool 也在 KV/blob，无本地盘。
+    volumes: !override
+      - "./certs:/certs:ro"
+      - "./licenses:/licenses:ro"
+
+  # 邮件端口负载均衡：TCP 透传 + DNS 副本展开 + 健康检查。
+  engine-lb:
+    image: mailez/engine-lb:${MAILEZ_IMAGE_TAG:-local}
+    build:
+      context: ./images/engine-lb
+    pull_policy: missing
+    restart: always
+    depends_on:
+      - mailezine
+    ports:
+      - "127.0.0.1:25:25"
+      - "127.0.0.1:465:465"
+      - "127.0.0.1:587:587"
+      - "127.0.0.1:1587:1587"
+      - "127.0.0.1:110:110"
+      - "127.0.0.1:995:995"
+      - "127.0.0.1:143:143"
+      - "127.0.0.1:993:993"
+      - "127.0.0.1:4190:4190"

@@ -1,8 +1,8 @@
-# mailez 横向扩容运行手册（HA / 多副本）
+# mailez 横向扩容运行手册（HA / 多副本 / 引擎多活）
 
-本文描述控制面（backend/frontend）多副本、KV 与 blob 横向扩容的部署形态、
-工作原理与运维要点。单机社区版不受影响：所有多副本机制在单副本下自动退化
-为直通。
+本文描述控制面（backend/frontend）多副本、KV 与 blob 横向扩容、以及引擎
+（mailezine）多活的部署形态、工作原理与运维要点。单机社区版不受影响：所有
+多副本机制在单副本下自动退化为直通。
 
 ## 一、目标拓扑（docker-compose.enterprise.yml + docker-compose.ha.yml）
 
@@ -74,7 +74,7 @@ webmail 实时流（SSE EventWatcher）是副本本地的：每个副本只轮�
 | 队列/异步 | 控制面 worker | 内置选主/认领 | 见上表 |
 | 引擎 KV | TiDB | TiDB 集群原生横向 | compose 档为单节点 unistore，生产换 TiUP 集群，DSN 不变 |
 | 引擎 blob | MinIO/S3 | MinIO 分布式模式 / 云 S3 | 内容寻址 + 幂等写，天然多节点安全 |
-| 引擎服务 | mailezine | active-passive（租约） | 服务层单写者；standby 部署在第二台主机、指向同一 TiDB/MinIO 即自动接管 |
+| 引擎服务 | mailezine | active-passive（租约）**或多活（multi 档）** | 单写者容灾见 §六；`MAILEZINE_CLUSTER_MODE=multi` 下全服务多副本多活 |
 
 ## 四、运维要点
 
@@ -87,6 +87,75 @@ webmail 实时流（SSE EventWatcher）是副本本地的：每个副本只轮�
    compose 形态）。
 5. **升级**：滚动更新安全——认领与租约保证新旧副本共存期间不双发/不漏发；
    迁移由 GET_LOCK 保证只跑一次。
-6. **限制**：引擎服务层（IMAP 会话/投递队列）当前是单写者：多引擎副本
-   不会提升邮箱读写吞吐（standby 只做容灾）。引擎边缘(SMTP 收信)与
-   分片多活见 ROADMAP。
+6. **限制**：active-passive 档（§一拓扑）的引擎服务层（IMAP 会话/投递队列）
+   是单写者：多引擎副本不会提升邮箱读写吞吐（standby 只做容灾）。要吞吐
+   横向扩展用 §六 的多活档。
+
+## 五、HA 档与多活档怎么选
+
+| | ha 档（docker-compose.ha.yml） | multi 档（docker-compose.multi.yml） |
+|---|---|---|
+| 引擎形态 | 1 主 + N standby（租约选主，60s 故障转移） | N 副本全活，无主备 |
+| 吞吐 | 单写者，standby 不提升吞吐 | SMTP/IMAP/投递随副本线性分摊 |
+| 存储要求 | TiDB + MinIO（同左） | TiDB + MinIO（同左） |
+| 配置 | `MAILEZINE_HA_ENABLED=true` | `MAILEZINE_CLUSTER_MODE=multi`（与 HA 互斥，启动时校验拒绝同时开启） |
+| FTS | 正常（bleve，单写者） | 禁用（节点本地索引），搜索回退全扫描 |
+| 适用 | 改动最小、只要容灾 | 真正的分布式多活，扩容即加副本 |
+
+## 六、引擎多活（multi 档）
+
+拓扑（docker-compose.enterprise.yml + docker-compose.multi.yml）：
+
+```
+ MX/L4-LB ──> engine-lb(haproxy) ──> mailezine×N     ← 邮件端口按连接轮询
+                    │                    │
+ backend×N ────────┼── Docker DNS 轮询 ──┘            ← IMAP/SMTP/Sieve/管理 API
+ MySQL   MinIO(共享对象存储：正文 blob)
+ TiDB(引擎 KV：队列元数据 / 邮箱索引 / 租约)
+```
+
+启动：
+
+```bash
+cd deploy
+docker compose --env-file mailez.env \
+  -f docker-compose.enterprise.yml -f docker-compose.multi.yml up -d --build
+# 扩容（默认 2 副本）：
+MAILEZ_ENGINE_REPLICAS=3 docker compose --env-file mailez.env \
+  -f docker-compose.enterprise.yml -f docker-compose.multi.yml up -d
+```
+
+### 多活的三个引擎机制
+
+1. **出站队列按消息认领**（`mailezine/internal/queue`）：调度器扫描到期
+   索引后，每条消息先在 KV 事务里原子认领（`QUEUED/DEFERRED → ACTIVE`，
+   记录 owner + 租约，到期索引同时挪到租期时刻）。认领失败（他副本持有
+   有效租约）就跳过——任意时刻一条消息全集群只有一个活跃 worker。持有者
+   崩溃后，租约到期的消息被任意副本接管重投（接管计一次尝试，crash-loop
+   不会无限重投）；接管后原 worker 的迟到写回会被 ownership fencing 丢弃，
+   不会覆盖新状态。消息 ID 分配也在事务里自增，多副本不重号。
+2. **单例 worker 跨节点租约**（`mailezine/internal/kvlease`）：snooze
+   sweeper 等全局唯一 worker 用 KV 租约（owner + TTL，tick 即续约）选主，
+   全集群同一时刻只有一个副本执行；失联副本的租约过期后自动接管
+   （at-least-once）。
+3. **邮箱写路径事务冲突重放**（既有能力）：UID/modseq/changelog 的
+   read-modify-write 走 TiDB 乐观事务冲突检测 + 重放，多副本并发写同一
+   账户正确（冲突多时重放增多，热账户可在后续按账户 pin 写优化）。
+
+### 运维要点（multi 档）
+
+1. **NODE_ID**：多机部署时每台主机配唯一 `MAILEZINE_CLUSTER_NODE_ID`；
+   compose 副本共享 env，必须留空（引擎按容器 hostname 自动生成）——
+   两个副本配同值会破坏认领 fencing。
+2. **投递语义 at-least-once**：租约过期瞬间的接管可能造成个别重复投递，
+   与单机崩溃恢复语义一致（默认租期 10 分钟，`MAILEZINE_QUEUE_CLAIM_LEASE_SECONDS`
+   可调，须大于最慢单次投递）。
+3. **FTS 禁用**：多活档搜索走存储扫描（结果正确、略慢）；分布式索引
+   （每节点 tail changelog）在路线图上。
+4. **客户端 IP**：engine-lb 纯 TCP 透传不注入 PROXY 头，引擎记录的是 LB
+   地址；需要真实来源时用云 L4 LB / keepalived + `MAILEZINE_PROXY_PROTOCOL`。
+5. **节点观测**：`GET /health` 返回 `"role":"active"`、`"cluster":"multi"`，
+   队列消息带 `owner` 字段可直接定位持有副本；`owner` 还出现在“认领丢失”
+   告警日志里。
+6. **跨机部署**：每台主机跑一个 mailezine 指向同一 TiDB/MinIO/控制面，
+   MX 指向 L4 LB 即可；无任何节点间专线要求（协调全部经共享存储事务）。
