@@ -163,8 +163,22 @@ MAILEZ_ENGINE_REPLICAS=3 docker compose --env-file mailez.env \
 5. **节点观测**：`GET /health` 返回 `"role":"active"`、`"cluster":"multi"`，
    队列消息带 `owner` 字段可直接定位持有副本；`owner` 还出现在“认领丢失”
    告警日志里。
-6. **跨机部署**：每台主机跑一个 mailezine 指向同一 TiDB/MinIO/控制面，
+6. **多活健康指标**（Prometheus，每节点）：
+   - `mailezine_queue_claims_total{outcome=claimed|stolen|lost}`——认领/
+     接管/丢失计数。**stolen/lost 持续增长 = 租约过短或有节点反复死在
+     投递中途**（调大 `MAILEZINE_QUEUE_CLAIM_LEASE_SECONDS` 或排查节点）；
+   - `mailezine_kv_txn_replays_total`——KV 乐观事务因写冲突的重放计数
+     （多写者争用同一账户热键的信号，见下条决策）。
+7. **跨机部署**：每台主机跑一个 mailezine 指向同一 TiDB/MinIO/控制面，
    MX 指向 L4 LB 即可；无任何节点间专线要求（协调全部经共享存储事务）。
+
+### 按账户 pin 写：刻意延迟的决策
+
+多活写正确性由事务冲突重放保证，pin 写（把账户写路由到固定 owner 节点）
+只是**尾延迟优化**，不是分布式语义的前提——因此先量化再动手：
+`mailezine_kv_txn_replays_total` 持续走高（伴随投递尾延迟上升）时才值得
+实现，方案为 KV 所有权表 + 租约交接 + fencing（与队列认领同构）。在实测
+竞争水平未知时引入 ownership 路由，只会增加故障面而不改变正确性边界。
 
 ### 跨机部署清单（每台引擎主机）
 
