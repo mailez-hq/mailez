@@ -68,6 +68,11 @@ services:
       # 同步设置 MAILEZ_LB_IP 为新网段内的地址。
       - MAILEZINE_PROXY_PROTOCOL=all
       - MAILEZINE_PROXY_TRUSTED=${MAILEZ_LB_IP:-192.168.206.250}/32
+      # 隐式 TLS 端口（465/993/995，经 LB 的 PROXY 头之后由引擎终止）：
+      # 复用 ./certs 的证书材料（与 gateway 同源；缺文件则引擎不监听
+      # 这三个端口，engine-lb 对应后端会 DOWN）。
+      - MAILEZINE_TLS_CERT_FILE=/certs/cert.pem
+      - MAILEZINE_TLS_KEY_FILE=/certs/key.pem
     # 状态全在 TiDB/MinIO；本地仅剩 bleve 索引（派生数据，可随时全量
     # 重建）。匿名卷按副本隔离——同一卷被两个副本共享会互写损坏：
     #   /data/rocks.fts       ← 本节点 FTS 索引（重启保留）

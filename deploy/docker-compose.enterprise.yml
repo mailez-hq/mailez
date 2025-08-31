@@ -308,7 +308,7 @@ services:
     image: mailez/rspamd:${MAILEZ_IMAGE_TAG:-local}
     build:
       context: ..
-      dockerfile: deploy/images/rspamd/Dockerfile
+      dockerfile: deploy/images/mail-filter/Dockerfile
     pull_policy: missing
     restart: always
     env_file: mailez.env
@@ -340,7 +340,7 @@ services:
     image: mailez/unbound:${MAILEZ_IMAGE_TAG:-local}
     build:
       context: ..
-      dockerfile: deploy/images/unbound/Dockerfile
+      dockerfile: deploy/images/resolver/Dockerfile
     pull_policy: missing
     restart: always
     env_file: mailez.env
