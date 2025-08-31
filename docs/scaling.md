@@ -165,3 +165,40 @@ MAILEZ_ENGINE_REPLICAS=3 docker compose --env-file mailez.env \
    告警日志里。
 6. **跨机部署**：每台主机跑一个 mailezine 指向同一 TiDB/MinIO/控制面，
    MX 指向 L4 LB 即可；无任何节点间专线要求（协调全部经共享存储事务）。
+
+### 跨机部署清单（每台引擎主机）
+
+```bash
+# 与集群共享的三个地址（全部主机同值）：
+MAILEZINE_STORAGE_DSN=root@tcp(tidb.example:4000)/mailez
+MAILEZINE_S3_ENDPOINT=minio.example:9000
+MAILEZINE_BACKEND_ADDRESS=backend.example:8080
+
+# 本机唯一（hostname 即可）：
+MAILEZINE_CLUSTER_NODE_ID=mail-01
+
+# 云 L4 LB / keepalived VIP 前置（保留真实客户端 IP）：
+MAILEZINE_PROXY_PROTOCOL=25,465,587,143,993,110,995,4190
+MAILEZINE_PROXY_TRUSTED=<LB 网段>
+MAILEZINE_CLUSTER_MODE=multi
+```
+
+要点：每台主机本地磁盘只存 FTS 索引与水位（可随时重建）；节点上下线
+无需协调——新节点上线后 tail changelog 追平索引，队列认领自动参与；
+`NTP` 必开（租约比较各节点本地时钟）。
+
+### 验证：多活故障演练
+
+`mailezine` 仓库的 `TestMultiActiveFailover`（`cmd/mailezine`，需
+`MAILEZINE_TEST_TIDB_DSN` 指向真实 MySQL 协议服务）以**两个真实引擎
+进程 + 共享 TiDB + 门控 MX** 复现生产多活语义并断言：
+
+1. 两节点均 `role=active`（无主备）；
+2. 经节点 A 投递的邮件从节点 B 的 IMAP 读出（跨节点邮箱状态）；
+3. 节点 A 认领出站消息后、投递中途被 kill -9，节点 B 在租约到期后
+   接管并完成投递——sink 恰好收到一次，队列状态经节点 B 到达
+   `delivered`。
+
+```bash
+go test -tags mailez_ee ./cmd/mailezine/ -run TestMultiActiveFailover -v
+```
