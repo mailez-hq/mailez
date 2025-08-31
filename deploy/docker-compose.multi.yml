@@ -18,9 +18,12 @@
 #   cd deploy
 #   docker compose --env-file mailez.env \
 #     -f docker-compose.enterprise.yml -f docker-compose.multi.yml up -d --build
-#   # 副本数（默认 2）：
-#   MAILEZ_ENGINE_REPLICAS=3 docker compose --env-file mailez.env \
-#     -f docker-compose.enterprise.yml -f docker-compose.multi.yml up -d
+#   # 或经统一入口（等价）：
+#   ./mailezctl.sh up multi
+#   # 副本数（默认 2，上限 16 = engine-lb 的 haproxy 槽位）：
+#   MAILEZ_ENGINE_REPLICAS=3 ./mailezctl.sh up multi
+#
+# 前置要求：Docker Compose ≥ 2.24（!override 与 deploy.replicas 直接生效）。
 #
 # 端口与流量：
 # - mailezine 副本不再绑宿主端口；邮件端口（25/587/1587/465/143/993/
