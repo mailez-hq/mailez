@@ -172,13 +172,26 @@ MAILEZ_ENGINE_REPLICAS=3 docker compose --env-file mailez.env \
 7. **跨机部署**：每台主机跑一个 mailezine 指向同一 TiDB/MinIO/控制面，
    MX 指向 L4 LB 即可；无任何节点间专线要求（协调全部经共享存储事务）。
 
-### 按账户 pin 写：刻意延迟的决策
+### 按账户写 pin（account gate）
 
-多活写正确性由事务冲突重放保证，pin 写（把账户写路由到固定 owner 节点）
-只是**尾延迟优化**，不是分布式语义的前提——因此先量化再动手：
-`mailezine_kv_txn_replays_total` 持续走高（伴随投递尾延迟上升）时才值得
-实现，方案为 KV 所有权表 + 租约交接 + fencing（与队列认领同构）。在实测
-竞争水平未知时引入 ownership 路由，只会增加故障面而不改变正确性边界。
+多活写正确性由事务冲突重放保证，pin 写是**尾延迟优化**：多活模式下
+（`MAILEZINE_ACCOUNT_GATE_ENABLED`，默认开）入站投递的每账户存储段在
+“账户所有权租约”下执行——先到节点持有账户租约（TTL 30s、后台续约、
+空闲 60s 释放），其他节点对同一账户的写入**排队等待**而不是在 UID/
+modseq/quota/changelog 热键上冲突重放。语义：
+
+- **咨询式**：等待有上限（默认 5s，`MAILEZINE_ACCOUNT_GATE_WAIT_SECONDS`），
+  超时或存储故障则照常写入（正确性回落到事务重放）——邮件永不被门闸
+  阻塞或丢弃；
+- **跟随流量**：租约懒获取、热账户保持、静默账户零成本；持有者失效后
+  租约到期即被接管；
+- **观测**：`mailezine_account_gate_events_total{wait|fallback}`（wait=
+  出现跨节点竞争被吸收；fallback=等待超时照常写入）与
+  `mailezine_account_gate_held`（本节点当前持有的账户数）。fallback
+  持续增长说明 Wait 过短或某节点长期占住账户。
+
+覆盖范围为入站投递路径（跨节点冲突的主源）；IMAP 会话本身天然单节点，
+其写冲突继续走事务重放（正确且罕见）。
 
 ### 跨机部署清单（每台引擎主机）
 
