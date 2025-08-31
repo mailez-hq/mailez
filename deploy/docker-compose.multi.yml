@@ -32,10 +32,10 @@
 #   MAILEZINE_PROXY_PROTOCOL 配上以保留真实客户端 IP；MX 记录指向 LB。
 #
 # 已知取舍（详见 docs/scaling.md §多活）：
-# - FTS：bleve 索引是节点本地的，多活档禁用，搜索回退全扫描（结果正确、
-#   略慢）；changelog 追踪的分布式索引在路线图上；
 # - 投递语义 at-least-once：租约过期瞬间的接管可能造成个别重复投递
 #   （与单机崩溃恢复语义一致）；
+# - FTS 为最终一致：邮件落进集群后至多一个同步周期（默认 2s）内可在
+#   任意节点搜到；副本重建/换机后自动全量重放重建索引；
 # - NODE_ID 必须留空：compose 副本共享同一份 environment，引擎按容器
 #   hostname 自动生成唯一 ID；若手工配同值会破坏认领 fencing。
 
@@ -51,11 +51,16 @@ services:
       - MAILEZINE_CLUSTER_MODE=multi
       # 副本共享 env：留空让引擎按容器 hostname 自动生成（见上）。
       - MAILEZINE_CLUSTER_NODE_ID=
-      # 多活禁用节点本地 FTS（搜索回退扫描），见“已知取舍”。
-      - MAILEZINE_FTS_ENABLED=false
-    # 状态全在 TiDB/MinIO：本地 /data（pebble 路径 / FTS 索引）不再使用；
-    # 证书与授权仍按副本只读挂载。archive 合规 spool 也在 KV/blob，无本地盘。
+      # 多活下 FTS 由 changelog 追踪器收敛到每个节点的本地索引（投放
+      # 路径不内联索引，每副本恰好索引一次）：搜索与单机一致。
+      - MAILEZINE_FTS_ENABLED=true
+    # 状态全在 TiDB/MinIO；本地仅剩 bleve 索引（派生数据，可随时全量
+    # 重建）。匿名卷按副本隔离——同一卷被两个副本共享会互写损坏：
+    #   /data/rocks.fts       ← 本节点 FTS 索引（重启保留）
+    #   /data/rocks.fts.sync.json ← 追踪水位（副本重建后从 0 重放全量）
+    # 证书与授权仍按副本只读挂载；archive 合规 spool 在 KV/blob，无本地盘。
     volumes: !override
+      - "/data"
       - "./certs:/certs:ro"
       - "./licenses:/licenses:ro"
 

@@ -99,7 +99,7 @@ webmail 实时流（SSE EventWatcher）是副本本地的：每个副本只轮�
 | 吞吐 | 单写者，standby 不提升吞吐 | SMTP/IMAP/投递随副本线性分摊 |
 | 存储要求 | TiDB + MinIO（同左） | TiDB + MinIO（同左） |
 | 配置 | `MAILEZINE_HA_ENABLED=true` | `MAILEZINE_CLUSTER_MODE=multi`（与 HA 互斥，启动时校验拒绝同时开启） |
-| FTS | 正常（bleve，单写者） | 禁用（节点本地索引），搜索回退全扫描 |
+| FTS | 正常（bleve，单写者） | 追踪收敛（见下），最终一致 |
 | 适用 | 改动最小、只要容灾 | 真正的分布式多活，扩容即加副本 |
 
 ## 六、引擎多活（multi 档）
@@ -125,7 +125,7 @@ MAILEZ_ENGINE_REPLICAS=3 docker compose --env-file mailez.env \
   -f docker-compose.enterprise.yml -f docker-compose.multi.yml up -d
 ```
 
-### 多活的三个引擎机制
+### 多活的引擎机制
 
 1. **出站队列按消息认领**（`mailezine/internal/queue`）：调度器扫描到期
    索引后，每条消息先在 KV 事务里原子认领（`QUEUED/DEFERRED → ACTIVE`，
@@ -138,7 +138,13 @@ MAILEZ_ENGINE_REPLICAS=3 docker compose --env-file mailez.env \
    sweeper 等全局唯一 worker 用 KV 租约（owner + TTL，tick 即续约）选主，
    全集群同一时刻只有一个副本执行；失联副本的租约过期后自动接管
    （at-least-once）。
-3. **邮箱写路径事务冲突重放**（既有能力）：UID/modseq/changelog 的
+3. **FTS 收敛**（`mailezine/internal/ftssync`）：bleve 索引是节点本地的，
+   多活下每个节点跑一个 changelog 追踪器——按账户水位增量读取变更日志
+   （INV-CHANGE：按账户追加、无缝、有序），create/update 重索引、delete
+   （扩展编码携带被删副本的 mailbox+UID）精确删除。投递路径不再内联索引，
+   每副本恰好索引一次；邮件落进集群后至多一个同步周期（默认 2s）内可在
+   任意节点搜到；副本重建/换机后水位从 0 重放自动全量重建。
+4. **邮箱写路径事务冲突重放**（既有能力）：UID/modseq/changelog 的
    read-modify-write 走 TiDB 乐观事务冲突检测 + 重放，多副本并发写同一
    账户正确（冲突多时重放增多，热账户可在后续按账户 pin 写优化）。
 
@@ -150,8 +156,8 @@ MAILEZ_ENGINE_REPLICAS=3 docker compose --env-file mailez.env \
 2. **投递语义 at-least-once**：租约过期瞬间的接管可能造成个别重复投递，
    与单机崩溃恢复语义一致（默认租期 10 分钟，`MAILEZINE_QUEUE_CLAIM_LEASE_SECONDS`
    可调，须大于最慢单次投递）。
-3. **FTS 禁用**：多活档搜索走存储扫描（结果正确、略慢）；分布式索引
-   （每节点 tail changelog）在路线图上。
+3. **FTS 最终一致**：多活档搜索经每节点的 changelog 追踪索引（机制见上），
+   新邮件至多一个同步周期（2s）后可搜；副本重建后自动全量重放。
 4. **客户端 IP**：engine-lb 纯 TCP 透传不注入 PROXY 头，引擎记录的是 LB
    地址；需要真实来源时用云 L4 LB / keepalived + `MAILEZINE_PROXY_PROTOCOL`。
 5. **节点观测**：`GET /health` 返回 `"role":"active"`、`"cluster":"multi"`，
