@@ -5,14 +5,16 @@
 #   community = docker-compose.community.yml（社区版：mailezine + SQLite 控制面）
 #   enterprise = docker-compose.enterprise.yml（企业版：mailezine + MySQL +
 #                TiDB + MinIO/S3）
-# 外加 HA 叠加档：
+# 外加叠加档：
 #   ha = enterprise + docker-compose.ha.yml（backend/frontend 多副本）
+#   multi = enterprise + docker-compose.multi.yml（引擎多活）
 #
 # 用法:
 #   powershell .\deploy\mailezctl.ps1 up              # 开发档
 #   powershell .\deploy\mailezctl.ps1 up community    # 社区版生产
 #   powershell .\deploy\mailezctl.ps1 up enterprise   # 企业版生产
 #   powershell .\deploy\mailezctl.ps1 up ha           # 企业版 + 控制面多副本
+#   powershell .\deploy\mailezctl.ps1 up multi        # 企业版 + 引擎多活
 #   powershell .\deploy\mailezctl.ps1 ps
 #   powershell .\deploy\mailezctl.ps1 logs enterprise mailezine -Follow
 #   powershell .\deploy\mailezctl.ps1 down
@@ -23,7 +25,7 @@ param(
     [string]$Action = "ps",
 
     [Parameter(Position = 1)]
-    [ValidateSet("dev", "community", "enterprise", "ha")]
+    [ValidateSet("dev", "community", "enterprise", "ha", "multi")]
     [string]$Target = "dev",
 
     [Parameter(Position = 2)]
@@ -38,6 +40,7 @@ $files = switch ($Target) {
     "community"  { ,@("docker-compose.community.yml") }
     "enterprise" { ,@("docker-compose.enterprise.yml") }
     "ha"         { ,@("docker-compose.enterprise.yml", "docker-compose.ha.yml") }
+    "multi"      { ,@("docker-compose.enterprise.yml", "docker-compose.multi.yml") }
     default      { ,@("docker-compose.dev.yml") }
 }
 

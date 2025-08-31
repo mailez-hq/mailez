@@ -5,14 +5,16 @@
 #   dev        = docker-compose.dev.yml        (SQLite + Pebble + local FS)
 #   community  = docker-compose.community.yml  (mailezine + SQLite control plane)
 #   enterprise = docker-compose.enterprise.yml (mailezine + MySQL + TiDB + MinIO/S3)
-# plus the HA overlay:
+# plus the overlays:
 #   ha         = enterprise + docker-compose.ha.yml (backend/frontend replicas)
+#   multi      = enterprise + docker-compose.multi.yml (multi-active engine)
 #
 # Usage:
 #   ./deploy/mailezctl.sh up              # dev
 #   ./deploy/mailezctl.sh up community    # community edition prod
 #   ./deploy/mailezctl.sh up enterprise   # enterprise edition prod
 #   ./deploy/mailezctl.sh up ha           # enterprise + control-plane replicas
+#   ./deploy/mailezctl.sh up multi        # enterprise + multi-active engine
 #   ./deploy/mailezctl.sh ps
 #   ./deploy/mailezctl.sh logs enterprise mailezine -Follow
 #   ./deploy/mailezctl.sh down
@@ -29,8 +31,9 @@ case "$TARGET" in
   community)  FILES=("docker-compose.community.yml") ;;
   enterprise) FILES=("docker-compose.enterprise.yml") ;;
   ha)         FILES=("docker-compose.enterprise.yml" "docker-compose.ha.yml") ;;
+  multi)      FILES=("docker-compose.enterprise.yml" "docker-compose.multi.yml") ;;
   *)
-    echo "unknown target: $TARGET (dev|community|enterprise|ha)" >&2
+    echo "unknown target: $TARGET (dev|community|enterprise|ha|multi)" >&2
     exit 2
     ;;
 esac
