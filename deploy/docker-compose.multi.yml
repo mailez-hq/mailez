@@ -28,11 +28,16 @@
 # 端口与流量：
 # - mailezine 副本不再绑宿主端口；邮件端口（25/587/1587/465/143/993/
 #   110/995/4190）由 engine-lb 统一发布，Docker DNS 展开全部副本、逐副本
-#   健康检查、约 10s 感知副本上下线。TLS 由引擎终止，LB 纯 TCP 透传。
-# - backend → 引擎（IMAP/SMTP/Sieve/管理 API）经服务名解析，天然轮询
-#   全部副本。
-# - 生产跨机部署：用云 L4 LB / keepalived VIP 替换 engine-lb，并把
-#   MAILEZINE_PROXY_PROTOCOL 配上以保留真实客户端 IP；MX 记录指向 LB。
+#   健康检查、约 10s 感知副本上下线。
+# - 真实客户端 IP：engine-lb 对全部后端连接注入 PROXY v1 头，引擎只信任
+#   engine-lb 的固定 IP（192.168.206.250，见 networks）——DNSBL/策略评分
+#   拿到真实来源。因此引擎的邮件端口只接受来自 LB 的连接：backend 的
+#   引擎地址（IMAP/SMTP/Sieve）也改指向 engine-lb（经 LB 即带头）；管理
+#   API(8090) 不经 LB，仍直连副本。
+# - TLS 由引擎终止（PROXY 头在 TLS 之前，STARTTLS/隐式 TLS 均不受影响）。
+# - 生产跨机部署：用云 L4 LB / keepalived VIP 替换 engine-lb 时保持同款
+#   PROXY 语义（云 LB 开 PROXY protocol、MAILEZINE_PROXY_TRUSTED 收窄到
+#   LB 地址）；MX 记录指向 LB。
 #
 # 已知取舍（详见 docs/scaling.md §多活）：
 # - 投递语义 at-least-once：租约过期瞬间的接管可能造成个别重复投递
@@ -57,6 +62,12 @@ services:
       # 多活下 FTS 由 changelog 追踪器收敛到每个节点的本地索引（投放
       # 路径不内联索引，每副本恰好索引一次）：搜索与单机一致。
       - MAILEZINE_FTS_ENABLED=true
+      # 全部邮件端口要求 PROXY v1 头，且只信任 engine-lb 的固定 IP
+      # （MAILEZ_LB_IP，默认 192.168.206.250）：真实客户端 IP 由此保留
+      # （DNSBL/策略评分不再看到 LB 地址）。改过 MAILEZ_SUBNET 的话需
+      # 同步设置 MAILEZ_LB_IP 为新网段内的地址。
+      - MAILEZINE_PROXY_PROTOCOL=all
+      - MAILEZINE_PROXY_TRUSTED=${MAILEZ_LB_IP:-192.168.206.250}/32
     # 状态全在 TiDB/MinIO；本地仅剩 bleve 索引（派生数据，可随时全量
     # 重建）。匿名卷按副本隔离——同一卷被两个副本共享会互写损坏：
     #   /data/rocks.fts       ← 本节点 FTS 索引（重启保留）
@@ -67,7 +78,19 @@ services:
       - "./certs:/certs:ro"
       - "./licenses:/licenses:ro"
 
-  # 邮件端口负载均衡：TCP 透传 + DNS 副本展开 + 健康检查。
+  # backend 的引擎地址改走 engine-lb（IMAP/SMTP/Sieve/内部 MTA 直投）：
+  # 引擎的邮件端口现在只接受带 PROXY 头的 LB 连接，直连会被拒。管理
+  # API(8090) 不经 LB，保持直连副本（服务名轮询）。environment 列表按
+  # 变量名合并，覆盖 enterprise 档的同名值。
+  backend:
+    environment:
+      - MAIL_IMAP_ADDR=engine-lb:143
+      - MAIL_SMTP_ADDR=engine-lb:1587
+      - MAIL_SIEVE_ADDR=engine-lb:4190
+      - MAIL_MTA_ADDR=engine-lb:25
+      - MAIL_ENGINE_MGMT_ADDR=mailezine:8090
+
+  # 邮件端口负载均衡：TCP 透传 + PROXY v1 注入 + DNS 副本展开 + 健康检查。
   engine-lb:
     image: mailez/engine-lb:${MAILEZ_IMAGE_TAG:-local}
     build:
@@ -76,6 +99,12 @@ services:
     restart: always
     depends_on:
       - mailezine
+    # 固定 IP：引擎的 MAILEZINE_PROXY_TRUSTED 按此地址收窄受信集（副本
+    # 共享 env 无法写服务名，且收窄到 /32 才能挡住网段内其他容器伪造头）。
+    # 与 MAILEZ_SUBNET 联动：改网段时同步设置 MAILEZ_LB_IP。
+    networks:
+      default:
+        ipv4_address: ${MAILEZ_LB_IP:-192.168.206.250}
     ports:
       - "127.0.0.1:25:25"
       - "127.0.0.1:465:465"

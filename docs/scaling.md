@@ -107,9 +107,9 @@ webmail 实时流（SSE EventWatcher）是副本本地的：每个副本只轮�
 拓扑（docker-compose.enterprise.yml + docker-compose.multi.yml）：
 
 ```
- MX/L4-LB ──> engine-lb(haproxy) ──> mailezine×N     ← 邮件端口按连接轮询
-                    │                    │
- backend×N ────────┼── Docker DNS 轮询 ──┘            ← IMAP/SMTP/Sieve/管理 API
+ MX/L4-LB ──> engine-lb(haproxy) ──PROXY v1──> mailezine×N  ← 邮件端口按连接轮询
+                    ↑
+ backend×N ─ IMAP/SMTP/Sieve/内部 MTA 也经 LB；管理 API(8090) 直连
  MySQL   MinIO(共享对象存储：正文 blob)
  TiDB(引擎 KV：队列元数据 / 邮箱索引 / 租约)
 ```
@@ -158,8 +158,12 @@ MAILEZ_ENGINE_REPLICAS=3 docker compose --env-file mailez.env \
    可调，须大于最慢单次投递）。
 3. **FTS 最终一致**：多活档搜索经每节点的 changelog 追踪索引（机制见上），
    新邮件至多一个同步周期（2s）后可搜；副本重建后自动全量重放。
-4. **客户端 IP**：engine-lb 纯 TCP 透传不注入 PROXY 头，引擎记录的是 LB
-   地址；需要真实来源时用云 L4 LB / keepalived + `MAILEZINE_PROXY_PROTOCOL`。
+4. **客户端 IP**：engine-lb 对全部后端连接注入 PROXY protocol v1 头，
+   引擎只接受来自 engine-lb 固定 IP 的 PROXY 连接（`MAILEZINE_PROXY_TRUSTED`
+   锁定，默认 `192.168.206.250/32`）——入站邮件与 IMAP/SMTP 会话记录的都是
+   真实客户端地址，DNSBL、限流、审计按真实来源评分。替换为云 L4 LB /
+   keepalived 时保持同款语义（云 LB 开 PROXY protocol，
+   `MAILEZINE_PROXY_TRUSTED` 收窄到 LB 网段）。
 5. **节点观测**：`GET /health` 返回 `"role":"active"`、`"cluster":"multi"`，
    队列消息带 `owner` 字段可直接定位持有副本；`owner` 还出现在“认领丢失”
    告警日志里。
@@ -204,7 +208,7 @@ MAILEZINE_BACKEND_ADDRESS=backend.example:8080
 # 本机唯一（hostname 即可）：
 MAILEZINE_CLUSTER_NODE_ID=mail-01
 
-# 云 L4 LB / keepalived VIP 前置（保留真实客户端 IP）：
+# 前置 LB 保留真实客户端 IP（LB 须注入 PROXY v1 头，与 engine-lb 同款语义）：
 MAILEZINE_PROXY_PROTOCOL=25,465,587,143,993,110,995,4190
 MAILEZINE_PROXY_TRUSTED=<LB 网段>
 MAILEZINE_CLUSTER_MODE=multi
