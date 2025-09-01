@@ -36,8 +36,11 @@ git for-each-ref --format='%(refname)' refs/stash refs/notes refs/replace \
 # The CE/EE boundary contract (see backend/FEATURES.md): everything
 # enterprise lives under backend/internal/ee, frontend ee/ directories, or
 # a paired *_ee.go file. The export tool itself is private monorepo
-# process tooling and must not appear in its own output, and the private
-# README.md is replaced by README.ce.md (second pass below).
+# process tooling and must not appear in its own output; the release
+# workflow stays private too (the private repo is the single image
+# publisher — a public run would push CE-built *-ee images over the real
+# ones on shared tags); the private README.md is replaced by README.ce.md
+# (second pass below).
 git filter-repo \
   --invert-paths \
   --path backend/internal/ee/ \
@@ -45,6 +48,7 @@ git filter-repo \
   --path frontend/apps/webmail/ee/ \
   --path frontend/apps/admin/ee/ \
   --path scripts/export-ce.sh \
+  --path .github/workflows/release.yml \
   --path README.md \
   --path-glob '*_ee.go' \
   --path-glob '*_ee_test.go'
