@@ -11,6 +11,7 @@ import (
 
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/password"
+	"mailez/backend/internal/webauthn"
 )
 
 // LDAPAuthenticator is the directory integration surface the auth manager
@@ -28,6 +29,9 @@ type Manager struct {
 	SessionTTL  time.Duration
 	TokenTTL    time.Duration
 	LDAP        LDAPAuthenticator
+	// WebAuthn, when wired, enables passwordless passkey sign-in through
+	// /sso/passkey/*. Nil keeps the routes answering 404 (feature off).
+	WebAuthn *webauthn.Service
 
 	secureCookie bool
 	loginWindow  time.Duration

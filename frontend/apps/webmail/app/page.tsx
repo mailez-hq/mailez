@@ -3,16 +3,18 @@
 import { useCallback, useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Globe, LayoutDashboard, Mail, ShieldCheck } from "lucide-react";
+import { Fingerprint, Globe, LayoutDashboard, Mail, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import {
-  ApiError, login, loginTotp, me, serverSettings,
+  ApiError, login, loginTotp, me, passkeyLoginBegin, passkeyLoginFinish,
+  serverSettings,
   type BrandingConfig, type ServerSettings,
 } from "@/lib/api";
+import { getAssertion, passkeySupported } from "@/lib/webauthn";
 import { readLastFolder, readPreferences } from "@/lib/preferences";
 import { prefetchFolders } from "@/lib/folders-cache";
 
@@ -171,6 +173,36 @@ export default function Home({
       prefetchFolders(pendingEmail);
       router.replace(mailboxTarget());
     } catch (err) {
+      setError(loginError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Passkey sign-in: e-mail + authenticator gesture, no password. The
+  // server scopes the assertion to the account's registered credentials.
+  async function onPasskey() {
+    setError("");
+    setBusy(true);
+    try {
+      const email = resolveEmail();
+      if (!email) {
+        setError(t("error"));
+        setBusy(false);
+        return;
+      }
+      const { options } = await passkeyLoginBegin(email);
+      const assertion = await getAssertion(options as Parameters<typeof getAssertion>[0]);
+      await passkeyLoginFinish(email, assertion);
+      prefetchFolders(email);
+      router.replace(mailboxTarget());
+    } catch (err) {
+      // A dismissed authenticator prompt is a cancel, not an error worth
+      // raising into the banner.
+      if (err instanceof DOMException && err.name === "NotAllowedError") {
+        setBusy(false);
+        return;
+      }
       setError(loginError(err));
     } finally {
       setBusy(false);
@@ -346,6 +378,18 @@ export default function Home({
               <Button type="submit" className="w-full" disabled={busy}>
                 {busy ? t("submitting") : t("submit")}
               </Button>
+              {passkeySupported() && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  disabled={busy}
+                  onClick={onPasskey}
+                >
+                  <Fingerprint className="mr-1 size-4" />
+                  {t("passkey")}
+                </Button>
+              )}
               {settings?.oidc?.enabled && (
                 <Button
                   type="button"
