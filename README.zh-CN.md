@@ -120,8 +120,8 @@ MAILEZ_STACK_SECRET=$(openssl rand -hex 32)  # 引擎↔backend 内部 API 鉴�
 MAILEZINE_STACK_SECRET=                      # 必须与上一行同值
 ```
 
-dev 档需要宿主机 `:8080` 上先起后端（镜像只需构建一次：
-`cd backend && go run ./cmd/build-images`，细节见
+dev 档需要宿主机 `:8080` 上先起后端（镜像只需构建一次：仓库根目录
+`docker buildx bake`，细节见
 [`docs/dev-setup.md`](docs/dev-setup.md)）；两个生产档完全容器化，发布端口：
 
 | 端口 | 是什么 |

@@ -140,7 +140,7 @@ the mailezine repo). See
 mechanics and operations runbook.
 
 The dev tier expects the backend on the host at `:8080` (build the images
-once with `cd backend && go run ./cmd/build-images`; details in
+once with `docker buildx bake` from the repo root; details in
 [`docs/dev-setup.md`](docs/dev-setup.md)). Both production editions are fully
 containerized and publish:
 
