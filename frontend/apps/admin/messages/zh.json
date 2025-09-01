@@ -26,7 +26,9 @@
     "verify": "验证",
     "error": "登录失败",
     "sessionExpired": "登录已过期，请重新登录。",
-    "rateLimited": "尝试次数过多，请稍等片刻再试。"
+    "rateLimited": "尝试次数过多，请稍等片刻再试。",
+    "ssoButton": "企业账号统一登录",
+    "ssoError": "企业统一登录失败（{reason}），请重试或联系管理员。"
   },
   "nav": {
     "overview": "概览",
@@ -425,10 +427,13 @@
     "recent": "最近活动",
     "time": "时间",
     "user": "用户",
+    "action": "操作",
+    "target": "对象",
     "method": "方法",
     "path": "路径",
     "status": "状态",
     "ip": "IP",
+    "export": "导出 CSV",
     "noItems": "暂无活动"
   },
   "config": {

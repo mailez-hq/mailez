@@ -20,6 +20,8 @@
     "error": "Login failed",
     "sessionExpired": "Your session has expired. Please sign in again.",
     "rateLimited": "Too many attempts, please wait a moment before trying again.",
+    "ssoButton": "Sign in with enterprise SSO",
+    "ssoError": "Enterprise sign-in failed ({reason}). Please try again or contact your administrator.",
     "mailSettings": "Mail server settings",
     "smtpServer": "SMTP server",
     "pop3Server": "POP3 server",
@@ -781,6 +783,10 @@
     "empty": "This folder is empty",
     "loading": "Loading…",
     "copied": "Copied",
-    "linkCopied": "Share link copied to the clipboard"
+    "linkCopied": "Share link copied to the clipboard",
+    "copyLink": "Copy share link",
+    "revokeShare": "Revoke share",
+    "revokeFailed": "Revoke failed",
+    "shareQuotaReached": "Share link quota reached for this edition (3 links); upgrade to Enterprise for unlimited sharing"
   }
 }

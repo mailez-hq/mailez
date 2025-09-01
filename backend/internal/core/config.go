@@ -85,6 +85,17 @@ type Config struct {
 	// the community and enterprise editions can subscribe to support.
 	ServiceFile string
 	Service     string
+	// OIDC federation (enterprise SSO). When Issuer/ClientID/ClientSecret are
+	// all set, the enterprise build mounts /api/v1/sso/oidc/start + /callback
+	// and the login pages offer the federated sign-in button; the community
+	// build ignores the settings entirely.
+	OIDCIssuer       string
+	OIDCClientID     string
+	OIDCClientSecret string
+	// OIDCRedirectURL is the redirect_uri registered at the identity
+	// provider. When empty it is derived from the public hostname as
+	// https://<hostname>/api/v1/sso/oidc/callback.
+	OIDCRedirectURL string
 }
 
 // SupportedMailEngines are the mail engines the control plane can drive.
@@ -143,9 +154,13 @@ func Load() Config {
 		// Edition mirrors the frontend MAILEZ_EDITION build marker at
 		// runtime: "community"/"ce" tells the backend its no-license
 		// fallback is a community deployment, not a developer checkout.
-		Edition:              env("MAILEZ_EDITION", ""),
-		ServiceFile:          env("MAILEZ_SERVICE_FILE", ""),
-		Service:              env("MAILEZ_SERVICE", ""),
+		Edition:          env("MAILEZ_EDITION", ""),
+		ServiceFile:      env("MAILEZ_SERVICE_FILE", ""),
+		Service:          env("MAILEZ_SERVICE", ""),
+		OIDCIssuer:       env("MAILEZ_OIDC_ISSUER", ""),
+		OIDCClientID:     env("MAILEZ_OIDC_CLIENT_ID", ""),
+		OIDCClientSecret: env("MAILEZ_OIDC_CLIENT_SECRET", ""),
+		OIDCRedirectURL:  env("MAILEZ_OIDC_REDIRECT_URL", ""),
 	}
 	// Distributed deployments opt into TiDB KV + MinIO/S3 blobs by setting
 	// MAILEZINE_STORAGE_BACKEND / MAILEZINE_S3_* explicitly (the enterprise

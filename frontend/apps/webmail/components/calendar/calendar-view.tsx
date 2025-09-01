@@ -209,15 +209,12 @@ export function CalendarView({ initialEvent }: { initialEvent?: CalendarEvent | 
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Calendar sharing is enterprise-only; hide the entry point in
-              the community build so the dialog (and its /calendar/shares
-              probe) never opens against a community backend. */}
-          {!IS_COMMUNITY_BUILD && (
-            <Button variant="outline" size="sm" onClick={() => setShareOpen(true)} title={t("shareCalendar")}>
-              <Share2 className="size-4" />
-              <span className="hidden sm:inline">{t("share")}</span>
-            </Button>
-          )}
+          {/* Calendar sharing is quota-gated per edition (CE: one read-only
+              grant) rather than hidden, so the entry point stays visible. */}
+          <Button variant="outline" size="sm" onClick={() => setShareOpen(true)} title={t("shareCalendar")}>
+            <Share2 className="size-4" />
+            <span className="hidden sm:inline">{t("share")}</span>
+          </Button>
           <Button size="sm" onClick={() => openNew(new Date())}>
             <Plus className="size-4" />
             {t("newEvent")}

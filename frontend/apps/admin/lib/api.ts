@@ -103,6 +103,15 @@ export function dashboardTarget(): string {
   return "/overview";
 }
 
+// Public /server/settings shape. The admin sign-in page only consults the
+// OIDC advertisement (enterprise-only) to decide whether to render the
+// federated sign-in button.
+export type ServerSettings = {
+  oidc?: { enabled: boolean };
+};
+
+export const serverSettings = () => api<ServerSettings>("/server/settings");
+
 export const apiPost = <T,>(path: string, body: unknown) =>
   api<T>(path, { method: "POST", body: JSON.stringify(body) });
 

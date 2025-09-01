@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
+  ApiError,
   calendarFeed, calendarShareCreate, calendarShareDelete, calendarShares,
   type CalendarShare,
 } from "@/lib/api";
@@ -65,7 +66,13 @@ export function ShareDialog({
       setEmail("");
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "share failed");
+      // The community edition allows one read-only grant; translate the
+      // backend's quota rejection into friendly copy.
+      setError(
+        e instanceof ApiError && e.code === "quota_exceeded"
+          ? t("quotaReached")
+          : e instanceof Error ? e.message : "share failed",
+      );
     } finally {
       setBusy(false);
     }
