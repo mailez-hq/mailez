@@ -175,6 +175,13 @@ MAILEZ_ENGINE_REPLICAS=3 docker compose --env-file mailez.env \
      （多写者争用同一账户热键的信号，见下条决策）。
 7. **跨机部署**：每台主机跑一个 mailezine 指向同一 TiDB/MinIO/控制面，
    MX 指向 L4 LB 即可；无任何节点间专线要求（协调全部经共享存储事务）。
+8. **客户端明文登录（实测）**：multi 档引擎带证书后 IMAP 143 拒绝明文
+   LOGIN（`NO [PRIVACYREQUIRED] TLS is required`）——客户端须改用 993/
+   995 隐式 TLS 或 STARTTLS。隐式 TLS 端口（465/993/995）依赖
+   `deploy/certs/cert.pem + key.pem`，缺文件时引擎不监听这三个端口，
+   engine-lb 对应后端会 DOWN。engine-lb 日志中 `node12…No IP for
+   server` 一类 WARNING 是 server-template 预留槽位（副本数未占满 16）
+   的预期噪音，扩容后自动纳管。
 
 ### 按账户写 pin（account gate）
 

@@ -100,7 +100,12 @@ services:
       - "127.0.0.1:29001:9001"
 
   backend:
-    build: ../backend
+    build:
+      context: ../backend
+      # The backend image must carry the enterprise build (mailez_ee tag);
+      # the community tier keeps the CE default from backend/Dockerfile.
+      args:
+        MAILEZ_EDITION: ee
     restart: always
     env_file: mailez.env
     environment:
