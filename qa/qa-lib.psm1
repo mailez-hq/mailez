@@ -1,5 +1,7 @@
-# qa-lib.psm1 — shared helpers for mailez functional QA (PS 5.1)
-$script:Base = "http://localhost:8080/api/v1"
+﻿# qa-lib.psm1 — shared helpers for mailez functional QA (PS 5.1)
+# Base URL: override with $env:QA_BASE (e.g. the compose stack's
+# http://127.0.0.1:8081/api/v1); defaults to the dev-run 8080.
+$script:Base = if ($env:QA_BASE) { $env:QA_BASE } else { "http://localhost:8080/api/v1" }
 $script:Results = New-Object System.Collections.Generic.List[string]
 
 function New-Session {

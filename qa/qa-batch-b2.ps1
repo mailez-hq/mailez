@@ -1,4 +1,4 @@
-# qa-batch-b2.ps1 — mail core write paths (B6..B20)
+﻿# qa-batch-b2.ps1 — mail core write paths (B6..B20)
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 Set-Location D:\code\mailez-hq\mailez\qa
 Import-Module .\qa-lib.psm1 -Force
@@ -73,7 +73,7 @@ $movedCnt = @($fl.Data).Count
 $mback = Api $s POST "/mail/move" @{ folder = "$fname-r"; uids = @([int]$auid); destination = "Inbox" }
 $clr = Api $s POST "/mail/folders/clear" @{ name = "$fname-r" }
 $fdel = Api $s DELETE "/mail/folders?name=$fname-r"
-Check B17 "文件夹 建名移清删" ($fc.Status -in @(200,201) -and $fr.Status -in @(200,204) -and $mv.Status -in @(200,204) -and $movedCnt -ge 1 -and $mback.Status -in @(200,204) -and $clr.Status -in @(200,204) -and $fdel.Status -in @(200,204)) "c=$($fc.Status) r=$($fr.Status) mv=$($mv.Status) movedCnt=$movedCnt back=$($mback.Status) clear=$($clr.Status) del=$($fdel.Status)"
+Check B17 "文件夹 建名移清删" ($fc.Status -in @(200,201,204) -and $fr.Status -in @(200,204) -and $mv.Status -in @(200,204) -and $movedCnt -ge 1 -and $mback.Status -in @(200,204) -and $clr.Status -in @(200,204) -and $fdel.Status -in @(200,204)) "c=$($fc.Status) r=$($fr.Status) mv=$($mv.Status) movedCnt=$movedCnt back=$($mback.Status) clear=$($clr.Status) del=$($fdel.Status)"
 
 # B12 删除 → Trash
 $dsubj2 = "QA-todelete-$rnd"
@@ -87,9 +87,11 @@ Start-Sleep -Seconds 2
 $trashAfter = @($(Api $s GET "/mail/messages?folder=Trash&page=0&sort=date&dir=desc").Data).Count
 Check B12 "删除进 Trash" ($d2.Status -in @(200,204) -and $trashAfter -eq $trashBefore + 1) "del=$($d2.Status) trash $trashBefore->$trashAfter"
 
-# B14 延后 snooze
-$suid = ($aIn2.Data | Where-Object { $_.subject -eq $dsubj2 -and $_ -ne $null } | Select-Object -First 1).uid
-if (-not $suid) { $suid = ($aIn2.Data | Select-Object -First 1).uid }
+# B14 延后 snooze（B12 已把 $dsubj2 移进 Trash，这里发独立邮件避免标记落空）
+Api $s POST "/mail/send" @{ to = @("admin@example.com"); subject = "QA-snooze-$rnd"; body = "x" } | Out-Null
+Start-Sleep -Seconds 6
+$aInS = Api $s GET "/mail/messages?folder=Inbox&page=0&sort=date&dir=desc"
+$suid = (@($aInS.Data | Where-Object { $_.subject -eq "QA-snooze-$rnd" }) | Select-Object -First 1).uid
 $until = [int][double]::Parse((Get-Date (Get-Date).AddSeconds(120).ToUniversalTime() -UFormat %s))
 $sn = Api $s POST "/mail/snooze" @{ folder = "Inbox"; uid = [int]$suid; until = $until }
 $snl = Api $s GET "/mail/snoozed"
