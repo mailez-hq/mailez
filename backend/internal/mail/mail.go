@@ -474,6 +474,93 @@ func senderKey(m Message) string {
 // listAllSorted fetches every message of the folder, sorts by the requested
 // field and returns the requested page.
 func (c *Client) listAllSorted(cli *pooledConn, folder string, total uint32, page int, sortBy, dir string) ([]Message, int, error) {
+	// Preferred path: the engine's server-side SORT (RFC 5256) returns the
+	// ordered UID list, and only the requested page is fetched with its
+	// headers/bodystructure. Sorting a 10k-message folder costs one SORT
+	// instead of a full ENVELOPE+BODYSTRUCTURE+SIZE snapshot.
+	if key, ok := imapSortKey(sortBy); ok {
+		spec := string(key)
+		if dir == "desc" {
+			spec = "REVERSE " + spec
+		}
+		if uids, err := c.uidSort(cli, "("+spec+")"); err == nil {
+			return c.fetchSortedPage(cli, uids, page)
+		}
+		// Third-party servers without SORT (or a transient failure): fall
+		// through to the full-snapshot path below.
+	}
+	return c.listAllSortedFull(cli, folder, total, page, sortBy, dir)
+}
+
+// sortKey is one RFC 5256 SORT program key (v1 client ships no constants).
+type sortKey string
+
+const (
+	sortKeyFrom    sortKey = "FROM"
+	sortKeySubject sortKey = "SUBJECT"
+	sortKeySize    sortKey = "SIZE"
+)
+
+// imapSortKey maps the API sort field onto its RFC 5256 SORT key. "date"
+// never reaches here — it keeps the dedicated sequence-window paths.
+func imapSortKey(sortBy string) (sortKey, bool) {
+	switch sortBy {
+	case "from":
+		return sortKeyFrom, true
+	case "subject":
+		return sortKeySubject, true
+	case "size":
+		return sortKeySize, true
+	}
+	return "", false
+}
+
+// fetchSortedPage fetches exactly the page's UIDs of a server-sorted list,
+// preserving the SORT order in the response.
+func (c *Client) fetchSortedPage(cli *pooledConn, uids []uint32, page int) ([]Message, int, error) {
+	total := len(uids)
+	start := page * PageSize
+	if start >= total {
+		return []Message{}, total, nil
+	}
+	end := start + PageSize
+	if end > total {
+		end = total
+	}
+	pageUIDs := uids[start:end]
+
+	uidset := new(imap.SeqSet)
+	for _, u := range pageUIDs {
+		uidset.AddNum(u)
+	}
+	headerSection := &imap.BodySectionName{Peek: true, BodyPartName: imap.BodyPartName{Specifier: imap.HeaderSpecifier}}
+	messages := make(chan *imap.Message, 10)
+	done := make(chan error, 1)
+	go func() {
+		done <- cli.UidFetch(uidset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure, imap.FetchRFC822Size, headerSection.FetchItem()}, messages)
+	}()
+	byUID := make(map[uint32]Message, len(pageUIDs))
+	for msg := range messages {
+		m := envelopeToMessage(msg)
+		m.Category = classifyFetched(msg, headerSection)
+		byUID[msg.Uid] = m
+	}
+	if err := <-done; err != nil {
+		return nil, 0, fmt.Errorf("imap fetch: %w", err)
+	}
+	out := make([]Message, 0, len(pageUIDs))
+	for _, u := range pageUIDs {
+		if m, ok := byUID[u]; ok {
+			out = append(out, m)
+		}
+	}
+	return out, total, nil
+}
+
+// listAllSortedFull is the legacy fallback for servers without SORT: fetch
+// envelope+flags+size+headers for the whole folder, sort in Go, slice the
+// page so pagination stays correct across the ordering.
+func (c *Client) listAllSortedFull(cli *pooledConn, folder string, total uint32, page int, sortBy, dir string) ([]Message, int, error) {
 	seqset := new(imap.SeqSet)
 	seqset.AddRange(1, total)
 	headerSection := &imap.BodySectionName{Peek: true, BodyPartName: imap.BodyPartName{Specifier: imap.HeaderSpecifier}}
