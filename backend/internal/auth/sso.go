@@ -16,6 +16,7 @@ func (m *Manager) RegisterSSO(r fiber.Router) {
 	r.Post("/sso/login/totp", m.ssoLoginTotp)
 	r.Post("/sso/logout", m.ssoLogout)
 	r.Get("/sso/me", m.ssoMe)
+	m.RegisterPasskey(r)
 }
 
 type loginRequest struct {

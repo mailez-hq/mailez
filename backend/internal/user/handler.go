@@ -26,6 +26,7 @@ func RegisterPublic(r fiber.Router, app *core.App) {
 func (h *Handler) Register(r fiber.Router) {
 	h.registerMe(r)
 	h.registerTotp(r)
+	h.registerWebauthn(r)
 	h.registerPGP(r)
 	h.registerSmime(r)
 	h.registerTokens(r)

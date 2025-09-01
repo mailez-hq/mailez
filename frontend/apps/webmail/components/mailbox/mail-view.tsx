@@ -71,6 +71,7 @@ export function MailView() {
     knownLabels,
     labelColors,
     folder,
+    spamFolder,
     setSidebarOpen,
     moveSelectedTo,
     openMessage,
@@ -140,6 +141,7 @@ export function MailView() {
     backToList,
     moveDetailTo,
     reportNotSpam,
+    reportNotSpamBulk,
     toggleLabel,
     thread,
     threadOpen,
@@ -198,6 +200,8 @@ export function MailView() {
           onBulkArchive={bulkArchive}
           onBulkSpam={bulkSpam}
           onBulkFlag={bulkFlag}
+          spamFolder={spamFolder}
+          onBulkRelease={() => reportNotSpamBulk([...selectedUids])}
           onBulkLabel={bulkLabel}
           labels={knownLabels}
           onMarkAllRead={() => markAllRead(folder)}

@@ -215,6 +215,46 @@ export async function loginTotp(pendingToken: string, code: string) {
   });
 }
 
+// ---- passkeys (WebAuthn): passwordless sign-in + credential management ----
+
+export async function passkeyLoginBegin(email: string) {
+  return api<{ options: unknown }>("/sso/passkey/login/begin", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function passkeyLoginFinish(email: string, assertion: unknown) {
+  return api<{ email: string }>("/sso/passkey/login/finish", {
+    method: "POST",
+    body: JSON.stringify({ email, ...(assertion as Record<string, unknown>) }),
+  });
+}
+
+export interface WebauthnCredentialInfo {
+  id: number;
+  name: string;
+  credential_id: string;
+  transports: string;
+  last_used_at?: string;
+  created_at: string;
+}
+
+export const webauthnList = () =>
+  api<{ credentials: WebauthnCredentialInfo[] }>("/me/webauthn");
+
+export const webauthnRegisterBegin = () =>
+  apiPost<{ options: unknown }>("/me/webauthn/register/begin", {});
+
+export const webauthnRegisterFinish = (name: string, credential: unknown) =>
+  apiPost<{ id: number; name: string }>("/me/webauthn/register/finish", {
+    name,
+    ...(credential as Record<string, unknown>),
+  });
+
+export const webauthnDelete = (id: number) =>
+  api<void>(`/me/webauthn/${id}`, { method: "DELETE" });
+
 export async function logout() {
   return api("/sso/logout", { method: "POST" });
 }

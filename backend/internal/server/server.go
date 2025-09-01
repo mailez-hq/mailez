@@ -45,6 +45,7 @@ import (
 	"mailez/backend/internal/stack"
 	"mailez/backend/internal/uploads"
 	"mailez/backend/internal/user"
+	"mailez/backend/internal/webauthn"
 )
 
 // weakSecrets are known placeholder values that must never reach production;
@@ -141,6 +142,14 @@ func New(cfg core.Config) *Server {
 	s := &Server{App: app, DB: db, Redis: rdb, Cfg: cfg, bgCtx: bgCtx, bgCancel: bgCancel}
 	s.events = push.NewHub()
 	s.Auth = auth.NewManager(db, newStore(rdb, cfg.Env), "mailez_session", time.Duration(cfg.SessionLifetime)*time.Second)
+	// Passkey (WebAuthn) sign-in: enabled whenever the relying-party config
+	// resolves; a misconfiguration logs and keeps the feature off rather
+	// than blocking startup.
+	if waSvc, waErr := webauthn.New(db, s.Auth.Store, cfg.WebAuthnRPID, "Mailez", cfg.WebAuthnOrigins); waErr == nil {
+		s.Auth.WebAuthn = waSvc
+	} else {
+		log.Printf("passkey sign-in disabled: %v", waErr)
+	}
 	s.Auth.SetCookieSecure(cfg.CookieSecure)
 	s.Auth.SetLoginLimits(cfg.LoginRateLimit, cfg.LoginFailLimit)
 	// Security alert on login from a new IP/device: mail the account owner.
