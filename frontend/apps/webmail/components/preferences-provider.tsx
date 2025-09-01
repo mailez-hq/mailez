@@ -53,7 +53,9 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   // Current prefs for event handlers registered once on mount (the media
   // listener must not capture stale state).
   const prefsRef = useRef(prefs);
-  prefsRef.current = prefs;
+  useEffect(() => {
+    prefsRef.current = prefs;
+  }, [prefs]);
 
   useEffect(() => {
     const initial = readPreferences();
