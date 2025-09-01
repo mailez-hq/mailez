@@ -82,6 +82,10 @@ export type MailInvitation = {
   all_day: boolean;
   organizer: string;
   attendees: string[];
+  // METHOD:REPLY only: who answered and their PARTSTAT
+  // (accepted / declined / tentative).
+  reply_attendee?: string;
+  reply_status?: string;
   ics: string;
 };
 

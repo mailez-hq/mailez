@@ -53,6 +53,19 @@ const requestICS = "BEGIN:VCALENDAR\r\n" +
 	"END:VEVENT\r\n" +
 	"END:VCALENDAR\r\n"
 
+const cancelICS = "BEGIN:VCALENDAR\r\n" +
+	"VERSION:2.0\r\n" +
+	"PRODID:-//Test//Test//EN\r\n" +
+	"METHOD:CANCEL\r\n" +
+	"BEGIN:VEVENT\r\n" +
+	"UID:meet-123@example.com\r\n" +
+	"DTSTAMP:20260827T000000Z\r\n" +
+	"ORGANIZER:mailto:boss@example.com\r\n" +
+	"ATTENDEE:mailto:alice@example.com\r\n" +
+	"STATUS:CANCELLED\r\n" +
+	"END:VEVENT\r\n" +
+	"END:VCALENDAR\r\n"
+
 func newTestInvite(t *testing.T) (*Service, *fakeGateway, *fiber.App) {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "invite.db")), &gorm.Config{
@@ -143,6 +156,57 @@ func TestRespondDeclineRemovesEvent(t *testing.T) {
 	s.DB.Model(&models.CalendarEvent{}).Where("user_email = ? AND uid = ?", "alice@example.com", "meet-123@example.com").Count(&count)
 	if count != 0 {
 		t.Errorf("declined event still present")
+	}
+}
+
+func TestRespondCancelRemovesEvent(t *testing.T) {
+	s, fake, f := newTestInvite(t)
+	if err := s.DB.Create(&models.CalendarEvent{
+		UserEmail: "alice@example.com", UID: "meet-123@example.com", Summary: "季度评审", ICS: requestICS,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	resp := postJSON(t, f, "/api/v1/invites/respond", map[string]string{
+		"ics": cancelICS, "action": "cancel",
+	})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", resp.StatusCode)
+	}
+	// A CANCEL is not answered: no mail goes out, the event is gone.
+	if fake.sentTo != nil {
+		t.Errorf("cancel must not send a reply, sent to %v", fake.sentTo)
+	}
+	var count int64
+	s.DB.Model(&models.CalendarEvent{}).Where("user_email = ? AND uid = ?", "alice@example.com", "meet-123@example.com").Count(&count)
+	if count != 0 {
+		t.Errorf("cancelled event still present")
+	}
+}
+
+func TestRespondCancelByMethod(t *testing.T) {
+	s, fake, f := newTestInvite(t)
+	if err := s.DB.Create(&models.CalendarEvent{
+		UserEmail: "alice@example.com", UID: "meet-123@example.com", Summary: "季度评审", ICS: requestICS,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	// A real CANCEL notice arrives as METHOD:CANCEL; the reader sends the
+	// raw ICS regardless of the guessed action.
+	resp := postJSON(t, f, "/api/v1/invites/respond", map[string]string{
+		"ics": cancelICS, "action": "accept",
+	})
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", resp.StatusCode)
+	}
+	if fake.sentTo != nil {
+		t.Errorf("cancel by method must not send a reply, sent to %v", fake.sentTo)
+	}
+	var count int64
+	s.DB.Model(&models.CalendarEvent{}).Where("user_email = ? AND uid = ?", "alice@example.com", "meet-123@example.com").Count(&count)
+	if count != 0 {
+		t.Errorf("cancelled event still present")
 	}
 }
 

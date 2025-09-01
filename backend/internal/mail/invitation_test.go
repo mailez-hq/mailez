@@ -55,6 +55,60 @@ func TestParseInvitationGarbage(t *testing.T) {
 	}
 }
 
+const replyICS = "BEGIN:VCALENDAR\r\n" +
+	"VERSION:2.0\r\n" +
+	"PRODID:-//Test//Test//EN\r\n" +
+	"METHOD:REPLY\r\n" +
+	"BEGIN:VEVENT\r\n" +
+	"UID:meet-123@example.com\r\n" +
+	"DTSTAMP:20260827T000000Z\r\n" +
+	"ORGANIZER:mailto:boss@example.com\r\n" +
+	"ATTENDEE;PARTSTAT=ACCEPTED:mailto:alice@example.com\r\n" +
+	"END:VEVENT\r\n" +
+	"END:VCALENDAR\r\n"
+
+const cancelICS = "BEGIN:VCALENDAR\r\n" +
+	"VERSION:2.0\r\n" +
+	"PRODID:-//Test//Test//EN\r\n" +
+	"METHOD:CANCEL\r\n" +
+	"BEGIN:VEVENT\r\n" +
+	"UID:meet-123@example.com\r\n" +
+	"DTSTAMP:20260827T000000Z\r\n" +
+	"ORGANIZER:mailto:boss@example.com\r\n" +
+	"ATTENDEE:mailto:alice@example.com\r\n" +
+	"STATUS:CANCELLED\r\n" +
+	"END:VEVENT\r\n" +
+	"END:VCALENDAR\r\n"
+
+func TestParseInvitationReplyPartstat(t *testing.T) {
+	inv := ParseInvitation([]byte(replyICS))
+	if inv == nil {
+		t.Fatal("parse returned nil")
+	}
+	if inv.Method != "REPLY" {
+		t.Fatalf("method = %q", inv.Method)
+	}
+	if inv.ReplyAttendee != "alice@example.com" {
+		t.Errorf("reply attendee = %q", inv.ReplyAttendee)
+	}
+	if inv.ReplyStatus != "accepted" {
+		t.Errorf("reply status = %q", inv.ReplyStatus)
+	}
+}
+
+func TestParseInvitationCancel(t *testing.T) {
+	inv := ParseInvitation([]byte(cancelICS))
+	if inv == nil {
+		t.Fatal("parse returned nil")
+	}
+	if inv.Method != "CANCEL" || inv.UID != "meet-123@example.com" {
+		t.Fatalf("invitation = %+v", inv)
+	}
+	if inv.ReplyStatus != "" {
+		t.Errorf("cancel must not carry a partstat: %q", inv.ReplyStatus)
+	}
+}
+
 func TestExtractBodyDetectsCalendarPart(t *testing.T) {
 	raw := "From: boss@example.com\r\n" +
 		"To: alice@example.com\r\n" +

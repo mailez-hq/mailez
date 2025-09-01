@@ -29,7 +29,9 @@ func (s *Service) Register(r fiber.Router) {
 }
 
 // respond answers a received meeting invitation: builds an iTIP REPLY, sends
-// it to the organizer, and syncs the event into the user's calendar.
+// it to the organizer, and syncs the event into the user's calendar. An
+// iTIP CANCEL (or action "cancel") instead removes the meeting from the
+// calendar and answers nobody.
 // @Summary Respond to a meeting invitation
 // @Tags invite
 // @Accept json
@@ -39,18 +41,26 @@ func (s *Service) respond(c *fiber.Ctx) error {
 	user := core.CurrentUser(c)
 	var body struct {
 		ICS    string `json:"ics"`
-		Action string `json:"action"` // accept | decline | tentative
+		Action string `json:"action"` // accept | decline | tentative | cancel
 	}
 	if err := c.BodyParser(&body); err != nil {
 		return core.Fail(c, 400, err, "bad request")
 	}
-	kind := RespondKind(strings.ToLower(strings.TrimSpace(body.Action)))
-	if kind != Accept && kind != Decline && kind != Tentative {
-		return core.Fail(c, 400, nil, "action must be accept, decline or tentative")
-	}
 	inv := mail.ParseInvitation([]byte(body.ICS))
 	if inv == nil || inv.Organizer == "" {
 		return core.Fail(c, 400, nil, "not a valid meeting invitation")
+	}
+	// iTIP CANCEL: the organizer called the meeting off. Sync the local
+	// calendar (the organizer is already informed by their own CANCEL
+	// broadcast, so no REPLY is sent).
+	if strings.EqualFold(inv.Method, "CANCEL") || strings.EqualFold(strings.TrimSpace(body.Action), "cancel") {
+		s.DB.Where("user_email = ? AND uid = ?", user.Email, inv.UID).
+			Delete(&models.CalendarEvent{})
+		return c.JSON(fiber.Map{"ok": true, "removed": true})
+	}
+	kind := RespondKind(strings.ToLower(strings.TrimSpace(body.Action)))
+	if kind != Accept && kind != Decline && kind != Tentative {
+		return core.Fail(c, 400, nil, "action must be accept, decline, tentative or cancel")
 	}
 	replyICS, err := BuildReplyICS(inv, user.Email, kind)
 	if err != nil {

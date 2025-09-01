@@ -773,8 +773,8 @@ export const driveEmptyTrash = () =>
 
 // Meeting invitations (iTIP): respond to a received REQUEST or send a new
 // one to attendees.
-export const inviteRespond = (ics: string, action: "accept" | "decline" | "tentative") =>
-  apiPost<{ ok: boolean }>("/invites/respond", { ics, action });
+export const inviteRespond = (ics: string, action: "accept" | "decline" | "tentative" | "cancel") =>
+  apiPost<{ ok: boolean; removed?: boolean }>("/invites/respond", { ics, action });
 
 export const inviteSend = (input: {
   to: string[];
