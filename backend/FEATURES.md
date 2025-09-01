@@ -58,7 +58,8 @@ Rules (same contract as the mailezine engine):
   placeholder instead of the feature.
 - The public CE tree is generated from the private monorepo by an export
   tool that lives outside the CE tree; it strips `backend/internal/ee/`,
-  `frontend/apps/*/ee/`, `*_ee.go`, `*_ee_test.go`, ships `README.ce.md`
+  `backend/cmd/eas-e2e/` (the EE-only EAS test driver), `frontend/apps/*/ee/`,
+  `*_ee.go`, `*_ee_test.go`, ships `README.ce.md`
   as `README.md` instead of the private README, and must build and test
   standalone.
 - `cmd/mailez-agent` and `internal/{agent,macro}` are shared
