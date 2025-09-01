@@ -28,15 +28,22 @@ images:
 	cd backend && go run ./cmd/build-images
 
 ## check-ce-purity: the community (no-tag) backend dependency graph must
-## never reach backend/internal/ee.
+## never reach backend/internal/ee, and every EE-tagged file must match
+## the export strip contract (internal/ee/ or *_ee.go / *_ee_test.go).
 check-ce-purity:
 	cd backend && deps=$$(go list -deps ./... 2>/dev/null | grep -c 'mailez/backend/internal/ee'); \
 	if [ "$$deps" != "0" ]; then \
 		echo "CE build reaches backend/internal/ee ($$deps packages) — forbidden"; \
 		go list -deps ./... | grep 'mailez/backend/internal/ee'; \
 		exit 1; \
-	fi
-	@echo "ce-purity: ok"
+	fi; \
+	bad=$$(grep -rlE '^//go:build mailez_ee' --include='*.go' --exclude-dir=.git . | grep -vE '/internal/ee/' | grep -vE '_ee\.go$$|_ee_test\.go$$'); \
+	if [ -n "$$bad" ]; then \
+		echo "EE-tagged files outside the export strip contract (rename with an _ee suffix):"; \
+		echo "$$bad"; \
+		exit 1; \
+	fi; \
+	echo "ce-purity: ok"
 
 fmt-backend:
 	cd backend && gofmt -w .
