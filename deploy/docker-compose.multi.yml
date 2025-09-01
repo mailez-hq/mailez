@@ -17,9 +17,11 @@
 # 用法：
 #   cd deploy
 #   docker compose --env-file mailez.env \
-#     -f docker-compose.enterprise.yml -f docker-compose.multi.yml up -d --build
+#     -f docker-compose.enterprise.yml -f docker-compose.multi.yml up -d
 #   # 或经统一入口（等价）：
 #   ./mailezctl.sh up multi
+#   # 本地源码构建：叠加 docker-compose.build.multi.yml 后 up -d --build
+#   MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up multi
 #   # 副本数（默认 2，上限 16 = engine-lb 的 haproxy 槽位）：
 #   MAILEZ_ENGINE_REPLICAS=3 ./mailezctl.sh up multi
 #
@@ -97,9 +99,7 @@ services:
 
   # 邮件端口负载均衡：TCP 透传 + PROXY v1 注入 + DNS 副本展开 + 健康检查。
   engine-lb:
-    image: mailez/engine-lb:${MAILEZ_IMAGE_TAG:-local}
-    build:
-      context: ./images/engine-lb
+    image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-engine-lb:${MAILEZ_IMAGE_TAG:-latest}
     pull_policy: missing
     restart: always
     depends_on:

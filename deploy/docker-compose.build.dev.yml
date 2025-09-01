@@ -1,0 +1,28 @@
+# Build overlay for the dev profile: adds build instructions so the dev
+# stack builds the engine and infra images from source instead of pulling
+# prebuilt ones. Always applied by mailezctl.sh for the dev target
+# (or: docker compose -f docker-compose.dev.yml
+#      -f docker-compose.build.dev.yml up -d --build).
+# Never shipped in release tarballs — pull-only deployments don't need it.
+
+services:
+
+  mailezine:
+    build:
+      # Relative to deploy/: the sibling mailezine checkout. Override with
+      # MAILEZINE_CONTEXT where the layout differs (CI sets ../mailezine).
+      context: ${MAILEZINE_CONTEXT:-../../mailezine}
+      dockerfile: Dockerfile
+      args:
+        MAILEZ_EDITION: ce
+        VERSION: ${MAILEZ_IMAGE_TAG:-local}
+
+  mail-filter:
+    build:
+      context: ..
+      dockerfile: deploy/images/mail-filter/Dockerfile
+
+  resolver:
+    build:
+      context: ..
+      dockerfile: deploy/images/resolver/Dockerfile

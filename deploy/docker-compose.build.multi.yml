@@ -1,0 +1,68 @@
+# Build overlay for the multi-active profile: the full enterprise build set
+# plus engine-lb, so
+#   MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up multi
+# (or: docker compose --env-file mailez.env -f docker-compose.enterprise.yml
+#      -f docker-compose.multi.yml -f docker-compose.build.multi.yml
+#      up -d --build)
+# builds every image from source instead of pulling prebuilt ones.
+# Self-contained (not stacked on docker-compose.build.enterprise.yml) so the
+# overlay alone is sufficient for the multi profile.
+# Never shipped in release tarballs — pull-only deployments don't need it.
+
+services:
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: backend/Dockerfile
+      args:
+        MAILEZ_EDITION: ee
+
+  frontend-admin:
+    build:
+      context: ../frontend
+      dockerfile: apps/admin/Dockerfile
+      args:
+        MAILEZ_EDITION: ee
+
+  frontend-webmail:
+    build:
+      context: ../frontend
+      dockerfile: apps/webmail/Dockerfile
+      args:
+        MAILEZ_EDITION: ee
+
+  gateway:
+    build:
+      context: ..
+      dockerfile: deploy/images/gateway/Dockerfile
+
+  mailezine:
+    build:
+      # Relative to deploy/: the sibling mailezine checkout. Override with
+      # MAILEZINE_CONTEXT where the layout differs (CI sets ../mailezine).
+      context: ${MAILEZINE_CONTEXT:-../../mailezine}
+      dockerfile: Dockerfile
+      args:
+        MAILEZ_EDITION: ee
+        VERSION: ${MAILEZ_IMAGE_TAG:-local}
+
+  mail-filter:
+    build:
+      context: ..
+      dockerfile: deploy/images/mail-filter/Dockerfile
+
+  macro-scanner:
+    build:
+      context: ..
+      dockerfile: deploy/images/macro-scanner/Dockerfile
+
+  resolver:
+    build:
+      context: ..
+      dockerfile: deploy/images/resolver/Dockerfile
+
+  engine-lb:
+    build:
+      context: ./images/engine-lb
+      dockerfile: Dockerfile

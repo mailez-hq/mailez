@@ -5,11 +5,15 @@
 # mailezine 引擎 + redis/mysql/tidb/minio/rspamd/unbound/macro-scanner。
 # 企业版 = 分布式存储与 HA（社区版见 docker-compose.community.yml，同引擎单节点）。
 #
-# 用法：
+# 用法（镜像预构建发布，默认拉取）：
 #   cd deploy
 #   cp mailez.env.example mailez.env   # 并设置 MAILEZ_SECRET_KEY / MAILEZ_STACK_SECRET
-#   docker compose --env-file mailez.env -f docker-compose.enterprise.yml up -d --build
-#   docker compose --env-file mailez.env -f docker-compose.enterprise.yml ps / logs / down
+#   ./mailezctl.sh up enterprise       # = docker compose --env-file mailez.env -f docker-compose.enterprise.yml up -d
+#   ./mailezctl.sh ps enterprise / logs enterprise backend / down enterprise
+#
+# 本地源码构建（叠加 docker-compose.build.enterprise.yml 后 up -d --build）：
+#   MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up enterprise
+#   MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up multi   # multi/ha 档见对应文件
 #
 # 注意 --env-file mailez.env：compose 的 ${VAR:?} 插值只读 shell 环境与
 # --env-file 指定的文件，不读服务的 env_file，缺了它 stack secret 会直接
@@ -100,12 +104,7 @@ services:
       - "127.0.0.1:29001:9001"
 
   backend:
-    build:
-      context: ../backend
-      # The backend image must carry the enterprise build (mailez_ee tag);
-      # the community tier keeps the CE default from backend/Dockerfile.
-      args:
-        MAILEZ_EDITION: ee
+    image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-backend-ee:${MAILEZ_IMAGE_TAG:-latest}
     restart: always
     env_file: mailez.env
     environment:
@@ -169,13 +168,7 @@ services:
         condition: service_healthy
 
   frontend-admin:
-    build:
-      context: ../frontend
-      dockerfile: apps/admin/Dockerfile
-      # Edition is baked at build time (Dockerfile ARG default is ce);
-      # the enterprise stack must ship enterprise frontends.
-      args:
-        MAILEZ_EDITION: ee
+    image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-admin-ee:${MAILEZ_IMAGE_TAG:-latest}
     restart: always
     environment:
       - API_TARGET=http://backend:8080
@@ -186,11 +179,7 @@ services:
       - backend
 
   frontend-webmail:
-    build:
-      context: ../frontend
-      dockerfile: apps/webmail/Dockerfile
-      args:
-        MAILEZ_EDITION: ee
+    image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-webmail-ee:${MAILEZ_IMAGE_TAG:-latest}
     restart: always
     environment:
       - API_TARGET=http://backend:8080
@@ -203,10 +192,7 @@ services:
   # mailezine 模式 gateway：同一 nginx 镜像，MAILEZ_ENGINE=mailezine 时
   # agent 渲染 HTTP-only 配置（自动证书走内置 lego）；邮件端口由引擎直发。
   gateway:
-    image: mailez/nginx:${MAILEZ_IMAGE_TAG:-local}
-    build:
-      context: ..
-      dockerfile: deploy/images/gateway/Dockerfile
+    image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-nginx:${MAILEZ_IMAGE_TAG:-latest}
     pull_policy: missing
     restart: always
     env_file: mailez.env
@@ -222,12 +208,7 @@ services:
       - backend
 
   mailezine:
-    image: mailez/mailezine:${MAILEZ_IMAGE_TAG:-local}
-    build:
-      context: ../../mailezine
-      dockerfile: Dockerfile
-      args:
-        MAILEZ_EDITION: ee
+    image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-mailezine-ee:${MAILEZINE_IMAGE_TAG:-${MAILEZ_IMAGE_TAG:-latest}}
     pull_policy: missing
     restart: always
     # mailez.env 同时供给 backend 与引擎:MAILEZINE_STACK_SECRET 必须与
@@ -310,10 +291,7 @@ services:
         condition: service_healthy
 
   mail-filter:
-    image: mailez/rspamd:${MAILEZ_IMAGE_TAG:-local}
-    build:
-      context: ..
-      dockerfile: deploy/images/mail-filter/Dockerfile
+    image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-rspamd:${MAILEZ_IMAGE_TAG:-latest}
     pull_policy: missing
     restart: always
     env_file: mailez.env
@@ -331,10 +309,7 @@ services:
       - backend
 
   macro-scanner:
-    image: mailez/macro-scanner:${MAILEZ_IMAGE_TAG:-local}
-    build:
-      context: ..
-      dockerfile: deploy/images/macro-scanner/Dockerfile
+    image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-macro-scanner:${MAILEZ_IMAGE_TAG:-latest}
     pull_policy: missing
     hostname: macro-scanner
     restart: always
@@ -342,10 +317,7 @@ services:
       - no-egress
 
   resolver:
-    image: mailez/unbound:${MAILEZ_IMAGE_TAG:-local}
-    build:
-      context: ..
-      dockerfile: deploy/images/resolver/Dockerfile
+    image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-unbound:${MAILEZ_IMAGE_TAG:-latest}
     pull_policy: missing
     restart: always
     env_file: mailez.env
