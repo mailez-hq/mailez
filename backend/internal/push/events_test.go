@@ -181,3 +181,105 @@ var errStat = &fakeStatError{}
 type fakeStatError struct{}
 
 func (*fakeStatError) Error() string { return "imap stat failed" }
+
+// fakeIdleWatcher records IdleWatch starts; each round blocks until stop
+// closes, mirroring the real client so tests can observe the lifecycle.
+type fakeIdleWatcher struct {
+	mu     sync.Mutex
+	starts []string
+	active map[string]bool
+	notified chan string
+}
+
+func newFakeIdleWatcher() *fakeIdleWatcher {
+	return &fakeIdleWatcher{active: map[string]bool{}, notified: make(chan string, 8)}
+}
+
+func (f *fakeIdleWatcher) IdleWatch(email, token, folder string, stop <-chan struct{}, wake func()) {
+	f.mu.Lock()
+	f.starts = append(f.starts, email+"|"+token+"|"+folder)
+	f.active[email] = true
+	f.mu.Unlock()
+	f.notified <- email
+	<-stop
+	f.mu.Lock()
+	delete(f.active, email)
+	f.mu.Unlock()
+}
+
+func (f *fakeIdleWatcher) isActive(email string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.active[email]
+}
+
+// IDLE push: the hub lifecycle must start a supervisor for the first tab,
+// keep it for concurrent tabs, and tear it down with the last one.
+func TestEventWatcherIdleLifecycle(t *testing.T) {
+	hub := NewHub()
+	fake := newFakeIdleWatcher()
+	w := &EventWatcher{
+		Mail:      &fakeStater{stat: map[string]mail.FolderStat{}},
+		Hub:       hub,
+		Idle:      fake,
+		baseline:  map[string]map[string]mail.FolderStat{},
+		idleStops: map[string]chan struct{}{},
+	}
+	hub.SetLifecycle(w.startIdleWatch, w.stopIdleWatch)
+
+	_, unsub1 := hub.Subscribe("a@example.com", "tok-1")
+	select {
+	case got := <-fake.notified:
+		if got != "a@example.com" {
+			t.Fatalf("idle started for %q", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("IDLE supervisor did not start on first subscribe")
+	}
+	if tok := hub.Token("a@example.com"); tok != "tok-1" {
+		t.Fatalf("supervisor started before token was stored: %q", tok)
+	}
+
+	// Second tab: no duplicate supervisor.
+	_, unsub2 := hub.Subscribe("a@example.com", "tok-1")
+	select {
+	case <-fake.notified:
+		t.Fatal("second subscribe must not spawn a second supervisor")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	// First tab closes; the supervisor must survive for the second.
+	unsub1()
+	if !fake.isActive("a@example.com") {
+		t.Fatal("supervisor stopped while another tab is open")
+	}
+
+	// Last tab closes: the supervisor stops.
+	unsub2()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if !fake.isActive("a@example.com") {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("IDLE supervisor still active after last disconnect")
+}
+
+// The IDLE supervisor must not spawn without a watcher or without a stored
+// worker token (defensive against hub/lifecycle races).
+func TestEventWatcherIdleNilWatcherAndNoToken(t *testing.T) {
+	hub := NewHub()
+	w := &EventWatcher{Hub: hub, baseline: map[string]map[string]mail.FolderStat{}}
+	w.startIdleWatch("nobody@example.com") // Idle == nil: must be a no-op
+	w.idleMu.Lock()
+	if len(w.idleStops) != 0 {
+		t.Fatal("nil watcher must not register a supervisor")
+	}
+	w.idleMu.Unlock()
+
+	// Hub without lifecycle (plain NewHub) is unaffected.
+	ch, unsub := hub.Subscribe("x@example.com", "t")
+	_ = ch
+	unsub()
+}

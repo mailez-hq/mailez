@@ -29,6 +29,12 @@ type MailEvent struct {
 type Hub struct {
 	mu    sync.Mutex
 	users map[string]*userSubs
+
+	// onJoin/onLeave fire when a user's first connection opens and their
+	// last one closes (outside the hub lock — they may call back into the
+	// hub). The SSE watcher uses them to start/stop the per-user IDLE push.
+	onJoin  func(email string)
+	onLeave func(email string)
 }
 
 type userSubs struct {
@@ -41,35 +47,53 @@ func NewHub() *Hub {
 	return &Hub{users: make(map[string]*userSubs)}
 }
 
+// SetLifecycle installs the first-connect / last-disconnect callbacks. Call
+// once at startup, before any connection.
+func (h *Hub) SetLifecycle(onJoin, onLeave func(email string)) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.onJoin, h.onLeave = onJoin, onLeave
+}
+
 // Subscribe registers an SSE connection for email and returns its event
 // channel plus an unsubscribe func. token is the background-worker mailbox
 // credential the watcher uses to check the mailbox; the latest registration
 // wins when several tabs are open.
 func (h *Hub) Subscribe(email, token string) (<-chan MailEvent, func()) {
 	ch := make(chan MailEvent, 16)
+	var joined bool
 	h.mu.Lock()
 	u := h.users[email]
 	if u == nil {
 		u = &userSubs{token: token, subs: make(map[chan MailEvent]struct{})}
 		h.users[email] = u
+		joined = h.onJoin != nil
 	} else if token != "" {
 		u.token = token
 	}
 	u.subs[ch] = struct{}{}
 	h.mu.Unlock()
+	if joined {
+		h.onJoin(email)
+	}
 
 	var once sync.Once
 	unsubscribe := func() {
 		once.Do(func() {
 			h.mu.Lock()
-			defer h.mu.Unlock()
 			u := h.users[email]
 			if u == nil {
+				h.mu.Unlock()
 				return
 			}
 			delete(u.subs, ch)
+			left := h.onLeave != nil && len(u.subs) == 0
 			if len(u.subs) == 0 {
 				delete(h.users, email)
+			}
+			h.mu.Unlock()
+			if left {
+				h.onLeave(email)
 			}
 		})
 	}
@@ -123,33 +147,104 @@ type folderStater interface {
 	FolderStat(email, token, folder string) (mail.FolderStat, error)
 }
 
+// idleWatcher is the IDLE push surface; *mail.Client implements it.
+type idleWatcher interface {
+	IdleWatch(email, token, folder string, stop <-chan struct{}, wake func())
+}
+
 // watchedFolders are the mailboxes polled for new arrivals. Inbox covers
 // regular delivery, Junk covers spam; other folders only change as a
 // consequence of user actions already reflected by the client.
 var watchedFolders = []string{"Inbox", "Junk"}
 
-// EventWatcher periodically compares folder counters for users with an open
-// SSE connection and publishes a MailEvent when new mail arrives. It is the
-// webmail counterpart of the ActiveSync Ping long-poll, but server-side and
-// deduplicated per user: one IMAP check per connected user per tick, no
-// per-tab or per-request overhead.
+// idleFolder is the mailbox held open under IDLE for instant push. It covers
+// the delivery path users actually watch; Junk and any third-party server
+// without IDLE fall back to the poll tick.
+const idleFolder = "Inbox"
+
+// EventWatcher compares folder counters for users with an open SSE
+// connection and publishes a MailEvent when new mail arrives. Primary
+// latency comes from an IDLE connection per connected user (changes are
+// pushed the moment they happen, from any client); the poll tick and the
+// engine delivery receipt are the fallbacks for folders without IDLE
+// (Junk) and servers without IDLE support. All three share the same
+// baseline diff, deduplicated per user.
 type EventWatcher struct {
 	Mail     folderStater
 	Hub      *Hub
 	Interval time.Duration
+	// Idle, when set, watches the user's Inbox over IDLE; *mail.Client.
+	Idle idleWatcher
 
 	mu       sync.Mutex
 	baseline map[string]map[string]mail.FolderStat
 	kicks    map[string]time.Time
+
+	idleMu    sync.Mutex
+	idleStops map[string]chan struct{}
 }
 
 // NewEventWatcher builds a watcher for the given hub.
 func NewEventWatcher(cfg core.Config, hub *Hub) *EventWatcher {
-	return &EventWatcher{
-		Mail:     mail.New(cfg.MailImapAddr, "", "").SetInsecureTLS(cfg.FetchInsecure),
-		Hub:      hub,
-		Interval: time.Duration(cfg.EventsInterval) * time.Second,
-		baseline: make(map[string]map[string]mail.FolderStat),
+	mc := mail.New(cfg.MailImapAddr, "", "").SetInsecureTLS(cfg.FetchInsecure)
+	w := &EventWatcher{
+		Mail:      mc,
+		Hub:       hub,
+		Interval:  time.Duration(cfg.EventsInterval) * time.Second,
+		Idle:      mc,
+		baseline:  make(map[string]map[string]mail.FolderStat),
+		idleStops: make(map[string]chan struct{}),
+	}
+	hub.SetLifecycle(w.startIdleWatch, w.stopIdleWatch)
+	return w
+}
+
+// startIdleWatch spawns the per-user IDLE supervisor on the user's first
+// SSE connection (hub onJoin). Token lookup must happen here — the hub has
+// it from Subscribe.
+func (w *EventWatcher) startIdleWatch(email string) {
+	if w.Idle == nil {
+		return
+	}
+	w.idleMu.Lock()
+	if w.idleStops == nil {
+		w.idleStops = make(map[string]chan struct{})
+	}
+	if w.idleStops[email] != nil {
+		w.idleMu.Unlock()
+		return
+	}
+	stop := make(chan struct{})
+	w.idleStops[email] = stop
+	w.idleMu.Unlock()
+
+	go func() {
+		defer func() {
+			w.idleMu.Lock()
+			if cur := w.idleStops[email]; cur == stop {
+				delete(w.idleStops, email)
+			}
+			w.idleMu.Unlock()
+		}()
+		token := w.Hub.Token(email)
+		if token == "" {
+			return
+		}
+		w.Idle.IdleWatch(email, token, idleFolder, stop, func() { w.Kick(email) })
+	}()
+}
+
+// stopIdleWatch tears the per-user IDLE supervisor down on the user's last
+// SSE disconnect (hub onLeave).
+func (w *EventWatcher) stopIdleWatch(email string) {
+	w.idleMu.Lock()
+	stop := w.idleStops[email]
+	if stop != nil {
+		delete(w.idleStops, email)
+	}
+	w.idleMu.Unlock()
+	if stop != nil {
+		close(stop)
 	}
 }
 
