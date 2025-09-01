@@ -23,7 +23,8 @@
 ```sh
 cd deploy
 cp mailez.env.example mailez.env        # 编辑上面三项 + 端口
-./mailezctl.sh up community             # 自带 --build：构建 backend/前端/引擎等
+./mailezctl.sh up community             # 拉取预构建镜像（MAILEZ_IMAGE_TAG）；
+                                        # 源码部署：MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up community
 docker compose --env-file mailez.env -f docker-compose.community.yml \
   exec backend mailez-seed              # 初始管理员 admin@example.com
 ```
@@ -130,15 +131,16 @@ multi 档**行为差异**（实测确认，客户端/监控会感知）：
    docker compose --env-file mailez.env -f docker-compose.community.yml down
    docker compose --env-file mailez.env -f docker-compose.enterprise.yml -f docker-compose.multi.yml down
    ```
-2. **`cmd/build-images` 产出的是 CE 引擎**：它只构建 nginx/rspamd/
-   unbound/macro-scanner/mailezine 五个镜像，且构建 mailezine 时不传
-   `MAILEZ_EDITION`——`mailez/mailezine:local` 永远是 CE 档；它也不构建
-   backend 与前端。**enterprise/multi 档必须用 `mailezctl up`（自带
-   `--build` 与 edition build-args）重建镜像**，"build-images + up
-   enterprise"的组合会拿到 CE 引擎/CE 前端。
-3. **backend 镜像的 EE 构建依赖 compose build-args**：backend
-   Dockerfile 默认 `MAILEZ_EDITION=ce`；enterprise.yml 已传
-   `MAILEZ_EDITION: ee`（编译期 `-tags mailez_ee`）。运行时
+2. **构建分组按档拆分**：`docker buildx bake`（默认 = `ce` 组）产出 CE 档
+   backend/前端/引擎与全部 infra 镜像；`ee` 组只有 backend-ee/admin-ee/
+   webmail-ee 三个镜像，EE 引擎在 `mailezine` 组（由 mailezine 仓库自己的
+   release 工作流发布）。生产档 compose 按 edition 引用
+   `mailez-*-ee` 镜像名——CE/EE 混用不会发生静默替换，但缺镜像时 `up`
+   会直接 pull 失败；源码部署记得 `MAILEZ_LOCAL_BUILD=1`（叠加
+   build overlay + `--build`），不带它 `up` 只拉镜像。
+3. **backend 镜像的 EE 构建依赖编译期参数**：backend Dockerfile 默认
+   `MAILEZ_EDITION=ce`；bake 的 `backend-ee` target 与 build.enterprise
+   overlay 都传 `MAILEZ_EDITION: ee`（编译期 `-tags mailez_ee`）。运行时
    `MAILEZ_EDITION` 环境变量只是标记，不改变编译产物——用错了会得到
    "看起来是企业版、实际没有 EE 路由"的镜像。
 4. **license 工具参数**：`inspect` 的参数是 `-in <file>`（不是
@@ -151,3 +153,29 @@ multi 档**行为差异**（实测确认，客户端/监控会感知）：
    属首次迁移正常现象。
 7. **验证脚本注意**：IMAP 143 在 multi 档拒明文 LOGIN（见上）；
    haproxy 多行应答按 `^\d{3}-` 续行读取，别按单行解析。
+
+---
+
+## 镜像发布流程（release CI）
+
+镜像只经打 tag 发布，两个仓库 **lockstep，顺序固定**：
+
+1. **先打 mailezine 的 tag**（如 `v1.2.3`）→ mailezine 仓库 release
+   工作流跑 `docker buildx bake ce ee --push`，发布
+   `ghcr.io/mailez-hq/mailez-mailezine[-ee]:<tag>`（引擎镜像不在 mailez
+   仓库构建：mailez 的 CI 没有该 sibling checkout）。
+2. **再打 mailez 的同名 tag** → release 工作流三步：
+   - **build-images**：bake `ce` / `ee` 组，`VERSION=<tag>`、
+     `PLATFORMS=linux/amd64,linux/arm64`、`APK_MIRROR=dl-cdn.alpinelinux.org`
+     （覆盖 HCL 里面向本地构建的默认值），推 GHCR；
+   - **smoke**：用刚发布的镜像原样起 community 栈（对引擎镜像的 pull 带
+     10×30s 重试，兜底两仓库发布的时序差），健康检查 + seed + SSO 登录；
+   - **release**：`make-release.sh` 打部署 tarball（compose + mailezctl +
+     install.sh + docs，无源码）附到 GitHub Release，附 sha256sums。
+3. **CE 包首次发布后转 public**：GHCR 包默认 private；CE 的 5 个包
+   （backend/admin/webmail/mailezine/infra 系列）需在 GitHub 包设置里手动
+   改 public（一次性，EE 包保持 private）。
+
+用户侧升级 = 改 `deploy/mailez.env` 的 `MAILEZ_IMAGE_TAG` 后重新
+`./mailezctl.sh up <target>`（见 `docs/upgrades.md` §1）；全新部署用
+Release tarball 里的 `./install.sh`（交互式，自动生成密钥与 env）。

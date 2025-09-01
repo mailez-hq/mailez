@@ -19,8 +19,7 @@
 
 ```bash
 cd deploy
-docker compose --env-file mailez.env \
-  -f docker-compose.enterprise.yml -f docker-compose.ha.yml up -d --build
+./mailezctl.sh up ha
 # 扩容（gateway 30s 内自动感知新副本）：
 docker compose --env-file mailez.env \
   -f docker-compose.enterprise.yml -f docker-compose.ha.yml up -d --scale backend=4
@@ -118,11 +117,9 @@ webmail 实时流（SSE EventWatcher）是副本本地的：每个副本只轮�
 
 ```bash
 cd deploy
-docker compose --env-file mailez.env \
-  -f docker-compose.enterprise.yml -f docker-compose.multi.yml up -d --build
+./mailezctl.sh up multi
 # 扩容（默认 2 副本）：
-MAILEZ_ENGINE_REPLICAS=3 docker compose --env-file mailez.env \
-  -f docker-compose.enterprise.yml -f docker-compose.multi.yml up -d
+MAILEZ_ENGINE_REPLICAS=3 ./mailezctl.sh up multi
 ```
 
 ### 多活的引擎机制

@@ -9,7 +9,8 @@
 邮件栈镜像构建和依赖下载在国内可能很慢，已按下面的方式处理：
 
 - **apk（Docker 镜像构建内）**：各组件 Dockerfile 已内置阿里云镜像源
-  （`APK_MIRROR` ARG，构建时可用 `--build-arg` 覆盖）。
+  （`APK_MIRROR` ARG，bake 构建时用同名环境变量覆盖，如
+  `APK_MIRROR=dl-cdn.alpinelinux.org docker buildx bake`）。
 - **npm（前端）**：`frontend/.npmrc` 已指向 npmmirror。
 - **Go modules（后端）**：本机执行一次，写入全局 Go 配置：
   ```
@@ -84,8 +85,9 @@ powershell -File .\dev-start.ps1 -Ce  # 社区版（企业功能位显示降级�
 | 社区版 | `docker-compose.community.yml` | mailezine | SQLite 默认（可选 MySQL） | Pebble + 本地 FS |
 | 企业版 | `docker-compose.enterprise.yml` | mailezine | MySQL | TiDB + MinIO/S3 |
 
-引擎镜像构建：`go run ./cmd/build-images -version local`（mailezine 模块在
-相邻仓库，工具自动切上下文）。冒烟：`deploy/scripts/smoke-mailezine.sh`
+引擎与全部组件镜像构建：仓库根目录 `docker buildx bake`（构建定义
+`docker-bake.hcl`，默认 CE 档、tag `:local`；引擎上下文经 `MAILEZINE_CONTEXT`
+指向相邻 mailezine 仓库）。冒烟：`deploy/scripts/smoke-mailezine.sh`
 按当前档位端口传参。
 
 初始化用户（首次）：
@@ -137,15 +139,15 @@ mailezine 引擎的目录/认证查询都走它）。开发模式下 `MAILEZ_BAC
 
 邮件组件（nginx / rspamd / macro-scanner / unbound）的 Dockerfile 与静态
 配置在 `deploy/images/`（共享基础设施）下，mailezine 引擎镜像从相邻仓库
-`../mailezine`（compose 的 build context 指向它）构建，全部为多阶段自建镜像
+`../mailezine`（bake 的 `MAILEZINE_CONTEXT` 指向它）构建，全部为多阶段自建镜像
 （Go 编译 agent + 官方 `alpine:3.21`，无任何第三方邮件镜像依赖）。构建
-入口为 `go run ./backend/cmd/build-images`，
-本地构建的 `mailez/*:local`：
+入口为仓库根目录的 `docker buildx bake`（定义见 `docker-bake.hcl`），
+本地构建产物为 `ghcr.io/mailez-hq/mailez-*:local`：
 
 ```
-# 1. 本地构建全部组件（首次较慢）
-cd backend && go run ./cmd/build-images
-# 2. 直接启动（compose 已默认 mailez/*:local）
+# 1. 本地构建全部 CE 组件（首次较慢；需相邻 ../mailezine 仓库）
+docker buildx bake
+# 2. 直接启动（dev 档默认使用 :local 镜像）
 docker compose -f docker-compose.dev.yml up -d
 ```
 

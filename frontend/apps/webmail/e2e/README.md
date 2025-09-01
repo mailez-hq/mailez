@@ -37,12 +37,11 @@ seeding. Override the credentials with `MAILWEB_E2E_USER` /
 Full containerized stack (community edition — this is what CI runs):
 
 ```sh
-cd backend
-go run ./cmd/build-images        # one-time: builds mailez/*:local images
+docker buildx bake               # one-time from the repo root: builds the mailez-*:local images
 
-cd ../deploy
+cd deploy
 cp mailez.env.example mailez.env # set MAILEZ_SECRET_KEY / MAILEZ_DOMAIN
-docker compose -f docker-compose.community.yml up -d --build
+MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up community
 
 cd ../backend
 DB_DRIVER=mysql \
