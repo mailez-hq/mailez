@@ -64,6 +64,9 @@ export type AuditLog = {
   method: string;
   path: string;
   status: number;
+  action?: string;
+  target?: string;
+  detail?: string;
 };
 
 export type ArchiveDirection = "inbound" | "outbound";

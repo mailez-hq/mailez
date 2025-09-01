@@ -1,3 +1,8 @@
+//go:build mailez_ee
+
+// Enterprise-only: white-label branding is a paid feature. The community
+// build keeps the built-in Mailez brand (see branding_ce.go and the
+// eePublicBranding seam in internal/server).
 package admin
 
 import (

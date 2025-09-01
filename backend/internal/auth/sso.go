@@ -141,7 +141,7 @@ func (m *Manager) ssoLoginTotp(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "session failed"})
 	}
 	setSessionCookie(c, m.SessionName, sid, m.SessionTTL, m.secureCookie)
-	m.DB.Create(&models.AuditLog{User: user.Email, IP: c.IP(), Method: "POST", Path: "/sso/login/totp", Status: fiber.StatusOK})
+	m.DB.Create(&models.AuditLog{User: user.Email, IP: c.IP(), Method: "POST", Path: "/sso/login/totp", Status: fiber.StatusOK, Action: "login.totp"})
 	return c.JSON(fiber.Map{"email": user.Email})
 }
 

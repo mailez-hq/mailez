@@ -1,8 +1,6 @@
-//go:build mailez_ee
-
-// Calendar sharing (team capability): grant/revoke per-account calendar
-// access and the share-aware permission checks. Enterprise only; the
-// community build pairs this with share_hook_ce.go.
+// Calendar sharing: grant/revoke per-account calendar access and the
+// share-aware permission checks. Shared by both editions; the per-edition
+// quota policy lives in share_quota_ce.go / share_quota_ee.go.
 package calendar
 
 import (
@@ -109,6 +107,11 @@ func (h *Handler) createShare(c *fiber.Ctx) error {
 	if err := h.DB.First(&target, "LOWER(email) = ?", sharee).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "sharee not found"})
 	}
+	// Edition quota policy (CE: one read-only grant, EE: unlimited).
+	q := h.shareQuota()
+	if q.forceReadOnly {
+		in.ReadOnly = true
+	}
 	var existing models.CalendarShare
 	if err := h.DB.Where("owner_email = ? AND sharee_email = ?", user.Email, target.Email).
 		First(&existing).Error; err == nil {
@@ -117,6 +120,20 @@ func (h *Handler) createShare(c *fiber.Ctx) error {
 			return core.Fail(c, 500, err, "db error")
 		}
 		return c.JSON(sharesView([]models.CalendarShare{existing})[0])
+	}
+	if q.maxOwned > 0 {
+		var n int64
+		if err := h.DB.Model(&models.CalendarShare{}).
+			Where("owner_email = ?", user.Email).Count(&n).Error; err != nil {
+			return core.Fail(c, 500, err, "db error")
+		}
+		if n >= int64(q.maxOwned) {
+			return c.Status(403).JSON(fiber.Map{
+				"error": "calendar sharing quota reached for this edition",
+				"code":  "quota_exceeded",
+				"limit": q.maxOwned,
+			})
+		}
 	}
 	share := models.CalendarShare{OwnerEmail: user.Email, ShareeEmail: target.Email, ReadOnly: in.ReadOnly}
 	if err := h.DB.Create(&share).Error; err != nil {

@@ -54,7 +54,7 @@ func aiViewFrom(t *testing.T, raw string) map[string]any {
 }
 
 func TestAICreateListDelete(t *testing.T) {
-	app := newTestApp(t)
+	app, _ := newTestApp(t)
 	code, raw := doJSON(t, app, "POST", "/api/v1/config/ai",
 		`{"name":"DeepSeek 生产","base_url":"https://api.deepseek.com","api_key":"sk-test","model":"deepseek-chat"}`)
 	if code != 201 {
@@ -86,7 +86,7 @@ func TestAICreateListDelete(t *testing.T) {
 }
 
 func TestAIEnableRequiresPassingTest(t *testing.T) {
-	app := newTestApp(t)
+	app, _ := newTestApp(t)
 	code, raw := doJSON(t, app, "POST", "/api/v1/config/ai",
 		`{"name":"p1","base_url":"https://api.deepseek.com","api_key":"sk-test","model":"deepseek-chat"}`)
 	if code != 201 {
@@ -112,7 +112,7 @@ func TestAIEnableRequiresPassingTest(t *testing.T) {
 }
 
 func TestAITestEnableDefaultLifecycle(t *testing.T) {
-	app := newTestApp(t)
+	app, _ := newTestApp(t)
 	srv := openAIServer(t, false)
 	defer srv.Close()
 
@@ -180,7 +180,7 @@ func TestAITestEnableDefaultLifecycle(t *testing.T) {
 }
 
 func TestAITestFailureDisablesAndChangeResets(t *testing.T) {
-	app := newTestApp(t)
+	app, _ := newTestApp(t)
 	ok := openAIServer(t, false)
 	bad := openAIServer(t, true)
 	defer ok.Close()
@@ -226,7 +226,7 @@ func TestAITestFailureDisablesAndChangeResets(t *testing.T) {
 }
 
 func TestAINameConflict(t *testing.T) {
-	app := newTestApp(t)
+	app, _ := newTestApp(t)
 	code, raw := doJSON(t, app, "POST", "/api/v1/config/ai", `{"name":"Same","base_url":"https://x","api_key":"k","model":"m"}`)
 	if code != 201 {
 		t.Fatalf("create: %d %s", code, raw)

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ApiError, dashboardTarget, login, loginTotp } from "@/lib/api";
+import { ApiError, dashboardTarget, login, loginTotp, serverSettings } from "@/lib/api";
 
 export function LoginForm() {
   const t = useTranslations("login");
@@ -24,6 +24,27 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [pendingToken, setPendingToken] = useState("");
   const [code, setCode] = useState("");
+  // Federated sign-in (enterprise): the button renders only when the backend
+  // mounts the OIDC routes; ?sso_error explains a failed round-trip.
+  const [ssoEnabled, setSsoEnabled] = useState(false);
+  const [ssoError, setSsoError] = useState("");
+
+  useEffect(() => {
+    try {
+      const reason = new URLSearchParams(window.location.search).get("sso_error");
+      if (reason) setSsoError(reason);
+    } catch {
+      // ignore malformed query
+    }
+    serverSettings()
+      .then((s) => setSsoEnabled(Boolean(s?.oidc?.enabled)))
+      .catch(() => setSsoEnabled(false));
+  }, []);
+
+  function startSso() {
+    window.location.href =
+      "/api/v1/sso/oidc/start?next=" + encodeURIComponent(dashboardTarget());
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -68,6 +89,14 @@ export function LoginForm() {
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
+        {ssoError && (
+          <div
+            role="alert"
+            className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            {t("ssoError", { reason: ssoError })}
+          </div>
+        )}
         {pendingToken ? (
           <form onSubmit={onSubmitTotp} className="space-y-4">
             <div className="space-y-2">
@@ -114,6 +143,11 @@ export function LoginForm() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? t("submitting") : t("submit")}
             </Button>
+            {ssoEnabled && (
+              <Button type="button" variant="outline" className="w-full" onClick={startSso}>
+                {t("ssoButton")}
+              </Button>
+            )}
           </form>
         )}
       </CardContent>

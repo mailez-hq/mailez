@@ -9,8 +9,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  ApiError,
   driveCreateFolder, driveDownload, driveEmptyTrash, driveMove, driveRename,
-  driveRestore, driveShare, driveTrash, driveTrashEntries, driveTree,
+  driveRestore, driveShare, driveShareRevoke, driveTrash, driveTrashEntries, driveTree,
   driveUpload, type DriveEntry,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -189,8 +190,23 @@ export function DriveView({ focus }: { focus?: DriveEntry | null }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
       setMenu(null);
-    } catch {
-      setError(t("shareFailed"));
+    } catch (e) {
+      // The community edition caps active share links; surface friendly copy.
+      setError(
+        e instanceof ApiError && e.code === "quota_exceeded"
+          ? t("shareQuotaReached")
+          : t("shareFailed"),
+      );
+    }
+  };
+
+  const revokeShare = async (entry: DriveEntry) => {
+    try {
+      await driveShareRevoke(entry.id);
+      setMenu(null);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("revokeFailed"));
     }
   };
 
@@ -421,7 +437,17 @@ export function DriveView({ focus }: { focus?: DriveEntry | null }) {
                 onClick={() => share(menu.entry)}
               >
                 {copied ? <Copy className="size-3.5" /> : <Link2 className="size-3.5" />}
-                {copied ? t("copied") : t("share")}
+                {copied ? t("copied") : menu.entry.share_token ? t("copyLink") : t("share")}
+              </button>
+            )}
+            {!menu.entry.is_dir && menu.entry.share_token && (
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-destructive hover:bg-muted"
+                onClick={() => revokeShare(menu.entry)}
+              >
+                <Link2 className="size-3.5" />
+                {t("revokeShare")}
               </button>
             )}
             <button

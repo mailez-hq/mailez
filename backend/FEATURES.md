@@ -12,9 +12,12 @@ paired `*_ee.go` assembly files), guarded by the `mailez_ee` build tag.
 |---|---|---|
 | Webmail, compose/outbox, contacts, sieve rules | ✓ | ✓ |
 | Personal calendar + ICS feeds, personal drive | ✓ | ✓ |
-| Calendar sharing (delegate calendars) | | ✓ `*_ee.go` seam |
-| Drive share links | | ✓ `*_ee.go` seam |
-| Admin console (domains, users, branding, config) | ✓ | ✓ |
+| Calendar sharing | ✓ (1 read-only share per user) | ✓ (unlimited, read/write) |
+| Drive share links | ✓ (3 active links per user) | ✓ (unlimited) |
+| Admin console (domains, users, config) | ✓ | ✓ |
+| Branding (login/console customization) | | ✓ `*_ee.go` seam |
+| Audit log (admin view) | ✓ (raw method/path) | ✓ (+ semantic action/target/detail, CSV export) |
+| OIDC federated login (SSO) | | ✓ `internal/auth` (EE-tagged) |
 | External account aggregation (fetch), push/SSE | ✓ | ✓ |
 | CardDAV/CalDAV personal sync, invite links | ✓ | ✓ |
 | AD/LDAP directory sync (login + address book) | | ✓ `internal/ee/ldap` |
@@ -34,12 +37,15 @@ gitignored build artifact) from `ee/` (default) or `ce-stubs/`
 (MAILEZ_EDITION=ce) by `frontend/scripts/set-edition.mjs`, which both
 `next.config.ts` files run automatically. Code imports them only through
 `@/edition/<module>`. Migrated so far: webmail delegations/S-MIME/AI
-summary; admin announcement/archive/DLP pages (thin route shells
-re-export the edition module).
+summary; admin announcement/archive/DLP pages, enterprise config tabs
+(AI/LDAP) and the audit-export feature flag (thin route shells re-export
+the edition module). Sharing (calendar/drive) is community-side: the webmail
+UI ships in CE with quota copy and revoke buttons, and the per-edition
+limits live in `*_ce.go`/`*_ee.go` quota files.
 
-\* Calendar/drive stay CE-side as mixed packages (personal features are
-community; shared/team features need a package-level split before they can
-move).
+\* Calendar/drive sharing is quota-gated in CE (1 read-only calendar share,
+3 active drive links) and unlimited in EE; the implementation lives in
+shared packages with per-edition quota policy files.
 
 Rules (same contract as the mailezine engine):
 
@@ -70,11 +76,5 @@ Rules (same contract as the mailezine engine):
 
 Not yet split (follow-up, mixed concerns or in-flight user work):
 
-- admin config page (824 lines) still embeds the AI/LDAP admin tabs; their
-  backend routes are EE-only, so in CE the tabs error — the page needs a
-  tab-level edition split.
-- calendar share dialog and drive share UI (webmail) sit in files with
-  uncommitted user work and were left untouched; their backend endpoints
-  are already EE-gated.
 - AiSection in webmail profile settings (a personal AI preference toggle)
   stays CE; the AI feature itself is EE.

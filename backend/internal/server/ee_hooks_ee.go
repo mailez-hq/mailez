@@ -14,6 +14,7 @@ import (
 	"mailez/backend/internal/auth"
 	"mailez/backend/internal/compose"
 	"mailez/backend/internal/core"
+	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/ee/activesync"
 	"mailez/backend/internal/ee/ai"
 	"mailez/backend/internal/ee/announcement"
@@ -36,6 +37,25 @@ func eeWireAppDirectory(s *Server, app *core.App) {
 	if s.LDAP != nil {
 		s.LDAP.SetCapacityChecker(app.License.CheckCapacity)
 	}
+}
+
+// eePublicBranding fills the public settings brand from the enterprise
+// white-label configuration (admin console → config → branding).
+func eePublicBranding(s *Server, brand *publicBranding) {
+	var row models.BrandingConfig
+	if err := s.DB.First(&row).Error; err != nil {
+		return
+	}
+	brand.Title = row.Title
+	brand.Subtitle = row.Subtitle
+	brand.Tagline = row.Tagline
+	brand.Feature1 = row.Feature1
+	brand.Feature2 = row.Feature2
+	brand.Feature3 = row.Feature3
+	brand.LogoURL = row.LogoURL
+	brand.HeroURL = row.HeroURL
+	brand.Copyright = row.Copyright
+	brand.Contact = row.Contact
 }
 
 // eeRegisterRoutes mounts the enterprise API surfaces: delegation,
