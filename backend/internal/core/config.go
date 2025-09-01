@@ -2,6 +2,7 @@ package core
 
 import (
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -134,8 +135,8 @@ func Load() Config {
 		MailEngineMgmtAddr:   env("MAIL_ENGINE_MGMT_ADDR", ""),
 		MailEngineMgmtSecret: env("MAIL_ENGINE_MGMT_SECRET", ""),
 		MailMtaAddr:          env("MAIL_MTA_ADDR", ""),
-		UploadDir:            env("MAILEZ_UPLOAD_DIR", "uploads"),
-		DriveBackend:         env("MAILEZ_DRIVE_BACKEND", "local"),
+		UploadDir:            env("MAILEZ_UPLOAD_DIR", defaultUploadDir()),
+		DriveBackend:         env("MAILEZ_DRIVE_BACKEND", ""),
 		MinioEndpoint:        env("MAILEZINE_S3_ENDPOINT", ""),
 		MinioAccessKey:       env("MAILEZINE_S3_ACCESS_KEY", ""),
 		MinioSecretKey:       env("MAILEZINE_S3_SECRET_KEY", ""),
@@ -183,6 +184,17 @@ func Load() Config {
 	} else {
 		cfg.BlobBackend = "local"
 	}
+	// The drive shares the blob backend decision: a deployment that points
+	// MAILEZINE_S3_* at MinIO (the enterprise compose does) gets MinIO-backed
+	// drive files instead of a CWD-relative "uploads" directory that is not
+	// writable in containers. An explicit MAILEZ_DRIVE_BACKEND still wins.
+	if cfg.DriveBackend == "" {
+		if os.Getenv("MAILEZINE_S3_ENDPOINT") != "" {
+			cfg.DriveBackend = "minio"
+		} else {
+			cfg.DriveBackend = "local"
+		}
+	}
 	if cfg.MailMtaAddr == "" {
 		cfg.MailMtaAddr = "mailezine:25"
 	}
@@ -194,6 +206,22 @@ func env(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// defaultUploadDir keeps the local blob store writable in containers: when
+// the database is a sqlite file (the community/dev default), blobs default
+// next to it (e.g. /data/mailez.db → /data/uploads) instead of a
+// CWD-relative "uploads" that the container filesystem may not allow.
+// Non-sqlite deployments (mysql DSN) keep the historical relative default.
+func defaultUploadDir() string {
+	if env("DB_DRIVER", "sqlite") == "sqlite" {
+		if dsn := env("DB_DSN", "mailez.db"); !strings.Contains(dsn, ":") || strings.ContainsRune(dsn, filepath.Separator) || strings.ContainsRune(dsn, '/') {
+			if dir := filepath.Dir(dsn); dir != "" && dir != "." {
+				return filepath.Join(dir, "uploads")
+			}
+		}
+	}
+	return "uploads"
 }
 
 // splitCSV parses a comma-separated environment value into a trimmed,
