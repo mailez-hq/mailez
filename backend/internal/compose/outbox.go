@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
+	"net"
 	"net/smtp"
 	"strconv"
 	"strings"
@@ -224,12 +225,20 @@ func deliverOutbox(addr, from string, recipients []string, raw string) error {
 	}
 	// The engine MTA may present a self-signed certificate on the internal
 	// link; verify=false matches the rest of the internal mail client
-	// (mail.go tlsConfig).
-	c, err := smtp.Dial(addr)
+	// (mail.go tlsConfig). Dial and the whole session are bounded: a wedged
+	// engine must fail this one delivery (retryable), not stall the worker.
+	conn, err := net.DialTimeout("tcp", addr, mail.SMTPDialTimeout)
 	if err != nil {
 		return err
 	}
-	defer c.Close()
+	defer conn.Close()
+	if err := conn.SetDeadline(time.Now().Add(mail.SMTPSessionTimeout)); err != nil {
+		return err
+	}
+	c, err := smtp.NewClient(conn, addr)
+	if err != nil {
+		return err
+	}
 	// Opportunistic STARTTLS with the internal (self-signed) cert tolerated.
 	if err := c.StartTLS(&tls.Config{InsecureSkipVerify: true}); err != nil {
 		// plaintext internal link (dev) is fine

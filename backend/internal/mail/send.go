@@ -200,11 +200,22 @@ func (c *Client) openSMTP(email, token string) (*smtp.Client, error) {
 		serverHost = host[:i]
 	}
 
-	conn, err := smtp.Dial(host)
+	// Bounded dial + a hard ceiling on the whole submission: a wedged MTA
+	// turns into an error (the sender retries) instead of a parked request.
+	conn, err := net.DialTimeout("tcp", host, SMTPDialTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("smtp dial: %w", err)
 	}
-	tlsErr := conn.StartTLS(&tls.Config{InsecureSkipVerify: true, ServerName: serverHost})
+	if err := conn.SetDeadline(time.Now().Add(SMTPSessionTimeout)); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("smtp deadline: %w", err)
+	}
+	cl, err := smtp.NewClient(conn, serverHost)
+	if err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("smtp client: %w", err)
+	}
+	tlsErr := cl.StartTLS(&tls.Config{InsecureSkipVerify: true, ServerName: serverHost})
 	var auth smtp.Auth
 	if tlsErr == nil {
 		auth = smtp.PlainAuth("", email, token, serverHost)
@@ -214,11 +225,11 @@ func (c *Client) openSMTP(email, token string) (*smtp.Client, error) {
 		// the explicit AUTH PLAIN form.
 		auth = NewPlainAuth(email, token)
 	}
-	if err := conn.Auth(auth); err != nil {
-		conn.Close()
+	if err := cl.Auth(auth); err != nil {
+		cl.Close()
 		return nil, fmt.Errorf("smtp auth: %w", err)
 	}
-	return conn, nil
+	return cl, nil
 }
 
 // openExternalSMTP connects to an external submission server honouring its
@@ -228,16 +239,24 @@ func (c *Client) openSMTP(email, token string) (*smtp.Client, error) {
 func (c *Client) openExternalSMTP(d Dial) (*smtp.Client, error) {
 	addr := net.JoinHostPort(d.Host, strconv.Itoa(d.Port))
 	tlsCfg := &tls.Config{InsecureSkipVerify: c.insecureTLS, ServerName: d.Host}
+	dialer := &net.Dialer{Timeout: SMTPDialTimeout}
 	var raw net.Conn
 	var err error
 	switch d.Security {
 	case "tls", "ssl", "smtps":
-		raw, err = tls.Dial("tcp", addr, tlsCfg)
+		raw, err = tls.DialWithDialer(dialer, "tcp", addr, tlsCfg)
 	default: // none, starttls: start plain, upgrade below
-		raw, err = net.Dial("tcp", addr)
+		raw, err = dialer.Dial("tcp", addr)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("smtp dial %s: %w", addr, err)
+	}
+	// Hard ceiling on the whole submission (dial through QUIT): a stalled
+	// external peer must fail the send with a retryable error instead of
+	// pinning the outbox worker.
+	if err := raw.SetDeadline(time.Now().Add(SMTPSessionTimeout)); err != nil {
+		raw.Close()
+		return nil, fmt.Errorf("smtp deadline: %w", err)
 	}
 	cli, err := smtp.NewClient(raw, d.Host)
 	if err != nil {
