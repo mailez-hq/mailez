@@ -11,7 +11,7 @@ import "time"
 // passwords.
 type AiConfig struct {
 	ID uint `gorm:"primaryKey" json:"id"`
-	// Name is the admin-facing display name, e.g. "DeepSeek 生产".
+	// Name is the admin-facing display name, e.g. "生产模型".
 	Name    string `gorm:"size:64;not null;default:''" json:"name"`
 	Enabled bool   `json:"enabled"`
 	// IsDefault marks the provider used when several are enabled. Only an
@@ -19,12 +19,12 @@ type AiConfig struct {
 	IsDefault bool `gorm:"not null;default:false" json:"is_default"`
 	// Provider is the LLM backend name (only "openai" is implemented today).
 	Provider string `gorm:"size:32" json:"provider"`
-	// BaseURL is the OpenAI-compatible endpoint, e.g. https://api.deepseek.com
-	// or http://host:11434/v1 (Ollama). Empty defaults to api.openai.com/v1.
+	// BaseURL is an OpenAI-compatible endpoint. Empty uses the built-in
+	// default (the standard compatible API base path).
 	BaseURL string `gorm:"size:255" json:"base_url"`
 	// APIKeyEnc holds the encrypted API key; never exposed in GET responses.
 	APIKeyEnc string `gorm:"size:1024" json:"-"`
-	// Model is the completion model name, e.g. deepseek-chat / gpt-4o-mini.
+	// Model is the completion model name, provider-specific.
 	Model string `gorm:"size:128" json:"model"`
 	// LastTestAt is when the connection test last ran; LastTestOK reports
 	// whether it passed. Only a passing test allows Enabled to be true.

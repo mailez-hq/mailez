@@ -56,18 +56,18 @@ func aiViewFrom(t *testing.T, raw string) map[string]any {
 func TestAICreateListDelete(t *testing.T) {
 	app, _ := newTestApp(t)
 	code, raw := doJSON(t, app, "POST", "/api/v1/config/ai",
-		`{"name":"DeepSeek 生产","base_url":"https://api.deepseek.com","api_key":"sk-test","model":"deepseek-chat"}`)
+		`{"name":"生产模型","base_url":"https://llm.example.com/v1","api_key":"sk-test","model":"chat-default"}`)
 	if code != 201 {
 		t.Fatalf("create status %d: %s", code, raw)
 	}
 	v := aiViewFrom(t, raw)
-	if v["enabled"] != false || v["has_api_key"] != true || v["name"] != "DeepSeek 生产" {
+	if v["enabled"] != false || v["has_api_key"] != true || v["name"] != "生产模型" {
 		t.Fatalf("create view: %v", v)
 	}
 	id := v["id"].(float64)
 
 	code, raw = doJSON(t, app, "GET", "/api/v1/config/ai", "")
-	if code != 200 || !strings.Contains(raw, "DeepSeek 生产") {
+	if code != 200 || !strings.Contains(raw, "生产模型") {
 		t.Fatalf("list status %d: %s", code, raw)
 	}
 	var list []map[string]any
@@ -88,7 +88,7 @@ func TestAICreateListDelete(t *testing.T) {
 func TestAIEnableRequiresPassingTest(t *testing.T) {
 	app, _ := newTestApp(t)
 	code, raw := doJSON(t, app, "POST", "/api/v1/config/ai",
-		`{"name":"p1","base_url":"https://api.deepseek.com","api_key":"sk-test","model":"deepseek-chat"}`)
+		`{"name":"p1","base_url":"https://llm.example.com/v1","api_key":"sk-test","model":"chat-default"}`)
 	if code != 201 {
 		t.Fatalf("create status %d: %s", code, raw)
 	}

@@ -30,7 +30,7 @@ func fakeSieveServer(t *testing.T, handler func(cmd string) []string) string {
 		defer conn.Close()
 		br := bufio.NewReader(conn)
 		bw := bufio.NewWriter(conn)
-		_, _ = bw.WriteString("OK \"legacy IMAP ready.\"\r\n")
+		_, _ = bw.WriteString("OK \"Sieve ready.\"\r\n")
 		_ = bw.Flush()
 		for {
 			line, err := br.ReadString('\n')
@@ -183,7 +183,7 @@ func TestStatusOf(t *testing.T) {
 	if statusOf("NO \"nope\"") != "NO" || statusOf("BYE bye") != "BYE" {
 		t.Error("NO/BYE detection")
 	}
-	if statusOf(`"IMPLEMENTATION" "legacy IMAP"`) != "" {
+	if statusOf(`"IMPLEMENTATION" "Test"`) != "" {
 		t.Error("capability line must not look like a status")
 	}
 }

@@ -16,8 +16,8 @@ import (
 	"mailez/backend/internal/core"
 )
 
-// OpenAI is an OpenAI-compatible chat completions provider. Any server that
-// speaks /chat/completions (OpenAI, Ollama, vLLM, ...) works.
+// OpenAI is an OpenAI-compatible chat completions provider: any server that
+// speaks the /chat/completions protocol works.
 type OpenAI struct {
 	baseURL string
 	apiKey  string
