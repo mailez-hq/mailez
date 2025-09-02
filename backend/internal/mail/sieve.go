@@ -107,8 +107,14 @@ func (s *sieve) readLine() (string, error) {
 }
 
 // do sends a command and reads the full response: status line plus any
-// preceding content lines and literals.
+// preceding content lines and literals. Each command gets a fresh connection
+// deadline: a server that accepts bytes but stops responding converts into a
+// per-command error instead of an indefinitely parked request.
 func (s *sieve) do(cmd string) (status string, content []string, err error) {
+	if err := s.conn.SetDeadline(time.Now().Add(sieveCmdTimeout)); err != nil {
+		// best effort: a conn that cannot take deadlines still works, just
+		// without the hang protection
+	}
 	if err := s.writeLine(cmd); err != nil {
 		return "", nil, fmt.Errorf("sieve write: %w", err)
 	}
