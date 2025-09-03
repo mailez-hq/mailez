@@ -91,8 +91,8 @@ migrate` 原地迁移到新存储。
 
 ```sh
 ./deploy/mailezctl.sh up              # dev 档
-./deploy/mailezctl.sh up community    # 社区版（生产）
-./deploy/mailezctl.sh up enterprise   # 企业版（生产）
+./deploy/mailezctl.sh up ce    # 社区版（生产）
+./deploy/mailezctl.sh up ee   # 企业版（生产）
 ./deploy/mailezctl.sh up ha           # 企业版 + 控制面多副本
 ./deploy/mailezctl.sh up multi        # 企业版 + 引擎多活（分布式邮件系统）
 ```
@@ -139,7 +139,7 @@ dev 档需要宿主机 `:8080` 上先起后端（镜像只需构建一次：仓�
 ```sh
 # 容器化档位：镜像内置 seed 器（默认 admin@example.com / MailezDemo2026!，
 # 可用 MAILEZ_ADMIN_EMAIL / MAILEZ_ADMIN_PASSWORD 覆盖）
-cd deploy && docker compose --env-file mailez.env -f docker-compose.community.yml exec backend mailez-seed
+cd deploy && docker compose --env-file mailez.env -f docker-compose.ce.yml exec backend mailez-seed
 # 本地 dev 档（SQLite 在宿主机）：
 cd backend && go run ./cmd/seed
 
