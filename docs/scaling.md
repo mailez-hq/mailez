@@ -83,6 +83,8 @@ webmail 实时流（SSE EventWatcher）是副本本地的：每个副本只轮�
    PostgreSQL 同样可用：`MAILEZ_DB_DRIVER=postgres` +
    `MAILEZ_DB_DSN=postgres://…`；注意迁移互斥锁目前仅 MySQL 实现
    （PG 为 no-op），多副本场景先让单个副本完成启动迁移后再扩容。
+   企业版 compose 的 backend 接受 `MAILEZ_DB_DRIVER` / `MAILEZ_DB_DSN`
+   覆盖（指向外部 MySQL/PostgreSQL；捆绑的 mysql 容器仍会启动，可忽略）。
 3. **Redis**：限流/缓存走 DB 的部分（如登录限流）随 DB 共享；Redis 仅加速，
    丢失可重建。
 4. **备份**：MySQL + MinIO + TiDB 三者都要备（企业档 `./data/` 整体备份覆盖

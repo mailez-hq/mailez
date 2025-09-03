@@ -109,8 +109,12 @@ services:
     env_file: mailez.env
     environment:
       - MAILEZ_PORT=8080
-      - DB_DRIVER=mysql
-      - DB_DSN=mailez:mailez@tcp(mysql:3306)/mailez?charset=utf8mb4&parseTime=True&loc=Local
+      # 控制面默认 MySQL；mailez.env 可用 MAILEZ_DB_DRIVER / MAILEZ_DB_DSN
+      # 覆盖为外部 PostgreSQL / MySQL（捆绑的 mysql 容器仍会启动，可忽略；
+      # PG 迁移互斥锁为 no-op，多副本先让单个副本完成启动迁移再扩容，
+      # 见 docs/scaling.md）。
+      - DB_DRIVER=${MAILEZ_DB_DRIVER:-mysql}
+      - DB_DSN=${MAILEZ_DB_DSN:-mailez:mailez@tcp(mysql:3306)/mailez?charset=utf8mb4&parseTime=True&loc=Local}
       - REDIS_ADDR=redis:6379
       # Domain values come from mailez.env via interpolation — pinning them
       # here would silently override the operator's env file.
