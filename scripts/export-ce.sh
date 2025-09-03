@@ -45,6 +45,13 @@ git for-each-ref --format='%(refname)' refs/stash refs/notes refs/replace \
 # the single image publisher — a public run would push CE-built *-ee
 # images over the real ones on shared tags); the private README.md is
 # replaced by README.ce.md (second pass below).
+#
+# History is rewritten, so renames matter as much as current paths: every
+# pre-rename location of a stripped file (deploy/docker-compose.*.yml
+# recipes, the compose/enterprise.go pair) is listed explicitly, otherwise
+# the old blobs survive under their historical paths. Internal QA and
+# engine-selection material (e2e-qa/, docs/engines/, the webmail UI spec)
+# never belonged to the community tree either.
 git filter-repo \
   --invert-paths \
   --path backend/internal/ee/ \
@@ -54,6 +61,20 @@ git filter-repo \
   --path frontend/apps/webmail/ee/ \
   --path frontend/apps/admin/ee/ \
   --path deploy/ee/ \
+  --path deploy/docker-compose.ee.yml \
+  --path deploy/docker-compose.ee.dev.yml \
+  --path deploy/docker-compose.build.ee.yml \
+  --path deploy/docker-compose.ha.yml \
+  --path deploy/docker-compose.multi.yml \
+  --path deploy/docker-compose.build.multi.yml \
+  --path deploy/docker-compose.enterprise.yml \
+  --path deploy/docker-compose.enterprise.dev.yml \
+  --path deploy/docker-compose.build.enterprise.yml \
+  --path backend/internal/compose/enterprise.go \
+  --path backend/internal/compose/enterprise_test.go \
+  --path frontend/apps/webmail/e2e-qa/ \
+  --path docs/engines/ \
+  --path docs/webmail-ui-spec.md \
   --path scripts/export-ce.sh \
   --path .github/workflows/release.yml \
   --path .github/workflows/ci-ee.yml \
@@ -67,8 +88,10 @@ git filter-repo \
 # Second pass: publish the community README under the canonical name.
 git filter-repo --force --path-rename README.ce.md:README.md
 
-if git ls-tree -r --name-only HEAD | grep -E 'backend/internal/ee/|frontend/apps/[^/]*/ee/|_ee\.go$|_ee_test\.go$|^deploy/ee/|^backend/cmd/e2e-enterprise/|enterprise-smoke|^\.github/workflows/(ci-ee|release)\.yml$|^docker-bake\.ee\.hcl$|^docs/(rollout-runbook|scaling)\.md$|^scripts/export-ce\.sh$'; then
-  echo "export-ce: enterprise paths survived the filter" >&2
+# Post-condition over the FULL rewritten history (not just HEAD): renamed
+# files must not survive under any of their historical paths either.
+if git log --all --name-only --format= | sort -u | grep -E 'backend/internal/ee/|frontend/apps/[^/]*/ee/|_ee\.go$|_ee_test\.go$|^deploy/ee/|^backend/cmd/(eas-e2e|e2e-enterprise)/|enterprise-smoke|^\.github/workflows/(ci-ee|release)\.yml$|^docker-bake\.ee\.hcl$|^docs/(rollout-runbook|scaling|webmail-ui-spec)\.md$|^docs/engines/|^scripts/export-ce\.sh$|^frontend/apps/webmail/e2e-qa/|^deploy/docker-compose\.(build\.)?(ee|enterprise|ha|multi)|^backend/internal/compose/enterprise(_test)?\.go$'; then
+  echo "export-ce: enterprise paths survived the filter (history)" >&2
   exit 1
 fi
 if [ "$(git show HEAD:README.md)" != "$CE_README" ]; then
