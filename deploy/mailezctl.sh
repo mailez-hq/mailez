@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# mailezctl — management entry: dev / community / enterprise / ha / multi.
+# mailezctl — management entry: dev / ce / ee / ha / multi.
 #
 # Profiles (self-contained compose files):
-#   dev        = docker-compose.dev.yml        (SQLite + Pebble + local FS)
-#   community  = docker-compose.community.yml  (mailezine + SQLite control plane)
-#   enterprise = docker-compose.enterprise.yml (mailezine + MySQL + TiDB + MinIO/S3)
+#   dev = docker-compose.dev.yml (SQLite + Pebble + local FS)
+#   ce  = docker-compose.ce.yml  (mailezine + SQLite control plane)
+#   ee  = docker-compose.ee.yml  (mailezine + MySQL + TiDB + MinIO/S3)
 # plus the overlays:
-#   ha         = enterprise + docker-compose.ha.yml (backend/frontend replicas)
-#   multi      = enterprise + docker-compose.multi.yml (multi-active engine)
+#   ha    = ee + docker-compose.ha.yml (backend/frontend replicas)
+#   multi = ee + docker-compose.multi.yml (multi-active engine)
 #
 # Images:
 #   Production targets pull prebuilt images (tag = MAILEZ_IMAGE_TAG,
@@ -19,14 +19,14 @@
 #   to pull.
 #
 # Usage:
-#   ./deploy/mailezctl.sh up              # dev (builds from source)
-#   ./deploy/mailezctl.sh up community    # community edition prod (pull)
-#   MAILEZ_LOCAL_BUILD=1 ./deploy/mailezctl.sh up community
-#   ./deploy/mailezctl.sh up enterprise   # enterprise edition prod (pull)
-#   ./deploy/mailezctl.sh up ha           # enterprise + control-plane replicas
-#   ./deploy/mailezctl.sh up multi        # enterprise + multi-active engine
+#   ./deploy/mailezctl.sh up       # dev (builds from source)
+#   ./deploy/mailezctl.sh up ce    # community edition prod (pull)
+#   MAILEZ_LOCAL_BUILD=1 ./deploy/mailezctl.sh up ce
+#   ./deploy/mailezctl.sh up ee    # enterprise edition prod (pull)
+#   ./deploy/mailezctl.sh up ha    # ee + control-plane replicas
+#   ./deploy/mailezctl.sh up multi # ee + multi-active engine
 #   ./deploy/mailezctl.sh ps
-#   ./deploy/mailezctl.sh logs enterprise mailezine -Follow
+#   ./deploy/mailezctl.sh logs ee mailezine -Follow
 #   ./deploy/mailezctl.sh down
 set -euo pipefail
 
@@ -37,13 +37,13 @@ SERVICE="${3:-}"
 cd "$(dirname "$0")"
 
 case "$TARGET" in
-  dev)        FILES=("docker-compose.dev.yml");        BUILD_OVERLAY="docker-compose.build.dev.yml" ;;
-  community)  FILES=("docker-compose.community.yml");  BUILD_OVERLAY="docker-compose.build.community.yml" ;;
-  enterprise) FILES=("docker-compose.enterprise.yml"); BUILD_OVERLAY="docker-compose.build.enterprise.yml" ;;
-  ha)         FILES=("docker-compose.enterprise.yml" "docker-compose.ha.yml"); BUILD_OVERLAY="docker-compose.build.enterprise.yml" ;;
-  multi)      FILES=("docker-compose.enterprise.yml" "docker-compose.multi.yml"); BUILD_OVERLAY="docker-compose.build.multi.yml" ;;
+  dev)   FILES=("docker-compose.dev.yml");  BUILD_OVERLAY="docker-compose.build.dev.yml" ;;
+  ce)    FILES=("docker-compose.ce.yml");   BUILD_OVERLAY="docker-compose.build.ce.yml" ;;
+  ee)    FILES=("docker-compose.ee.yml");   BUILD_OVERLAY="docker-compose.build.ee.yml" ;;
+  ha)    FILES=("docker-compose.ee.yml" "docker-compose.ha.yml"); BUILD_OVERLAY="docker-compose.build.ee.yml" ;;
+  multi) FILES=("docker-compose.ee.yml" "docker-compose.multi.yml"); BUILD_OVERLAY="docker-compose.build.multi.yml" ;;
   *)
-    echo "unknown target: $TARGET (dev|community|enterprise|ha|multi)" >&2
+    echo "unknown target: $TARGET (dev|ce|ee|ha|multi)" >&2
     exit 2
     ;;
 esac

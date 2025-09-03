@@ -9,18 +9,18 @@ cover development plus the two production editions:
 | File                                    | Edition      | Engine           | Storage                  |
 | --------------------------------------- | ------------ | ---------------- | ------------------------ |
 | `docker-compose.dev.yml`                | Development  | mailezine        | SQLite + Pebble + local FS |
-| `docker-compose.community.yml`          | Community    | mailezine        | SQLite (default; MySQL optional) + Pebble + local FS |
-| `docker-compose.enterprise.yml`         | Enterprise   | mailezine        | MySQL + TiDB + MinIO/S3  |
+| `docker-compose.ce.yml`          | Community    | mailezine        | SQLite (default; MySQL optional) + Pebble + local FS |
+| `docker-compose.ee.yml`         | Enterprise   | mailezine        | MySQL + TiDB + MinIO/S3  |
 
 All files belong to one compose project (`mailez`), so `ps`/`logs`/`down`
 manage the same stack whichever edition is active.
 
 ```sh
 ./deploy/mailezctl.sh up                    # dev: SQLite + Pebble + local FS
-./deploy/mailezctl.sh up community          # community: mailezine + SQLite (default)
-./deploy/mailezctl.sh up enterprise         # enterprise: mailezine + MySQL + TiDB + MinIO/S3
+./deploy/mailezctl.sh up ce          # community: mailezine + SQLite (default)
+./deploy/mailezctl.sh up ee         # enterprise: mailezine + MySQL + TiDB + MinIO/S3
 ./deploy/mailezctl.sh ps                    # status (same project regardless)
-./deploy/mailezctl.sh logs enterprise mailezine -Follow
+./deploy/mailezctl.sh logs ee mailezine -Follow
 ./deploy/mailezctl.sh down
 ```
 
@@ -41,13 +41,13 @@ rspamd spam headers, and (optionally) alias delivery.
 Prerequisites:
 
 - The stack is up (`mailezctl` passes `--env-file mailez.env` for you):
-  `cd deploy && ./mailezctl.sh up enterprise`
-  (local source build: `MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up enterprise`)
+  `cd deploy && ./mailezctl.sh up ee`
+  (local source build: `MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up ee`)
 - The backend has been seeded once (creates `admin@example.com` /
   `MailezDemo2026!`). Easiest from a container:
 
   ```sh
-  cd deploy && docker compose --env-file mailez.env -f docker-compose.enterprise.yml exec backend mailez-seed
+  cd deploy && docker compose --env-file mailez.env -f docker-compose.ee.yml exec backend mailez-seed
   ```
 
   For a host-side seed, point `DB_DRIVER`/`DB_DSN` at the deployed database

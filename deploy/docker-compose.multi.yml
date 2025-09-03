@@ -1,4 +1,4 @@
-# mailez 引擎多活档（叠加在 docker-compose.enterprise.yml 之上）。
+# mailez 引擎多活档（叠加在 docker-compose.ee.yml 之上）。
 #
 # 目标形态：引擎(mailezine) N 副本对同一份共享存储（TiDB KV + MinIO/S3
 # blob）全服务多活——SMTP 收发、IMAP/POP3、ManageSieve 在任意副本上服务
@@ -17,7 +17,7 @@
 # 用法：
 #   cd deploy
 #   docker compose --env-file mailez.env \
-#     -f docker-compose.enterprise.yml -f docker-compose.multi.yml up -d
+#     -f docker-compose.ee.yml -f docker-compose.multi.yml up -d
 #   # 或经统一入口（等价）：
 #   ./mailezctl.sh up multi
 #   # 本地源码构建：叠加 docker-compose.build.multi.yml 后 up -d --build

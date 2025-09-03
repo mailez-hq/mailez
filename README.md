@@ -114,8 +114,8 @@ migrate in place with `mailezine migrate`.
 
 ```sh
 ./deploy/mailezctl.sh up              # dev tier
-./deploy/mailezctl.sh up community    # community edition (production)
-./deploy/mailezctl.sh up enterprise   # enterprise edition (production)
+./deploy/mailezctl.sh up ce    # community edition (production)
+./deploy/mailezctl.sh up ee   # enterprise edition (production)
 ./deploy/mailezctl.sh up ha           # enterprise + control-plane replicas
 ./deploy/mailezctl.sh up multi        # enterprise + multi-active engine
 ```
@@ -183,7 +183,7 @@ After the stack is up, provision the admin account **inside the container**
 (the backend image ships a one-shot seeder; no local Go required):
 
 ```sh
-docker compose --env-file deploy/mailez.env -f deploy/docker-compose.community.yml exec backend mailez-seed
+docker compose --env-file deploy/mailez.env -f deploy/docker-compose.ce.yml exec backend mailez-seed
 # default: admin@example.com / MailezDemo2026! — override with
 # MAILEZ_ADMIN_EMAIL / MAILEZ_ADMIN_PASSWORD before seeding
 ```
@@ -216,7 +216,7 @@ Production deployments are signed with your own key
 - Mail engine: **mailezine** (a single Go binary) speaks
   SMTP/IMAP/POP3/ManageSieve behind an engine-agnostic directory contract
   (`/stack/directory/*`) with pluggable KV + blob storage — every tier
-  (dev, community, enterprise) runs it; the tiers differ only in storage
+  (dev, ce, ee) runs it; the tiers differ only in storage
   scale (SQLite/pebble vs MySQL/TiDB/MinIO) and licensed features
 - More details: [`docs/dev-setup.md`](docs/dev-setup.md),
   [`docs/architecture.md`](docs/architecture.md),

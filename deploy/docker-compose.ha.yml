@@ -1,4 +1,4 @@
-# mailez 控制面横向扩容档（叠加在 docker-compose.enterprise.yml 之上）。
+# mailez 控制面横向扩容档（叠加在 docker-compose.ee.yml 之上）。
 #
 # 前提：控制面 DB 已是 MySQL、KV 已是 TiDB、blob 已是 MinIO（enterprise 档
 # 自带）；backend 无状态化依赖本仓库的三个机制——
@@ -10,7 +10,7 @@
 # 用法：
 #   cd deploy
 #   docker compose --env-file mailez.env \
-#     -f docker-compose.enterprise.yml -f docker-compose.ha.yml up -d --build
+#     -f docker-compose.ee.yml -f docker-compose.ha.yml up -d --build
 #
 # 机制说明：
 # - backend 副本负载均衡：gateway nginx 模板以变量+resolver(30s) 反代

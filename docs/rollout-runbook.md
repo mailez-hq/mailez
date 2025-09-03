@@ -23,9 +23,9 @@
 ```sh
 cd deploy
 cp mailez.env.example mailez.env        # 编辑上面三项 + 端口
-./mailezctl.sh up community             # 拉取预构建镜像（MAILEZ_IMAGE_TAG）；
-                                        # 源码部署：MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up community
-docker compose --env-file mailez.env -f docker-compose.community.yml \
+./mailezctl.sh up ce             # 拉取预构建镜像（MAILEZ_IMAGE_TAG）；
+                                        # 源码部署：MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up ce
+docker compose --env-file mailez.env -f docker-compose.ce.yml \
   exec backend mailez-seed              # 初始管理员 admin@example.com
 ```
 
@@ -42,7 +42,7 @@ docker compose --env-file mailez.env -f docker-compose.community.yml \
 
 ---
 
-## 阶段二：CE → EE（enterprise 档）
+## 阶段二：CE → EE（ee 档）
 
 **诚实边界先读**（`docs/upgrades.md` §3）：跨 KV（Pebble→TiDB）邮件数据
 没有原地迁移工具；控制面走"配置导出 → 导入"。本阶段推演验证的是
@@ -52,7 +52,7 @@ IMAP 聚合路径执行。
 ```sh
 # 1. 停 CE 栈（注意 mailezctl down 只清 dev 档，见"坑"清单）
 cd deploy
-docker compose --env-file mailez.env -f docker-compose.community.yml down
+docker compose --env-file mailez.env -f docker-compose.ce.yml down
 
 # 2. 签发 license（DEV 内置签名 key；生产用 HQ 签发的正式授权）
 cd ../backend
@@ -62,8 +62,8 @@ go run ./cmd/license inspect -in ../deploy/licenses/license.lic
 cd ../deploy
 
 # 3. 起 EE 栈（--build 会以 MAILEZ_EDITION=ee 重建 backend/前端/引擎镜像）
-./mailezctl.sh up enterprise
-docker compose --env-file mailez.env -f docker-compose.enterprise.yml \
+./mailezctl.sh up ee
+docker compose --env-file mailez.env -f docker-compose.ee.yml \
   exec backend mailez-seed              # EE 控制面是新的 MySQL，需重新 seed
 ```
 
@@ -128,8 +128,8 @@ multi 档**行为差异**（实测确认，客户端/监控会感知）：
    dev compose 文件里的服务。跑过 community/enterprise/multi 的栈必须
    显式指定文件清理，否则残留容器占端口/网络：
    ```sh
-   docker compose --env-file mailez.env -f docker-compose.community.yml down
-   docker compose --env-file mailez.env -f docker-compose.enterprise.yml -f docker-compose.multi.yml down
+   docker compose --env-file mailez.env -f docker-compose.ce.yml down
+   docker compose --env-file mailez.env -f docker-compose.ee.yml -f docker-compose.multi.yml down
    ```
 2. **构建分组按档拆分**：`docker buildx bake`（默认 = `ce` 组）产出 CE 档
    backend/前端/引擎与全部 infra 镜像；`ee` 组只有 backend-ee/admin-ee/
@@ -139,7 +139,7 @@ multi 档**行为差异**（实测确认，客户端/监控会感知）：
    会直接 pull 失败；源码部署记得 `MAILEZ_LOCAL_BUILD=1`（叠加
    build overlay + `--build`），不带它 `up` 只拉镜像。
 3. **backend 镜像的 EE 构建依赖编译期参数**：backend Dockerfile 默认
-   `MAILEZ_EDITION=ce`；bake 的 `backend-ee` target 与 build.enterprise
+   `MAILEZ_EDITION=ce`；bake 的 `backend-ee` target 与 build.ee
    overlay 都传 `MAILEZ_EDITION: ee`（编译期 `-tags mailez_ee`）。运行时
    `MAILEZ_EDITION` 环境变量只是标记，不改变编译产物——用错了会得到
    "看起来是企业版、实际没有 EE 路由"的镜像。

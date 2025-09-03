@@ -4,7 +4,7 @@
 （mailezine）多活的部署形态、工作原理与运维要点。单机社区版不受影响：所有
 多副本机制在单副本下自动退化为直通。
 
-## 一、目标拓扑（docker-compose.enterprise.yml + docker-compose.ha.yml）
+## 一、目标拓扑（docker-compose.ee.yml + docker-compose.ha.yml）
 
 ```
             gateway(nginx)                       ← resolver 动态解析，副本即加即用
@@ -22,7 +22,7 @@ cd deploy
 ./mailezctl.sh up ha
 # 扩容（gateway 30s 内自动感知新副本）：
 docker compose --env-file mailez.env \
-  -f docker-compose.enterprise.yml -f docker-compose.ha.yml up -d --scale backend=4
+  -f docker-compose.ee.yml -f docker-compose.ha.yml up -d --scale backend=4
 ```
 
 ## 二、backend 多副本的三个机制
@@ -103,7 +103,7 @@ webmail 实时流（SSE EventWatcher）是副本本地的：每个副本只轮�
 
 ## 六、引擎多活（multi 档）
 
-拓扑（docker-compose.enterprise.yml + docker-compose.multi.yml）：
+拓扑（docker-compose.ee.yml + docker-compose.multi.yml）：
 
 ```
  MX/L4-LB ──> engine-lb(haproxy) ──PROXY v1──> mailezine×N  ← 邮件端口按连接轮询

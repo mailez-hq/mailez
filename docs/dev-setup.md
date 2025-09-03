@@ -57,8 +57,8 @@ docker compose -f docker-compose.dev.yml up -d
 依赖，mailezine 引擎直接发布邮件端口（25 / 1587 / 110 / 143 / 4190）到
 宿主机。引擎通过 `host.docker.internal:8080` 访问宿主机 mailez 后端的
 目录/认证接口（SQLite 存储）。两个生产版本是独立文件（全容器化）：
-`docker-compose.community.yml`（社区版 mailezine + SQLite 默认控制面 +
-单节点存储）与 `docker-compose.enterprise.yml`（企业版 mailezine +
+`docker-compose.ce.yml`（社区版 mailezine + SQLite 默认控制面 +
+单节点存储）与 `docker-compose.ee.yml`（企业版 mailezine +
 MySQL + TiDB + MinIO/S3），见 `deploy/scripts/README.md`。
 
 ## 启动 mailez（本地开发模式）
@@ -82,8 +82,8 @@ powershell -File .\dev-start.ps1 -Ce  # 社区版（企业功能位显示降级�
 | 版本 | compose 文件 | 引擎 | 控制面 | 存储 |
 | ---- | ------------ | ---- | ------ | ---- |
 | 开发 | `docker-compose.dev.yml` | mailezine | SQLite（宿主机） | Pebble + 本地 FS |
-| 社区版 | `docker-compose.community.yml` | mailezine | SQLite 默认（可选 MySQL） | Pebble + 本地 FS |
-| 企业版 | `docker-compose.enterprise.yml` | mailezine | MySQL | TiDB + MinIO/S3 |
+| 社区版 | `docker-compose.ce.yml` | mailezine | SQLite 默认（可选 MySQL） | Pebble + 本地 FS |
+| 企业版 | `docker-compose.ee.yml` | mailezine | MySQL | TiDB + MinIO/S3 |
 
 引擎与全部组件镜像构建：仓库根目录 `docker buildx bake`（构建定义
 `docker-bake.hcl`，默认 CE 档、tag `:local`；引擎上下文经 `MAILEZINE_CONTEXT`
@@ -125,7 +125,7 @@ mailezine 引擎的目录/认证查询都走它）。开发模式下 `MAILEZ_BAC
 `docker-compose.dev.yml` 覆盖为 `host.docker.internal`，因此宿主机后端必须
 监听 8080，前端 `next.config.ts` 的默认 `API_TARGET` 也指向
 `http://localhost:8080`。容器化部署时用环境变量 `API_TARGET=http://backend:8080`
-覆盖即可（见 `docker-compose.enterprise.yml`）。
+覆盖即可（见 `docker-compose.ee.yml`）。
 
 ## 常见问题
 

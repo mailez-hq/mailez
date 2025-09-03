@@ -75,13 +75,13 @@ jobs:
           # mailez-mailezine:<tag> comes from the engine repo's release
           # workflow (lockstep tags); retry while it catches up.
           for i in $(seq 1 10); do
-            docker compose --env-file mailez.env -f docker-compose.community.yml pull && break
+            docker compose --env-file mailez.env -f docker-compose.ce.yml pull && break
             echo "pull failed (attempt $i); engine image may not be published yet"
             sleep 30
           done
           # --env-file is required: compose ${VAR:?} interpolation reads
           # shell env and the --env-file only, never the services' env_file.
-          docker compose --env-file mailez.env -f docker-compose.community.yml up -d --wait
+          docker compose --env-file mailez.env -f docker-compose.ce.yml up -d --wait
 
       - name: Health check
         run: |
@@ -90,7 +90,7 @@ jobs:
       - name: Seed the admin account and smoke-login
         working-directory: deploy
         run: |
-          docker compose --env-file mailez.env -f docker-compose.community.yml exec -T backend mailez-seed
+          docker compose --env-file mailez.env -f docker-compose.ce.yml exec -T backend mailez-seed
           curl -sf -H 'Content-Type: application/json' \
             -d '{"email":"admin@example.com","pw":"MailezDemo2026!"}' \
             http://localhost:8081/api/v1/sso/login
