@@ -5,6 +5,7 @@ import { Providers } from "@/components/providers";
 import { PreferencesProvider } from "@/components/preferences-provider";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { parseThemeCookie } from "@/lib/preferences";
+import { fetchPublicBrand } from "@/lib/branding";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,16 +18,25 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Mailez Webmail",
-  description: "Mailez webmail — mail easy",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    title: "Mailez",
-    statusBarStyle: "default",
-  },
-};
+// White-label: the tab title and the installed-PWA name follow the branding
+// configured in the admin console. The layout already renders dynamically
+// (cookies below), so this fetch runs per request; a down backend degrades
+// to the built-in Mailez brand.
+export async function generateMetadata(): Promise<Metadata> {
+  const brand = await fetchPublicBrand();
+  return {
+    title: brand ? `${brand.title} Webmail` : "Mailez Webmail",
+    description: brand
+      ? `${brand.title} webmail — mail easy`
+      : "Mailez webmail — mail easy",
+    manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      title: brand?.title ?? "Mailez",
+      statusBarStyle: "default",
+    },
+  };
+}
 
 // Next 16 moved themeColor out of metadata into the viewport export.
 export const viewport: Viewport = {
