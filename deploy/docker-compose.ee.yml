@@ -19,8 +19,9 @@
 # --env-file 指定的文件，不读服务的 env_file，缺了它 stack secret 会直接
 # 报错退出（mailezctl 脚本已内置该参数）。
 #
-# 企业版需要有效的 license：deploy/licenses/license.lic（自签方式见
-# README 的企业版授权章节），默认 MAILEZINE_LICENSE_REQUIRED=true。
+# 企业版需要有效的 license：deploy/licenses/license.lic（由 Mailez HQ
+# 签发；官方镜像用生产公钥验签，自签 license 只对本地构建有效，评估见
+# docker-compose.ee.dev.yml），默认 MAILEZINE_LICENSE_REQUIRED=true。
 #
 # 首次部署需初始化管理员（backend 镜像内置一次性 seed 器）：
 #   docker compose --env-file mailez.env -f docker-compose.ee.yml exec backend mailez-seed

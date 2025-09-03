@@ -30,6 +30,20 @@ jobs:
         edition: [ce, ee]
     steps:
       - uses: actions/checkout@v4
+      # The EE backend verifies licenses against the vendor key baked in at
+      # build time; without the secrets the image would ship with the dev
+      # key and refuse MAILEZ_LICENSE_REQUIRED=true at startup. Fail here,
+      # at release time, instead of at the customer.
+      - name: Require the vendor license keys for EE builds
+        if: matrix.edition == 'ee'
+        env:
+          MAILEZ_LICENSE_PUBKEY: ${{ secrets.MAILEZ_LICENSE_PUBKEY }}
+          MAILEZ_SERVICE_PUBKEY: ${{ secrets.MAILEZ_SERVICE_PUBKEY }}
+        run: |
+          if [ -z "$MAILEZ_LICENSE_PUBKEY" ] || [ -z "$MAILEZ_SERVICE_PUBKEY" ]; then
+            echo "::error::EE releases require the MAILEZ_LICENSE_PUBKEY and MAILEZ_SERVICE_PUBKEY repo secrets (go run ./cmd/license genkey once, keep the private half in the secret store; see README enterprise licensing)"
+            exit 1
+          fi
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
@@ -37,15 +51,17 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # docker-bake.hcl variables (VERSION/PLATFORMS/APK_MIRROR) are
-      # overridden by same-name environment variables. GH runners live
-      # outside CN, so use the upstream Alpine CDN instead of the HCL's
-      # aliyun default.
+      # docker-bake.hcl variables (VERSION/PLATFORMS/APK_MIRROR/
+      # MAILEZ_LICENSE_PUBKEY/MAILEZ_SERVICE_PUBKEY) are overridden by
+      # same-name environment variables. GH runners live outside CN, so use
+      # the upstream Alpine CDN instead of the HCL's aliyun default.
       - uses: docker/bake-action@v6
         env:
           VERSION: ${{ github.ref_name }}
           PLATFORMS: linux/amd64,linux/arm64
           APK_MIRROR: dl-cdn.alpinelinux.org
+          MAILEZ_LICENSE_PUBKEY: ${{ secrets.MAILEZ_LICENSE_PUBKEY }}
+          MAILEZ_SERVICE_PUBKEY: ${{ secrets.MAILEZ_SERVICE_PUBKEY }}
         with:
           targets: ${{ matrix.edition }}
           push: true

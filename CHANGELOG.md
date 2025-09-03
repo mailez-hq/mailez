@@ -149,6 +149,19 @@ All notable changes to mailez are documented here. The format follows
 - Dead env entries `MAILEZ_RELAYHOST` / `MAILEZ_REJECT_UNLISTED_RECIPIENT`
   / `MAILEZ_FTS` from `mailez.env.example` (nothing read them)
 
+### Security
+
+- Hardened the EE license trust root. Release EE images now bake the vendor
+  production Ed25519 verification key via the `MAILEZ_LICENSE_PUBKEY` /
+  `MAILEZ_SERVICE_PUBKEY` build args (docker-bake.hcl variables wired to
+  repo secrets in the release workflow, which now fails fast when the
+  secrets are missing on an EE tag), and the backend refuses to enforce
+  `MAILEZ_LICENSE_REQUIRED=true` on a binary that still embeds the built-in
+  development key (`internal/license.Load`). Previously the development
+  signing key shipped in the public source AND remained the verification
+  key of released binaries, so anyone could mint unlimited enterprise
+  licenses the official images accepted
+
 ## [1.0.0-rc.1] - 2026-08-28
 
 ### Added
