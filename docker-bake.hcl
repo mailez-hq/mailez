@@ -8,21 +8,26 @@
 #     ghcr.io/mailez-hq/mailez-backend      vs mailez-backend-ee
 #   nginx / rspamd / unbound / macro-scanner / engine-lb are edition-neutral.
 #
+# This file holds the CE targets; the EE targets and the vendor license-key
+# variables live in docker-bake.ee.hcl (private tree, stripped from the
+# community mirror).
+#
 # Groups:
 #   default    = ce
 #   ce         backend-ce, admin-ce, webmail-ce, nginx, rspamd, unbound,
 #              macro-scanner, engine-lb
-#   ee         backend-ee, admin-ee, webmail-ee
-#   mailezine  mailezine-ce, mailezine-ee
+#   mailezine  mailezine-ce
 #              (kept out of ce/ee on purpose: it builds from the separate
-#              mailezine repo, resolved via MAILEZINE_CONTEXT)
+#              mailezine repo, resolved via MAILEZINE_CONTEXT; the EE bake
+#              file re-adds mailezine-ee to this group)
 #
 # Examples:
 #   docker buildx bake                                  # CE, tag :local
 #   docker buildx bake ce mailezine                     # CE + mailezine
-#   docker buildx bake ee                               # EE variants
+#   docker buildx bake -f docker-bake.hcl -f docker-bake.ee.hcl ee  # EE variants
 #   VERSION=v1.2.3 APK_MIRROR=dl-cdn.alpinelinux.org \
-#     PLATFORMS=linux/amd64,linux/arm64 docker buildx bake ce ee mailezine --push
+#     PLATFORMS=linux/amd64,linux/arm64 \
+#     docker buildx bake -f docker-bake.hcl -f docker-bake.ee.hcl ce ee mailezine --push
 
 variable "VERSION" {
   # Image tag (and Dockerfile VERSION args). "local" matches the compose
@@ -52,20 +57,6 @@ variable "MAILEZINE_CONTEXT" {
   default = "../mailezine"
 }
 
-variable "MAILEZ_LICENSE_PUBKEY" {
-  # Vendor Ed25519 verification keys baked into EE release builds (base64
-  # DER SPKI; `go run ./cmd/license genkey` prints a pair — the service
-  # key shares it). Overridden by same-name environment variables; the
-  # release workflow wires the repo secrets. Empty keeps the source-default
-  # dev key, which the backend refuses to enforce MAILEZ_LICENSE_REQUIRED
-  # on at startup — so official EE builds MUST set these.
-  default = ""
-}
-
-variable "MAILEZ_SERVICE_PUBKEY" {
-  default = ""
-}
-
 group "default" {
   targets = ["ce"]
 }
@@ -83,18 +74,9 @@ group "ce" {
   ]
 }
 
-group "ee" {
-  targets = [
-    "backend-ee",
-    "admin-ee",
-    "webmail-ee",
-  ]
-}
-
 group "mailezine" {
   targets = [
     "mailezine-ce",
-    "mailezine-ee",
   ]
 }
 
@@ -106,31 +88,11 @@ target "backend-ce" {
   platforms = split(",", PLATFORMS)
 }
 
-target "backend-ee" {
-  context = "."
-  dockerfile = "backend/Dockerfile"
-  args = {
-    MAILEZ_EDITION = "ee"
-    MAILEZ_LICENSE_PUBKEY = MAILEZ_LICENSE_PUBKEY
-    MAILEZ_SERVICE_PUBKEY = MAILEZ_SERVICE_PUBKEY
-  }
-  tags = ["${REGISTRY}/mailez-backend-ee:${VERSION}"]
-  platforms = split(",", PLATFORMS)
-}
-
 target "admin-ce" {
   context = "./frontend"
   dockerfile = "apps/admin/Dockerfile"
   args = { MAILEZ_EDITION = "ce" }
   tags = ["${REGISTRY}/mailez-admin:${VERSION}"]
-  platforms = split(",", PLATFORMS)
-}
-
-target "admin-ee" {
-  context = "./frontend"
-  dockerfile = "apps/admin/Dockerfile"
-  args = { MAILEZ_EDITION = "ee" }
-  tags = ["${REGISTRY}/mailez-admin-ee:${VERSION}"]
   platforms = split(",", PLATFORMS)
 }
 
@@ -142,27 +104,11 @@ target "webmail-ce" {
   platforms = split(",", PLATFORMS)
 }
 
-target "webmail-ee" {
-  context = "./frontend"
-  dockerfile = "apps/webmail/Dockerfile"
-  args = { MAILEZ_EDITION = "ee" }
-  tags = ["${REGISTRY}/mailez-webmail-ee:${VERSION}"]
-  platforms = split(",", PLATFORMS)
-}
-
 target "mailezine-ce" {
   context = MAILEZINE_CONTEXT
   dockerfile = "Dockerfile"
   args = { MAILEZ_EDITION = "ce", VERSION = VERSION }
   tags = ["${REGISTRY}/mailez-mailezine:${VERSION}"]
-  platforms = split(",", PLATFORMS)
-}
-
-target "mailezine-ee" {
-  context = MAILEZINE_CONTEXT
-  dockerfile = "Dockerfile"
-  args = { MAILEZ_EDITION = "ee", VERSION = VERSION }
-  tags = ["${REGISTRY}/mailez-mailezine-ee:${VERSION}"]
   platforms = split(",", PLATFORMS)
 }
 

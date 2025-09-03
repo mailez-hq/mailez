@@ -5,9 +5,9 @@
 # (top-level dir mailez-<version>/):
 #   install.sh                      interactive installer (from scripts/)
 #   VERSION                         release version
-#   deploy/docker-compose.{ce,ee,multi,ha}.yml
+#   deploy/docker-compose.ce.yml
 #   deploy/mailezctl.sh  deploy/mailez.env.example
-#   docs/{architecture,upgrades,scaling}.md
+#   docs/{architecture,upgrades}.md
 #
 # Source resolution (first match wins):
 #   1. $MAILEZ_RELEASE_SOURCE      explicit tree to pack from
@@ -55,15 +55,13 @@ TOP="mailez-$VERSION"
 STAGE="$STAGE_ROOT/$TOP"
 mkdir -p "$STAGE"
 
+# Community edition only: the ee/ha/multi deployment recipes live under
+# deploy/ee/ in the private tree and must not ship in the public tarball.
 stage deploy/docker-compose.ce.yml
-stage deploy/docker-compose.ee.yml
-stage deploy/docker-compose.multi.yml
-stage deploy/docker-compose.ha.yml
 stage deploy/mailezctl.sh
 stage deploy/mailez.env.example
 stage docs/architecture.md
 stage docs/upgrades.md
-stage docs/scaling.md
 stage scripts/install.sh install.sh
 printf '%s\n' "$VERSION" > "$STAGE/VERSION"
 
