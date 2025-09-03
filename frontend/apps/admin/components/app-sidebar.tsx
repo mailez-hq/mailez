@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { Logo } from "@/components/logo";
+import { useBrand } from "@/lib/use-brand";
 import { logout } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { Me } from "@/lib/api";
@@ -56,6 +57,9 @@ export function AppSidebar({ me }: { me: Me }) {
   const t = useTranslations("nav");
   const pathname = usePathname();
   const router = useRouter();
+  // White-label: branded deployments show the org name (and logo when
+  // configured) instead of the built-in Mailez wordmark.
+  const brand = useBrand();
   const role = me.global_admin ? "admin" : me.manager ? "manager" : "user";
   const nav = navItems.filter((item) => item.roles.includes(role));
 
@@ -72,8 +76,17 @@ export function AppSidebar({ me }: { me: Me }) {
           href={nav[0]?.href || "/"}
           className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-foreground hover:opacity-80"
         >
-          <Logo className="size-9" />
-          Mailez{" "}
+          {brand.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={brand.logo_url}
+              alt={brand.title}
+              className="size-9 shrink-0 rounded-lg object-contain"
+            />
+          ) : (
+            <Logo className="size-9" />
+          )}
+          {brand.title || "Mailez"}{" "}
           <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
             Admin
           </span>

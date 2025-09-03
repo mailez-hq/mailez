@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu, PenLine, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
+import { useBrand } from "@/lib/use-brand";
 import { cn } from "@/lib/utils";
 
 export function SidebarHeader({
@@ -23,6 +24,9 @@ export function SidebarHeader({
   onAiCompose: () => void;
 }) {
   const t = useTranslations("mail");
+  // White-label: branded deployments show the org name (and logo when
+  // configured) instead of the built-in Mailez wordmark.
+  const brand = useBrand();
 
   return (
     <>
@@ -35,8 +39,17 @@ export function SidebarHeader({
           onClick={onClose}
           className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-foreground hover:opacity-80"
         >
-          <Logo />
-          Mailez Webmail
+          {brand.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={brand.logo_url}
+              alt={brand.title}
+              className="size-8 shrink-0 rounded-lg object-contain"
+            />
+          ) : (
+            <Logo />
+          )}
+          {brand.title || "Mailez Webmail"}
         </Link>
         <Button variant="ghost" size="sm" onClick={onClose} className="lg:hidden">
           <Menu className="size-4" />
