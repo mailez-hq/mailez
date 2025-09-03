@@ -100,7 +100,7 @@ entry point:
 | Edition | Engine | Storage |
 |---|---|---|
 | **dev** (default) | mailezine | SQLite + Pebble + local FS |
-| **community** | mailezine | SQLite + Pebble + local FS (MySQL optional) |
+| **community** | mailezine | SQLite + Pebble + local FS (MySQL/PostgreSQL optional) |
 | **enterprise** | mailezine | MySQL + TiDB + MinIO/S3 |
 
 Every edition runs the **same mailezine engine** — same protocols, same

@@ -82,7 +82,7 @@ powershell -File .\dev-start.ps1 -Ce  # 社区版（企业功能位显示降级�
 | 版本 | compose 文件 | 引擎 | 控制面 | 存储 |
 | ---- | ------------ | ---- | ------ | ---- |
 | 开发 | `docker-compose.dev.yml` | mailezine | SQLite（宿主机） | Pebble + 本地 FS |
-| 社区版 | `docker-compose.ce.yml` | mailezine | SQLite 默认（可选 MySQL） | Pebble + 本地 FS |
+| 社区版 | `docker-compose.ce.yml` | mailezine | SQLite 默认（可选 MySQL/PostgreSQL） | Pebble + 本地 FS |
 | 企业版 | `docker-compose.ee.yml` | mailezine | MySQL | TiDB + MinIO/S3 |
 
 引擎与全部组件镜像构建：仓库根目录 `docker buildx bake`（构建定义

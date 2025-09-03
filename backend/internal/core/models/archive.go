@@ -41,7 +41,7 @@ type ArchivedMessage struct {
 	Subject    string     `gorm:"size:512;index" json:"subject"`
 	Date       time.Time  `gorm:"index" json:"date"`
 	Size       int64      `gorm:"not null" json:"size"`
-	Raw        []byte     `gorm:"type:blob" json:"-"`
+	Raw        []byte     `json:"-"` // blob: sqlite blob / mysql longblob / pg bytea via GORM default
 	ArchivedAt time.Time  `gorm:"index" json:"archived_at"`
 	ExpiresAt  *time.Time `gorm:"index" json:"expires_at"`
 	Reviewed   bool       `gorm:"not null;default:false;index" json:"reviewed"`

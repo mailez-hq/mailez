@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm/clause"
 
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
@@ -85,6 +86,9 @@ func (s *Service) updateSettings(c *fiber.Ctx) error {
 }
 
 // listMessages searches the archive with metadata filters.
+//
+// from/to are SQL reserved words, so they go through clause.Column which
+// quotes them per dialect (backticks on MySQL, double quotes elsewhere).
 func (s *Service) listMessages(c *fiber.Ctx) error {
 	page, limit := core.PageParams(c)
 	q := s.DB.WithContext(c.Context()).Model(&models.ArchivedMessage{})
@@ -95,15 +99,15 @@ func (s *Service) listMessages(c *fiber.Ctx) error {
 		q = q.Where("domain = ?", v)
 	}
 	if v := c.Query("from"); v != "" {
-		q = q.Where("LOWER(`from`) LIKE ? OR LOWER(envelope_from) LIKE ?", "%"+strings.ToLower(v)+"%", "%"+strings.ToLower(v)+"%")
+		q = q.Where("LOWER(?) LIKE ? OR LOWER(envelope_from) LIKE ?", clause.Column{Name: "from"}, "%"+strings.ToLower(v)+"%", "%"+strings.ToLower(v)+"%")
 	}
 	if v := c.Query("to"); v != "" {
-		q = q.Where("LOWER(`to`) LIKE ? OR LOWER(envelope_to) LIKE ?", "%"+strings.ToLower(v)+"%", "%"+strings.ToLower(v)+"%")
+		q = q.Where("LOWER(?) LIKE ? OR LOWER(envelope_to) LIKE ?", clause.Column{Name: "to"}, "%"+strings.ToLower(v)+"%", "%"+strings.ToLower(v)+"%")
 	}
 	if v := strings.TrimSpace(c.Query("q")); v != "" {
 		like := "%" + strings.ToLower(v) + "%"
-		q = q.Where("LOWER(subject) LIKE ? OR LOWER(`from`) LIKE ? OR LOWER(`to`) LIKE ? OR LOWER(message_id) LIKE ?",
-			like, like, like, like)
+		q = q.Where("LOWER(subject) LIKE ? OR LOWER(?) LIKE ? OR LOWER(?) LIKE ? OR LOWER(message_id) LIKE ?",
+			like, clause.Column{Name: "from"}, like, clause.Column{Name: "to"}, like, like)
 	}
 	if v := c.Query("date_from"); v != "" {
 		if t, err := parseQueryTime(v); err == nil {
@@ -232,15 +236,15 @@ func (s *Service) exportMessages(c *fiber.Ctx) error {
 		q = q.Where("domain = ?", v)
 	}
 	if v := c.Query("from"); v != "" {
-		q = q.Where("LOWER(`from`) LIKE ? OR LOWER(envelope_from) LIKE ?", "%"+strings.ToLower(v)+"%", "%"+strings.ToLower(v)+"%")
+		q = q.Where("LOWER(?) LIKE ? OR LOWER(envelope_from) LIKE ?", clause.Column{Name: "from"}, "%"+strings.ToLower(v)+"%", "%"+strings.ToLower(v)+"%")
 	}
 	if v := c.Query("to"); v != "" {
-		q = q.Where("LOWER(`to`) LIKE ? OR LOWER(envelope_to) LIKE ?", "%"+strings.ToLower(v)+"%", "%"+strings.ToLower(v)+"%")
+		q = q.Where("LOWER(?) LIKE ? OR LOWER(envelope_to) LIKE ?", clause.Column{Name: "to"}, "%"+strings.ToLower(v)+"%", "%"+strings.ToLower(v)+"%")
 	}
 	if v := strings.TrimSpace(c.Query("q")); v != "" {
 		like := "%" + strings.ToLower(v) + "%"
-		q = q.Where("LOWER(subject) LIKE ? OR LOWER(`from`) LIKE ? OR LOWER(`to`) LIKE ? OR LOWER(message_id) LIKE ?",
-			like, like, like, like)
+		q = q.Where("LOWER(subject) LIKE ? OR LOWER(?) LIKE ? OR LOWER(?) LIKE ? OR LOWER(message_id) LIKE ?",
+			like, clause.Column{Name: "from"}, like, clause.Column{Name: "to"}, like, like)
 	}
 	// Same optional filters as listMessages: the export must cover the same
 	// message set as the search.

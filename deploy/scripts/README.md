@@ -9,7 +9,7 @@ cover development plus the two production editions:
 | File                                    | Edition      | Engine           | Storage                  |
 | --------------------------------------- | ------------ | ---------------- | ------------------------ |
 | `docker-compose.dev.yml`                | Development  | mailezine        | SQLite + Pebble + local FS |
-| `docker-compose.ce.yml`          | Community    | mailezine        | SQLite (default; MySQL optional) + Pebble + local FS |
+| `docker-compose.ce.yml`          | Community    | mailezine        | SQLite (default; MySQL/PostgreSQL optional) + Pebble + local FS |
 | `docker-compose.ee.yml`         | Enterprise   | mailezine        | MySQL + TiDB + MinIO/S3  |
 
 All files belong to one compose project (`mailez`), so `ps`/`logs`/`down`

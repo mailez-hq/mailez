@@ -80,6 +80,9 @@ webmail 实时流（SSE EventWatcher）是副本本地的：每个副本只轮�
 1. **NTP**：租约过期比较副本本地时钟，多副本主机必须开 NTP（多机部署常规要求）。
 2. **MySQL**：`MAILEZ_DB_DRIVER=mysql` + `MAILEZ_DB_DSN=mailez:…@tcp(mysql:3306)/…`；
    schema 迁移自带 `GET_LOCK` 串行化，多副本同时启动安全。
+   PostgreSQL 同样可用：`MAILEZ_DB_DRIVER=postgres` +
+   `MAILEZ_DB_DSN=postgres://…`；注意迁移互斥锁目前仅 MySQL 实现
+   （PG 为 no-op），多副本场景先让单个副本完成启动迁移后再扩容。
 3. **Redis**：限流/缓存走 DB 的部分（如登录限流）随 DB 共享；Redis 仅加速，
    丢失可重建。
 4. **备份**：MySQL + MinIO + TiDB 三者都要备（企业档 `./data/` 整体备份覆盖

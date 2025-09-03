@@ -26,6 +26,9 @@
 # docker-compose.ce.yml up -d，并在 mailez.env 里设置
 # MAILEZ_DB_DRIVER=mysql 与
 # MAILEZ_DB_DSN=mailez:mailez@tcp(mysql:3306)/mailez?charset=utf8mb4&parseTime=True&loc=Local
+# 偏好 PostgreSQL 时同理：--profile postgres +
+# MAILEZ_DB_DRIVER=postgres 与
+# MAILEZ_DB_DSN=postgres://mailez:mailez@postgres:5432/mailez?sslmode=disable
 # （backend 的 DB_DRIVER/DB_DSN 由这两个变量插值得出）。
 
 name: mailez
@@ -77,7 +80,8 @@ services:
     environment:
       - MAILEZ_PORT=8080
       # 控制面默认 SQLite：单机社区版零外部数据库依赖，./data/mailez.db
-      # 随数据目录整体备份；需要 MySQL 见文件头 --profile mysql 说明。
+      # 随数据目录整体备份；需要 MySQL/PostgreSQL 见文件头
+      # --profile mysql / postgres 说明。
       - DB_DRIVER=${MAILEZ_DB_DRIVER:-sqlite}
       - DB_DSN=${MAILEZ_DB_DSN:-/data/mailez.db}
       - REDIS_ADDR=redis:6379

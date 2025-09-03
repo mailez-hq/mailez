@@ -116,9 +116,13 @@ func aliasDeliversTo(a models.Alias, email string) bool {
 // LIKE is only a coarse prefilter; aliasDeliversTo applies the exact rule.
 func userAliases(db *gorm.DB, user *models.User) []models.Alias {
 	var candidates []models.Alias
+	like := "%" + strings.ToLower(user.Email) + "%"
 	if err := db.
 		Where("disabled = ?", false).
-		Where("destination LIKE ? OR members LIKE ? OR owner_email = ?", "%"+user.Email+"%", "%"+user.Email+"%", user.Email).
+		// LOWER() keeps the prefilter case-insensitive on every dialect
+		// (PostgreSQL LIKE is case-sensitive).
+		Where("LOWER(destination) LIKE ? OR LOWER(members) LIKE ? OR owner_email = ?",
+			like, like, user.Email).
 		Find(&candidates).Error; err != nil {
 		return nil
 	}
