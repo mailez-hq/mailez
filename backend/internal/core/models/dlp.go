@@ -39,7 +39,7 @@ type PendingApproval struct {
 	From        string     `gorm:"size:512;not null" json:"from"`
 	Recipients  string     `gorm:"size:2048;not null" json:"recipients"`
 	Subject     string     `gorm:"size:1024" json:"subject"`
-	Raw         []byte     `gorm:"type:blob" json:"-"`
+	Raw         []byte     `json:"-"` // blob: sqlite blob / mysql longblob / pg bytea via GORM default
 	Status      string     `gorm:"size:16;not null;default:'pending';index" json:"status"`
 	Approver    string     `gorm:"size:255" json:"approver"`
 	DecisionAt  *time.Time `json:"decision_at"`

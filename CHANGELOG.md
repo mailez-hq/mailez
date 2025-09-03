@@ -34,6 +34,13 @@ All notable changes to mailez are documented here. The format follows
   calendar reminders, upload cleanup, EE dlp/archive/ldap sweeps; 60 s
   automatic failover) and shared object storage for large attachments and
   the drive (`MAILEZ_DRIVE_BACKEND=minio`); runbook in `docs/scaling.md`
+- PostgreSQL control-plane support (`DB_DRIVER=postgres` alongside
+  sqlite/mysql, GORM postgres driver): reserved-word `from`/`to` columns
+  quoted per dialect via `clause.Column`, dialect-agnostic case-insensitive
+  search (`LOWER(col) LIKE LOWER(?)`), portable `[]byte` mapping for raw
+  message/DLP payloads; optional `--profile postgres` tier in the CE
+  compose (migration lock is MySQL-only for now — start one replica first
+  when scaling on PostgreSQL)
 
 ### Changed
 

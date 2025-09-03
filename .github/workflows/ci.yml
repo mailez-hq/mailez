@@ -62,6 +62,58 @@ jobs:
       - name: Test (EE)
         run: go test -tags mailez_ee ./... -count=1
 
+  # Control-plane smoke on real PostgreSQL/MySQL: full AutoMigrate + seed
+  # (unit tests are SQLite-only by design; this guards dialect support).
+  backend-db-smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: mailez
+          POSTGRES_USER: mailez
+          POSTGRES_PASSWORD: mailez
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mailez -d mailez"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: mailez-root
+          MYSQL_DATABASE: mailez
+          MYSQL_USER: mailez
+          MYSQL_PASSWORD: mailez
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -umailez -pmailez"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Seed (PostgreSQL)
+        run: go run ./cmd/seed
+        env:
+          DB_DRIVER: postgres
+          DB_DSN: postgres://mailez:mailez@127.0.0.1:5432/mailez?sslmode=disable
+      - name: Seed (MySQL)
+        run: go run ./cmd/seed
+        env:
+          DB_DRIVER: mysql
+          DB_DSN: mailez:mailez@tcp(127.0.0.1:3306)/mailez?charset=utf8mb4&parseTime=True&loc=Local
+
   frontend-webmail:
     runs-on: ubuntu-latest
     defaults:

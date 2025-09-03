@@ -383,6 +383,13 @@ func Migrate(db *gorm.DB) error {
 // lockMigrations takes a database-level advisory lock so concurrent server
 // instances do not race on the same schema change. Backends without advisory
 // locks get a no-op unlocker.
+//
+// MySQL's GET_LOCK is server-side and connection-independent, so it is safe
+// across the pool. PostgreSQL advisory locks are session-scoped: with a
+// connection pool the unlock would land on a different connection and leak
+// the lock, so postgres (like sqlite) runs lock-free for now — wrap the
+// whole migrate run in one transaction with pg_advisory_xact_lock if
+// multi-writer postgres migrations ever become a real scenario.
 func lockMigrations(db *gorm.DB) (func() error, error) {
 	if db.Dialector.Name() != "mysql" {
 		return func() error { return nil }, nil
