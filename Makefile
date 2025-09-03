@@ -28,8 +28,10 @@ images:
 	cd backend && go run ./cmd/build-images
 
 ## check-ce-purity: the community (no-tag) backend dependency graph must
-## never reach backend/internal/ee, and every EE-tagged file must match
-## the export strip contract (internal/ee/ or *_ee.go / *_ee_test.go).
+## never reach backend/internal/ee, every EE-tagged file must match
+## the export strip contract (internal/ee/ or *_ee.go / *_ee_test.go), and
+## enterprise-named files must carry an _ee/_ce suffix so untagged
+## enterprise code cannot ride along in the community build.
 check-ce-purity:
 	cd backend && deps=$$(go list -deps ./... 2>/dev/null | grep -c 'mailez/backend/internal/ee'); \
 	if [ "$$deps" != "0" ]; then \
@@ -41,6 +43,12 @@ check-ce-purity:
 	if [ -n "$$bad" ]; then \
 		echo "EE-tagged files outside the export strip contract (rename with an _ee suffix):"; \
 		echo "$$bad"; \
+		exit 1; \
+	fi; \
+	namebad=$$(find . -name '*enterprise*.go' -not -path './internal/ee/*' | grep -vE '_ee(_test)?\.go$$|_ce(_test)?\.go$$'); \
+	if [ -n "$$namebad" ]; then \
+		echo "enterprise-named files outside the export strip contract (split with _ee/_ce suffixes):"; \
+		echo "$$namebad"; \
 		exit 1; \
 	fi; \
 	echo "ce-purity: ok"

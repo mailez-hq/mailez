@@ -42,26 +42,6 @@ jobs:
             exit 1
           fi
 
-  # Enterprise edition battery — private CI only (the public CE mirror has
-  # no backend/internal/ee at all).
-  backend-ee:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
-      - name: Build (EE)
-        run: go build -tags mailez_ee ./...
-      - name: Vet (EE)
-        run: go vet -tags mailez_ee ./...
-      - name: Test (EE)
-        run: go test -tags mailez_ee ./... -count=1
-
   # Control-plane smoke on real PostgreSQL/MySQL: full AutoMigrate + seed
   # (unit tests are SQLite-only by design; this guards dialect support).
   backend-db-smoke:

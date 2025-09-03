@@ -17,7 +17,7 @@
 # 用法：
 #   cd deploy
 #   docker compose --env-file mailez.env \
-#     -f docker-compose.ee.yml -f docker-compose.multi.yml up -d
+#     -f ee/docker-compose.ee.yml -f ee/docker-compose.multi.yml up -d
 #   # 或经统一入口（等价）：
 #   ./mailezctl.sh up multi
 #   # 本地源码构建：叠加 docker-compose.build.multi.yml 后 up -d --build

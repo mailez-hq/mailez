@@ -4,10 +4,10 @@
 # Profiles (self-contained compose files):
 #   dev = docker-compose.dev.yml (SQLite + Pebble + local FS)
 #   ce  = docker-compose.ce.yml  (mailezine + SQLite control plane)
-#   ee  = docker-compose.ee.yml  (mailezine + MySQL + TiDB + MinIO/S3)
+#   ee  = ee/docker-compose.ee.yml  (mailezine + MySQL + TiDB + MinIO/S3)
 # plus the overlays:
-#   ha    = ee + docker-compose.ha.yml (backend/frontend replicas)
-#   multi = ee + docker-compose.multi.yml (multi-active engine)
+#   ha    = ee + ee/docker-compose.ha.yml (backend/frontend replicas)
+#   multi = ee + ee/docker-compose.multi.yml (multi-active engine)
 #
 # Images:
 #   Production targets pull prebuilt images (tag = MAILEZ_IMAGE_TAG,
@@ -39,14 +39,21 @@ cd "$(dirname "$0")"
 case "$TARGET" in
   dev)   FILES=("docker-compose.dev.yml");  BUILD_OVERLAY="docker-compose.build.dev.yml" ;;
   ce)    FILES=("docker-compose.ce.yml");   BUILD_OVERLAY="docker-compose.build.ce.yml" ;;
-  ee)    FILES=("docker-compose.ee.yml");   BUILD_OVERLAY="docker-compose.build.ee.yml" ;;
-  ha)    FILES=("docker-compose.ee.yml" "docker-compose.ha.yml"); BUILD_OVERLAY="docker-compose.build.ee.yml" ;;
-  multi) FILES=("docker-compose.ee.yml" "docker-compose.multi.yml"); BUILD_OVERLAY="docker-compose.build.multi.yml" ;;
+  ee)    FILES=("ee/docker-compose.ee.yml");   BUILD_OVERLAY="ee/docker-compose.build.ee.yml" ;;
+  ha)    FILES=("ee/docker-compose.ee.yml" "ee/docker-compose.ha.yml"); BUILD_OVERLAY="ee/docker-compose.build.ee.yml" ;;
+  multi) FILES=("ee/docker-compose.ee.yml" "ee/docker-compose.multi.yml"); BUILD_OVERLAY="ee/docker-compose.build.multi.yml" ;;
   *)
     echo "unknown target: $TARGET (dev|ce|ee|ha|multi)" >&2
     exit 2
     ;;
 esac
+
+# The enterprise profiles live under ee/ — part of the private tree, not the
+# community mirror. Fail with a hint instead of a missing-file compose error.
+if [ ! -f "${FILES[0]}" ]; then
+  echo "profile '$TARGET' is not part of this tree (ee/ deployment recipes are enterprise-only)" >&2
+  exit 2
+fi
 
 # Local source builds use the :local tag that docker buildx bake produces by
 # default. Exported shell env beats the mailez.env entry for compose

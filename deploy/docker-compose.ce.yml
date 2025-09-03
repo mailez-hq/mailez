@@ -2,7 +2,7 @@
 #
 # 社区版与企业版同用 mailezine 引擎，区别只在规模组件：社区版单节点
 # （控制面 SQLite + 引擎 pebble KV + 本地 FS blob），企业版再加
-# MySQL/TiDB/MinIO/HA（见 docker-compose.ee.yml）。引擎直发邮件端口
+# MySQL/TiDB/MinIO/HA（见 ee/ 企业档，仅私有树）。引擎直发邮件端口
 # （25/465/587/110/995/143/993/4190），gateway(nginx) 只做 HTTP/ACME。
 #
 # 用法（镜像预构建发布，默认拉取）：

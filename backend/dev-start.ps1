@@ -1,8 +1,7 @@
-# Local dev backend for mailez. Defaults to the ENTERPRISE build (full
-# feature set: LDAP, DLP, archive, AI, S/MIME, sharing...). Pass -Ce to
-# run the community build instead, where enterprise features show their
-# "requires the enterprise edition" degradation.
-param([switch]$Ce)
+# Local dev backend for mailez. Defaults to the community build. Pass -Ee
+# to run the enterprise build instead (full feature set: LDAP, DLP,
+# archive, AI, S/MIME, sharing... — needs the private tree sources).
+param([switch]$Ee)
 
 $env:TMP = "$env:SystemRoot\TEMP"
 $env:TEMP = "$env:SystemRoot\TEMP"
@@ -22,4 +21,4 @@ $env:MAILEZ_HOSTNAME = "localhost"
 $env:LOG_LEVEL = "info"
 # AI provider is configured through the admin console (Configuration -> AI),
 # stored encrypted in the database. No environment variables needed here.
-if ($Ce) { go run ./cmd/server } else { go run -tags mailez_ee ./cmd/server }
+if ($Ee) { go run -tags mailez_ee ./cmd/server } else { go run ./cmd/server }

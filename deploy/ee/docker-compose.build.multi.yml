@@ -1,11 +1,12 @@
-# Build overlay for the enterprise profile: adds build instructions so
-#   MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up ee   # (or ha)
-# (or: docker compose --env-file mailez.env -f docker-compose.ee.yml
-#      -f docker-compose.build.ee.yml up -d --build)
-# builds all images from source instead of pulling prebuilt ones. The EE
-# edition is baked at build time (MAILEZ_EDITION: ee); the -ee image names
-# come from the base enterprise file. The multi-active tier additionally
-# needs docker-compose.build.multi.yml (engine-lb).
+# Build overlay for the multi-active profile: the full enterprise build set
+# plus engine-lb, so
+#   MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up multi
+# (or: docker compose --env-file mailez.env -f ee/docker-compose.ee.yml
+#      -f ee/docker-compose.multi.yml -f ee/docker-compose.build.multi.yml
+#      up -d --build)
+# builds every image from source instead of pulling prebuilt ones.
+# Self-contained (not stacked on docker-compose.build.ee.yml) so the
+# overlay alone is sufficient for the multi profile.
 # Never shipped in release tarballs — pull-only deployments don't need it.
 
 services:
@@ -60,3 +61,8 @@ services:
     build:
       context: ..
       dockerfile: deploy/images/resolver/Dockerfile
+
+  engine-lb:
+    build:
+      context: ./images/engine-lb
+      dockerfile: Dockerfile

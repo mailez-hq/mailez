@@ -10,7 +10,7 @@
 # 用法：
 #   cd deploy
 #   docker compose --env-file mailez.env \
-#     -f docker-compose.ee.yml -f docker-compose.ha.yml up -d --build
+#     -f ee/docker-compose.ee.yml -f ee/docker-compose.ha.yml up -d --build
 #
 # 机制说明：
 # - backend 副本负载均衡：gateway nginx 模板以变量+resolver(30s) 反代

@@ -51,10 +51,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # docker-bake.hcl variables (VERSION/PLATFORMS/APK_MIRROR/
-      # MAILEZ_LICENSE_PUBKEY/MAILEZ_SERVICE_PUBKEY) are overridden by
-      # same-name environment variables. GH runners live outside CN, so use
-      # the upstream Alpine CDN instead of the HCL's aliyun default.
+      # docker-bake.hcl + docker-bake.ee.hcl variables (VERSION/PLATFORMS/
+      # APK_MIRROR/MAILEZ_LICENSE_PUBKEY/MAILEZ_SERVICE_PUBKEY) are
+      # overridden by same-name environment variables. GH runners live
+      # outside CN, so use the upstream Alpine CDN instead of the HCL's
+      # aliyun default. The CE job ignores the EE file's targets.
       - uses: docker/bake-action@v6
         env:
           VERSION: ${{ github.ref_name }}
@@ -63,6 +64,9 @@ jobs:
           MAILEZ_LICENSE_PUBKEY: ${{ secrets.MAILEZ_LICENSE_PUBKEY }}
           MAILEZ_SERVICE_PUBKEY: ${{ secrets.MAILEZ_SERVICE_PUBKEY }}
         with:
+          files: |
+            docker-bake.hcl
+            docker-bake.ee.hcl
           targets: ${{ matrix.edition }}
           push: true
           set: |

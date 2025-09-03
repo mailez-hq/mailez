@@ -35,20 +35,31 @@ git for-each-ref --format='%(refname)' refs/stash refs/notes refs/replace \
 
 # The CE/EE boundary contract (see backend/FEATURES.md): everything
 # enterprise lives under backend/internal/ee, frontend ee/ directories, or
-# a paired *_ee.go file. The export tool itself is private monorepo
-# process tooling and must not appear in its own output; the release
-# workflow stays private too (the private repo is the single image
-# publisher — a public run would push CE-built *-ee images over the real
-# ones on shared tags); the private README.md is replaced by README.ce.md
-# (second pass below).
+# a paired *_ee.go file; enterprise deployment recipes live under
+# deploy/ee/; private CI (ci-ee.yml) and the EE bake targets
+# (docker-bake.ee.hcl) stay private as well; internal runbooks
+# (docs/rollout-runbook.md) and the enterprise scaling guide
+# (docs/scaling.md) are private operations material. The export tool
+# itself is private monorepo process tooling and must not appear in its
+# own output; the release workflow stays private too (the private repo is
+# the single image publisher — a public run would push CE-built *-ee
+# images over the real ones on shared tags); the private README.md is
+# replaced by README.ce.md (second pass below).
 git filter-repo \
   --invert-paths \
   --path backend/internal/ee/ \
   --path backend/cmd/eas-e2e/ \
+  --path backend/cmd/e2e-enterprise/ \
+  --path backend/scripts/enterprise-smoke.ps1 \
   --path frontend/apps/webmail/ee/ \
   --path frontend/apps/admin/ee/ \
+  --path deploy/ee/ \
   --path scripts/export-ce.sh \
   --path .github/workflows/release.yml \
+  --path .github/workflows/ci-ee.yml \
+  --path docker-bake.ee.hcl \
+  --path docs/rollout-runbook.md \
+  --path docs/scaling.md \
   --path README.md \
   --path-glob '*_ee.go' \
   --path-glob '*_ee_test.go'
@@ -56,7 +67,7 @@ git filter-repo \
 # Second pass: publish the community README under the canonical name.
 git filter-repo --force --path-rename README.ce.md:README.md
 
-if git ls-tree -r --name-only HEAD | grep -E 'backend/internal/ee/|frontend/apps/[^/]*/ee/|_ee\.go$|_ee_test\.go$|^scripts/export-ce\.sh$'; then
+if git ls-tree -r --name-only HEAD | grep -E 'backend/internal/ee/|frontend/apps/[^/]*/ee/|_ee\.go$|_ee_test\.go$|^deploy/ee/|^backend/cmd/e2e-enterprise/|enterprise-smoke|^\.github/workflows/(ci-ee|release)\.yml$|^docker-bake\.ee\.hcl$|^docs/(rollout-runbook|scaling)\.md$|^scripts/export-ce\.sh$'; then
   echo "export-ce: enterprise paths survived the filter" >&2
   exit 1
 fi

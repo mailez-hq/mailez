@@ -9,8 +9,8 @@
 #
 # 用法：
 #   $env:MAILEZINE_LICENSE_REQUIRED = "false"
-#   docker compose -f docker-compose.ee.yml \
-#     -f docker-compose.ee.dev.yml up -d
+#   docker compose -f ee/docker-compose.ee.yml \
+#     -f ee/docker-compose.ee.dev.yml up -d
 services:
   backend:
     environment:

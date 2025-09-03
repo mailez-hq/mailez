@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 package compose
 
 // Enterprise mail features: read receipts (RFC 3798), same-system message
