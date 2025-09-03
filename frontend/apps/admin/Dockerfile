@@ -16,7 +16,10 @@ COPY . .
 # NEXT_PUBLIC_MAILEZ_EDITION); default ce, enterprise passes
 # --build-arg MAILEZ_EDITION=ee via compose.
 ARG MAILEZ_EDITION=ce
-RUN MAILEZ_EDITION=${MAILEZ_EDITION} npm run build --workspace apps/admin
+# API_TARGET is equally BUILD-TIME: Next bakes rewrite destinations into
+# routes-manifest.json (see apps/webmail/Dockerfile).
+ARG API_TARGET=http://backend:8080
+RUN MAILEZ_EDITION=${MAILEZ_EDITION} API_TARGET=${API_TARGET} npm run build --workspace apps/admin
 
 # Runtime stage. node_modules is copied whole for robustness; switch to Next.js
 # `output: "standalone"` later for a smaller image.
