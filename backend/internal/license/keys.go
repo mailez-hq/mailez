@@ -1,6 +1,7 @@
 package license
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/x509"
 	"encoding/base64"
@@ -18,6 +19,15 @@ import (
 var publicKeyB64 = "MCowBQYDK2VwAyEAp23i5ECVobMMoopuFqZdYEkCJLaCg5kYMxsU1Vtq5GA="
 
 var publicKey = mustDecodePublicKey(publicKeyB64)
+
+// isDevKey reports whether the binary still embeds the source-default
+// development verification key (production builds replace publicKeyB64 via
+// -ldflags -X, see above). The server uses it to refuse enforcing
+// MAILEZ_LICENSE_REQUIRED on development builds.
+func isDevKey() bool {
+	devPub, ok := DevPrivateKey().Public().(ed25519.PublicKey)
+	return ok && bytes.Equal(publicKey, devPub)
+}
 
 func mustDecodePublicKey(b64 string) ed25519.PublicKey {
 	der, err := base64.StdEncoding.DecodeString(b64)

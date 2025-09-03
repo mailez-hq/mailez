@@ -197,8 +197,10 @@ go run ./cmd/e2e    # sends a test mail, checks delivery, DKIM and spam filterin
 
 **Enterprise licensing.** The enterprise tier requires a license file at
 `deploy/licenses/license.lic` (`MAILEZ_LICENSE_REQUIRED=true` refuses to
-start the backend without one). To evaluate, self-issue a trial license with
-the built-in dev key:
+start the backend without one). Official EE images verify licenses against
+the vendor production key baked in at build time — self-issued licenses
+cannot unlock them. Evaluate on a local build instead (source builds embed
+the dev key), self-issuing a trial license:
 
 ```sh
 cd backend
@@ -206,8 +208,13 @@ go run ./cmd/license issue --out ../deploy/licenses/license.lic \
     --licensee "Trial Customer" --mailboxes 25
 ```
 
-Production deployments are signed with your own key
-(`MAILEZ_LICENSE_PRIVATE_KEY`); the built-in dev key is for evaluation only.
+A dev-keyed binary refuses `MAILEZ_LICENSE_REQUIRED=true` at startup, so
+trials leave it unset (the ee dev compose does). Release builds inject the
+vendor production public key via the `MAILEZ_LICENSE_PUBKEY` /
+`MAILEZ_SERVICE_PUBKEY` Docker build args (docker-bake.hcl variables,
+wired to the repo secrets in the release workflow; `go run ./cmd/license
+genkey` prints a keypair — keep the private half in a secret store, it
+signs via `MAILEZ_LICENSE_PRIVATE_KEY`, and never commit it).
 
 ## Tech stack (for developers)
 

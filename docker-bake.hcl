@@ -52,6 +52,20 @@ variable "MAILEZINE_CONTEXT" {
   default = "../mailezine"
 }
 
+variable "MAILEZ_LICENSE_PUBKEY" {
+  # Vendor Ed25519 verification keys baked into EE release builds (base64
+  # DER SPKI; `go run ./cmd/license genkey` prints a pair — the service
+  # key shares it). Overridden by same-name environment variables; the
+  # release workflow wires the repo secrets. Empty keeps the source-default
+  # dev key, which the backend refuses to enforce MAILEZ_LICENSE_REQUIRED
+  # on at startup — so official EE builds MUST set these.
+  default = ""
+}
+
+variable "MAILEZ_SERVICE_PUBKEY" {
+  default = ""
+}
+
 group "default" {
   targets = ["ce"]
 }
@@ -95,7 +109,11 @@ target "backend-ce" {
 target "backend-ee" {
   context = "."
   dockerfile = "backend/Dockerfile"
-  args = { MAILEZ_EDITION = "ee" }
+  args = {
+    MAILEZ_EDITION = "ee"
+    MAILEZ_LICENSE_PUBKEY = MAILEZ_LICENSE_PUBKEY
+    MAILEZ_SERVICE_PUBKEY = MAILEZ_SERVICE_PUBKEY
+  }
   tags = ["${REGISTRY}/mailez-backend-ee:${VERSION}"]
   platforms = split(",", PLATFORMS)
 }

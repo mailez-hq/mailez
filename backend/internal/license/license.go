@@ -12,7 +12,11 @@
 // Without a license the system runs in the built-in dev edition (unlimited),
 // so open-source builds and local development keep working untouched. When a
 // license file is provided it must verify; when MAILEZ_LICENSE_REQUIRED is
-// set, a missing or invalid license refuses startup.
+// set, a missing or invalid license refuses startup. Release binaries
+// replace the embedded verification key with the vendor production key
+// (MAILEZ_LICENSE_PUBKEY build arg); enforcing MAILEZ_LICENSE_REQUIRED on a
+// binary that still embeds the development key refuses startup as well, so
+// the dev key can never authorize a production deployment.
 package license
 
 import (
@@ -85,6 +89,9 @@ func Community() *Manager {
 // When required is true a missing or invalid license is an error; otherwise
 // the dev edition is used as fallback.
 func Load(file, inline string, required bool) (*Manager, error) {
+	if required && isDevKey() {
+		return nil, errors.New("license: this binary embeds the built-in development key; refusing to enforce MAILEZ_LICENSE_REQUIRED on it — release builds must inject the vendor production public key (MAILEZ_LICENSE_PUBKEY build arg, see README)")
+	}
 	raw := strings.TrimSpace(inline)
 	if raw == "" && file != "" {
 		b, err := os.ReadFile(file)
