@@ -5,7 +5,7 @@
 # mailez — mail easy
 
 Self-hosted email that scales with you: from a personal mailbox of one to
-ten-thousand-person organizations — teams, enterprises and public-sector
+ten-thousand-person organizations — teams, companies and public-sector
 agencies alike. Send and receive mail with your own domain, keep your data in
 your own hands, and enjoy a webmail that actually feels good to use. One
 command deploys the whole thing — mail delivery, spam filtering,

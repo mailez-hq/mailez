@@ -14,7 +14,7 @@ RUN npm ci
 COPY . .
 # The module set is a BUILD-TIME decision: next.config.ts materializes
 # modules/ from the directory named by MAILEZ_MODULES and bakes
-# NEXT_PUBLIC_MAILEZ_FULL into the client bundle. A runtime env cannot
+# NEXT_PUBLIC_MAILEZ_MODULES_ACTIVE into the client bundle. A runtime env cannot
 # change it afterwards. Default: "default".
 ARG MAILEZ_MODULES=default
 # API_TARGET is equally BUILD-TIME: Next bakes rewrite destinations into

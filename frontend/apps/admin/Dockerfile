@@ -13,7 +13,7 @@ COPY packages/ui/package.json packages/ui/
 RUN npm ci
 COPY . .
 # The module set is a BUILD-TIME decision (materialized modules/ + baked
-# NEXT_PUBLIC_MAILEZ_FULL); default: "default".
+# NEXT_PUBLIC_MAILEZ_MODULES_ACTIVE); default: "default".
 ARG MAILEZ_MODULES=default
 # API_TARGET is equally BUILD-TIME: Next bakes rewrite destinations into
 # routes-manifest.json (see apps/webmail/Dockerfile).
