@@ -158,7 +158,10 @@ func (h *Handler) meRecentLogins(c *fiber.Ctx) error {
 	rows := make([]meLoginRow, 0, 8)
 	err := h.DB.Model(&models.AuditLog{}).
 		Select("created_at AS time, ip").
-		Where("user = ? AND path IN ? AND status = ?", u.Email,
+		// "user" is a reserved word on PostgreSQL — a bare reference parses
+		// as the current_user special and silently matches nothing. Qualify
+		// with the table name (portable across MySQL/SQLite/Postgres).
+		Where("audit_log.user = ? AND path IN ? AND status = ?", u.Email,
 			[]string{"/sso/login", "/sso/login/totp"}, fiber.StatusOK).
 		Order("created_at DESC").
 		Limit(8).

@@ -78,9 +78,12 @@ if ($h3.Data) { $h3n = @($h3.Data).Count }
 Check H3 "admin /mail/messages 200" ($h3.Status -eq 200) "status=$($h3.Status) items=$h3n err=$($h3.Err)"
 
 # H4 页面 SSR 抽查：webmail 与 admin 均应 200 + HTML 标记
+# 端口可用环境变量覆盖（默认 dev 档 3001/3000；compose 档传 8083/18082）
+$wmUrl = if ($env:QA_WEBMAIL_URL) { $env:QA_WEBMAIL_URL } else { "http://127.0.0.1:3001/" }
+$adUrl = if ($env:QA_ADMIN_URL) { $env:QA_ADMIN_URL } else { "http://127.0.0.1:3000/" }
 $wmStatus = 0; $wmHtml = $false
 try {
-    $wm = Invoke-WebRequest -Uri "http://127.0.0.1:8083/" -Method GET -UseBasicParsing -TimeoutSec 60
+    $wm = Invoke-WebRequest -Uri $wmUrl -Method GET -UseBasicParsing -TimeoutSec 60
     $wmStatus = [int]$wm.StatusCode
     $wmHtml = ([string]$wm.Content -match "<html" -or [string]$wm.Content -match "text/html")
 } catch {
@@ -88,13 +91,13 @@ try {
 }
 $adStatus = 0; $adHtml = $false
 try {
-    $ad = Invoke-WebRequest -Uri "http://127.0.0.1:18082/" -Method GET -UseBasicParsing -TimeoutSec 60
+    $ad = Invoke-WebRequest -Uri $adUrl -Method GET -UseBasicParsing -TimeoutSec 60
     $adStatus = [int]$ad.StatusCode
     $adHtml = ([string]$ad.Content -match "<html" -or [string]$ad.Content -match "text/html")
 } catch {
     if ($_.Exception.Response) { $adStatus = [int]$_.Exception.Response.StatusCode }
 }
-Check H4 "页面 SSR webmail:8083 / admin:18082 均 200 HTML" ($wmStatus -eq 200 -and $wmHtml -and $adStatus -eq 200 -and $adHtml) "webmail=$wmStatus/$wmHtml admin=$adStatus/$adHtml"
+Check H4 "页面 SSR webmail/admin 均 200 HTML" ($wmStatus -eq 200 -and $wmHtml -and $adStatus -eq 200 -and $adHtml) "webmail=$wmStatus/$wmHtml admin=$adStatus/$adHtml"
 
 Flush-Results "H"
 "== done =="

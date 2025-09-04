@@ -27,12 +27,14 @@ func (h *Handler) listEvents(c *fiber.Ctx) error {
 	q := h.DB.Where("user_email IN ?", owners)
 	if from := c.Query("from"); from != "" {
 		if t, err := time.Parse(time.RFC3339, from); err == nil {
-			q = q.Where("(end IS NULL OR end >= ?)", t)
+			// "end" is a reserved word on PostgreSQL — qualify with the table
+			// name (portable across MySQL/SQLite/Postgres).
+			q = q.Where("(calendar_event.end IS NULL OR calendar_event.end >= ?)", t)
 		}
 	}
 	if to := c.Query("to"); to != "" {
 		if t, err := time.Parse(time.RFC3339, to); err == nil {
-			q = q.Where("(start IS NULL OR start <= ?)", t)
+			q = q.Where("(calendar_event.start IS NULL OR calendar_event.start <= ?)", t)
 		}
 	}
 	var events []models.CalendarEvent

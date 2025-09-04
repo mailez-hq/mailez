@@ -59,7 +59,7 @@ Check D4 "org 组织通讯录 200" ($org.Status -eq 200) "status=$($org.Status) 
 
 # D5 CardDAV get/set/sync（url 指向后端容器自身回环公开端点，sync 应 200）
 $cdGet0 = Api $qs GET "/contacts/carddav"
-$davUrl = "http://localhost:8080/api/v1/server/settings"
+$davUrl = "http://127.0.0.1:8080/api/v1/server/settings"
 $cdSet = Api $qs PUT "/contacts/carddav" @{ url = $davUrl; username = $qa; password = "QaUser2026!" }
 $cdGet1 = Api $qs GET "/contacts/carddav"
 $g1Url = ""; $g1Auth = $false
