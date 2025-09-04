@@ -118,16 +118,16 @@ export class ApiError extends Error {
   }
 }
 
-// Build-time edition marker (injected by next.config.ts from MAILEZ_EDITION;
-// internal dev defaults to ee). Enterprise-only API helpers check it and
-// resolve locally in the community build instead of firing requests that
-// can only 404 against a community backend.
-const COMMUNITY_BUILD =
-  (process.env.NEXT_PUBLIC_MAILEZ_EDITION ?? "ee").toLowerCase() === "ce";
+// Build-time marker (injected by next.config.ts from MAILEZ_MODULES):
+// "true" when an extended module set is baked in, empty for the default
+// set. Module-aware API helpers consult it and resolve locally when the
+// extended modules are absent, instead of firing requests that can only
+// 404.
+const HAS_FULL = (process.env.NEXT_PUBLIC_MAILEZ_FULL ?? "") === "true";
 
-// Edition marker for components that hide enterprise-only UI wholesale
-// (e.g. the calendar share button). Keep in sync with COMMUNITY_BUILD.
-export const IS_COMMUNITY_BUILD = COMMUNITY_BUILD;
+// Marker for components that hide optional-module UI wholesale (e.g. the
+// calendar share button). Keep in sync with HAS_FULL.
+export const HAS_FULL_MODULES = HAS_FULL;
 
 // A 401 on an authed surface means the session cookie expired or was
 // revoked server-side. Instead of letting every poll toast errors forever,
@@ -495,10 +495,10 @@ export const aiTranslate = (text: string, target: string) =>
   apiPost<{translation: string}>("/ai/translate", {text, target});
 
 // Global admin announcement banner (204/undefined when none is active).
-// Enterprise-only surface; the community build resolves "no announcement"
-// locally instead of firing a request the community backend can only stub.
+// Optional-module surface; without the extended module set this resolves
+// "no announcement" locally instead of firing a request that can only 404.
 export const mailAnnouncement = (): Promise<MailAnnouncement | undefined> =>
-  COMMUNITY_BUILD ? Promise.resolve(undefined) : api<MailAnnouncement | undefined>("/announcement");
+  HAS_FULL ? api<MailAnnouncement | undefined>("/announcement") : Promise.resolve(undefined);
 
 export type ServerSettings = {
   hostname: string;
@@ -509,12 +509,12 @@ export type ServerSettings = {
   pop3: { plain: number; ssl: number };
   imap: { plain: number; ssl: number };
   branding?: BrandingConfig;
-  // Federated sign-in advertisement (enterprise edition only): the login
+  // Federated sign-in advertisement (optional module): the login
   // page renders the SSO button only when the backend mounts the routes.
   oidc?: { enabled: boolean };
 };
 
-// BrandingConfig is the enterprise-customizable login-page brand. Empty
+// BrandingConfig is the customizable login-page brand. Empty
 // fields fall back to the built-in Mailez brand.
 export type BrandingConfig = {
   title?: string;
@@ -639,13 +639,13 @@ export const accountDelete = (id: number) =>
 export const accountTest = (id: number) =>
   apiPost<{ ok: boolean }>(`/accounts/${id}/test`, {});
 
-// Mailbox delegation / shared mailboxes. Enterprise-only: the community
-// backend has no /delegations routes, so the community build resolves the
-// listing locally instead of issuing a request that can only 404.
+// Mailbox delegation / shared mailboxes. Optional module: without the
+// extended module set the listing resolves locally instead of issuing a
+// request that can only 404.
 export const delegations = (): Promise<DelegationListing> =>
-  COMMUNITY_BUILD
-    ? Promise.resolve({ granted: [], received: [] })
-    : api<DelegationListing>("/delegations");
+  HAS_FULL
+    ? api<DelegationListing>("/delegations")
+    : Promise.resolve({ granted: [], received: [] });
 
 export const delegationCreate = (input: {
   delegate_email: string;
@@ -680,12 +680,12 @@ export const calendarEventDelete = (id: number) =>
   api<void>(`/calendar/events/${id}`, { method: "DELETE" });
 
 // Calendar sharing and ICS subscription.
-// Calendar sharing is an enterprise capability; the community build
-// resolves the empty listing locally (mirrors the backend CE stub).
+// Calendar sharing ships with the extended module set; without it the
+// listing resolves locally (mirrors the default backend set).
 export const calendarShares = (): Promise<CalendarShareListing> =>
-  COMMUNITY_BUILD
-    ? Promise.resolve({ owned: [], granted: [] })
-    : api<CalendarShareListing>("/calendar/shares");
+  HAS_FULL
+    ? api<CalendarShareListing>("/calendar/shares")
+    : Promise.resolve({ owned: [], granted: [] });
 
 export const calendarShareCreate = (shareeEmail: string, readOnly: boolean) =>
   apiPost<CalendarShare>("/calendar/shares", { sharee_email: shareeEmail, read_only: readOnly });
@@ -833,13 +833,14 @@ export const sieveDelete = (name: string) =>
 export const sieveActivate = (name: string) =>
   apiPost(`/sieve/${encodeURIComponent(name)}/activate`, {});
 
-// Enterprise-only capability probe. The community build throws the same
-// 404-shaped ApiError the real probe would return, so the locked hint still
-// renders — without a network round-trip that can only fail.
+// Optional-module capability probe. Without the extended module set this
+// throws the same 404-shaped ApiError the real probe would return, so the
+// locked hint still renders — without a network round-trip that can only
+// fail.
 export const aiStatus = (): Promise<AIStatus> =>
-  COMMUNITY_BUILD
-    ? Promise.reject(new ApiError("ai/status: not part of the community edition", 404))
-    : api<AIStatus>("/ai/status");
+  HAS_FULL
+    ? api<AIStatus>("/ai/status")
+    : Promise.reject(new ApiError("ai/status: unavailable without the extended module set", 404));
 
 export const aiSummarize = (text: string) =>
   api<{ summary: string }>("/ai/summarize", { method: "POST", body: JSON.stringify({ text }) });
@@ -999,11 +1000,11 @@ export const webhookTest = (id: number) =>
   api<{ ok: boolean; status: number; error?: string }>(`/webhooks/${id}/test`, { method: "POST" });
 
 // S/MIME (certificate management + CMS encrypt/decrypt/sign/verify).
-// Enterprise-only: the community build short-circuits the two reads the
-// settings shell probes unconditionally; the write/import helpers are only
-// reachable from the (stubbed) enterprise settings section.
+// Optional module: without the extended module set this short-circuits the
+// two reads the settings shell probes unconditionally; the write/import
+// helpers are only reachable from the settings section of that module.
 export const smimeStatus = (): Promise<SmimeStatus> =>
-  COMMUNITY_BUILD ? Promise.resolve({ has_cert: false }) : api<SmimeStatus>("/me/smime");
+  HAS_FULL ? api<SmimeStatus>("/me/smime") : Promise.resolve({ has_cert: false });
 
 export const smimeImport = (inp: {
   cert_pem?: string;
@@ -1019,7 +1020,7 @@ export const smimeImport = (inp: {
 export const smimeDelete = () => api<void>("/me/smime", { method: "DELETE" });
 
 export const smimeListCerts = (): Promise<SmimeCert[]> =>
-  COMMUNITY_BUILD ? Promise.resolve([]) : api<SmimeCert[]>("/me/smime/certs");
+  HAS_FULL ? api<SmimeCert[]>("/me/smime/certs") : Promise.resolve([]);
 
 export const smimeImportCert = (email: string, certPem: string) =>
   api<SmimeCert>("/me/smime/certs", {

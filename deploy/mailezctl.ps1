@@ -1,23 +1,15 @@
-# mailezctl — 管理入口：开发 / 社区版 / 企业版 / HA。
+# mailezctl — 管理入口：开发 / 生产（ce）。
 #
-# 三个自包含 compose 文件：
-#   dev  = docker-compose.dev.yml   （SQLite + Pebble + 本地 FS）
-#   ce  = docker-compose.ce.yml（社区版：mailezine + SQLite 控制面）
-#   ee  = ee/docker-compose.ee.yml（企业版：mailezine + MySQL +
-#                TiDB + MinIO/S3）
-# 外加叠加档：
-#   ha = ee + ee/docker-compose.ha.yml（backend/frontend 多副本）
-#   multi = ee + ee/docker-compose.multi.yml（引擎多活）
+# 两个自包含 compose 文件：
+#   dev = docker-compose.dev.yml （SQLite + Pebble + 本地 FS）
+#   ce  = docker-compose.ce.yml  （mailezine + SQLite 控制面）
 #
 # 用法:
 #   powershell .\deploy\mailezctl.ps1 up              # 开发档
-#   powershell .\deploy\mailezctl.ps1 up ce    # 社区版生产
-#   powershell .\deploy\mailezctl.ps1 up ee   # 企业版生产
-#   powershell .\deploy\mailezctl.ps1 up ha           # 企业版 + 控制面多副本
-#   powershell .\deploy\mailezctl.ps1 up multi        # 企业版 + 引擎多活
-#   powershell .\deploy\mailezctl.ps1 ps
-#   powershell .\deploy\mailezctl.ps1 logs ee mailezine -Follow
-#   powershell .\deploy\mailezctl.ps1 down
+#   powershell .\deploy\mailezctl.ps1 up ce           # 生产（拉镜像）
+#   powershell .\deploy\mailezctl.ps1 ps ce
+#   powershell .\deploy\mailezctl.ps1 logs ce backend -Follow
+#   powershell .\deploy\mailezctl.ps1 down ce
 
 param(
     [Parameter(Position = 0)]
@@ -25,7 +17,7 @@ param(
     [string]$Action = "ps",
 
     [Parameter(Position = 1)]
-    [ValidateSet("dev", "ce", "ee", "ha", "multi")]
+    [ValidateSet("dev", "ce")]
     [string]$Target = "dev",
 
     [Parameter(Position = 2)]
@@ -37,18 +29,8 @@ param(
 $ErrorActionPreference = "Stop"
 $deploy = Split-Path -Parent $MyInvocation.MyCommand.Path
 $files = switch ($Target) {
-    "ce"  { ,@("docker-compose.ce.yml") }
-    "ee"  { ,@("ee/docker-compose.ee.yml") }
-    "ha"         { ,@("ee/docker-compose.ee.yml", "ee/docker-compose.ha.yml") }
-    "multi"      { ,@("ee/docker-compose.ee.yml", "ee/docker-compose.multi.yml") }
-    default      { ,@("docker-compose.dev.yml") }
-}
-
-# 企业版配方位于 ee/（私有树，社区镜像中已剥离）。给出友好提示而非
-# compose 缺文件报错。
-if (-not (Test-Path (Join-Path $deploy $files[0]))) {
-    Write-Error "profile '$Target' is not part of this tree (ee/ deployment recipes are enterprise-only)"
-    exit 2
+    "ce" { ,@("docker-compose.ce.yml") }
+    default { ,@("docker-compose.dev.yml") }
 }
 
 $compose = @("docker", "compose", "--env-file", "mailez.env")

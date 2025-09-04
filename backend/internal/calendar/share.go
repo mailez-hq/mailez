@@ -1,6 +1,6 @@
 // Calendar sharing: grant/revoke per-account calendar access and the
-// share-aware permission checks. Shared by both editions; the per-edition
-// quota policy lives in share_quota_ce.go / share_quota_ee.go.
+// share-aware permission checks. The quota policy is build-specific
+// (share_quota_*.go).
 package calendar
 
 import (
@@ -107,7 +107,7 @@ func (h *Handler) createShare(c *fiber.Ctx) error {
 	if err := h.DB.First(&target, "LOWER(email) = ?", sharee).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "sharee not found"})
 	}
-	// Edition quota policy (CE: one read-only grant, EE: unlimited).
+	// Quota policy of this build (the base build: one read-only grant).
 	q := h.shareQuota()
 	if q.forceReadOnly {
 		in.ReadOnly = true
@@ -129,7 +129,7 @@ func (h *Handler) createShare(c *fiber.Ctx) error {
 		}
 		if n >= int64(q.maxOwned) {
 			return c.Status(403).JSON(fiber.Map{
-				"error": "calendar sharing quota reached for this edition",
+				"error": "calendar sharing quota reached",
 				"code":  "quota_exceeded",
 				"limit": q.maxOwned,
 			})

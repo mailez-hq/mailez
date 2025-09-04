@@ -8,12 +8,13 @@ export type { Me, LoginResult };
 
 const API = "/api/v1";
 
-// Build-time edition marker (injected by next.config.ts from MAILEZ_EDITION;
-// internal dev defaults to ee). Shared pages consult it to hide
-// enterprise-only surfaces — announcement/archive/DLP pages already go
-// through the @/edition mechanism; this covers the shared config page.
-export const IS_COMMUNITY_BUILD =
-  (process.env.NEXT_PUBLIC_MAILEZ_EDITION ?? "ee").toLowerCase() === "ce";
+// Build-time marker (injected by next.config.ts from MAILEZ_MODULES):
+// "true" when an extended module set is baked in, empty for the default
+// set. Module-aware helpers consult it to resolve locally — the optional
+// config tabs already go through the @/modules mechanism; this covers the
+// shared config page.
+export const HAS_FULL_MODULES =
+  (process.env.NEXT_PUBLIC_MAILEZ_FULL ?? "") === "true";
 
 // ApiError carries the HTTP status and the backend's machine-readable code.
 export class ApiError extends Error {
@@ -104,7 +105,7 @@ export function dashboardTarget(): string {
 }
 
 // Public /server/settings shape. The admin sign-in page only consults the
-// OIDC advertisement (enterprise-only) to decide whether to render the
+// OIDC advertisement (optional module) to decide whether to render the
 // federated sign-in button.
 export type ServerSettings = {
   oidc?: { enabled: boolean };
@@ -142,17 +143,6 @@ export type AdminOverview = {
     started_at?: string;
     expires_at?: string;
     valid: boolean;
-    features?: string[];
-  };
-  license?: {
-    edition: string;
-    licensee?: string;
-    max_mailboxes: number;
-    used: number;
-    expires_at?: string;
-    valid: boolean;
-    service_valid: boolean;
-    required: boolean;
     features?: string[];
   };
 };
@@ -269,8 +259,8 @@ export const exportConfig = () => api<ConfigBackup>("/config/export");
 export const importConfig = (data: ConfigBackup) =>
   apiPost<ConfigStats>("/config/import", data);
 
-// Login-page branding (top-left logo, left hero image, copy) customized by
-// the enterprise. Empty fields fall back to the built-in Mailez brand.
+// Login-page branding (top-left logo, left hero image, copy) customizable
+// per installation. Empty fields fall back to the built-in Mailez brand.
 export type BrandingConfigView = {
   title: string;
   subtitle: string;
@@ -307,11 +297,11 @@ export interface AiConfigView {
   last_test_error?: string;
 }
 
-// Enterprise-only surface: AI model configuration. The community build
-// resolves the empty list locally instead of firing a request that can
-// only 404 against a community backend (and the tab is hidden anyway).
+// Optional-module surface: AI model configuration. Without the extended
+// module set this resolves the empty list locally instead of firing a
+// request that can only 404 (and the tab is hidden anyway).
 export const getAIConfigs = (): Promise<AiConfigView[]> =>
-  IS_COMMUNITY_BUILD ? Promise.resolve([]) : api<AiConfigView[]>("/config/ai");
+  HAS_FULL_MODULES ? api<AiConfigView[]>("/config/ai") : Promise.resolve([]);
 
 export const createAIConfig = (input: {
   name: string;
@@ -367,9 +357,9 @@ export type LdapConfigView = {
   updated_at?: string;
 };
 
-// Enterprise-only surface: AD/LDAP directory integration (see getAIConfigs).
+// Optional-module surface: AD/LDAP directory integration (see getAIConfigs).
 export const getLDAPConfig = (): Promise<LdapConfigView> =>
-  IS_COMMUNITY_BUILD ? Promise.resolve({ enabled: false } as LdapConfigView) : api<LdapConfigView>("/ldap");
+  HAS_FULL_MODULES ? api<LdapConfigView>("/ldap") : Promise.resolve({ enabled: false } as LdapConfigView);
 
 export const putLDAPConfig = (input: Partial<LdapConfigView> & { bind_password?: string }) =>
   apiPut<LdapConfigView>("/ldap", input);

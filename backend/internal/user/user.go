@@ -120,7 +120,7 @@ func (h *Handler) createUser(c *fiber.Ctx) error {
 	if err := h.DB.Model(&models.User{}).Where("email = ?", in.Email).Count(&exists).Error; err == nil && exists > 0 {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "user already exists"})
 	}
-	if err := h.License.CheckCapacity(h.DB); err != nil {
+	if err := capacityCheck(h.DB); err != nil {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
 	}
 	hash, err := password.Hash(in.Password)
@@ -290,8 +290,7 @@ func parseUserDate(s string) *time.Time {
 // its management API (best-effort: a failure is logged, not fatal — the
 // control-plane row is already gone, leaving no registry to reconcile a
 // re-created account with the orphaned engine one). Skipped when no
-// management endpoint is configured (community edition / engine-managed
-// deployments).
+// management endpoint is configured (engine-managed deployments).
 func (h *Handler) purgeEngineAccount(email string) {
 	addr := h.Cfg.MailEngineMgmtAddr
 	if addr == "" {

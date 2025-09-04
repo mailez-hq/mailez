@@ -3,15 +3,15 @@
 #
 # Run from the extracted release directory:
 #   ./install.sh
-# Or non-interactively (all defaults, community edition):
+# Or non-interactively (all defaults):
 #   ./install.sh --yes
 #
 # What it does:
 #   1. preflight: docker / compose v2 / daemon / openssl / curl
-#   2. asks: edition, mail domain, image tag, host ports
+#   2. asks: mail domain, image tag, host ports
 #   3. generates MAILEZ_SECRET_KEY + MAILEZ_STACK_SECRET and writes
 #      deploy/mailez.env
-#   4. starts the stack (deploy/mailezctl.sh up <edition>)
+#   4. starts the stack (deploy/mailezctl.sh up ce)
 #   5. waits for the API to go healthy and seeds the initial admin
 #      (admin@example.com / MailezDemo2026! — change it after first login)
 set -euo pipefail
@@ -19,10 +19,9 @@ set -euo pipefail
 CDIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$CDIR"
 
-EDITION="" DOMAIN="" TAG="" YES=0 DRY_RUN=0
+DOMAIN="" TAG="" YES=0 DRY_RUN=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --edition) EDITION="$2"; shift 2 ;;
     --domain)  DOMAIN="$2";  shift 2 ;;
     --tag)     TAG="$2";     shift 2 ;;
     --yes)     YES=1; shift ;;
@@ -54,18 +53,12 @@ command -v curl    >/dev/null  || die "curl not found"
 
 # --- defaults ----------------------------------------------------------------
 [ -n "$TAG" ] || TAG="$(head -n1 VERSION 2>/dev/null || echo latest)"
-[ -n "$EDITION" ] || { [ "$YES" = 1 ] && EDITION=ce; }
+TARGET=ce     # the installer provisions the ce compose profile
 
 if [ "$YES" != 1 ]; then
   echo
   echo "  mailez installer (release $TAG)"
   echo "  -------------------------------------------------"
-  [ -n "$EDITION" ] || EDITION="$(ask "Edition 1) ce  2) ee" 1)"
-  case "$EDITION" in
-    1|ce)  EDITION=ce ;;
-    2|ee) EDITION=ee ;;
-    *) die "invalid edition: $EDITION" ;;
-  esac
   [ -n "$DOMAIN" ] || DOMAIN="$(ask "Mail domain (MX points here)" example.com)"
   TAG="$(ask "Image tag" "$TAG")"
   HTTP_PORT="$(ask  "HTTP  port" 80)"
@@ -77,7 +70,6 @@ else
   [ -n "$DOMAIN" ] || DOMAIN=example.com
   HTTP_PORT=80; HTTPS_PORT=443; API_PORT=8081; ADMIN_PORT=8082; WEBMAIL_PORT=8083
 fi
-TARGET="$EDITION"   # mailezctl target name == edition name
 
 # --- mailez.env --------------------------------------------------------------
 SECRET_KEY="$(openssl rand -hex 16)"
@@ -102,11 +94,7 @@ MAILEZ_ADMIN_PORT=$ADMIN_PORT
 MAILEZ_WEBMAIL_PORT=$WEBMAIL_PORT
 EOF
 
-if [ "$EDITION" = ee ] && [ ! -f deploy/licenses/license.lic ]; then
-  warn "enterprise tier needs deploy/licenses/license.lic (the stack refuses to start without it)"
-fi
-
-log "wrote $ENV_FILE (edition=$EDITION domain=$DOMAIN tag=$TAG)"
+log "wrote $ENV_FILE (domain=$DOMAIN tag=$TAG)"
 if [ "$DRY_RUN" = 1 ]; then
   log "dry run: stopping before docker compose up"
   exit 0
@@ -122,14 +110,14 @@ for i in $(seq 1 90); do
     break
   fi
   [ "$i" = 90 ] && {
-    ( cd deploy && docker compose --env-file mailez.env -f "docker-compose.$EDITION.yml" ps -a )
+    ( cd deploy && docker compose --env-file mailez.env -f "docker-compose.$TARGET.yml" ps -a )
     die "API did not become healthy; check: (cd deploy && ./mailezctl.sh logs $TARGET backend)"
   }
   sleep 2
 done
 
 log "seeding the initial admin account"
-( cd deploy && docker compose --env-file mailez.env -f "docker-compose.$EDITION.yml" exec -T backend mailez-seed ) \
+( cd deploy && docker compose --env-file mailez.env -f "docker-compose.$TARGET.yml" exec -T backend mailez-seed ) \
   || warn "seed failed (maybe already seeded)"
 
 cat <<EOF

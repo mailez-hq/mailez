@@ -72,14 +72,6 @@ type Config struct {
 	LogLevel         string
 	FetchInsecure    bool // skip TLS verification for external fetch (opt-out)
 	DkimSelector     string
-	LicenseFile      string
-	License          string
-	LicenseRequired  bool
-	// Edition is the runtime deployment tier ("community"/"ce" | "ee" | "").
-	// It mirrors the frontend MAILEZ_EDITION build marker: community
-	// deployments fall back to the community license (not the unlimited
-	// dev license) when no enterprise license is mounted.
-	Edition string
 	// KVBackend is the engine storage KV backend ("pebble" | "tidb"). It is
 	// reported on the admin overview; single-node deployments default to
 	// pebble with local-FS blobs.
@@ -88,14 +80,14 @@ type Config struct {
 	// endpoint is configured, otherwise "local".
 	BlobBackend string
 	// ServiceFile / Service carry the annual technical-service certificate
-	// (MAILEZ_SERVICE_FILE / MAILEZ_SERVICE). It is engine-independent: both
-	// the community and enterprise editions can subscribe to support.
+	// (MAILEZ_SERVICE_FILE / MAILEZ_SERVICE). It is engine-independent: any
+	// deployment can subscribe to support.
 	ServiceFile string
 	Service     string
-	// OIDC federation (enterprise SSO). When Issuer/ClientID/ClientSecret are
-	// all set, the enterprise build mounts /api/v1/sso/oidc/start + /callback
-	// and the login pages offer the federated sign-in button; the community
-	// build ignores the settings entirely.
+	// OIDC federation (optional federated sign-in). When
+	// Issuer/ClientID/ClientSecret are all set, deployments with SSO enabled
+	// mount /api/v1/sso/oidc/start + /callback and the login pages offer the
+	// federated sign-in button; other deployments ignore the settings.
 	OIDCIssuer       string
 	OIDCClientID     string
 	OIDCClientSecret string
@@ -106,8 +98,7 @@ type Config struct {
 }
 
 // SupportedMailEngines are the mail engines the control plane can drive.
-// mailezine is the only engine; the identifier switches edition semantics
-// (license capacity) and the overview label.
+// mailezine is the only engine; the identifier selects the overview label.
 var SupportedMailEngines = []string{"mailezine"}
 
 // Load reads configuration from the environment.
@@ -157,13 +148,6 @@ func Load() Config {
 		FetchInsecure:        envBool("FETCH_INSECURE", false),
 		DkimSelector:         env("MAILEZ_DKIM_SELECTOR", "dkim"),
 		StackSecret:          env("MAILEZ_STACK_SECRET", ""),
-		LicenseFile:          env("MAILEZ_LICENSE_FILE", ""),
-		License:              env("MAILEZ_LICENSE", ""),
-		LicenseRequired:      envBool("MAILEZ_LICENSE_REQUIRED", false),
-		// Edition mirrors the frontend MAILEZ_EDITION build marker at
-		// runtime: "community"/"ce" tells the backend its no-license
-		// fallback is a community deployment, not a developer checkout.
-		Edition:          env("MAILEZ_EDITION", ""),
 		ServiceFile:      env("MAILEZ_SERVICE_FILE", ""),
 		Service:          env("MAILEZ_SERVICE", ""),
 		OIDCIssuer:       env("MAILEZ_OIDC_ISSUER", ""),
@@ -172,9 +156,9 @@ func Load() Config {
 		OIDCRedirectURL:  env("MAILEZ_OIDC_REDIRECT_URL", ""),
 	}
 	// Distributed deployments opt into TiDB KV + MinIO/S3 blobs by setting
-	// MAILEZINE_STORAGE_BACKEND / MAILEZINE_S3_* explicitly (the enterprise
-	// compose does). Single-node community/dev deployments keep the
-	// pebble/local-FS defaults — the engine has no TiDB or MinIO to report.
+	// MAILEZINE_STORAGE_BACKEND / MAILEZINE_S3_* explicitly. Single-node
+	// deployments keep the pebble/local-FS defaults — the engine has no
+	// TiDB or MinIO to report.
 	cfg.KVBackend = env("MAILEZINE_STORAGE_BACKEND", "")
 	if cfg.KVBackend == "" && cfg.MailEngine == "mailezine" {
 		cfg.KVBackend = "pebble"
@@ -185,9 +169,9 @@ func Load() Config {
 		cfg.BlobBackend = "local"
 	}
 	// The drive shares the blob backend decision: a deployment that points
-	// MAILEZINE_S3_* at MinIO (the enterprise compose does) gets MinIO-backed
-	// drive files instead of a CWD-relative "uploads" directory that is not
-	// writable in containers. An explicit MAILEZ_DRIVE_BACKEND still wins.
+	// MAILEZINE_S3_* at MinIO gets MinIO-backed drive files instead of a
+	// CWD-relative "uploads" directory that is not writable in containers.
+	// An explicit MAILEZ_DRIVE_BACKEND still wins.
 	if cfg.DriveBackend == "" {
 		if os.Getenv("MAILEZINE_S3_ENDPOINT") != "" {
 			cfg.DriveBackend = "minio"
@@ -209,7 +193,7 @@ func env(key, fallback string) string {
 }
 
 // defaultUploadDir keeps the local blob store writable in containers: when
-// the database is a sqlite file (the community/dev default), blobs default
+// the database is a sqlite file (the default), blobs default
 // next to it (e.g. /data/mailez.db → /data/uploads) instead of a
 // CWD-relative "uploads" that the container filesystem may not allow.
 // Non-sqlite deployments (mysql DSN) keep the historical relative default.

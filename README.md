@@ -89,60 +89,35 @@ required to run it.
 - **Transport security** — MTA-STS and DANE protect mail in transit;
   per-mailbox quotas and sending rate limits keep the system healthy
 - **Malware scanning & content controls** — attachments are scanned for
-  macros and known threats; outbound DLP and compliance archiving are
-  available on the enterprise edition
+  macros and known threats
 
 ## Quick start
 
-Three self-contained deployment tiers ship as compose files, managed by one
+Two self-contained deployment tiers ship as compose files, managed by one
 entry point:
 
-| Edition | Engine | Storage |
+| Tier | Engine | Storage |
 |---|---|---|
 | **dev** (default) | mailezine | SQLite + Pebble + local FS |
 | **community** | mailezine | SQLite + Pebble + local FS (MySQL/PostgreSQL optional) |
-| **enterprise** | mailezine | MySQL + TiDB + MinIO/S3 |
 
-Every edition runs the **same mailezine engine** — same protocols, same
-features at the mail layer, same upgrade path. The editions differ only in
-**storage scale** (single-node Pebble/local-FS vs distributed TiDB/MinIO),
-**clustering** (single node, or active-passive failover, or full
-multi-active replicas), and **licensed features** (compliance archiving,
-DLP, AI, LDAP sync, ActiveSync, S/MIME, delegation are enterprise).
+Both tiers run the **same mailezine engine** — same protocols, same
+features at the mail layer, same upgrade path. They differ only in
+**orientation** (dev builds from source on the host; community is a fully
+containerized production stack) and **control-plane storage** (SQLite by
+default, with MySQL/PostgreSQL available behind compose profiles).
 Existing deployments on the traditional multi-process mail architecture
 migrate in place with `mailezine migrate`.
 
 ```sh
 ./deploy/mailezctl.sh up              # dev tier
-./deploy/mailezctl.sh up ce    # community edition (production)
-./deploy/mailezctl.sh up ee   # enterprise edition (production)
-./deploy/mailezctl.sh up ha           # enterprise + control-plane replicas
-./deploy/mailezctl.sh up multi        # enterprise + multi-active engine
+./deploy/mailezctl.sh up ce    # community tier (production)
 ```
-
-The `ha` overlay scales the control plane horizontally: backend replicas
-load-balance behind the gateway with no sticky sessions, scheduled sends
-stay exactly-once-claimed under any replica count, background workers run
-on one lease-elected replica (60 s automatic failover), and large
-attachments plus the drive live in shared object storage.
-
-The `multi` overlay makes mailez a **truly distributed mail system**: every
-engine replica serves every account on the shared TiDB/MinIO — SMTP,
-IMAP/POP3, Sieve and the outbound queue are all multi-active with no
-leader. The outbound queue claims each message transactionally (a node
-killed mid-delivery has its claim taken over after the lease lapses, with
-fenced outcome writes), singleton workers are leased across nodes,
-full-text indexes converge per node by tailing the change log, and
-per-account write pinning absorbs cross-node hot-key contention. Verified
-by a kill -9 failover drill over real TiDB (`TestMultiActiveFailover` in
-the mailezine repo). See
-[`docs/scaling.md`](docs/scaling.md) for the tier-selection table,
-mechanics and operations runbook.
 
 The dev tier expects the backend on the host at `:8080` (build the images
 once with `docker buildx bake` from the repo root; details in
-[`docs/dev-setup.md`](docs/dev-setup.md)). Both production editions are fully
-containerized and publish:
+[`docs/dev-setup.md`](docs/dev-setup.md)). The community tier is fully
+containerized and publishes:
 
 | Port | What's there |
 |---|---|
@@ -195,41 +170,20 @@ cd backend
 go run ./cmd/e2e    # sends a test mail, checks delivery, DKIM and spam filtering
 ```
 
-**Enterprise licensing.** The enterprise tier requires a license file at
-`deploy/licenses/license.lic` (`MAILEZ_LICENSE_REQUIRED=true` refuses to
-start the backend without one). Official EE images verify licenses against
-the vendor production key baked in at build time — self-issued licenses
-cannot unlock them. Evaluate on a local build instead (source builds embed
-the dev key), self-issuing a trial license:
-
-```sh
-cd backend
-go run ./cmd/license issue --out ../deploy/licenses/license.lic \
-    --licensee "Trial Customer" --mailboxes 25
-```
-
-A dev-keyed binary refuses `MAILEZ_LICENSE_REQUIRED=true` at startup, so
-trials leave it unset (the ee dev compose does). Release builds inject the
-vendor production public key via the `MAILEZ_LICENSE_PUBKEY` /
-`MAILEZ_SERVICE_PUBKEY` Docker build args (docker-bake.hcl variables,
-wired to the repo secrets in the release workflow; `go run ./cmd/license
-genkey` prints a keypair — keep the private half in a secret store, it
-signs via `MAILEZ_LICENSE_PRIVATE_KEY`, and never commit it).
-
 ## Tech stack (for developers)
 
 - Backend: Go + Fiber, GORM, Redis
 - Frontend: Next.js (React) — separate admin and webmail apps
 - Mail engine: **mailezine** (a single Go binary) speaks
   SMTP/IMAP/POP3/ManageSieve behind an engine-agnostic directory contract
-  (`/stack/directory/*`) with pluggable KV + blob storage — every tier
-  (dev, ce, ee) runs it; the tiers differ only in storage
-  scale (SQLite/pebble vs MySQL/TiDB/MinIO) and licensed features
+  (`/stack/directory/*`) with pluggable KV + blob storage — both the dev
+  and community profiles run it; they differ only in storage
+  (SQLite/pebble, with optional MySQL/PostgreSQL)
 - More details: [`docs/dev-setup.md`](docs/dev-setup.md),
   [`docs/architecture.md`](docs/architecture.md),
   [`docs/webmail-ui-spec.md`](docs/webmail-ui-spec.md);
-  upgrading between versions/tiers (including the MySQL→SQLite control-plane
-  switch and CE→EE paths): [`docs/upgrades.md`](docs/upgrades.md)
+  upgrading between versions (including the MySQL→SQLite control-plane
+  switch): [`docs/upgrades.md`](docs/upgrades.md)
 
 ## License
 
@@ -242,5 +196,5 @@ signs via `MAILEZ_LICENSE_PRIVATE_KEY`, and never commit it).
   version over a network must share their source under the same license,
   which keeps the project and its forks open
 - **Commercial licensing** — closed-source use, SaaS/managed offerings and
-  OEM embedding require a commercial license (the enterprise edition ships
-  with one); contact `contact@mailez.com`
+  OEM embedding are available under a commercial license; contact
+  `contact@mailez.com`

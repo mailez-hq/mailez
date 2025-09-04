@@ -26,7 +26,7 @@ func (h *Handler) Register(r fiber.Router) {
 	r.Get("/mail/templates", h.mailTemplates)
 	r.Post("/mail/templates", h.mailTemplateSave)
 	r.Delete("/mail/templates/:id", h.mailTemplateDelete)
-	h.registerEnterprise(r)
+	h.registerOptionalRoutes(r)
 }
 
 func (h *Handler) mailToken(c *fiber.Ctx) (string, error) { return h.App.MailToken(c) }

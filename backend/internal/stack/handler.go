@@ -14,8 +14,8 @@ import (
 )
 
 // GroupResolver expands AD/LDAP distribution-group membership for alias
-// resolution. The enterprise directory integration supplies it; nil (the
-// community build) skips the LdapGroup branch entirely.
+// resolution. The optional directory-integration module supplies it; nil
+// (the default build) skips the LdapGroup branch entirely.
 type GroupResolver interface {
 	ResolveGroupMembers(ctx context.Context, groupEmail string) ([]string, error)
 }

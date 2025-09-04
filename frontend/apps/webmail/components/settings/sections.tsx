@@ -9,13 +9,13 @@ import type { Accent, Density, Landing, Preferences, ReaderFontSize, ReadingPane
 import { AppearanceSection } from "./sections/appearance-section";
 import { AccountsSection } from "./sections/accounts-section";
 import { CalendarSyncSection } from "./sections/calendar-sync-section";
-import { DelegationsSection } from "@/edition/delegations-section";
+import { DelegationsSection } from "@/modules/delegations-section";
 import { PasswordSection } from "./sections/password-section";
 import { PgpSection } from "./sections/pgp-section";
 import {
   AiSection, AutoReplySection, FiltersSection, ForwardingSection, IdentitySection, NotificationsSection, SpamSection,
 } from "./sections/profile-sections";
-import { SmimeSection } from "@/edition/smime-section";
+import { SmimeSection } from "@/modules/smime-section";
 import { TwoFactorSection } from "./sections/two-factor-section";
 import { WebhooksSection } from "./sections/webhooks-section";
 

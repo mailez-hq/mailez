@@ -1,15 +1,14 @@
 # mailez 社区版生产档（自包含）。
 #
-# 社区版与企业版同用 mailezine 引擎，区别只在规模组件：社区版单节点
-# （控制面 SQLite + 引擎 pebble KV + 本地 FS blob），企业版再加
-# MySQL/TiDB/MinIO/HA（见 ee/ 企业档，仅私有树）。引擎直发邮件端口
-# （25/465/587/110/995/143/993/4190），gateway(nginx) 只做 HTTP/ACME。
+# 单节点部署：控制面 SQLite + 引擎 pebble KV + 本地 FS blob。引擎直发
+# 邮件端口（25/465/587/110/995/143/993/4190），gateway(nginx) 只做
+# HTTP/ACME。
 #
 # 用法（镜像预构建发布，默认拉取）：
 #   cd deploy
 #   cp mailez.env.example mailez.env   # 并设置 MAILEZ_SECRET_KEY / MAILEZ_STACK_SECRET
 #   ./mailezctl.sh up ce        # = docker compose --env-file mailez.env -f docker-compose.ce.yml up -d
-#   ./mailezctl.sh ps community / logs community backend / down community
+#   ./mailezctl.sh ps / logs ce backend / down
 #
 # 本地源码构建（叠加 docker-compose.build.ce.yml 后 up -d --build）：
 #   MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up ce
@@ -114,8 +113,6 @@ services:
       # Production tier: enables the weak-secret guard (refuses placeholder
       # SECRET_KEY / empty STACK_SECRET).
       - MAILEZ_ENV=production
-      # 社区版标记：无 license 文件时按 community（而非 dev）报告与运行。
-      - MAILEZ_EDITION=ce
       - MAILEZ_SUBNET=${MAILEZ_SUBNET:-192.168.206.0/24}
       - MAILEZ_RECIPIENT_DELIMITER=+
       - MAILEZ_MESSAGE_RATELIMIT=200
@@ -204,7 +201,7 @@ services:
       - MAILEZINE_STORAGE_BACKEND=pebble
       - MAILEZINE_ROCKS_PATH=/data/rocks
       # 反垃圾：未配 MAILEZINE_RSPAMD_URL 时走引擎内置基础档（MAILEZINE_JUNK_*
-      # 可调）；配置后升级为 rspamd 扫描（社区版即含），企业版另启用学习。
+      # 可调）；配置后升级为 rspamd 扫描。
       - MAILEZINE_DKIM_VAULT_URL=http://backend:8080/stack/rspamd/vault
       - MAILEZINE_TRUSTED_NETS=${MAILEZ_SUBNET:-192.168.206.0/24}
       # 引擎直发标准端口 + 隐式 TLS（465/993/995）。

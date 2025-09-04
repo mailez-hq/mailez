@@ -1,33 +1,20 @@
 # docker-bake.hcl — single source of truth for building all mailez images
-# with `docker buildx bake` (replaces backend/cmd/build-images).
+# with `docker buildx bake`.
 #
-# Image matrix (9 components / 13 package names):
-#   backend / admin / webmail / mailezine ship CE and EE variants. CE and EE
-#   live under separate GHCR package names because GHCR access control is per
-#   package, not per tag (CE packages public, EE packages private):
-#     ghcr.io/mailez-hq/mailez-backend      vs mailez-backend-ee
-#   nginx / rspamd / unbound / macro-scanner / engine-lb are edition-neutral.
-#
-# This file holds the CE targets; the EE targets and the vendor license-key
-# variables live in docker-bake.ee.hcl (private tree, stripped from the
-# community mirror).
-#
-# Groups:
-#   default    = ce
-#   ce         backend-ce, admin-ce, webmail-ce, nginx, rspamd, unbound,
-#              macro-scanner, engine-lb
-#   mailezine  mailezine-ce
-#              (kept out of ce/ee on purpose: it builds from the separate
-#              mailezine repo, resolved via MAILEZINE_CONTEXT; the EE bake
-#              file re-adds mailezine-ee to this group)
+# Targets:
+#   backend, admin, webmail            control-plane and web apps
+#   nginx, rspamd, unbound,            infra images
+#   macro-scanner, engine-lb
+#   mailezine                          engine image; builds from the separate
+#                                      mailezine repo, resolved via
+#                                      MAILEZINE_CONTEXT
 #
 # Examples:
-#   docker buildx bake                                  # CE, tag :local
-#   docker buildx bake ce mailezine                     # CE + mailezine
-#   docker buildx bake -f docker-bake.hcl -f docker-bake.ee.hcl ee  # EE variants
+#   docker buildx bake                                  # all images, tag :local
+#   docker buildx bake mailezine                        # engine only
 #   VERSION=v1.2.3 APK_MIRROR=dl-cdn.alpinelinux.org \
 #     PLATFORMS=linux/amd64,linux/arm64 \
-#     docker buildx bake -f docker-bake.hcl -f docker-bake.ee.hcl ce ee mailezine --push
+#     docker buildx bake --push
 
 variable "VERSION" {
   # Image tag (and Dockerfile VERSION args). "local" matches the compose
@@ -58,14 +45,10 @@ variable "MAILEZINE_CONTEXT" {
 }
 
 group "default" {
-  targets = ["ce"]
-}
-
-group "ce" {
   targets = [
-    "backend-ce",
-    "admin-ce",
-    "webmail-ce",
+    "backend",
+    "admin",
+    "webmail",
     "nginx",
     "rspamd",
     "unbound",
@@ -76,38 +59,35 @@ group "ce" {
 
 group "mailezine" {
   targets = [
-    "mailezine-ce",
+    "mailezine",
   ]
 }
 
-target "backend-ce" {
+target "backend" {
   context = "."
   dockerfile = "backend/Dockerfile"
-  args = { MAILEZ_EDITION = "ce" }
   tags = ["${REGISTRY}/mailez-backend:${VERSION}"]
   platforms = split(",", PLATFORMS)
 }
 
-target "admin-ce" {
+target "admin" {
   context = "./frontend"
   dockerfile = "apps/admin/Dockerfile"
-  args = { MAILEZ_EDITION = "ce" }
   tags = ["${REGISTRY}/mailez-admin:${VERSION}"]
   platforms = split(",", PLATFORMS)
 }
 
-target "webmail-ce" {
+target "webmail" {
   context = "./frontend"
   dockerfile = "apps/webmail/Dockerfile"
-  args = { MAILEZ_EDITION = "ce" }
   tags = ["${REGISTRY}/mailez-webmail:${VERSION}"]
   platforms = split(",", PLATFORMS)
 }
 
-target "mailezine-ce" {
+target "mailezine" {
   context = MAILEZINE_CONTEXT
   dockerfile = "Dockerfile"
-  args = { MAILEZ_EDITION = "ce", VERSION = VERSION }
+  args = { VERSION = VERSION }
   tags = ["${REGISTRY}/mailez-mailezine:${VERSION}"]
   platforms = split(",", PLATFORMS)
 }

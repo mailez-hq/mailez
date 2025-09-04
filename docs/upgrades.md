@@ -1,9 +1,9 @@
 # 升级与版本间迁移
 
-本文回答三类问题:同版本升级怎么做、社区版内控制面切换(MySQL ↔ SQLite)
-怎么做、社区版 → 企业版怎么做。**诚实边界写在前面**:跨 KV 后端
-(Pebble → TiDB)的邮件数据目前**没有**原地迁移工具;`mailezine migrate`
-只覆盖传统栈(Maildir)→ KV。替代路径见下文。
+本文回答两类问题:同版本升级怎么做、社区版内控制面切换(MySQL ↔ SQLite)
+怎么做。**诚实边界写在前面**:跨 KV 后端(Pebble → 其他 KV)的邮件数据
+目前**没有**原地迁移工具;`mailezine migrate` 只覆盖传统栈(Maildir)→ KV。
+替代路径见下文。
 
 ## 1. 同版本升级
 
@@ -12,14 +12,13 @@
 
 ```sh
 # 编辑 deploy/mailez.env: MAILEZ_IMAGE_TAG=v1.2.3
-./deploy/mailezctl.sh up ce           # 或 ee / multi / ha
+./deploy/mailezctl.sh up ce
 ```
 
 源码部署(`MAILEZ_LOCAL_BUILD=1`):`git pull`(mailez 与 mailezine 两个
-仓库都要拉)后同样 `up`——`--build` 会以正确的 edition 构建参数重建
+仓库都要拉)后同样 `up`——`--build` 会从源码重建
 backend/前端/引擎镜像(构建定义在仓库根目录 `docker-bake.hcl`;
-引擎发布镜像由 mailezine 仓库的 release 工作流产出,见
-`docs/rollout-runbook.md` "镜像发布流程")。
+引擎发布镜像由 mailezine 仓库的 release 工作流产出)。
 
 - 控制面:启动时自动执行版本化迁移(`schema_migrations` 表),无需人工干预。
 - 邮件数据:`deploy/data/` 不受升级影响;升级前整体备份该目录即可
@@ -51,38 +50,7 @@ backend/前端/引擎镜像(构建定义在仓库根目录 `docker-bake.hcl`;
 
 > 建议先在数据副本上演练一次,确认账号集与数据目录匹配再切换生产。
 
-## 3. 社区版 → 企业版(CE → EE)
-
-差别有两层,分开处理:
-
-**控制面与授权**:企业栈要求 `deploy/licenses/license.lic`
-(`MAILEZ_LICENSE_REQUIRED=true`,自签/采购见 README)。控制面同样走
-第 2 节的导出/导入(MySQL → MySQL,无切换问题)。
-
-自签演练的授权签发与全流程实跑(含切换顺序与验证清单)见
-`docs/rollout-runbook.md` 阶段二;最短签发命令:
-
-```sh
-cd backend
-go run ./cmd/license issue --out ../deploy/licenses/license.lic \
-  --licensee <名字> --mailboxes 100
-go run ./cmd/license inspect -in ../deploy/licenses/license.lic
-```
-
-**邮件数据(Pebble/本地 FS → TiDB/MinIO)**:目前**没有** KV→KV 迁移
-工具。两条可行路径:
-
-- **IMAP 聚合搬运(推荐,当前可用)**:旧社区栈保持在线,在新企业栈为
-  每个账号配置外部账号拉取(设置 → 外部账号,IMAP 指向旧栈),历史邮件
-  逐账号拉入新栈;完成后切换 DNS/MX,保留旧栈一个完整邮件周期后下线。
-  注意:投递元数据(部分旗标/关键词)在 IMAP 搬运中保真,UID 会重排,
-  客户端首次同步会重新拉取。
-- **等待官方工具**:KV→KV 迁移在路线图上;订阅 release note。
-
-**回退**:切换前保留旧栈数据目录与配置导出;企业版许可证独立于数据,
-回退社区版=停企业栈、起社区栈、导入同一份配置导出。
-
-## 4. 传统多进程邮件栈 → 任意版本
+## 3. 传统多进程邮件栈 → 任意版本
 
 `mailezine migrate`(引擎仓库)支持 Maildir → Pebble/TiDB 单向全量复制,
 详见引擎仓库 `cmd/mailezine migrate` 文档。注意它是**全量**复制:

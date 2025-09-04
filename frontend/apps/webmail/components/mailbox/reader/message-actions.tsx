@@ -53,7 +53,7 @@ export function MessageActions({
   quickReplyOpen: boolean;
   setQuickReplyOpen: Dispatch<SetStateAction<boolean>>;
   aiEnabled: boolean;
-  /** Enterprise-only deployment: keep the AI button visible but locked. */
+  /** The AI module is not enabled: keep the button visible but locked. */
   aiLocked?: boolean;
   summaryOpen: boolean;
   setSummaryOpen: Dispatch<SetStateAction<boolean>>;
@@ -118,8 +118,8 @@ export function MessageActions({
           {summarizing ? t("summarizing") : summary ? t("aiSummary") : t("summarize")}
         </Button>
       ) : aiLocked ? (
-        /* Community edition: the summary entry stays visible but locked so
-           users can see what the enterprise edition adds. */
+        /* The AI module is not enabled: the summary entry stays visible but
+           locked so users can discover it once the module is added. */
         <Button size="sm" variant="outline" className="opacity-60" disabled title={t("aiLockedTitle")}>
           <Sparkles className="size-3.5" />
           {t("summarize")}
