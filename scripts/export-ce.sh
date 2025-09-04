@@ -52,7 +52,10 @@ git for-each-ref --format='%(refname)' refs/stash refs/notes refs/replace refs/t
 # current files — historical paths obey the same strip rules. The export
 # tool itself is private process tooling and must not appear in its own
 # output. Internal QA and engine-selection material (e2e-qa/, docs/engines/,
-# the webmail UI spec) never belonged to the community tree either.
+# the webmail UI spec) never belonged to the community tree either. The
+# marketing-screenshot tooling (shots-*.mjs + its demo seeder) manufactures
+# internal collateral with fabricated personas and lookalike third-party
+# domains — private as well.
 git filter-repo \
   --invert-paths \
   --path backend/internal/ee/ \
@@ -62,9 +65,14 @@ git filter-repo \
   --path backend/dev-start.ps1 \
   --path backend/FEATURES.md \
   --path backend/Dockerfile.ee \
+  --path backend/seed-demo-shots.ps1 \
   --path frontend/apps/webmail/ee/ \
   --path frontend/apps/admin/ee/ \
   --path frontend/apps/webmail/e2e-qa/ \
+  --path frontend/apps/webmail/shots-demo.mjs \
+  --path frontend/apps/webmail/shots-admin.mjs \
+  --path frontend/apps/webmail/shots-extra.mjs \
+  --path frontend/apps/webmail/shots-features.mjs \
   --path deploy/ee/ \
   --path deploy/docker-compose.ee.yml \
   --path deploy/docker-compose.ee.dev.yml \
@@ -128,7 +136,7 @@ done
 # Post-conditions over the final public refs (one commit each): private
 # paths must not survive under any name (current or pre-rename), and no
 # file content may mention the private variant or its build machinery.
-if git log --all --name-only --format= | sort -u | grep -E 'backend/internal/ee/|_ee\.go$|_ee_test\.go$|_ce\.go$|(^|/)ee\.mk$|(^|/)Dockerfile\.ee$|^docker-bake\.ee\.hcl$|^\.github/workflows/(ci-ee|release-private|release)\.yml$|^scripts/export-ce\.sh$|^backend/cmd/(eas-e2e|e2e-enterprise)/|enterprise-smoke|^backend/dev-start\.ps1$|^backend/FEATURES\.md$|^docs/(rollout-runbook|scaling|webmail-ui-spec)\.md$|^docs/engines/|^frontend/apps/[^/]*/(ee|ce-stubs)/|^frontend/apps/webmail/e2e-qa/|^deploy/ee/|^deploy/docker-compose\.(build\.)?(ee|enterprise|ha|multi)|^backend/internal/compose/enterprise|(^|/)set-edition\.mjs$'; then
+if git log --all --name-only --format= | sort -u | grep -E 'backend/internal/ee/|_ee\.go$|_ee_test\.go$|_ce\.go$|(^|/)ee\.mk$|(^|/)Dockerfile\.ee$|^docker-bake\.ee\.hcl$|^\.github/workflows/(ci-ee|release-private|release)\.yml$|^scripts/export-ce\.sh$|^backend/cmd/(eas-e2e|e2e-enterprise)/|enterprise-smoke|^backend/dev-start\.ps1$|^backend/FEATURES\.md$|^docs/(rollout-runbook|scaling|webmail-ui-spec)\.md$|^docs/engines/|^frontend/apps/[^/]*/(ee|ce-stubs)/|^frontend/apps/webmail/e2e-qa/|^deploy/ee/|^deploy/docker-compose\.(build\.)?(ee|enterprise|ha|multi)|^backend/internal/compose/enterprise|(^|/)set-edition\.mjs$|^frontend/apps/webmail/shots-|^backend/seed-demo-shots\.ps1$'; then
   echo "export-ce: enterprise paths survived the filter (history)" >&2
   exit 1
 fi
