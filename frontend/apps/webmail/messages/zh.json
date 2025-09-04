@@ -20,8 +20,8 @@
     "error": "登录失败",
     "sessionExpired": "登录已过期，请重新登录。",
     "rateLimited": "尝试次数过多，请稍等片刻再试。",
-    "ssoButton": "企业账号统一登录",
-    "ssoError": "企业统一登录失败（{reason}），请重试或联系管理员。",
+    "ssoButton": "SSO 统一登录",
+    "ssoError": "SSO 登录失败（{reason}），请重试或联系管理员。",
     "mailSettings": "邮箱设置（客户端配置）",
     "smtpServer": "SMTP 服务器",
     "pop3Server": "POP3 服务器",
@@ -152,7 +152,7 @@
     "loadRemoteImages": "加载图片",
     "summarize": "AI 摘要",
     "summarizing": "摘要生成中…",
-    "aiLockedTitle": "AI 助手为企业版功能：由组织管理员统一配置模型（支持内网部署），员工不可自行对接外部服务。",
+    "aiLockedTitle": "AI 助手未启用：由组织管理员统一配置模型（支持内网部署），员工不可自行对接外部服务。",
     "aiGenerated": "AI 生成，仅供参考",
     "aiPriority": "AI 优先排序",
     "more": "更多",
@@ -804,6 +804,6 @@
     "copyLink": "复制分享链接",
     "revokeShare": "撤销分享",
     "revokeFailed": "撤销失败",
-    "shareQuotaReached": "已达到当前版本分享链接上限（3 个）；无限分享请升级企业版"
+    "shareQuotaReached": "已达到分享链接上限（3 个）"
   }
 }

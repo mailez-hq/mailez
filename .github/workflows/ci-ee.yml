@@ -1,29 +1,33 @@
-name: CI (EE)
+name: CI (tagged tree)
 
-# Enterprise edition battery — private CI only. This workflow is stripped
-# from the community mirror (the CE tree has no backend/internal/ee and no
-# mailez_ee-tagged files, so the tagged build only works in the EE repo).
+# Private CI only. This workflow is stripped from the public source
+# export; the tagged build only works in the private tree (the public one
+# has no backend/internal/ee and no mailez_ee-tagged files).
 
 on:
   push:
     branches: [main, master]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  backend-ee:
+  verify-tagged:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
-      - name: Build (EE)
-        run: go build -tags mailez_ee ./...
-      - name: Vet (EE)
-        run: go vet -tags mailez_ee ./...
-      - name: Test (EE)
-        run: go test -tags mailez_ee ./... -count=1
+      # Purity gate: the untagged dependency graph must never reach
+      # backend/internal/ee and every tagged file must match the export
+      # strip contract.
+      - run: make -f ee.mk purity
+      - run: make -f ee.mk vet-ee
+      - run: make -f ee.mk test-ee
+      - run: make -f ee.mk build-ee
+      # Dry-run the public export and enforce its post-conditions without
+      # pushing.
+      - run: make -f ee.mk export-ce-check

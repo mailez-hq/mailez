@@ -50,7 +50,7 @@
 
 - :3000 admin dev 曾被另一会话以 `API_TARGET=:8081`（docker 后端）启动，与 :8080 本地后端 cookie/数据互不相通，造成过“UI 保存成功但查询不到”的假象；本会话已重启对齐到 :8080。
 - 共享 backend 于 23:18 被并行会话更换为新构建与数据库，QA 账号一度 401；已在 `backend\mailez.db` 重置 admin 密码并在 :8090 拉起本会话专用实例完成收尾验证。
-- 并行会话于 01:43 起将 dashboard 页面迁移至 `ee/`（editions 拆分），next.config 热重启令 :3001 dev 数次死亡，是最后两轮跑批失败集合漂移的直接原因。
+- 并行会话于 01:43 起重构 dashboard 页面模块结构，next.config 热重启令 :3001 dev 数次死亡，是最后两轮跑批失败集合漂移的直接原因。
 - 测试数据/凭据：`e2esmoke@example.com / E2eSmoke2026!`、`admin@example.com / MailezDemo2026!`；QA 日志与镜像在 `C:\Windows\TEMP\mailez-qa\`。
 
 ## 六、复现方式

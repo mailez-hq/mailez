@@ -1,13 +1,9 @@
 #!/usr/bin/env bash
-# mailezctl — management entry: dev / ce / ee / ha / multi.
+# mailezctl — management entry: dev / ce.
 #
 # Profiles (self-contained compose files):
 #   dev = docker-compose.dev.yml (SQLite + Pebble + local FS)
 #   ce  = docker-compose.ce.yml  (mailezine + SQLite control plane)
-#   ee  = ee/docker-compose.ee.yml  (mailezine + MySQL + TiDB + MinIO/S3)
-# plus the overlays:
-#   ha    = ee + ee/docker-compose.ha.yml (backend/frontend replicas)
-#   multi = ee + ee/docker-compose.multi.yml (multi-active engine)
 #
 # Images:
 #   Production targets pull prebuilt images (tag = MAILEZ_IMAGE_TAG,
@@ -20,13 +16,10 @@
 #
 # Usage:
 #   ./deploy/mailezctl.sh up       # dev (builds from source)
-#   ./deploy/mailezctl.sh up ce    # community edition prod (pull)
+#   ./deploy/mailezctl.sh up ce    # production (pull)
 #   MAILEZ_LOCAL_BUILD=1 ./deploy/mailezctl.sh up ce
-#   ./deploy/mailezctl.sh up ee    # enterprise edition prod (pull)
-#   ./deploy/mailezctl.sh up ha    # ee + control-plane replicas
-#   ./deploy/mailezctl.sh up multi # ee + multi-active engine
 #   ./deploy/mailezctl.sh ps
-#   ./deploy/mailezctl.sh logs ee mailezine -Follow
+#   ./deploy/mailezctl.sh logs ce mailezine
 #   ./deploy/mailezctl.sh down
 set -euo pipefail
 
@@ -37,23 +30,13 @@ SERVICE="${3:-}"
 cd "$(dirname "$0")"
 
 case "$TARGET" in
-  dev)   FILES=("docker-compose.dev.yml");  BUILD_OVERLAY="docker-compose.build.dev.yml" ;;
-  ce)    FILES=("docker-compose.ce.yml");   BUILD_OVERLAY="docker-compose.build.ce.yml" ;;
-  ee)    FILES=("ee/docker-compose.ee.yml");   BUILD_OVERLAY="ee/docker-compose.build.ee.yml" ;;
-  ha)    FILES=("ee/docker-compose.ee.yml" "ee/docker-compose.ha.yml"); BUILD_OVERLAY="ee/docker-compose.build.ee.yml" ;;
-  multi) FILES=("ee/docker-compose.ee.yml" "ee/docker-compose.multi.yml"); BUILD_OVERLAY="ee/docker-compose.build.multi.yml" ;;
+  dev) FILES=("docker-compose.dev.yml"); BUILD_OVERLAY="docker-compose.build.dev.yml" ;;
+  ce)  FILES=("docker-compose.ce.yml");  BUILD_OVERLAY="docker-compose.build.ce.yml" ;;
   *)
-    echo "unknown target: $TARGET (dev|ce|ee|ha|multi)" >&2
+    echo "unknown target: $TARGET (dev|ce)" >&2
     exit 2
     ;;
 esac
-
-# The enterprise profiles live under ee/ — part of the private tree, not the
-# community mirror. Fail with a hint instead of a missing-file compose error.
-if [ ! -f "${FILES[0]}" ]; then
-  echo "profile '$TARGET' is not part of this tree (ee/ deployment recipes are enterprise-only)" >&2
-  exit 2
-fi
 
 # Local source builds use the :local tag that docker buildx bake produces by
 # default. Exported shell env beats the mailez.env entry for compose

@@ -24,8 +24,8 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [pendingToken, setPendingToken] = useState("");
   const [code, setCode] = useState("");
-  // Federated sign-in (enterprise): the button renders only when the backend
-  // mounts the OIDC routes; ?sso_error explains a failed round-trip.
+  // Federated sign-in (optional module): the button renders only when the
+  // backend mounts the OIDC routes; ?sso_error explains a failed round-trip.
   const [ssoEnabled, setSsoEnabled] = useState(false);
   const [ssoError, setSsoError] = useState("");
 

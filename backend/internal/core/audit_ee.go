@@ -11,9 +11,9 @@ import (
 	"mailez/backend/internal/core/models"
 )
 
-// auditEnrich is the enterprise half of the audit seam: it derives a semantic
-// action/target/detail triple from the request so the audit trail can be
-// filtered and reviewed without reverse-engineering raw paths.
+// auditEnrich derives a semantic action/target/detail triple from the
+// request so the audit trail can be filtered and reviewed without
+// reverse-engineering raw paths.
 func auditEnrich(c *fiber.Ctx, entry *models.AuditLog) {
 	action, target, detail := classifyAudit(c.Method(), c.Path(), string(c.Request().URI().QueryString()))
 	entry.Action, entry.Target, entry.Detail = action, target, detail

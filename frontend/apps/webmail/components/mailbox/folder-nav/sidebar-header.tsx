@@ -76,8 +76,8 @@ export function SidebarHeader({
             <span className="sr-only">{t("aiCompose")}</span>
           </Button>
         ) : aiComposeLocked ? (
-          /* Community edition: the AI entry stays visible but locked so users
-             can see what the enterprise edition adds. */
+          /* The AI module is not enabled: the entry stays visible but locked
+             so users can discover it once the module is added. */
           <Button
             variant="outline"
             size="icon"

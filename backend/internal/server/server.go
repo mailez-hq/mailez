@@ -165,9 +165,8 @@ func New(cfg core.Config) *Server {
 		}
 	}
 	// AD/LDAP directory integration (login fallback, mail-proxy auth,
-	// address-book sync) is an enterprise capability: the seam returns nil
-	// in the community build.
-	dirSync := eeNewDirectorySync(db, cfg.SecretKey)
+	// address-book sync) is optional: the seam returns nil without it.
+	dirSync := newDirectorySync(db, cfg.SecretKey)
 	s.Auth.LDAP = dirSync
 	s.LDAP = dirSync
 	basicAuthCache := authcache.New(basicAuthCacheTTL())
@@ -186,9 +185,9 @@ func New(cfg core.Config) *Server {
 	fetcher := fetch.New(db, cfg.MailMtaAddr, cfg.SecretKey, cfg.FetchInsecure, time.Duration(cfg.FetchInterval)*time.Second)
 	go fetcher.Run(bgCtx)
 	// Send-undo queue: delivers parked messages once their window elapses.
-	// The outbound DLP scanner (content filter/审批) is an enterprise
-	// capability: the seam returns nil in the community build.
-	dlpScanner := eeStartComplianceWorkers(db, s.Auth, cfg, bgCtx)
+	// The outbound scanner seam (content filter/审批) returns nil when the
+	// optional content filter is not installed.
+	dlpScanner := startComplianceWorkers(db, s.Auth, cfg, bgCtx)
 	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey, dlpScanner, mail.New(cfg.MailImapAddr, "", "").SetInsecureTLS(cfg.FetchInsecure)).Run(bgCtx)
 	// Calendar event reminders: mail the owner when start - reminder arrives.
 	go calendar.NewReminderWorker(db, cfg).Run(bgCtx)
@@ -256,7 +255,7 @@ func newStore(rdb *redis.Client, env string) auth.Store {
 
 // publicBranding is the white-label brand shape served by the public
 // /server/settings endpoint. Zero values mean "use the built-in Mailez
-// brand"; filling it is edition-seamed (eePublicBranding).
+// brand"; filling it is optional (applyPublicBranding).
 type publicBranding struct {
 	Title     string `json:"title"`
 	Subtitle  string `json:"subtitle"`
@@ -282,10 +281,11 @@ func (s *Server) routes() {
 	v1.Get("/server/settings", func(c *fiber.Ctx) error {
 		var domains []string
 		s.DB.Model(&models.Domain{}).Order("name asc").Pluck("name", &domains)
-		// White-label branding is edition-seamed: EE fills it from the
-		// admin configuration, CE keeps the built-in Mailez brand (zeros).
+		// Custom branding is optional: deployments with it fill the shape
+		// from the admin configuration; otherwise the built-in Mailez
+		// brand (zeros) is served.
 		brand := publicBranding{}
-		eePublicBranding(s, &brand)
+		applyPublicBranding(s, &brand)
 		return c.JSON(fiber.Map{
 			"hostname":       s.Cfg.Hostname,
 			"domain":         s.Cfg.Domain,
@@ -295,15 +295,15 @@ func (s *Server) routes() {
 			"branding":       brand,
 			"domains":        domains,
 			"default_domain": s.Cfg.Domain,
-			// Federated sign-in is edition-seamed: the community build always
-			// reports false so login pages never advertise a missing route.
+			// Federated sign-in is optional: without it this always reports
+			// false so login pages never advertise a missing route.
 			"oidc": fiber.Map{"enabled": auth.OIDCEnabled(s.Cfg.OIDCIssuer, s.Cfg.OIDCClientID, s.Cfg.OIDCClientSecret)},
 		})
 	})
 	s.Auth.RegisterSSO(v1)
-	// Federated sign-in (OIDC) is an enterprise capability: the community
-	// build mounts no routes. The redirect URI defaults to the public
-	// hostname when MAILEZ_OIDC_REDIRECT_URL is unset.
+	// Federated sign-in (OIDC) is optional: without it no routes are
+	// mounted. The redirect URI defaults to the public hostname when
+	// MAILEZ_OIDC_REDIRECT_URL is unset.
 	oidcRedirect := s.Cfg.OIDCRedirectURL
 	if oidcRedirect == "" {
 		oidcRedirect = "https://" + s.Cfg.Hostname + "/api/v1/sso/oidc/callback"
@@ -316,8 +316,8 @@ func (s *Server) routes() {
 	})
 
 	app := core.New(s.DB, s.Auth, s.Cfg)
-	// AD/LDAP wiring (app.LDAP + licensed capacity guard) is edition-seamed.
-	eeWireAppDirectory(s, app)
+	// AD/LDAP wiring (app.LDAP + mailbox-capacity guard) is optional.
+	wireAppDirectory(s, app)
 	user.RegisterPublic(v1, app)
 	// The ICS export is fetched by external calendar clients with only the
 	// HMAC feed token, so it must sit outside RequireAuth. Order matters:
@@ -357,15 +357,15 @@ func (s *Server) routes() {
 	s.App.Get("/.well-known/carddav", redirectDAV)
 	s.App.Get("/.well-known/caldav", redirectDAV)
 
-	// Enterprise routes (delegation, announcement, archive, DLP, AI,
-	// ActiveSync) mount through the edition seam: nothing in CE.
-	eeRegisterRoutes(s, app, v1, authed, stackGroup)
+	// Optional routes mount through the seam above: nothing extra in the
+	// base build.
+	registerOptionalRoutes(s, app, v1, authed, stackGroup)
 }
 
 // requireStackSecret guards the internal /stack API used by mailezine and
 // the mail agent. When MAILEZ_STACK_SECRET is empty (local dev) every
 // caller is accepted; otherwise the caller must present the shared secret in
-// the X-Stack-Secret header (kept in sync with the enterprise agent's
+// the X-Stack-Secret header (kept in sync with the engine's
 // stackclient.SecretHeader).
 func requireStackSecret(secret string) fiber.Handler {
 	return func(c *fiber.Ctx) error {

@@ -11,7 +11,7 @@ import {
 import { aiReplies, aiTranslate, mailAttachmentsZip, mailFlag, mailRaw, pgpDecrypt } from "@/lib/api";
 import type { MailMessage, MailThread } from "@/lib/api";
 import { AttachmentList } from "@/components/mailbox/reader/attachment-list";
-import { AiSummary } from "@/edition/ai-summary";
+import { AiSummary } from "@/modules/ai-summary";
 import { MessageActions } from "@/components/mailbox/reader/message-actions";
 import { MessageBody } from "@/components/mailbox/reader/message-body";
 import { MessageDetails, MessageMeta } from "@/components/mailbox/reader/message-meta";
@@ -80,7 +80,7 @@ export function ReadingPane({
   detail: MailMessage;
   detailLoading: boolean;
   aiEnabled: boolean;
-  /** Enterprise-only deployment: render locked AI entry points instead of hiding them. */
+  /** The AI module is not enabled: render locked AI entry points instead of hiding them. */
   aiLocked?: boolean;
   summary: string;
   summarizing: boolean;

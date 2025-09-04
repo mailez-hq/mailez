@@ -191,7 +191,8 @@ export function DriveView({ focus }: { focus?: DriveEntry | null }) {
       setTimeout(() => setCopied(false), 1500);
       setMenu(null);
     } catch (e) {
-      // The community edition caps active share links; surface friendly copy.
+      // Active share links are capped by the configured policy; surface
+      // friendly copy.
       setError(
         e instanceof ApiError && e.code === "quota_exceeded"
           ? t("shareQuotaReached")

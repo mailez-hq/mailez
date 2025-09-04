@@ -55,8 +55,8 @@ TOP="mailez-$VERSION"
 STAGE="$STAGE_ROOT/$TOP"
 mkdir -p "$STAGE"
 
-# Community edition only: the ee/ha/multi deployment recipes live under
-# deploy/ee/ in the private tree and must not ship in the public tarball.
+# Tarball contents: the deployment recipes and docs a fresh production
+# install needs.
 stage deploy/docker-compose.ce.yml
 stage deploy/mailezctl.sh
 stage deploy/mailez.env.example

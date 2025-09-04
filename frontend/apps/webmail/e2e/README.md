@@ -34,7 +34,7 @@ seeding. Override the credentials with `MAILWEB_E2E_USER` /
 
 ## Bring up the stack
 
-Full containerized stack (community edition — this is what CI runs):
+Full containerized stack (this is what CI runs):
 
 ```sh
 docker buildx bake               # one-time from the repo root: builds the mailez-*:local images

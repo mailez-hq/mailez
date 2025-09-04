@@ -6,10 +6,9 @@ package auth
 // dependency would be an import cycle. The server assembles the struct from
 // core.Config.
 //
-// The feature itself is enterprise-only: oidc_ee.go (build tag mailez_ee)
-// mounts the /sso/oidc/start and /sso/oidc/callback routes, while
-// oidc_ce.go provides no-op fallbacks so the community build reports the
-// feature as unavailable.
+// The feature itself is optional: the extended module set mounts the
+// /sso/oidc/start and /sso/oidc/callback routes, while the default build
+// provides no-op fallbacks and reports the feature as unavailable.
 type OIDCConfig struct {
 	// Issuer is the OIDC provider root URL; discovery is read from
 	// <Issuer>/.well-known/openid-configuration.

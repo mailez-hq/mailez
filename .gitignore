@@ -41,8 +41,8 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Edition modules materialized by scripts/set-edition.mjs (build artifact)
-frontend/apps/*/edition/
+# App module sets materialized by scripts/set-modules.mjs (build artifact)
+frontend/apps/*/modules/
 
 # Local CE mirror exports (private export tooling output)
 build/

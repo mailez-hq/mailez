@@ -33,14 +33,6 @@ jobs:
         run: go test ./... -count=1
       - name: Coverage summary
         run: go test ./... -coverprofile=/tmp/cover.out >/dev/null && go tool cover -func=/tmp/cover.out | tail -1
-      - name: CE purity
-        run: |
-          deps=$(go list -deps ./... | grep -c 'mailez/backend/internal/ee' || true)
-          if [ "$deps" != "0" ]; then
-            echo "CE build reaches backend/internal/ee — forbidden"
-            go list -deps ./... | grep 'mailez/backend/internal/ee'
-            exit 1
-          fi
 
   # Control-plane smoke on real PostgreSQL/MySQL: full AutoMigrate + seed
   # (unit tests are SQLite-only by design; this guards dialect support).

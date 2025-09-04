@@ -1,5 +1,5 @@
 // Feature screenshot generator: drives the real webmail dev server (which
-// proxies to the live community Docker stack) and captures the conversation
+// proxies to the live Docker stack) and captures the conversation
 // view + quoted-reply fold shots for the website.
 // Usage: node shots-features.mjs   (webmail :3001, stack backend :8081)
 import { chromium } from "@playwright/test";

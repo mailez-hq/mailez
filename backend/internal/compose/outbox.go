@@ -30,9 +30,9 @@ type OutboundVerdict struct {
 	ID     uint
 }
 
-// OutboundScanner is the DLP seam: the enterprise build supplies the
-// content filter (dlp.Service behind an adapter); the community build
-// passes nil and messages submit unscanned.
+// OutboundScanner is the DLP seam: the optional content-filter module
+// supplies the implementation (dlp.Service behind an adapter); the default
+// build passes nil and messages submit unscanned.
 type OutboundScanner interface {
 	CheckRaw(ctx context.Context, senderEmail, from string, to []string, raw []byte) (*OutboundVerdict, error)
 }

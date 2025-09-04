@@ -4,8 +4,8 @@ import "time"
 
 // AuditLog is one administrative action recorded for accountability.
 // Action/Target/Detail are a semantic enrichment of the raw method/path
-// record: the community edition leaves them empty, the enterprise edition
-// derives them from the request (see core auditEnrich).
+// record; deployments without the enrichment leave them empty (see core
+// auditEnrich).
 type AuditLog struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	CreatedAt time.Time `json:"created_at"`

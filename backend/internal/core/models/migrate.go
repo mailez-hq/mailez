@@ -252,8 +252,8 @@ var migrations = []migration{
 		},
 	},
 	{
-		// Enterprise calendar: event reminders (mail delivery + dedupe log),
-		// calendar sharing between accounts, and the reminder columns.
+		// Calendar: event reminders (mail delivery + dedupe log), calendar
+		// sharing between accounts, and the reminder columns.
 		ID: "20260827_calendar_share_reminder",
 		Up: func(db *gorm.DB) error {
 			return db.AutoMigrate(&CalendarEvent{}, &CalendarShare{}, &CalendarReminderLog{})
@@ -299,8 +299,8 @@ var migrations = []migration{
 		},
 	},
 	{
-		// Login-page branding (登录页品牌): enterprise-configurable top-left
-		// logo, left hero image and copy shown on the webmail sign-in page.
+		// Login-page branding (登录页品牌): configurable top-left logo,
+		// left hero image and copy shown on the webmail sign-in page.
 		ID: "20260828_login_branding",
 		Up: func(db *gorm.DB) error {
 			return db.AutoMigrate(&BrandingConfig{})

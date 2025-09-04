@@ -69,46 +69,27 @@
   校验保证邮件能送达
 - **传输安全** — MTA-STS 和 DANE 保护邮件在途安全；每账号配额和发信限速让
   系统保持健康
-- **恶意文件扫描与内容管控** — 附件中的宏和已知威胁会被识别拦截；企业版
-  还提供出站 DLP 与合规归档
+- **恶意文件扫描与内容管控** — 附件中的宏和已知威胁会被识别拦截
 
 ## 快速开始
 
-三个自包含的部署档位以 compose 文件形式提供，由统一入口管理：
+两个自包含的部署档位以 compose 文件形式提供，由统一入口管理：
 
 | 档位 | 引擎 | 存储 |
 |---|---|---|
 | **dev**（默认） | mailezine | SQLite + Pebble + 本地 FS |
 | **community** | mailezine | SQLite + Pebble + 本地 FS（可选 MySQL/PostgreSQL） |
-| **enterprise** | mailezine | MySQL + TiDB + MinIO/S3 |
 
-所有档位运行**同一个 mailezine 引擎**——协议一致、邮件层功能一致、升级
-路径一致。版本差别在三点：**存储规模**（单机 Pebble/本地 FS 对分布式
-TiDB/MinIO）、**集群形态**（单机 / active-passive 容灾 / multi 全服务多活）
-与**授权功能**（合规归档、DLP、AI、LDAP 同步、ActiveSync、S/MIME、委派
-代管属企业版）。传统多进程邮件架构的存量部署可用 `mailezine
-migrate` 原地迁移到新存储。
+两个档位运行**同一个 mailezine 引擎**——协议一致、邮件层功能一致、升级
+路径一致。版本差别在两点：**定位**（dev 在宿主机源码构建；community 是
+完全容器化的生产栈）与**控制面存储**（默认 SQLite，可选 MySQL/
+PostgreSQL compose profile）。传统多进程邮件架构的存量部署可用
+`mailezine migrate` 原地迁移到新存储。
 
 ```sh
 ./deploy/mailezctl.sh up              # dev 档
-./deploy/mailezctl.sh up ce    # 社区版（生产）
-./deploy/mailezctl.sh up ee   # 企业版（生产）
-./deploy/mailezctl.sh up ha           # 企业版 + 控制面多副本
-./deploy/mailezctl.sh up multi        # 企业版 + 引擎多活（分布式邮件系统）
+./deploy/mailezctl.sh up ce    # 社区档（生产）
 ```
-
-`ha` 档把控制面横向扩容：backend 副本在网关后负载均衡（无会话粘性），
-定时发送在任意副本数下原子认领不双发，后台 worker 走 DB 租约选主
-（60s 自动故障转移），超大附件与云盘落共享对象存储。
-
-`multi` 档让 mailez 成为**真正意义的分布式邮件系统**：每个引擎副本在共享
-TiDB/MinIO 上服务任意账户——SMTP、IMAP/POP3、Sieve、出站队列全部多活，
-无主备、扩容即加副本。出站队列按消息事务认领（投递中途被 kill -9 的
-节点，租约到期后由其他副本接管，迟到写回被 fencing 丢弃）；单例 worker
-跨节点租约；全文索引每节点 tail 变更日志收敛；按账户写 pin 吸收跨节点
-热键竞争。全部语义经真实双进程 + TiDB 的 kill -9 故障演练验证
-（mailezine 仓库 `TestMultiActiveFailover`）。选型表与运维手册见
-[`docs/scaling.md`](docs/scaling.md)。
 
 首次使用前编辑 `deploy/mailez.env`（由 `mailez.env.example` 复制而来），
 至少设置两个密钥——compose 的 `${VAR:?}` 插值要求它们非空，缺失时
@@ -122,7 +103,7 @@ MAILEZINE_STACK_SECRET=                      # 必须与上一行同值
 
 dev 档需要宿主机 `:8080` 上先起后端（镜像只需构建一次：仓库根目录
 `docker buildx bake`，细节见
-[`docs/dev-setup.md`](docs/dev-setup.md)）；两个生产档完全容器化，发布端口：
+[`docs/dev-setup.md`](docs/dev-setup.md)）；社区档完全容器化，发布端口：
 
 | 端口 | 是什么 |
 |---|---|
@@ -153,12 +134,12 @@ go run ./cmd/e2e
 - 前端：Next.js（React）——管理后台与 Webmail 两个独立应用
 - 邮件引擎统一为 **mailezine**（单 Go 二进制），走引擎无关的目录契约
   （`/stack/directory/*`）提供 SMTP/IMAP/POP3/ManageSieve，KV + blob 存储
-  均可插拔；dev/社区/企业三档同一引擎，仅在存储规模（SQLite/pebble 对
-  MySQL/TiDB/MinIO）与授权功能上有别
+  均可插拔；dev 与社区档同一引擎，仅在存储（SQLite/pebble，可选
+  MySQL/PostgreSQL）上有别
 - 更多细节：[`docs/dev-setup.md`](docs/dev-setup.md)、
   [`docs/architecture.md`](docs/architecture.md)、
   [`docs/webmail-ui-spec.md`](docs/webmail-ui-spec.md)；
-  版本/档位间升级（含 MySQL→SQLite 控制面切换与社区版→企业版路径）：
+  版本间升级（含 MySQL→SQLite 控制面切换）：
   [`docs/upgrades.md`](docs/upgrades.md)
 
 ## 许可证
@@ -169,8 +150,5 @@ go run ./cmd/e2e
   仅当分发软件或以网络服务形式提供修改版时，需以同协议公开修改
 - **Copyleft 设计** —— 任何人分发 mailez 或将其修改版上线提供服务，
   都必须以同一协议公开源码——项目与分叉保持开放
-- **商业授权** —— 闭源商用、SaaS/托管服务、OEM 嵌入需要商业授权；
-  企业版（合规归档 / DLP / AI / LDAP / ActiveSync / S/MIME / 委派代管 /
-  分布式存储与 HA）需 `deploy/licenses/license.lic` 授权文件，自签与
-  采购流程见英文 README 的 Enterprise licensing 一节
-  （企业版自带）；联系 `contact@mailez.com`
+- **商业授权** —— 闭源商用、SaaS/托管服务、OEM 嵌入可购买商业授权；
+  联系 `contact@mailez.com`

@@ -1,1 +1,1 @@
-export { default } from "@/edition/announcement-page";
+export { default } from "@/modules/announcement-page";
