@@ -9,7 +9,7 @@ services:
 
   backend:
     build:
-      context: ../backend
+      context: ..
       dockerfile: backend/Dockerfile
 
   frontend-admin:

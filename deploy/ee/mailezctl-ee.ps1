@@ -8,6 +8,7 @@
 #
 # 用法:
 #   powershell .\deploy\ee\mailezctl-ee.ps1 up ee     # 生产（拉镜像）
+#   $env:MAILEZ_LOCAL_BUILD=1; powershell .\deploy\ee\mailezctl-ee.ps1 up ee
 #   powershell .\deploy\ee\mailezctl-ee.ps1 up ha
 #   powershell .\deploy\ee\mailezctl-ee.ps1 up multi
 #   powershell .\deploy\ee\mailezctl-ee.ps1 ps ee
@@ -32,13 +33,15 @@ param(
 $ErrorActionPreference = "Stop"
 # deploy/ee/ 下的本脚本 → 上一级即 deploy/
 $deploy = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$files = switch ($Target) {
-    "ce"    { ,@("docker-compose.ce.yml") }
-    "ee"    { ,@("ee/docker-compose.ee.yml") }
-    "ha"    { ,@("ee/docker-compose.ee.yml", "ee/docker-compose.ha.yml") }
-    "multi" { ,@("ee/docker-compose.ee.yml", "ee/docker-compose.multi.yml") }
-    default { ,@("docker-compose.dev.yml") }
+$profile = switch ($Target) {
+    "ce"    { ,@{ Files = @("docker-compose.ce.yml"); Overlay = "docker-compose.build.ce.yml" } }
+    "ee"    { ,@{ Files = @("ee/docker-compose.ee.yml"); Overlay = "ee/docker-compose.build.ee.yml" } }
+    "ha"    { ,@{ Files = @("ee/docker-compose.ee.yml", "ee/docker-compose.ha.yml"); Overlay = "ee/docker-compose.build.ee.yml" } }
+    "multi" { ,@{ Files = @("ee/docker-compose.ee.yml", "ee/docker-compose.multi.yml"); Overlay = "ee/docker-compose.build.multi.yml" } }
+    default { ,@{ Files = @("docker-compose.dev.yml"); Overlay = "docker-compose.build.dev.yml" } }
 }
+$files = $profile.Files
+$buildOverlay = $profile.Overlay
 
 foreach ($f in $files) {
     if (-not (Test-Path (Join-Path $deploy $f))) {
@@ -47,15 +50,38 @@ foreach ($f in $files) {
     }
 }
 
+# 本地源码构建使用 docker buildx bake 默认产生的 :local 标签；导出的 shell
+# 环境变量优先于 mailez.env 参与 compose 插值，避免静默拉取固定发布标签。
+$localBuild = $false
+if ($env:MAILEZ_LOCAL_BUILD -eq "1" -or $Target -eq "dev") {
+    $localBuild = $true
+    if (-not $env:MAILEZ_IMAGE_TAG) {
+        $env:MAILEZ_IMAGE_TAG = "local"
+    }
+}
+
 $compose = @("docker", "compose", "--env-file", "mailez.env")
 foreach ($f in $files) { $compose += @("-f", $f) }
 switch ($Action) {
-    "up"     { $compose += @("up", "-d", "--build") }
+    "up"     { $compose += @("up", "-d") }
     "down"   { $compose += @("down") }
     "ps"     { $compose += @("ps") }
     "logs"   { $compose += @("logs"); if ($Follow) { $compose += "--follow" } }
     "build"  { $compose += @("build") }
     "config" { $compose += @("config") }
+}
+
+# 构建 overlay 只作用于与构建相关的动作；down/ps/logs 仅用基础文件即可
+# （发布 tarball 不携带 overlay）。
+if ($localBuild -and (Test-Path (Join-Path $deploy $buildOverlay))) {
+    switch ($Action) {
+        "up" { $compose += @("-f", $buildOverlay) }
+        "build" { $compose += @("-f", $buildOverlay) }
+        "config" { $compose += @("-f", $buildOverlay) }
+    }
+}
+if ($Action -eq "up" -and $localBuild) {
+    $compose += @("--build")
 }
 if ($Service) { $compose += $Service }
 

@@ -86,6 +86,16 @@ jobs:
           DB_DRIVER: mysql
           DB_DSN: mailez:mailez@tcp(127.0.0.1:3306)/mailez?charset=utf8mb4&parseTime=True&loc=Local
 
+  # Compose build overlays must keep context/dockerfile pairs that resolve to
+  # real Dockerfiles (compose resolves dockerfile relative to context; bake
+  # and the overlays must not drift apart). Node check, no docker daemon.
+  compose-build-paths:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compose build overlay path check
+        run: node scripts/check-compose-build-paths.mjs
+
   frontend-webmail:
     runs-on: ubuntu-latest
     defaults:

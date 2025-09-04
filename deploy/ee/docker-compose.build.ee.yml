@@ -12,48 +12,48 @@ services:
 
   backend:
     build:
-      context: ../backend
+      context: ../..
       dockerfile: backend/Dockerfile.ee
 
   frontend-admin:
     build:
-      context: ../frontend
-      dockerfile: apps/admin/Dockerfile
+      context: ../..
+      dockerfile: frontend/apps/admin/Dockerfile
       args:
         MAILEZ_MODULES: ee
 
   frontend-webmail:
     build:
-      context: ../frontend
-      dockerfile: apps/webmail/Dockerfile
+      context: ../..
+      dockerfile: frontend/apps/webmail/Dockerfile
       args:
         MAILEZ_MODULES: ee
 
   gateway:
     build:
-      context: ..
+      context: ../..
       dockerfile: deploy/images/gateway/Dockerfile
 
   mailezine:
     build:
-      # Relative to deploy/: the sibling mailezine checkout. Override with
-      # MAILEZINE_CONTEXT where the layout differs (CI sets ../mailezine).
-      context: ${MAILEZINE_CONTEXT:-../../mailezine}
+      # Relative to deploy/ee/: the sibling mailezine checkout. Override
+      # with MAILEZINE_CONTEXT where the layout differs (CI sets ../mailezine).
+      context: ${MAILEZINE_CONTEXT:-../../../mailezine}
       dockerfile: Dockerfile.ee
       args:
         VERSION: ${MAILEZ_IMAGE_TAG:-local}
 
   mail-filter:
     build:
-      context: ..
+      context: ../..
       dockerfile: deploy/images/mail-filter/Dockerfile
 
   macro-scanner:
     build:
-      context: ..
+      context: ../..
       dockerfile: deploy/images/macro-scanner/Dockerfile
 
   resolver:
     build:
-      context: ..
+      context: ../..
       dockerfile: deploy/images/resolver/Dockerfile
