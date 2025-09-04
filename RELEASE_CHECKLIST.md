@@ -1,6 +1,6 @@
 # 发布检查清单（Release Checklist）
 
-打任何公开 tag（社区版 CE 或企业版 EE 发布）之前逐项核对。卡住的项必须
+打任何公开 tag（社区版 CE 或私有 EE 发布）之前逐项核对。卡住的项必须
 解决或显式豁免并在 release notes 说明，不允许带病发布。
 
 ## 占位符与敏感信息
@@ -21,21 +21,29 @@
 
 ## CE 导出（mailez 与 mailezine 两仓，缺一不可）
 
-- [ ] `scripts/export-ce.sh` 干跑通过：两仓分别执行
-      `MAILEZ_EXPORT_CHECK=1 ./scripts/export-ce.sh`，输出
-      “all post-conditions passed”。
-- [ ] 导出结果无 EE 词汇 / 私有路径 / 中文术语残留（内容门禁已含多字节词表）。
+- [ ] 两仓的公开源树导出脚本干跑通过（各自输出 “all post-conditions
+      passed”，不推送）。
+- [ ] 导出内容门禁无命中：EE 词汇 / 私有路径 / 中文术语残留
+      （词表已含多字节关键词，见各仓导出脚本）。
 - [ ] CE 导出提交信息含源 commit SHA（两仓可相互溯源对账）。
-- [ ] 双仓公开 tag 成对、版本一致（engine ↔ control plane 依赖约定）。
+- [ ] 双仓公开 tag 成对、版本一致（引擎 ↔ 控制面依赖约定）。
 
 ## 构建与测试
 
 - [ ] 私仓 CI 全绿：Linux（含 `-race`）/ Windows / rspamd 集成；
-      `ee.mk` purity 与 export-ce-check 通过。
-- [ ] 前端 `MAILEZ_MODULES=ee` 构建通过（webmail + admin）。
+      私有 purity 门禁与导出校验步骤通过。
+- [ ] 前端模块集为 EE 时构建通过（webmail + admin，见私有 CI 的
+      frontend-ee job）。
 - [ ] 协议一致性回归（conformance / `cmd/e2e`）对发布镜像跑过。
 - [ ] license 声明与 `go.mod` 一致（`NOTICE`/`THIRD_PARTY_NOTICES`
       无已移除依赖，vendored 目录均带 LICENSE）。
+
+## 发布冒烟
+
+- [ ] 社区栈从发布镜像 boot 冒烟通过（health + seed + SSO login，
+      见 release workflow 的 smoke job）。
+- [ ] 扩展栈从发布 `-ee` 镜像 boot 冒烟通过（dev-license 模式，
+      health + seed + SSO login，见 smoke-ee job）。
 
 ## 安全
 
