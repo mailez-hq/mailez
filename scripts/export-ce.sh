@@ -83,6 +83,7 @@ git filter-repo \
   --path docs/webmail-ui-spec.md \
   --path docs/rollout-runbook.md \
   --path docs/scaling.md \
+  --path qa/ \
   --path scripts/export-ce.sh \
   --path .github/workflows/release.yml \
   --path .github/workflows/release-private.yml \
