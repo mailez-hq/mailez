@@ -133,7 +133,14 @@ if git log --all --name-only --format= | sort -u | grep -E 'backend/internal/ee/
   exit 1
 fi
 
-forbidden='enterprise|mailez_ee|internal/ee|check-ce-purity|export-ce|docker-bake\.ee|ci-ee|Dockerfile\.ee|ee\.mk|FEATURES\.md|MAILEZ_EDITION|MAILEZ_LICENSE|NEXT_PUBLIC_MAILEZ_EDITION|NEXT_PUBLIC_MAILEZ_FULL|ce-stubs|@/edition|set-edition'
+# Content gate: the private docs and process tooling were written in
+# Chinese, so an ASCII-only word list misses whole EE vocabulary. The
+# list below covers both the English build-machinery terms and the CJK
+# product words; any surviving occurrence — in history or in files —
+# fails the export. Keep it intentionally strict: if a public file ever
+# needs to mention the paid edition, the wording must not use these
+# tokens (and the private wording lives in the stripped docs instead).
+forbidden='enterprise|mailez_ee|internal/ee|check-ce-purity|export-ce|docker-bake\.ee|ci-ee|Dockerfile\.ee|ee\.mk|FEATURES\.md|MAILEZ_EDITION|MAILEZ_LICENSE|NEXT_PUBLIC_MAILEZ_EDITION|NEXT_PUBLIC_MAILEZ_FULL|ce-stubs|@/edition|set-edition|多活|企业版|商业版'
 for ref in $(git for-each-ref --format='%(refname)' refs/heads); do
   if git grep -I -i -E "${forbidden}" "${ref}" | grep .; then
     echo "export-ce: forbidden content survived in ${ref}" >&2
