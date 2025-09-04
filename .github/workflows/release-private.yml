@@ -116,9 +116,61 @@ jobs:
             -d '{"email":"admin@example.com","pw":"MailezDemo2026!"}' \
             http://localhost:8081/api/v1/sso/login
 
+  smoke-ee:
+    runs-on: ubuntu-latest
+    needs: build-images
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Boot the enterprise stack from the freshly published -ee images in
+      # dev-license mode. The release images embed the vendor public key, so
+      # CI cannot sign a real license; MAILEZINE_LICENSE_REQUIRED=false makes
+      # the backend fall back to the built-in dev edition (production runs
+      # the identical code path plus the license check). This is the only
+      # place an -ee image set gets booted before a tag ships.
+      - name: Boot the EE stack from published images (dev license mode)
+        working-directory: deploy
+        env:
+          MAILEZ_IMAGE_TAG: ${{ github.ref_name }}
+          MAILEZINE_LICENSE_REQUIRED: "false"
+        run: |
+          cp mailez.env.example mailez.env
+          printf 'MAILEZ_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> mailez.env
+          printf 'MAILEZ_STACK_SECRET=%s\n' "$(openssl rand -hex 32)" >> mailez.env
+          # The compose file bind-mounts ./licenses (relative to deploy/ee);
+          # an empty dir satisfies the mount and no license file is needed in
+          # dev mode.
+          mkdir -p ee/licenses
+          # mailez-mailezine-ee:<tag> comes from the engine repo's release
+          # workflow (lockstep tags); retry while it catches up.
+          for i in $(seq 1 10); do
+            docker compose --env-file mailez.env -f ee/docker-compose.ee.yml pull && break
+            echo "pull failed (attempt $i); engine -ee image may not be published yet"
+            sleep 30
+          done
+          docker compose --env-file mailez.env -f ee/docker-compose.ee.yml up -d --wait
+
+      - name: Health check
+        run: |
+          curl -sf http://localhost:8081/api/v1/health
+          curl -sf -o /dev/null http://localhost:8082
+          curl -sf -o /dev/null http://localhost:8083
+
+      - name: Seed the admin account and smoke-login
+        working-directory: deploy
+        run: |
+          docker compose --env-file mailez.env -f ee/docker-compose.ee.yml exec -T backend mailez-seed
+          curl -sf -H 'Content-Type: application/json' \
+            -d '{"email":"admin@example.com","pw":"MailezDemo2026!"}' \
+            http://localhost:8081/api/v1/sso/login
+
   release:
     runs-on: ubuntu-latest
-    needs: [build-images, smoke]
+    needs: [build-images, smoke, smoke-ee]
     steps:
       - uses: actions/checkout@v4
       - name: Build the release tarball

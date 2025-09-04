@@ -31,3 +31,33 @@ jobs:
       # Dry-run the public export and enforce its post-conditions without
       # pushing.
       - run: make -f ee.mk export-ce-check
+
+  # The frontends are always typechecked and built against the default
+  # module set in ci.yml; the enterprise module set (frontend/apps/*/ee) is
+  # only materialized when MAILEZ_MODULES=ee, so it needs its own gate.
+  frontend-ee:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [webmail, admin]
+    defaults:
+      run:
+        working-directory: frontend/apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Typecheck (MAILEZ_MODULES=ee)
+        run: npm run typecheck
+        env:
+          MAILEZ_MODULES: ee
+      - name: Build (MAILEZ_MODULES=ee)
+        run: npm run build
+        env:
+          MAILEZ_MODULES: ee
