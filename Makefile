@@ -16,9 +16,9 @@ verify: backend-verify frontend-verify
 e2e:
 	cd backend && go run ./cmd/e2e -api-port 8080 -smtp-port 25 -imap-port 143 --domain e2e.example.com --alias team
 
-## images: build all mail images (shared + engines) with the Go builder
+## images: build all mail images via docker buildx bake (see docker-bake.hcl)
 images:
-	cd backend && go run ./cmd/build-images
+	docker buildx bake default mailezine
 
 fmt-backend:
 	cd backend && gofmt -w .

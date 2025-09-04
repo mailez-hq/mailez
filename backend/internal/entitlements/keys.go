@@ -1,4 +1,4 @@
-package service
+package entitlements
 
 import (
 	"crypto/ed25519"
@@ -10,7 +10,7 @@ import (
 // license package (same keypair signs both artifacts). Production builds
 // replace it via
 //
-//	go build -ldflags "-X mailez/backend/internal/service.publicKeyB64=<b64>"
+//	go build -ldflags "-X mailez/backend/internal/entitlements.publicKeyB64=<b64>"
 var publicKeyB64 = "MCowBQYDK2VwAyEAp23i5ECVobMMoopuFqZdYEkCJLaCg5kYMxsU1Vtq5GA="
 
 var publicKey = mustDecodePublicKey(publicKeyB64)

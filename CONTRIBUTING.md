@@ -8,7 +8,7 @@ the backend/frontends in development mode. The short version:
 ```sh
 cd deploy && cp mailez.env.example mailez.env   # set SECRET_KEY
 docker compose -f docker-compose.dev.yml up -d
-cd backend && ./scripts/dev-server.ps1          # API on :8080
+cd backend && powershell -File .\dev-start.ps1    # API on :8080
 cd frontend/apps/webmail && npm run dev -- -p 3001
 cd frontend/apps/admin && npm run dev -- -p 3000
 ```
