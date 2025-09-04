@@ -8,7 +8,7 @@
 //
 // Business model: the software usage right is PERPETUAL — the mailbox cap is
 // enforced forever and the license never expires. The annual technical
-// service (support/upgrades) is a separate entitlement (internal/service)
+// service (support/upgrades) is a separate entitlement (internal/entitlements)
 // that either edition can carry.
 //
 // Without a license the system runs in the built-in dev edition (unlimited),

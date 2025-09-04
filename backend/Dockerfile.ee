@@ -17,7 +17,7 @@ COPY . .
 ARG MAILEZ_LICENSE_PUBKEY=""
 ARG MAILEZ_SERVICE_PUBKEY=""
 RUN [ -n "$MAILEZ_LICENSE_PUBKEY" ] && LKEYS="-X mailez/backend/internal/ee/license.publicKeyB64=$MAILEZ_LICENSE_PUBKEY" || LKEYS=""; \
-    [ -n "$MAILEZ_SERVICE_PUBKEY" ] && SKEYS="-X mailez/backend/internal/service.publicKeyB64=$MAILEZ_SERVICE_PUBKEY" || SKEYS=""; \
+    [ -n "$MAILEZ_SERVICE_PUBKEY" ] && SKEYS="-X mailez/backend/internal/entitlements.publicKeyB64=$MAILEZ_SERVICE_PUBKEY" || SKEYS=""; \
     go build -tags mailez_ee $LKEYS $SKEYS -o /out/mailez ./cmd/server \
  && go build -tags mailez_ee $LKEYS $SKEYS -o /out/mailez-seed ./cmd/seed
 

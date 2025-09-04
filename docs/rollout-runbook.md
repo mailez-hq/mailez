@@ -56,9 +56,9 @@ docker compose --env-file mailez.env -f docker-compose.ce.yml down
 
 # 2. 签发 license（DEV 内置签名 key；生产用 HQ 签发的正式授权）
 cd ../backend
-go run ./cmd/license issue --out ../deploy/licenses/license.lic \
+go run -tags mailez_ee ./internal/ee/license/cmd/license issue --out ../deploy/licenses/license.lic \
   --licensee <你的名字> --mailboxes 100
-go run ./cmd/license inspect -in ../deploy/licenses/license.lic
+go run -tags mailez_ee ./internal/ee/license/cmd/license inspect -in ../deploy/licenses/license.lic
 cd ../deploy
 
 # 3. 起 EE 栈（--build 会以 MAILEZ_EDITION=ee 重建 backend/前端/引擎镜像）

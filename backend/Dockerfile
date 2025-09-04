@@ -8,9 +8,9 @@ COPY . .
 # SubjectPublicKeyInfo). Official release builds inject it via
 # docker-bake.hcl from repo secrets; empty keeps the source-default key,
 # which the server refuses to enforce entitlements on at startup (see
-# internal/service.Load).
+# internal/entitlements.Load).
 ARG MAILEZ_SERVICE_PUBKEY=""
-RUN [ -n "$MAILEZ_SERVICE_PUBKEY" ] && SKEYS="-X mailez/backend/internal/service.publicKeyB64=$MAILEZ_SERVICE_PUBKEY" || SKEYS=""; \
+RUN [ -n "$MAILEZ_SERVICE_PUBKEY" ] && SKEYS="-X mailez/backend/internal/entitlements.publicKeyB64=$MAILEZ_SERVICE_PUBKEY" || SKEYS=""; \
     go build $SKEYS -o /out/mailez ./cmd/server \
  && go build $SKEYS -o /out/mailez-seed ./cmd/seed
 

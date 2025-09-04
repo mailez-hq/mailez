@@ -12,7 +12,7 @@ import (
 	"mailez/backend/internal/auth"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/mail"
-	"mailez/backend/internal/service"
+	"mailez/backend/internal/entitlements"
 )
 
 // DirectorySync is the AD/LDAP directory-integration surface: login
@@ -43,11 +43,11 @@ type App struct {
 	LDAP DirectorySync
 	// Service is the loaded technical-service entitlement; nil = no service
 	// subscribed.
-	Service *service.Manager
+	Service *entitlements.Manager
 }
 
 func New(db *gorm.DB, authMgr *auth.Manager, cfg Config) *App {
-	svc, err := service.Load(cfg.ServiceFile, cfg.Service)
+	svc, err := entitlements.Load(cfg.ServiceFile, cfg.Service)
 	if err != nil {
 		panic("service: " + err.Error())
 	}

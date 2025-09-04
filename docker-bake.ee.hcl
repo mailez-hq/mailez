@@ -9,7 +9,7 @@
 
 variable "MAILEZ_LICENSE_PUBKEY" {
   # Vendor Ed25519 verification keys baked into extended release builds
-  # (base64 DER SPKI; `go run ./cmd/license genkey` prints a pair — the
+  # (base64 DER SPKI; `go run -tags mailez_ee ./internal/ee/license/cmd/license genkey` prints a pair — the
   # service key shares it). Overridden by same-name environment variables;
   # the release workflow wires the repo secrets. Empty keeps the
   # source-default dev key, which the backend refuses to enforce

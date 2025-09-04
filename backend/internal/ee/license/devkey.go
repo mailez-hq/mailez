@@ -15,7 +15,7 @@ import (
 // refuse MAILEZ_LICENSE_REQUIRED=true at startup (see Load), so it can never
 // unlock a production deployment. The vendor production private key is never
 // committed; release signing uses MAILEZ_LICENSE_PRIVATE_KEY (see
-// cmd/license).
+// internal/ee/license/cmd/license).
 var devPrivateKeyB64 = "MC4CAQAwBQYDK2VwBCIEIPWzNuuTjl2NrdOHPuyv5qq1symha2KyveZ1fAPwFsR/"
 
 // DevPrivateKey returns the dev signing key.

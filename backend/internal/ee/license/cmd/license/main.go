@@ -3,13 +3,13 @@
 // Command license issues and inspects Mailez enterprise licenses and
 // technical-service certificates.
 //
-//	go run ./cmd/license genkey                      # print a fresh keypair
-//	go run ./cmd/license issue --out lic.lic \
+//	go run -tags mailez_ee ./internal/ee/license/cmd/license genkey                      # print a fresh keypair
+//	go run -tags mailez_ee ./internal/ee/license/cmd/license issue --out lic.lic \
 //	    --licensee "Acme Corp" --mailboxes 500
-//	go run ./cmd/license inspect --in lic.lic
-//	go run ./cmd/license service issue --out service.lic \
+//	go run -tags mailez_ee ./internal/ee/license/cmd/license inspect --in lic.lic
+//	go run -tags mailez_ee ./internal/ee/license/cmd/license service issue --out entitlements.lic \
 //	    --licensee "Acme Corp" --tier premium --service-end 2027-08-28T00:00:00Z
-//	go run ./cmd/license service inspect --in service.lic
+//	go run -tags mailez_ee ./internal/ee/license/cmd/license service inspect --in entitlements.lic
 //
 // The signing key comes from MAILEZ_LICENSE_PRIVATE_KEY (base64 DER PKCS8)
 // or --key <file>; without either the built-in DEV key is used.
@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"mailez/backend/internal/ee/license"
-	"mailez/backend/internal/service"
+	"mailez/backend/internal/entitlements"
 )
 
 func main() {
@@ -184,8 +184,8 @@ func serviceIssue(args []string) {
 	key := fs.String("key", "", "signing key file (PKCS8 DER)")
 	_ = fs.Parse(args)
 
-	if *tier != service.TierStandard && *tier != service.TierPremium {
-		fatal(fmt.Errorf("--tier must be %q or %q", service.TierStandard, service.TierPremium))
+	if *tier != entitlements.TierStandard && *tier != entitlements.TierPremium {
+		fatal(fmt.Errorf("--tier must be %q or %q", entitlements.TierStandard, entitlements.TierPremium))
 	}
 	if *serviceEnd == "" {
 		fatal(fmt.Errorf("--service-end is required (RFC3339)"))
@@ -194,7 +194,7 @@ func serviceIssue(args []string) {
 	if err != nil {
 		fatal(fmt.Errorf("--service-end: %w", err))
 	}
-	ent := service.Entitlement{
+	ent := entitlements.Entitlement{
 		Version:   1,
 		Licensee:  *licensee,
 		Tier:      *tier,
@@ -206,7 +206,7 @@ func serviceIssue(args []string) {
 			ent.Features = append(ent.Features, f)
 		}
 	}
-	env, err := service.Sign(ent, signingKey(*key))
+	env, err := entitlements.Sign(ent, signingKey(*key))
 	if err != nil {
 		fatal(err)
 	}
@@ -231,7 +231,7 @@ func serviceInspect(args []string) {
 	if err != nil {
 		fatal(err)
 	}
-	ent, err := service.Parse(string(raw))
+	ent, err := entitlements.Parse(string(raw))
 	if err != nil {
 		fatal(err)
 	}
