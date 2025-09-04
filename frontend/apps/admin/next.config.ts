@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
   // module set is baked in, empty for the default set — helpers short-
   // circuit instead of firing requests that can only 404.
   env: {
-    NEXT_PUBLIC_MAILEZ_FULL: moduleSet === "default" ? "" : "true",
+    NEXT_PUBLIC_MAILEZ_MODULES_ACTIVE: moduleSet === "default" ? "" : "true",
   },
   async rewrites() {
     return [

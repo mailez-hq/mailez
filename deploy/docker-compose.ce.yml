@@ -128,8 +128,6 @@ services:
       - MAIL_ENGINE_MGMT_SECRET=${MAILEZ_STACK_SECRET:?set in mailez.env}
       - FETCH_INTERVAL=300
       - AI_PROVIDER=none
-      # 社区版无授权要求；技术服务证书可选。
-      - MAILEZ_LICENSE_REQUIRED=false
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/v1/health"]
       interval: 30s

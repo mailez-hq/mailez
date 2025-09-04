@@ -123,11 +123,11 @@ export class ApiError extends Error {
 // set. Module-aware API helpers consult it and resolve locally when the
 // extended modules are absent, instead of firing requests that can only
 // 404.
-const HAS_FULL = (process.env.NEXT_PUBLIC_MAILEZ_FULL ?? "") === "true";
+const HAS_OPTIONAL = (process.env.NEXT_PUBLIC_MAILEZ_MODULES_ACTIVE ?? "") === "true";
 
 // Marker for components that hide optional-module UI wholesale (e.g. the
-// calendar share button). Keep in sync with HAS_FULL.
-export const HAS_FULL_MODULES = HAS_FULL;
+// calendar share button). Keep in sync with HAS_OPTIONAL.
+export const HAS_OPTIONAL_MODULES = HAS_OPTIONAL;
 
 // A 401 on an authed surface means the session cookie expired or was
 // revoked server-side. Instead of letting every poll toast errors forever,
@@ -498,7 +498,7 @@ export const aiTranslate = (text: string, target: string) =>
 // Optional-module surface; without the extended module set this resolves
 // "no announcement" locally instead of firing a request that can only 404.
 export const mailAnnouncement = (): Promise<MailAnnouncement | undefined> =>
-  HAS_FULL ? api<MailAnnouncement | undefined>("/announcement") : Promise.resolve(undefined);
+  HAS_OPTIONAL ? api<MailAnnouncement | undefined>("/announcement") : Promise.resolve(undefined);
 
 export type ServerSettings = {
   hostname: string;
@@ -643,7 +643,7 @@ export const accountTest = (id: number) =>
 // extended module set the listing resolves locally instead of issuing a
 // request that can only 404.
 export const delegations = (): Promise<DelegationListing> =>
-  HAS_FULL
+  HAS_OPTIONAL
     ? api<DelegationListing>("/delegations")
     : Promise.resolve({ granted: [], received: [] });
 
@@ -683,7 +683,7 @@ export const calendarEventDelete = (id: number) =>
 // Calendar sharing ships with the extended module set; without it the
 // listing resolves locally (mirrors the default backend set).
 export const calendarShares = (): Promise<CalendarShareListing> =>
-  HAS_FULL
+  HAS_OPTIONAL
     ? api<CalendarShareListing>("/calendar/shares")
     : Promise.resolve({ owned: [], granted: [] });
 
@@ -838,7 +838,7 @@ export const sieveActivate = (name: string) =>
 // locked hint still renders — without a network round-trip that can only
 // fail.
 export const aiStatus = (): Promise<AIStatus> =>
-  HAS_FULL
+  HAS_OPTIONAL
     ? api<AIStatus>("/ai/status")
     : Promise.reject(new ApiError("ai/status: unavailable without the extended module set", 404));
 
@@ -1004,7 +1004,7 @@ export const webhookTest = (id: number) =>
 // two reads the settings shell probes unconditionally; the write/import
 // helpers are only reachable from the settings section of that module.
 export const smimeStatus = (): Promise<SmimeStatus> =>
-  HAS_FULL ? api<SmimeStatus>("/me/smime") : Promise.resolve({ has_cert: false });
+  HAS_OPTIONAL ? api<SmimeStatus>("/me/smime") : Promise.resolve({ has_cert: false });
 
 export const smimeImport = (inp: {
   cert_pem?: string;
@@ -1020,7 +1020,7 @@ export const smimeImport = (inp: {
 export const smimeDelete = () => api<void>("/me/smime", { method: "DELETE" });
 
 export const smimeListCerts = (): Promise<SmimeCert[]> =>
-  HAS_FULL ? api<SmimeCert[]>("/me/smime/certs") : Promise.resolve([]);
+  HAS_OPTIONAL ? api<SmimeCert[]>("/me/smime/certs") : Promise.resolve([]);
 
 export const smimeImportCert = (email: string, certPem: string) =>
   api<SmimeCert>("/me/smime/certs", {
