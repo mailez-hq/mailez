@@ -20,8 +20,8 @@ type Outbox struct {
 	// replica (pending → sending). Stale claims older than a few minutes
 	// are reclaimed, so a replica that dies mid-delivery cannot lose the
 	// message — multi-replica safety without a leader.
-	ClaimedAt  *time.Time `gorm:"index" json:"-"`
-	Error      string     `gorm:"size:255" json:"error,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at"`
+	ClaimedAt *time.Time `gorm:"index" json:"-"`
+	Error     string     `gorm:"size:255" json:"error,omitempty"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 }

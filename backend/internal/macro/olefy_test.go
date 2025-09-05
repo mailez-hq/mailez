@@ -1,5 +1,3 @@
-
-
 package macro
 
 import (

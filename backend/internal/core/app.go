@@ -11,8 +11,8 @@ import (
 
 	"mailez/backend/internal/auth"
 	"mailez/backend/internal/core/models"
-	"mailez/backend/internal/mail"
 	"mailez/backend/internal/entitlements"
+	"mailez/backend/internal/mail"
 )
 
 // DirectorySync is the AD/LDAP directory-integration surface: login
