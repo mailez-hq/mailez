@@ -148,12 +148,12 @@ func Load() Config {
 		FetchInsecure:        envBool("FETCH_INSECURE", false),
 		DkimSelector:         env("MAILEZ_DKIM_SELECTOR", "dkim"),
 		StackSecret:          env("MAILEZ_STACK_SECRET", ""),
-		ServiceFile:      env("MAILEZ_SERVICE_FILE", ""),
-		Service:          env("MAILEZ_SERVICE", ""),
-		OIDCIssuer:       env("MAILEZ_OIDC_ISSUER", ""),
-		OIDCClientID:     env("MAILEZ_OIDC_CLIENT_ID", ""),
-		OIDCClientSecret: env("MAILEZ_OIDC_CLIENT_SECRET", ""),
-		OIDCRedirectURL:  env("MAILEZ_OIDC_REDIRECT_URL", ""),
+		ServiceFile:          env("MAILEZ_SERVICE_FILE", ""),
+		Service:              env("MAILEZ_SERVICE", ""),
+		OIDCIssuer:           env("MAILEZ_OIDC_ISSUER", ""),
+		OIDCClientID:         env("MAILEZ_OIDC_CLIENT_ID", ""),
+		OIDCClientSecret:     env("MAILEZ_OIDC_CLIENT_SECRET", ""),
+		OIDCRedirectURL:      env("MAILEZ_OIDC_REDIRECT_URL", ""),
 	}
 	// Distributed deployments opt into TiDB KV + MinIO/S3 blobs by setting
 	// MAILEZINE_STORAGE_BACKEND / MAILEZINE_S3_* explicitly. Single-node

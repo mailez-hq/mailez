@@ -442,7 +442,6 @@ func TestIDNAContract(t *testing.T) {
 	unicode := url.PathEscape("bücher.example")
 	punycode := "xn--bcher-kva.example"
 
-
 	// rspamd vault advertises the punycode selector domain (image parity).
 	for _, q := range []string{punycode, unicode} {
 		code, body := doGet(t, app, "/stack/rspamd/vault/v1/dkim/"+q)
@@ -463,7 +462,6 @@ func TestIDNAContract(t *testing.T) {
 			t.Fatalf("dkim vault %s: got %q", q, body)
 		}
 	}
-
 
 	// local_domains passes through the stored names (image behaviour).
 	code, body := doGet(t, app, "/stack/rspamd/local_domains")
