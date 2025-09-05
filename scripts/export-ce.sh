@@ -12,14 +12,16 @@
 #   MAILEZ_EXPORT_DIR      scratch clone dir (default: build/export-ce)
 #   MAILEZ_EXPORT_CHECK=1  dry-run: run every post-condition, skip the push
 #
-# The public tree is generated, not mirrored. The public branch took root at
-# a hand-made "Initial commit" snapshot (built from a filtered tree, so no
-# private object ever entered the public repo) and evolves from there: each
-# export applies the freshly filtered HEAD tree as ONE fast-forward "sync
-# from mailez@<src-sha>" commit. Nothing from the private repository's
-# history — old file versions, commit messages, pre-refactor wording, the
-# filtered mirror's own intermediate revisions — is ever published; the
-# public branch is fast-forward only and never force-pushed.
+# The public branch IS the private dev branch's history, minus everything
+# that must not be public: filter-repo strips private paths across ALL
+# revisions, rewrites the build-tag line out of shared files, and applies a
+# mailmap so no personal/corporate email address leaks through authorship.
+# Commit messages, authorship and dates stay exactly as they were, and the
+# rewrite is deterministic — identical private prefix produces identical
+# public SHAs — so pushes are plain fast-forwards. The one deliberate
+# exception: changing the strip list or mailmap rewrites every public SHA,
+# which needs an explicit MAILEZ_EXPORT_FORCE=1 re-root (and any existing
+# forks keep the old objects, so treat it as a fresh open-source start).
 #
 # Requires git-filter-repo (pip install git-filter-repo).
 set -eu
@@ -61,7 +63,23 @@ git for-each-ref --format='%(refname)' refs/stash refs/notes refs/replace refs/t
 # marketing-screenshot tooling (shots-*.mjs + its demo seeder) manufactures
 # internal collateral with fabricated personas and lookalike third-party
 # domains — private as well.
+# Authorship privacy: every email that ever authored the private history
+# must map to a public one, or the export refuses to run — a new
+# contributor's corporate address would otherwise leak through old commits.
+# Extend the mailmap when a new address appears; never widen the allow-list.
+MAILMAP="${EXPORT_DIR}.mailmap"
+cat > "${MAILMAP}" <<'EOF'
+Guan <guan.shiliang@gmail.com> guanshiliang <guan.shiliang@chinaott.net>
+EOF
+bad="$(git log --all --format='%ae' | sort -u | grep -v -x -E 'guan\.shiliang@gmail\.com|guan\.shiliang@chinaott\.net' || true)"
+if [ -n "${bad}" ]; then
+  echo "export-ce: unmapped author email(s) — add a mailmap line first:" >&2
+  echo "${bad}" >&2
+  exit 1
+fi
+
 git filter-repo \
+  --mailmap "${MAILMAP}" \
   --invert-paths \
   --path backend/internal/ee/ \
   --path backend/cmd/eas-e2e/ \
@@ -143,11 +161,11 @@ fi
 # needs to mention the paid edition, the wording must not use these
 # tokens (and the private wording lives in the stripped docs instead).
 forbidden='enterprise|mailez_ee|internal/ee|check-ce-purity|export-ce|docker-bake\.ee|ci-ee|Dockerfile\.ee|ee\.mk|FEATURES\.md|MAILEZ_EDITION|MAILEZ_LICENSE|NEXT_PUBLIC_MAILEZ_EDITION|NEXT_PUBLIC_MAILEZ_FULL|ce-stubs|@/edition|set-edition|多活|企业版|商业版'
-# Tip-tree gate: the public branch's history is exactly the sequence of
-# these gated snapshots (one "sync" commit per export), and the filtered
-# mirror's internal history is never published — so the tip gate covers
-# everything the public repo can ever contain. Old wordings inside the
-# private mirror's history stay private by construction.
+# Tip-tree gate: history is published as it was written (that is the point
+# of a real open-source history), so old wordings in past revisions stay —
+# what must never ship is the CURRENT tree carrying private-edition build
+# vocabulary. The path gate above handles the historical dimension by
+# stripping those files from every revision outright.
 if git grep -I -i -E "${forbidden}" refs/heads/dev | grep .; then
   echo "export-ce: forbidden content survived in dev" >&2
   exit 1
@@ -162,44 +180,19 @@ elif [ -z "${PUBLIC_URL}" ]; then
   echo "export-ce: pass a public remote to push (or MAILEZ_EXPORT_CHECK=1 for a dry run)" >&2
   exit 1
 else
-  # Incremental publish: on top of the public branch (rooted at the initial
-  # "Initial commit" snapshot), apply the filtered tree as ONE sync commit.
-  # The public branch is fast-forward only — this script never rewrites,
-  # force-pushes, or re-roots public history. If the public branch is ever
-  # diverged, the push fails loudly instead of being forced.
-  PUB_DIR="${EXPORT_DIR}-pub"
-  rm -rf "${PUB_DIR}"
-  git clone --no-local --quiet "${PUBLIC_URL}" "${PUB_DIR}"
-  cd "${PUB_DIR}"
-  if ! git rev-parse --verify -q refs/heads/dev >/dev/null; then
-    echo "export-ce: public remote has no dev branch; initialize it with a" >&2
-    echo "           single \"Initial commit\" root before the first export." >&2
+  # Deterministic publish: the filtered branch rewrites to stable SHAs, so
+  # a plain push fast-forwards. MAILEZ_EXPORT_FORCE=1 is the explicit,
+  # rare re-root (strip list or mailmap changed) — it rewrites every
+  # public SHA, so it is never the default.
+  force=""
+  if [ "${MAILEZ_EXPORT_FORCE:-0}" = "1" ]; then
+    force="--force"
+  fi
+  if git push ${force} "${PUBLIC_URL}" 'refs/heads/dev:refs/heads/dev'; then
+    echo "export-ce: pushed dev -> ${PUBLIC_URL}${force:+ (forced re-root)}"
+  else
+    echo "export-ce: fast-forward push failed — if the strip list or mailmap" >&2
+    echo "           changed, re-root deliberately with MAILEZ_EXPORT_FORCE=1" >&2
     exit 1
   fi
-  cur_tree="$(git rev-parse refs/heads/dev^{tree})"
-  new_tree="$(git --git-dir="${EXPORT_DIR}" rev-parse "refs/heads/dev^{tree}")"
-  if [ "${new_tree}" = "${cur_tree}" ]; then
-    echo "export-ce: public dev already matches the filtered tree (in sync)"
-  else
-    src_sha="$(git --git-dir="${EXPORT_DIR}" log -1 --format=%H refs/heads/dev)"
-    src_date="$(git --git-dir="${EXPORT_DIR}" log -1 --format=%cI refs/heads/dev)"
-    git fetch --quiet "${EXPORT_DIR}" "refs/heads/dev:refs/temp/filtered"
-    new_tree="$(git rev-parse refs/temp/filtered^{tree})"
-    commit="$(
-      GIT_AUTHOR_NAME=mailez-export \
-      GIT_AUTHOR_EMAIL=export@mailez.net \
-      GIT_AUTHOR_DATE="${src_date}" \
-      GIT_COMMITTER_NAME=mailez-export \
-      GIT_COMMITTER_EMAIL=export@mailez.net \
-      GIT_COMMITTER_DATE="${src_date}" \
-      git commit-tree "${new_tree}" -p refs/heads/dev -m "sync from mailez@${src_sha}"
-    )"
-    git update-ref refs/heads/dev "${commit}"
-    git push --quiet "${PUBLIC_URL}" "refs/heads/dev:refs/heads/dev" || {
-      echo "export-ce: public push failed (diverged history?) — not forcing" >&2
-      exit 1
-    }
-    echo "export-ce: synced dev $(git rev-parse --short refs/heads/dev) (from mailez@${src_sha})"
-  fi
-  cd .. && rm -rf "${PUB_DIR}"
 fi
