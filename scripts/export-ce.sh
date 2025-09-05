@@ -137,46 +137,11 @@ git filter-repo \
     blob.data = data
   '
 
-# Community dependency prune: the private go.mod carries enterprise-only
-# requirements (LDAP, S/MIME, ...) whose code the filter just removed, so an
-# untouched exported go.mod fails `go mod tidy -diff` forever. Run a real
-# `go mod tidy` on the filtered tip and rebuild ONLY the tip with the pruned
-# manifests — every historical commit stays byte-for-byte what the private
-# history says, and the tip is what CI checks and users build. The inputs
-# (private prefix + tidy rules) are deterministic, so the rebuilt tip SHA is
-# stable and pushes stay fast-forwards. A tidy failure here means the strip
-# list broke the community build — that is the gate working.
-TIDY_DIR="${EXPORT_DIR}-tidy"
-git worktree add --quiet --detach "${TIDY_DIR}" refs/heads/dev
-( cd "${TIDY_DIR}/backend" && GOFLAGS=-mod=mod GOWORK=off go mod tidy )
-base="$(git rev-parse refs/heads/dev)"
-mod_blob="$(git hash-object -w "${TIDY_DIR}/backend/go.mod")"
-sum_blob="$(git hash-object -w "${TIDY_DIR}/backend/go.sum")"
-new_backend_tree="$(
-  git ls-tree "${base}:backend" | awk -v m="${mod_blob}" -v s="${sum_blob}" -F'\t' '
-    $2 == "go.mod" { print "100644 blob " m "\tgo.mod"; next }
-    $2 == "go.sum" { print "100644 blob " s "\tgo.sum"; next }
-    { print }
-  ' | git mktree
-)"
-new_tree="$(
-  git ls-tree "${base}" | awk -v b="${new_backend_tree}" -F'\t' '
-    $2 == "backend" { print "040000 tree " b "\tbackend"; next }
-    { print }
-  ' | git mktree
-)"
-new_tip="$(
-  GIT_AUTHOR_NAME="$(git log -1 --format=%an "${base}")" \
-  GIT_AUTHOR_EMAIL="$(git log -1 --format=%ae "${base}")" \
-  GIT_AUTHOR_DATE="$(git log -1 --format=%aD "${base}")" \
-  GIT_COMMITTER_NAME="$(git log -1 --format=%cn "${base}")" \
-  GIT_COMMITTER_EMAIL="$(git log -1 --format=%ce "${base}")" \
-  GIT_COMMITTER_DATE="$(git log -1 --format=%cD "${base}")" \
-  git commit-tree "${new_tree}" -p "$(git rev-parse "${base}^")" -m "$(git log -1 --format=%B "${base}")"
-)"
-git update-ref refs/heads/dev "${new_tip}"
-git worktree remove --force "${TIDY_DIR}"
-git worktree prune
+# Note on go.mod: the exported manifests carry the private tree's
+# enterprise-only requirements verbatim. Pruning them inside the export
+# was tried and rejected — a rebuilt tip re-parents on every export, so
+# pushes could never stay fast-forward. The CI dependency gate is
+# `go mod verify` instead of `go mod tidy -diff` for exactly this reason.
 
 # Post-conditions over the filtered refs: private
 # paths must not survive under any name (current or pre-rename), and no
