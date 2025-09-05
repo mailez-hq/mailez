@@ -12,12 +12,14 @@
 #   MAILEZ_EXPORT_DIR      scratch clone dir (default: build/export-ce)
 #   MAILEZ_EXPORT_CHECK=1  dry-run: run every post-condition, skip the push
 #
-# The public tree is generated, not mirrored. Every branch is squashed to
-# a single root commit built from its filtered HEAD tree, so nothing from
-# the private repository's history — old file versions, commit messages,
-# pre-refactor wording — can survive in the public object database. The
-# public repo holds exactly one commit per branch and no tags; the full
-# development history stays private.
+# The public tree is generated, not mirrored. The public branch took root at
+# a hand-made "Initial commit" snapshot (built from a filtered tree, so no
+# private object ever entered the public repo) and evolves from there: each
+# export applies the freshly filtered HEAD tree as ONE fast-forward "sync
+# from mailez@<src-sha>" commit. Nothing from the private repository's
+# history — old file versions, commit messages, pre-refactor wording, the
+# filtered mirror's own intermediate revisions — is ever published; the
+# public branch is fast-forward only and never force-pushed.
 #
 # Requires git-filter-repo (pip install git-filter-repo).
 set -eu
@@ -25,6 +27,9 @@ set -eu
 PUBLIC_URL="${1:-${MAILEZ_PUBLIC_URL:-}}"
 EXPORT_DIR="${MAILEZ_EXPORT_DIR:-build/export-ce}"
 DRY_RUN="${MAILEZ_EXPORT_CHECK:-0}"
+# The push phase reads this dir from inside the public clone; make it
+# absolute up front so a relative default survives those cd's.
+EXPORT_DIR="$(pwd)/${EXPORT_DIR}"
 
 command -v git-filter-repo >/dev/null 2>&1 || {
   echo "export-ce: git-filter-repo not found (pip install git-filter-repo)" >&2
@@ -73,6 +78,7 @@ git filter-repo \
   --path frontend/apps/webmail/shots-admin.mjs \
   --path frontend/apps/webmail/shots-extra.mjs \
   --path frontend/apps/webmail/shots-features.mjs \
+  --path frontend/scripts/set-edition.mjs \
   --path deploy/ee/ \
   --path deploy/docker-compose.ee.yml \
   --path deploy/docker-compose.ee.dev.yml \
@@ -113,27 +119,15 @@ git filter-repo \
     blob.data = data
   '
 
-# Squash every branch to a single root commit built from its filtered
-# tree. This is what makes the export content-complete: a plain history
-# filter keeps the old commits, and everything their blobs mention; after
-# squashing, no object from the private history remains in the public
-# repo at all.
-git for-each-ref --format='%(refname)' refs/heads | while read -r ref; do
-  tree="$(git rev-parse "${ref}^{tree}")"
-  date="$(git log -1 --format=%aI "${ref}")"
-  commit="$(
-    GIT_AUTHOR_NAME=mailez-export \
-    GIT_AUTHOR_EMAIL=export@mailez.invalid \
-    GIT_AUTHOR_DATE="${date}" \
-    GIT_COMMITTER_NAME=mailez-export \
-    GIT_COMMITTER_EMAIL=export@mailez.invalid \
-    GIT_COMMITTER_DATE="${date}" \
-    git commit-tree "${tree}" -m "mailez public source export"
-  )"
-  git update-ref "${ref}" "${commit}"
-done
+# The public repo's history starts at a hand-made "Initial commit" root and
+# then evolves normally: this script does NOT publish or rewrite public
+# history. It only produces the filtered tree here (the mirror keeps its
+# filtered history — which makes the path post-condition below scan every
+# filtered revision, not just the tip) and, in the push phase, applies that
+# tree as a single "sync from mailez@<src-sha>" commit on top of the public
+# branch. Fast-forward only, never a force.
 
-# Post-conditions over the final public refs (one commit each): private
+# Post-conditions over the filtered refs: private
 # paths must not survive under any name (current or pre-rename), and no
 # file content may mention the private variant or its build machinery.
 if git log --all --name-only --format= | sort -u | grep -E 'backend/internal/ee/|_ee\.go$|_ee_test\.go$|_ce\.go$|(^|/)ee\.mk$|(^|/)Dockerfile\.ee$|^docker-bake\.ee\.hcl$|^\.github/workflows/(ci-ee|release-private|release)\.yml$|^scripts/export-ce\.sh$|^backend/cmd/(eas-e2e|e2e-enterprise)/|enterprise-smoke|^backend/dev-start\.ps1$|^backend/FEATURES\.md$|^docs/(rollout-runbook|scaling|webmail-ui-spec)\.md$|^docs/engines/|^frontend/apps/[^/]*/(ee|ce-stubs)/|^frontend/apps/webmail/e2e-qa/|^deploy/ee/|^deploy/docker-compose\.(build\.)?(ee|enterprise|ha|multi)|^backend/internal/compose/enterprise|(^|/)set-edition\.mjs$|^frontend/apps/webmail/shots-|^backend/seed-demo-shots\.ps1$'; then
@@ -149,12 +143,15 @@ fi
 # needs to mention the paid edition, the wording must not use these
 # tokens (and the private wording lives in the stripped docs instead).
 forbidden='enterprise|mailez_ee|internal/ee|check-ce-purity|export-ce|docker-bake\.ee|ci-ee|Dockerfile\.ee|ee\.mk|FEATURES\.md|MAILEZ_EDITION|MAILEZ_LICENSE|NEXT_PUBLIC_MAILEZ_EDITION|NEXT_PUBLIC_MAILEZ_FULL|ce-stubs|@/edition|set-edition|多活|企业版|商业版'
-for ref in $(git for-each-ref --format='%(refname)' refs/heads); do
-  if git grep -I -i -E "${forbidden}" "${ref}" | grep .; then
-    echo "export-ce: forbidden content survived in ${ref}" >&2
-    exit 1
-  fi
-done
+# Tip-tree gate: the public branch's history is exactly the sequence of
+# these gated snapshots (one "sync" commit per export), and the filtered
+# mirror's internal history is never published — so the tip gate covers
+# everything the public repo can ever contain. Old wordings inside the
+# private mirror's history stay private by construction.
+if git grep -I -i -E "${forbidden}" refs/heads/dev | grep .; then
+  echo "export-ce: forbidden content survived in dev" >&2
+  exit 1
+fi
 
 # The filtered tree must build and test on its own; run those gates in the
 # public mirror's CI as a release gate as well.
@@ -165,8 +162,41 @@ elif [ -z "${PUBLIC_URL}" ]; then
   echo "export-ce: pass a public remote to push (or MAILEZ_EXPORT_CHECK=1 for a dry run)" >&2
   exit 1
 else
-  # Restricted refspec (never --mirror): branches and tags only, so any
-  # auxiliary ref that reappears locally cannot be pushed by accident.
-  git push --force "${PUBLIC_URL}" 'refs/heads/*:refs/heads/*' 'refs/tags/*:refs/tags/*'
-  echo "export-ce: pushed ${PUBLIC_URL}"
+  # Incremental publish: on top of the public branch (rooted at the initial
+  # "Initial commit" snapshot), apply the filtered tree as ONE sync commit.
+  # The public branch is fast-forward only — this script never rewrites,
+  # force-pushes, or re-roots public history. If the public branch is ever
+  # diverged, the push fails loudly instead of being forced.
+  PUB_DIR="${EXPORT_DIR}-pub"
+  rm -rf "${PUB_DIR}"
+  git clone --no-local --quiet "${PUBLIC_URL}" "${PUB_DIR}"
+  cd "${PUB_DIR}"
+  if ! git rev-parse --verify -q refs/heads/dev >/dev/null; then
+    echo "export-ce: public remote has no dev branch; initialize it with a" >&2
+    echo "           single \"Initial commit\" root before the first export." >&2
+    exit 1
+  fi
+  cur_tree="$(git rev-parse refs/heads/dev^{tree})"
+  new_tree="$(git --git-dir="${EXPORT_DIR}" rev-parse "refs/heads/dev^{tree}")"
+  if [ "${new_tree}" = "${cur_tree}" ]; then
+    echo "export-ce: public dev already matches the filtered tree (in sync)"
+  else
+    src_sha="$(git --git-dir="${EXPORT_DIR}" log -1 --format=%H refs/heads/dev)"
+    git fetch --quiet "${EXPORT_DIR}" "refs/heads/dev:refs/temp/filtered"
+    new_tree="$(git rev-parse refs/temp/filtered^{tree})"
+    commit="$(
+      GIT_AUTHOR_NAME=mailez-export \
+      GIT_AUTHOR_EMAIL=export@mailez.net \
+      GIT_COMMITTER_NAME=mailez-export \
+      GIT_COMMITTER_EMAIL=export@mailez.net \
+      git commit-tree "${new_tree}" -p refs/heads/dev -m "sync from mailez@${src_sha}"
+    )"
+    git update-ref refs/heads/dev "${commit}"
+    git push --quiet "${PUBLIC_URL}" "refs/heads/dev:refs/heads/dev" || {
+      echo "export-ce: public push failed (diverged history?) — not forcing" >&2
+      exit 1
+    }
+    echo "export-ce: synced dev $(git rev-parse --short refs/heads/dev) (from mailez@${src_sha})"
+  fi
+  cd .. && rm -rf "${PUB_DIR}"
 fi
