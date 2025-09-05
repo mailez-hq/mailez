@@ -182,13 +182,16 @@ else
     echo "export-ce: public dev already matches the filtered tree (in sync)"
   else
     src_sha="$(git --git-dir="${EXPORT_DIR}" log -1 --format=%H refs/heads/dev)"
+    src_date="$(git --git-dir="${EXPORT_DIR}" log -1 --format=%cI refs/heads/dev)"
     git fetch --quiet "${EXPORT_DIR}" "refs/heads/dev:refs/temp/filtered"
     new_tree="$(git rev-parse refs/temp/filtered^{tree})"
     commit="$(
       GIT_AUTHOR_NAME=mailez-export \
       GIT_AUTHOR_EMAIL=export@mailez.net \
+      GIT_AUTHOR_DATE="${src_date}" \
       GIT_COMMITTER_NAME=mailez-export \
       GIT_COMMITTER_EMAIL=export@mailez.net \
+      GIT_COMMITTER_DATE="${src_date}" \
       git commit-tree "${new_tree}" -p refs/heads/dev -m "sync from mailez@${src_sha}"
     )"
     git update-ref refs/heads/dev "${commit}"
