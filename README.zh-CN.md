@@ -19,12 +19,21 @@
 
 ## 你会得到什么
 
+<p align="center">
+  <img src="docs/screenshots/webmail-inbox.jpg" alt="mailez webmail — 三栏收件箱" width="880">
+</p>
+
 ### Webmail：像原生应用一样顺手
 
 - **实时刷新，不用手动** — 新邮件通过实时推送通道自动到达；收信、回信、
   整理全程不刷新页面，上万封的列表照样丝滑滚动
 - **会话视图，长帖不刷屏** — 同一主题的往来邮件自动合并成一条会话，点开
   即见完整时间线；回复里的长引用自动折叠成紧凑区块，点击展开，界面始终清爽
+
+<p align="center">
+  <img src="docs/screenshots/webmail-conversation.jpg" alt="mailez webmail — 会话视图" width="880">
+</p>
+
 - **三栏布局** — 文件夹、邮件列表、阅读区并排展示，列表宽度能拖到你要的尺寸
 - **搜索不用学语法** — 直接输关键词，也能用 `from:`、`to:`、`has:attachment`、
   日期等条件精确筛选；常用搜索可保存，一键切换未读/星标/带附件视图
@@ -62,6 +71,10 @@
 - **谁做了什么一目了然** — 管理员操作审计日志、基于角色的权限
   （admin / manager / user），外加全站公告横幅
 - **备份迁移很简单** — 整套配置可一键导出、导入
+
+<p align="center">
+  <img src="docs/screenshots/admin-domains.jpg" alt="mailez 管理后台 — 域名管理" width="880">
+</p>
 
 ### 安全与可信，藏在细节里
 
