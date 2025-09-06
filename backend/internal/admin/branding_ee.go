@@ -22,31 +22,33 @@ func (h *Handler) registerBranding(r fiber.Router, mw fiber.Handler) {
 // brandingView is the API shape for the admin console. All fields are
 // optional: an empty value means "use the built-in Mailez brand".
 type brandingView struct {
-	Title     string `json:"title"`
-	Subtitle  string `json:"subtitle"`
-	Tagline   string `json:"tagline"`
-	Feature1  string `json:"feature1"`
-	Feature2  string `json:"feature2"`
-	Feature3  string `json:"feature3"`
-	LogoURL   string `json:"logo_url"`
-	HeroURL   string `json:"hero_url"`
-	Copyright string `json:"copyright"`
-	Contact   string `json:"contact"`
-	UpdatedAt string `json:"updated_at,omitempty"`
+	Title      string `json:"title"`
+	Subtitle   string `json:"subtitle"`
+	Tagline    string `json:"tagline"`
+	Feature1   string `json:"feature1"`
+	Feature2   string `json:"feature2"`
+	Feature3   string `json:"feature3"`
+	LogoURL    string `json:"logo_url"`
+	HeroURL    string `json:"hero_url"`
+	Copyright  string `json:"copyright"`
+	Contact    string `json:"contact"`
+	WebsiteURL string `json:"website_url"`
+	UpdatedAt  string `json:"updated_at,omitempty"`
 }
 
 func viewBranding(row *models.BrandingConfig) brandingView {
 	out := brandingView{
-		Title:     row.Title,
-		Subtitle:  row.Subtitle,
-		Tagline:   row.Tagline,
-		Feature1:  row.Feature1,
-		Feature2:  row.Feature2,
-		Feature3:  row.Feature3,
-		LogoURL:   row.LogoURL,
-		HeroURL:   row.HeroURL,
-		Copyright: row.Copyright,
-		Contact:   row.Contact,
+		Title:      row.Title,
+		Subtitle:   row.Subtitle,
+		Tagline:    row.Tagline,
+		Feature1:   row.Feature1,
+		Feature2:   row.Feature2,
+		Feature3:   row.Feature3,
+		LogoURL:    row.LogoURL,
+		HeroURL:    row.HeroURL,
+		Copyright:  row.Copyright,
+		Contact:    row.Contact,
+		WebsiteURL: row.WebsiteURL,
 	}
 	if !row.UpdatedAt.IsZero() {
 		out.UpdatedAt = row.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
@@ -75,16 +77,17 @@ func (h *Handler) getBranding(c *fiber.Ctx) error {
 // @Router /branding [put]
 func (h *Handler) putBranding(c *fiber.Ctx) error {
 	var in struct {
-		Title     string `json:"title"`
-		Subtitle  string `json:"subtitle"`
-		Tagline   string `json:"tagline"`
-		Feature1  string `json:"feature1"`
-		Feature2  string `json:"feature2"`
-		Feature3  string `json:"feature3"`
-		LogoURL   string `json:"logo_url"`
-		HeroURL   string `json:"hero_url"`
-		Copyright string `json:"copyright"`
-		Contact   string `json:"contact"`
+		Title      string `json:"title"`
+		Subtitle   string `json:"subtitle"`
+		Tagline    string `json:"tagline"`
+		Feature1   string `json:"feature1"`
+		Feature2   string `json:"feature2"`
+		Feature3   string `json:"feature3"`
+		LogoURL    string `json:"logo_url"`
+		HeroURL    string `json:"hero_url"`
+		Copyright  string `json:"copyright"`
+		Contact    string `json:"contact"`
+		WebsiteURL string `json:"website_url"`
 	}
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
@@ -104,6 +107,7 @@ func (h *Handler) putBranding(c *fiber.Ctx) error {
 	row.HeroURL = strings.TrimSpace(in.HeroURL)
 	row.Copyright = strings.TrimSpace(in.Copyright)
 	row.Contact = strings.TrimSpace(in.Contact)
+	row.WebsiteURL = strings.TrimSpace(in.WebsiteURL)
 	if err := h.DB.Save(&row).Error; err != nil {
 		return core.Fail(c, 500, err, "save failed")
 	}

@@ -515,7 +515,9 @@ export type ServerSettings = {
 };
 
 // BrandingConfig is the customizable login-page brand. Empty
-// fields fall back to the built-in Mailez brand.
+// fields fall back to the built-in Mailez brand. website_url is the
+// footer brand-link target: community builds serve the product site,
+// enterprise deployments serve their own (or empty to drop the link).
 export type BrandingConfig = {
   title?: string;
   subtitle?: string;
@@ -527,6 +529,7 @@ export type BrandingConfig = {
   hero_url?: string;
   copyright?: string;
   contact?: string;
+  website_url?: string;
 };
 
 export const serverSettings = () => api<ServerSettings>("/server/settings");

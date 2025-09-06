@@ -42,7 +42,8 @@ func TestBrandingRoundtrip(t *testing.T) {
 		"logo_url": "https://example.com/logo.png",
 		"hero_url": "https://example.com/hero.jpg",
 		"copyright": "Copyright © example.com, All Rights Reserved",
-		"contact": "support@example.com"
+		"contact": "support@example.com",
+		"website_url": "https://www.example.com"
 	}`))
 	put.Header.Set("Content-Type", "application/json")
 	resp, err = app.Test(put)
@@ -77,5 +78,8 @@ func TestBrandingRoundtrip(t *testing.T) {
 	}
 	if got["contact"] != "support@example.com" {
 		t.Fatalf("contact after put = %v", got["contact"])
+	}
+	if got["website_url"] != "https://www.example.com" {
+		t.Fatalf("website_url after put = %v", got["website_url"])
 	}
 }

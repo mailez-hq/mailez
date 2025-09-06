@@ -29,7 +29,7 @@ export function ExtraConfigPanel({ tab }: { tab: string }) {
   // Branding state.
   const [branding, setBranding] = useState({
     title: "", subtitle: "", tagline: "", feature1: "", feature2: "", feature3: "",
-    logo_url: "", hero_url: "", copyright: "", contact: "",
+    logo_url: "", hero_url: "", copyright: "", contact: "", website_url: "",
   });
   const [brandingBusy, setBrandingBusy] = useState(false);
   const [brandingError, setBrandingError] = useState("");
@@ -62,7 +62,7 @@ export function ExtraConfigPanel({ tab }: { tab: string }) {
         title: b.title || "", subtitle: b.subtitle || "", tagline: b.tagline || "",
         feature1: b.feature1 || "", feature2: b.feature2 || "", feature3: b.feature3 || "",
         logo_url: b.logo_url || "", hero_url: b.hero_url || "", copyright: b.copyright || "",
-        contact: b.contact || "",
+        contact: b.contact || "", website_url: b.website_url || "",
       }))
       .catch(() => {});
     getAIConfigs()
@@ -97,7 +97,7 @@ export function ExtraConfigPanel({ tab }: { tab: string }) {
         title: saved.title || "", subtitle: saved.subtitle || "", tagline: saved.tagline || "",
         feature1: saved.feature1 || "", feature2: saved.feature2 || "", feature3: saved.feature3 || "",
         logo_url: saved.logo_url || "", hero_url: saved.hero_url || "", copyright: saved.copyright || "",
-        contact: saved.contact || "",
+        contact: saved.contact || "", website_url: saved.website_url || "",
       });
       setBrandingMessage(t("brandingSaved"));
     } catch (e) {
@@ -399,6 +399,15 @@ export function ExtraConfigPanel({ tab }: { tab: string }) {
               value={branding.contact}
               onChange={(e) => setBranding((b) => ({ ...b, contact: e.target.value }))}
               placeholder={t("brandingContactPlaceholder")}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="branding-website">{t("brandingWebsiteUrl")}</Label>
+            <Input
+              id="branding-website"
+              value={branding.website_url}
+              onChange={(e) => setBranding((b) => ({ ...b, website_url: e.target.value }))}
+              placeholder={t("brandingWebsiteUrlPlaceholder")}
             />
           </div>
           <p className="text-xs text-muted-foreground">{t("brandingPreviewHint")}</p>

@@ -25,6 +25,11 @@ type BrandingConfig struct {
 	Copyright string `gorm:"size:255" json:"copyright"`
 	// Contact is the footer contact line, e.g. "support@example.com | 400-000-0000".
 	Contact string `gorm:"size:255" json:"contact"`
+	// WebsiteURL is the target of the footer brand link on the webmail
+	// sign-in page. Empty means no custom link: community builds fall back
+	// to the product site, enterprise (white-label) deployments point it at
+	// their own site or leave it empty to drop the link entirely.
+	WebsiteURL string `gorm:"size:1024" json:"website_url"`
 	// UpdatedAt reflects the last save (admin console).
 	UpdatedAt time.Time `json:"updated_at"`
 }

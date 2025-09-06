@@ -447,9 +447,26 @@ export default function Home({
         </div>
       </main>
 
-      {/* Bottom bar: centered copyright + contact */}
+      {/* Bottom bar: centered copyright + contact. Without custom copy the
+          fallback line links the brand to the deployment site — community
+          builds serve www.mailez.net here, enterprise deployments replace it
+          (or drop the link) via the branding configuration. */}
       <footer className="flex flex-col items-center gap-1 border-t border-border/60 px-5 py-4 text-center text-xs text-muted-foreground">
-        <p>{brand.copyright?.trim() || `© ${new Date().getFullYear()} Mailez`}</p>
+        <p>
+          {brand.copyright?.trim() || (
+            <>
+              © {new Date().getFullYear()}{" "}
+              <a
+                href={brand.website_url?.trim() || "https://www.mailez.net"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition-colors hover:text-foreground hover:underline"
+              >
+                {brandTitle}
+              </a>
+            </>
+          )}
+        </p>
         {brand.contact?.trim() && <p>{brand.contact.trim()}</p>}
       </footer>
     </div>

@@ -57,6 +57,9 @@ func applyPublicBranding(s *Server, brand *publicBranding) {
 	brand.HeroURL = row.HeroURL
 	brand.Copyright = row.Copyright
 	brand.Contact = row.Contact
+	// Served verbatim: an empty value drops the footer brand link instead
+	// of falling back to the product site (white-label deployments decide).
+	brand.WebsiteURL = row.WebsiteURL
 }
 
 // registerOptionalRoutes mounts the optional API surfaces: delegation,
