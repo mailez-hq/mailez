@@ -27,7 +27,7 @@ type BrandingConfig struct {
 	Contact string `gorm:"size:255" json:"contact"`
 	// WebsiteURL is the target of the footer brand link on the webmail
 	// sign-in page. Empty means no custom link: community builds fall back
-	// to the product site, enterprise (white-label) deployments point it at
+	// to the product site, white-label deployments point it at
 	// their own site or leave it empty to drop the link entirely.
 	WebsiteURL string `gorm:"size:1024" json:"website_url"`
 	// UpdatedAt reflects the last save (admin console).

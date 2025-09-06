@@ -48,7 +48,7 @@ func wireAppDirectory(s *Server, app *core.App) {}
 // applyPublicBranding keeps the built-in Mailez brand: custom public
 // branding is an optional module. The footer brand link is the one field
 // the base build always fills — community deployments link the product
-// site (enterprise deployments replace or drop it via the branding
+// site (white-label deployments replace or drop it via the branding
 // configuration).
 func applyPublicBranding(s *Server, brand *publicBranding) {
 	brand.WebsiteURL = "https://www.mailez.net"
