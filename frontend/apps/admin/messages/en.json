@@ -452,6 +452,8 @@
   "brandingCopyright": "Copyright line",
   "brandingContact": "Contact info (footer)",
   "brandingContactPlaceholder": "support@example.com | 400-000-0000",
+  "brandingWebsiteUrl": "Brand link (footer)",
+  "brandingWebsiteUrlPlaceholder": "https://www.example.com (leave empty for no link)",
   "brandingPreviewHint": "External URLs or paths served under /uploads work. Save then open the webmail sign-in page to preview.",
   "brandingSave": "Save branding",
   "brandingSaved": "Branding saved",

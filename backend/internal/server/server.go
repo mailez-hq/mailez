@@ -255,18 +255,22 @@ func newStore(rdb *redis.Client, env string) auth.Store {
 
 // publicBranding is the white-label brand shape served by the public
 // /server/settings endpoint. Zero values mean "use the built-in Mailez
-// brand"; filling it is optional (applyPublicBranding).
+// brand"; filling it is optional (applyPublicBranding). Community builds
+// always fill WebsiteURL with the product site; enterprise deployments
+// serve exactly what the branding configuration holds (empty removes the
+// footer link).
 type publicBranding struct {
-	Title     string `json:"title"`
-	Subtitle  string `json:"subtitle"`
-	Tagline   string `json:"tagline"`
-	Feature1  string `json:"feature1"`
-	Feature2  string `json:"feature2"`
-	Feature3  string `json:"feature3"`
-	LogoURL   string `json:"logo_url"`
-	HeroURL   string `json:"hero_url"`
-	Copyright string `json:"copyright"`
-	Contact   string `json:"contact"`
+	Title      string `json:"title"`
+	Subtitle   string `json:"subtitle"`
+	Tagline    string `json:"tagline"`
+	Feature1   string `json:"feature1"`
+	Feature2   string `json:"feature2"`
+	Feature3   string `json:"feature3"`
+	LogoURL    string `json:"logo_url"`
+	HeroURL    string `json:"hero_url"`
+	Copyright  string `json:"copyright"`
+	Contact    string `json:"contact"`
+	WebsiteURL string `json:"website_url"`
 }
 
 func (s *Server) routes() {

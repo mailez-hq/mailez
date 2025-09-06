@@ -46,8 +46,13 @@ func newDirectorySync(db *gorm.DB, secretKey string) core.DirectorySync {
 func wireAppDirectory(s *Server, app *core.App) {}
 
 // applyPublicBranding keeps the built-in Mailez brand: custom public
-// branding is an optional module.
-func applyPublicBranding(s *Server, brand *publicBranding) {}
+// branding is an optional module. The footer brand link is the one field
+// the base build always fills — community deployments link the product
+// site (enterprise deployments replace or drop it via the branding
+// configuration).
+func applyPublicBranding(s *Server, brand *publicBranding) {
+	brand.WebsiteURL = "https://www.mailez.net"
+}
 
 // startComplianceWorkers starts no workers in the base build; the outbox
 // runs without a content filter.
