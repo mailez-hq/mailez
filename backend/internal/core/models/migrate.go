@@ -344,7 +344,7 @@ var migrations = []migration{
 	{
 		// Login-page branding website link: the footer brand line becomes a
 		// hyperlink. Community builds default it to the product site;
-		// enterprise deployments point it at their own site or clear it.
+		// white-label deployments point it at their own site or clear it.
 		ID: "20260920_branding_website_url",
 		Up: func(db *gorm.DB) error {
 			return db.AutoMigrate(&BrandingConfig{})

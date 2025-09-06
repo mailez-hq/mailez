@@ -449,7 +449,7 @@ export default function Home({
 
       {/* Bottom bar: centered copyright + contact. Without custom copy the
           fallback line links the brand to the deployment site — community
-          builds serve www.mailez.net here, enterprise deployments replace it
+          builds serve www.mailez.net here, white-label deployments replace it
           (or drop the link) via the branding configuration. */}
       <footer className="flex flex-col items-center gap-1 border-t border-border/60 px-5 py-4 text-center text-xs text-muted-foreground">
         <p>
