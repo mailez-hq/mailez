@@ -39,7 +39,7 @@
     "contacts": "Contacts",
     "filterRules": "Filter rules (Sieve)",
     "search": "Search",
-    "searchPlaceholder": "Search {folder}",
+    "searchPlaceholder": "Search {folder}","searchMail": "Search mail",
     "folderInbox": "Inbox",
     "workspace": "Workspace",
     "folderSent": "Sent",

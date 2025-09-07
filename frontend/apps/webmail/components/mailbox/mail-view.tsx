@@ -83,25 +83,18 @@ export function MailView() {
     searching,
     loading,
     query,
-    setQuery,
-    setSearchAll,
-    doSearch,
     clearSearch,
     selectedUids,
     cursor,
     selected,
-    searchAll,
     sortBy,
     sortDir,
     changeSort,
     toggleMute,
     bulkLabel,
     searchSpec,
-    applySearchSpec,
-    saveSearchSpec,
     categoryFilter,
     setCategoryFilter,
-    doAiSearch,
     toggleSelect,
     removeMessage,
     toggleStar,
@@ -113,14 +106,12 @@ export function MailView() {
     loadMore,
     error,
     saveCurrentSearch,
-    searchRef,
     ai,
   aiLocked,
     prioritizing,
     priorityOn,
     priorityCategories,
     togglePriority,
-    aiSearching,
     refreshMail,
     refreshing,
     openContextMenu,
@@ -183,9 +174,6 @@ export function MailView() {
           loading={loading}
           query={query}
           searchSpec={searchSpec}
-          onQueryChange={setQuery}
-          onApplySpec={applySearchSpec}
-          onSearch={doSearch}
           onClearSearch={clearSearch}
           selectedUids={selectedUids}
           cursor={cursor}
@@ -205,27 +193,20 @@ export function MailView() {
           labels={knownLabels}
           onMarkAllRead={() => markAllRead(folder)}
           onLoadMore={loadMore}
-          searchInputRef={searchRef}
           error={error}
           folders={folders}
           onMoveToFolder={moveSelectedTo}
           onSaveSearch={saveCurrentSearch}
-          onSaveSearchSpec={saveSearchSpec}
-          searchAll={searchAll}
           sortBy={sortBy}
           sortDir={sortDir}
           onChangeSort={changeSort}
-          onToggleSearchAll={() => setSearchAll((v: boolean) => !v)}
           category={categoryFilter}
           onCategoryChange={setCategoryFilter}
-          aiSearchEnabled={ai.search}
           aiPriorityEnabled={ai.priority}
           prioritizing={prioritizing}
           priorityOn={priorityOn}
           categories={priorityCategories}
           onTogglePriority={togglePriority}
-          aiSearching={aiSearching}
-          onAiSearch={doAiSearch}
           refreshing={refreshing}
           onRefresh={refreshMail}
           highlightTerms={highlightTerms(query)}
