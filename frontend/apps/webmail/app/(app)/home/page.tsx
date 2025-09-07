@@ -64,18 +64,19 @@ function StatCard({
 }) {
   return (
     <Card
+      size="sm"
       className="cursor-pointer transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
       onClick={onClick}
     >
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <span className={cn("flex size-9 items-center justify-center rounded-lg", tone)}>
+      <CardHeader className="flex flex-row items-center justify-between pb-1">
+        <span className={cn("flex size-8 items-center justify-center rounded-lg", tone)}>
           <Icon className="size-4" />
         </span>
         <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-3xl font-bold tracking-tight">{value}</div>
-        {caption && <p className="mt-1 text-xs text-muted-foreground">{caption}</p>}
+        <div className="text-2xl font-bold tracking-tight">{value}</div>
+        {caption && <p className="mt-0.5 text-xs text-muted-foreground">{caption}</p>}
       </CardContent>
     </Card>
   );
@@ -161,17 +162,17 @@ export default function WorkspacePage() {
 
   return (
     <div className="min-w-0 flex-1 overflow-y-auto bg-[radial-gradient(ellipse_at_top,rgba(46,133,85,0.07),transparent_55%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(37,194,160,0.08),transparent_55%)]">
-      <div className="w-full space-y-6 p-6">
+      <div className="w-full space-y-4 p-5">
         {/* Greeting banner */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background ring-1 ring-foreground/5">
           <Sparkles className="pointer-events-none absolute -right-4 -top-4 size-32 text-primary/10" />
-          <div className="flex flex-wrap items-center gap-4 p-6">
+          <div className="flex flex-wrap items-center gap-4 px-5 py-4">
             <div className="flex min-w-0 items-center gap-4">
-              <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-lg font-bold text-primary-foreground shadow-sm">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-base font-bold text-primary-foreground shadow-sm">
                 {initial}
               </span>
               <div className="min-w-0">
-                <h1 className="truncate text-2xl font-bold tracking-tight">
+                <h1 className="truncate text-xl font-bold tracking-tight">
                   {t(greetingKey(new Date().getHours()), { name })}
                 </h1>
                 <p className="mt-0.5 text-sm text-muted-foreground">{dateLine}</p>

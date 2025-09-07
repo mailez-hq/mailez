@@ -8,7 +8,7 @@
 //   node frontend/scripts/set-modules.mjs frontend/apps/webmail
 //
 // modules/ is a build artifact: it is gitignored and regenerated per build.
-import { cpSync, existsSync, rmSync } from "node:fs";
+import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const appDir = resolve(process.argv[2] ?? ".");
@@ -22,3 +22,23 @@ const dst = resolve(appDir, "modules");
 rmSync(dst, { recursive: true, force: true });
 cpSync(src, dst, { recursive: true });
 console.log(`set-modules: ${moduleSet} -> ${dst}`);
+
+// Stamp the service worker cache version per build. A redeploy changes
+// asset hashes, but a static VERSION means the browser sees a
+// byte-identical sw.js, never activates the new worker, and keeps
+// serving stale cached shells/chunks to long-lived clients. Only image
+// builds stamp (they set MAILEZ_BUILD_STAMP); local dev builds leave
+// the tracked file untouched.
+const swPath = resolve(appDir, "public", "sw.js");
+const stamp = process.env.MAILEZ_BUILD_STAMP;
+if (stamp && existsSync(swPath)) {
+  const sw = readFileSync(swPath, "utf8");
+  const next = sw.replace(
+    /^(const VERSION = ")[^"]*(")/m,
+    `$1mailez-sw-${stamp}$2`,
+  );
+  if (next !== sw) {
+    writeFileSync(swPath, next);
+    console.log(`set-modules: sw.js VERSION -> mailez-sw-${stamp}`);
+  }
+}
