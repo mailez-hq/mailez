@@ -308,6 +308,40 @@ func (h *Handler) outboxList(c *fiber.Ctx) error {
 	return c.JSON(out)
 }
 
+// outboxToDraft cancels a scheduled send and restores the original message
+// into Drafts so the sender can view/edit/reschedule it (instead of just
+// discarding it). The RawMessage is appended verbatim; the mailbox engine
+// parses it when the draft is reopened.
+// @Summary Move a scheduled send back to Drafts
+// @Tags mail
+// @Success 200 {object} map[string]interface{} "uid"
+// @Failure 404 {object} map[string]interface{}
+// @Router /mail/outbox/{id}/to-draft [post]
+func (h *Handler) outboxToDraft(c *fiber.Ctx) error {
+	user := currentUser(c)
+	var e models.Outbox
+	if err := h.DB.Where(
+		"id = ? AND account_email = ? AND status = ? AND send_after > ?",
+		c.Params("id"), user.Email, "pending", time.Now().UTC(),
+	).First(&e).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "no pending scheduled send"})
+	}
+	// Append to Drafts first; only then retire the outbox row so a failure
+	// cannot lose the message.
+	d, err := h.MailDial(c)
+	if err != nil {
+		return core.DialFailure(c, err)
+	}
+	uid, err := h.Mail.With(d).RestoreDraftRaw(d.Email, d.Token, e.RawMessage)
+	if err != nil {
+		return core.Fail(c, 502, err, "mail service error")
+	}
+	if err := h.DB.Model(&models.Outbox{}).Where("id = ?", e.ID).Update("status", "cancelled").Error; err != nil {
+		return core.Fail(c, 500, err, "outbox update failed")
+	}
+	return c.JSON(fiber.Map{"uid": uid})
+}
+
 // enqueue parks a fully built message for delivery at sendAt (now + undo
 // window, or a future timestamp for scheduled sends) and returns its id.
 // accountID selects an external aggregated account (0 = internal gateway).

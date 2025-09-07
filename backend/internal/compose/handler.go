@@ -22,6 +22,7 @@ func (h *Handler) Register(r fiber.Router) {
 	r.Post("/mail/send", h.mailSend)
 	r.Post("/mail/draft", h.mailSaveDraft)
 	r.Delete("/mail/outbox/:id", h.outboxCancel)
+	r.Post("/mail/outbox/:id/to-draft", h.outboxToDraft)
 	r.Get("/mail/scheduled", h.outboxList)
 	r.Get("/mail/templates", h.mailTemplates)
 	r.Post("/mail/templates", h.mailTemplateSave)

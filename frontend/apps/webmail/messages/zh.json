@@ -238,6 +238,8 @@
     "scheduled": "定时发送",
     "scheduledAt": "定于 {time}",
     "scheduledEmpty": "暂无定时发送",
+    "toDraft": "转为草稿继续编辑",
+    "toastToDraft": "已转为草稿，可在草稿箱继续编辑",
     "snoozed": "稍后提醒",
     "toastScheduled": "已定于 {time} 发送",
     "toastScheduledCancelled": "已取消定时发送",

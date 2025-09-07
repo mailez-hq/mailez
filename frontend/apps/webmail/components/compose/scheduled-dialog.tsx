@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
-import { CalendarClock, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarClock, Pencil, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { useMailStore } from "@/components/mailbox/mail-store";
-import type { ScheduledSend } from "@/lib/api";
+import { mailScheduledToDraft, type ScheduledSend } from "@/lib/api";
 
-// ScheduledDialog lists the user's queued scheduled sends with a cancel
-// button per row. Data is loaded fresh each time the dialog opens.
+// ScheduledDialog lists the user's queued scheduled sends: each row can be
+// moved back to Drafts for viewing/editing (modern-style) or cancelled.
 export function ScheduledDialog({
   open,
   onOpenChange,
@@ -38,6 +38,23 @@ export function ScheduledDialog({
       hour: "2-digit",
       minute: "2-digit",
     });
+
+  const [toDraftBusy, setToDraftBusy] = useState<number | null>(null);
+
+  // "Edit": pull the scheduled send back into Drafts (the raw message is
+  // restored verbatim), where the normal draft flow lets the user view and
+  // edit it, then reschedule or send.
+  async function moveToDraft(s: ScheduledSend) {
+    setToDraftBusy(s.id);
+    try {
+      await mailScheduledToDraft(s.id);
+      await loadScheduled();
+    } catch {
+      // row stays visible; a failed call leaves the schedule intact
+    } finally {
+      setToDraftBusy(null);
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -70,6 +87,16 @@ export function ScheduledDialog({
                     {s.recipients.join(", ")}
                   </p>
                 </div>
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  title={t("toDraft")}
+                  disabled={toDraftBusy === s.id}
+                  className="size-7 shrink-0 p-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => moveToDraft(s)}
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
                 <Button
                   size="xs"
                   variant="ghost"
