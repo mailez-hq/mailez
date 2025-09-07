@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { Logo } from "@/components/logo";
 import { useBrand } from "@/lib/use-brand";
-import { logout } from "@/lib/api";
+import { HAS_OPTIONAL_MODULES, logout } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { Me } from "@/lib/api";
 
@@ -47,6 +47,11 @@ const navItems = [
   { href: "/config", key: "config", roles: ["admin"], icon: Settings },
 ];
 
+// Enterprise-only sections must not surface in the community build (their
+// CE routes render "not enabled" placeholders). Page-level placeholders still
+// catch direct deep links; the module filter only hides the navigation.
+const EE_NAV_HREFS: ReadonlySet<string> = new Set(["/announcement", "/archive", "/dlp"]);
+
 function roleLabel(me: Me) {
   if (me.global_admin) return "admin";
   if (me.manager) return "manager";
@@ -61,7 +66,10 @@ export function AppSidebar({ me }: { me: Me }) {
   // configured) instead of the built-in Mailez wordmark.
   const brand = useBrand();
   const role = me.global_admin ? "admin" : me.manager ? "manager" : "user";
-  const nav = navItems.filter((item) => item.roles.includes(role));
+  const nav = navItems.filter(
+    (item) =>
+      (HAS_OPTIONAL_MODULES || !EE_NAV_HREFS.has(item.href)) && item.roles.includes(role),
+  );
 
   async function onLogout() {
     await logout();

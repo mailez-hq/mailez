@@ -12,7 +12,7 @@ import {
 import { usePreferences } from "@/components/preferences-provider";
 import { SettingsSections } from "@/components/settings/sections";
 import {
-  changePassword, meProfile, updateMeSettings,
+  changePassword, HAS_OPTIONAL_MODULES, meProfile, updateMeSettings,
   accounts, accountCreate, accountDelete, accountTest, accountUpdate,
   delegations, delegationCreate, delegationDelete, delegationUpdate,
   appTokenCreate, appTokenDelete, appTokens,
@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 
 // Sidebar navigation for the settings dialog, with a two-column layout:
 // a section list on the left, the active section's form on the right.
-const SETTINGS_SECTIONS = [
+const BASE_SETTINGS_SECTIONS = [
   { id: "appearance", icon: Palette, label: "appearance" },
   { id: "calendarSync", icon: CalendarDays, label: "calendarSync" },
   { id: "accounts", icon: AtSign, label: "accounts" },
@@ -44,6 +44,15 @@ const SETTINGS_SECTIONS = [
   { id: "twoFactor", icon: ShieldCheck, label: "twoFactor" },
   { id: "password", icon: Lock, label: "changePassword" },
 ] as const;
+
+// Enterprise-only sections must not surface in the community build; leaving
+// them in the nav would show live AI toggles and placeholder entries whose
+// backends do not exist in CE. Page-level placeholders still catch direct
+// deep links in the CE default module set.
+const EE_SECTION_IDS: ReadonlySet<string> = new Set(["ai", "delegations", "smime"]);
+const SETTINGS_SECTIONS = BASE_SETTINGS_SECTIONS.filter(
+  (s) => HAS_OPTIONAL_MODULES || !EE_SECTION_IDS.has(s.id),
+);
 
 // backend serializes time.Time as RFC3339; date inputs need yyyy-mm-dd
 const toDateInput = (s: string) => (s && !s.startsWith("0001") ? s.slice(0, 10) : "");
