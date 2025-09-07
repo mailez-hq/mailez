@@ -61,5 +61,5 @@ services:
 
   engine-lb:
     build:
-      context: ../..
-      dockerfile: deploy/images/engine-lb/Dockerfile
+      context: ../images/engine-lb
+      dockerfile: Dockerfile
