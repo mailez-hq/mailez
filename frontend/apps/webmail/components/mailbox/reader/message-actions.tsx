@@ -118,7 +118,7 @@ export function MessageActions({
           {summarizing ? t("summarizing") : summary ? t("aiSummary") : t("summarize")}
         </Button>
       ) : aiLocked && HAS_OPTIONAL_MODULES ? (
-        /* The AI module is not enabled (enterprise build without a configured
+        /* The AI module is not enabled (paid-edition build without a configured
            provider): the summary entry stays visible but locked. In the
            community build the AI module does not exist at all, so render
            nothing instead of a dead locked button. */

@@ -45,7 +45,7 @@ const BASE_SETTINGS_SECTIONS = [
   { id: "password", icon: Lock, label: "changePassword" },
 ] as const;
 
-// Enterprise-only sections must not surface in the community build; leaving
+// Paid-edition-only sections must not surface in the community build; leaving
 // them in the nav would show live AI toggles and placeholder entries whose
 // backends do not exist in CE. Page-level placeholders still catch direct
 // deep links in the CE default module set.

@@ -47,7 +47,7 @@ const navItems = [
   { href: "/config", key: "config", roles: ["admin"], icon: Settings },
 ];
 
-// Enterprise-only sections must not surface in the community build (their
+// Paid-edition-only sections must not surface in the community build (their
 // CE routes render "not enabled" placeholders). Page-level placeholders still
 // catch direct deep links; the module filter only hides the navigation.
 const EE_NAV_HREFS: ReadonlySet<string> = new Set(["/announcement", "/archive", "/dlp"]);

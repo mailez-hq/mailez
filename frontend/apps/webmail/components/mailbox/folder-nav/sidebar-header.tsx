@@ -77,7 +77,7 @@ export function SidebarHeader({
             <span className="sr-only">{t("aiCompose")}</span>
           </Button>
         ) : aiComposeLocked && HAS_OPTIONAL_MODULES ? (
-          /* Enterprise build without a configured provider: keep the locked
+          /* Paid-edition build without a configured provider: keep the locked
              entry discoverable. In the community build the AI module does not
              exist, so render nothing instead of a dead locked button. */
           <Button
