@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile-upstream:1.4.3
 
 FROM golang:1.26-alpine AS build
-ENV CGO_ENABLED=0 GOPROXY=https://goproxy.cn,direct
+ENV CGO_ENABLED=0 GOPROXY=https://proxy.golang.com.cn,https://goproxy.io,direct
 WORKDIR /src
 COPY . .
 # Vendor verification key for technical-service entitlements (base64 DER

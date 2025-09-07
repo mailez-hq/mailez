@@ -2,7 +2,7 @@
 
 # rspamd image: static Go agent.
 FROM golang:1.26-alpine AS build
-ENV GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0
+ENV GOPROXY=https://proxy.golang.com.cn,https://goproxy.io,direct CGO_ENABLED=0
 WORKDIR /src
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
