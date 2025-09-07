@@ -181,7 +181,7 @@ export function MessageListPanel({
             value={`${sortBy}-${sortDir}`}
             onChange={(e) => onChangeSort(e.target.value)}
             title={t("sortLabel")}
-            className="h-7 rounded-md border border-border bg-transparent px-1 text-xs text-muted-foreground outline-none focus-visible:border-ring"
+            className="h-7 cursor-pointer rounded-md border border-border bg-transparent px-1 text-xs text-muted-foreground outline-none focus-visible:border-ring"
           >
             <option value="date-desc">{t("sortNewest")}</option>
             <option value="date-asc">{t("sortOldest")}</option>
