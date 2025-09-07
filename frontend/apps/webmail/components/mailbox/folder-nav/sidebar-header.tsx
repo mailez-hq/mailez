@@ -6,6 +6,7 @@ import { Menu, PenLine, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { useBrand } from "@/lib/use-brand";
+import { HAS_OPTIONAL_MODULES } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export function SidebarHeader({
@@ -75,9 +76,10 @@ export function SidebarHeader({
             <Sparkles className={cn("size-3.5 shrink-0 text-ai", aiComposeBusy && "animate-pulse")} />
             <span className="sr-only">{t("aiCompose")}</span>
           </Button>
-        ) : aiComposeLocked ? (
-          /* The AI module is not enabled: the entry stays visible but locked
-             so users can discover it once the module is added. */
+        ) : aiComposeLocked && HAS_OPTIONAL_MODULES ? (
+          /* Enterprise build without a configured provider: keep the locked
+             entry discoverable. In the community build the AI module does not
+             exist, so render nothing instead of a dead locked button. */
           <Button
             variant="outline"
             size="icon"

@@ -16,7 +16,7 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { Button } from "@/components/ui/button";
 import { buildFolderTree, flattenTree, folderLabel } from "@/components/mailbox/folder-tree";
-import type { MailMessage } from "@/lib/api";
+import { HAS_OPTIONAL_MODULES, type MailMessage } from "@/lib/api";
 
 // MessageActions is the reply/forward/unsubscribe row under the message plus
 // the raw-view/download/move-to controls. The AI summary button lives here
@@ -117,9 +117,11 @@ export function MessageActions({
           <Sparkles className="size-3.5" />
           {summarizing ? t("summarizing") : summary ? t("aiSummary") : t("summarize")}
         </Button>
-      ) : aiLocked ? (
-        /* The AI module is not enabled: the summary entry stays visible but
-           locked so users can discover it once the module is added. */
+      ) : aiLocked && HAS_OPTIONAL_MODULES ? (
+        /* The AI module is not enabled (enterprise build without a configured
+           provider): the summary entry stays visible but locked. In the
+           community build the AI module does not exist at all, so render
+           nothing instead of a dead locked button. */
         <Button size="sm" variant="outline" className="opacity-60" disabled title={t("aiLockedTitle")}>
           <Sparkles className="size-3.5" />
           {t("summarize")}
