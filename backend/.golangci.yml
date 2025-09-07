@@ -1,0 +1,19 @@
+# golangci-lint configuration (v1 schema), module root is ./backend.
+# CI runs (from backend/):
+#   go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8 run ./...
+run:
+  timeout: 8m
+  tests: false
+linters:
+  enable:
+    - govet
+    - errcheck
+    - ineffassign
+    - unused
+  disable:
+    - staticcheck
+issues:
+  exclude-use-default: false
+  exclude-generated: lax
+  exclude-dirs:
+    - docs # swag-generated openapi payload
