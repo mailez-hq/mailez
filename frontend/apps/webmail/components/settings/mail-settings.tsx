@@ -12,7 +12,7 @@ import {
 import { usePreferences } from "@/components/preferences-provider";
 import { SettingsSections } from "@/components/settings/sections";
 import {
-  changePassword, HAS_OPTIONAL_MODULES, meProfile, updateMeSettings,
+  aiStatus, changePassword, HAS_OPTIONAL_MODULES, meProfile, updateMeSettings,
   accounts, accountCreate, accountDelete, accountTest, accountUpdate,
   delegations, delegationCreate, delegationDelete, delegationUpdate,
   appTokenCreate, appTokenDelete, appTokens,
@@ -74,6 +74,33 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
   const [profile, setProfile] = useState<MeSettings | null>(null);
   const [error, setError] = useState("");
   const [section, setSection] = useState<string>("appearance");
+
+  // The AI tab only makes sense when the deployment actually has a working
+  // provider: re-check /ai/status each time the dialog opens so a
+  // not-yet-configured install never shows a dead AI section (the build-time
+  // module set alone is not enough — admin must have configured a provider).
+  const [aiReady, setAiReady] = useState(false);
+  useEffect(() => {
+    if (!open || !HAS_OPTIONAL_MODULES) {
+      setAiReady(false);
+      return;
+    }
+    let cancelled = false;
+    aiStatus()
+      .then((s) => {
+        if (cancelled) return;
+        setAiReady(s.enabled);
+        if (!s.enabled) {
+          setSection((cur) => (cur === "ai" ? "appearance" : cur));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setAiReady(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   // Land on the requested section each time the dialog opens (e.g. "accounts"
   // from the sidebar account manager) — render-phase adjustment, React-
@@ -600,7 +627,7 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
           <div className="flex min-h-0 flex-1">
             <aside className="w-48 shrink-0 overflow-y-auto border-r p-2">
               <nav className="space-y-0.5">
-                {SETTINGS_SECTIONS.map((s) => (
+                {SETTINGS_SECTIONS.filter((s) => s.id !== "ai" || aiReady).map((s) => (
                   <button
                     key={s.id}
                     type="button"
