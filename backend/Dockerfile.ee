@@ -5,7 +5,7 @@
 # backend/Dockerfile alone).
 
 FROM golang:1.26-alpine AS build
-ENV CGO_ENABLED=0 GOPROXY=https://proxy.golang.com.cn,https://goproxy.io,direct
+ENV CGO_ENABLED=0 GOPROXY=https://goproxy.io,https://proxy.golang.com.cn,direct
 WORKDIR /src
 COPY . .
 # Vendor verification keys (base64 DER SubjectPublicKeyInfo; `license
