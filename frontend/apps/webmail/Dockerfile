@@ -22,7 +22,8 @@ ARG MAILEZ_MODULES=default
 # Default matches the compose network alias the browser-facing proxy must
 # reach; local host builds keep using `npm run dev` with its own default.
 ARG API_TARGET=http://backend:8080
-RUN MAILEZ_MODULES=${MAILEZ_MODULES} API_TARGET=${API_TARGET} npm run build --workspace apps/webmail
+RUN MAILEZ_MODULES=${MAILEZ_MODULES} API_TARGET=${API_TARGET} \
+    MAILEZ_BUILD_STAMP="$(date +%s)" npm run build --workspace apps/webmail
 
 # Runtime stage. node_modules is copied whole for robustness; switch to Next.js
 # `output: "standalone"` later for a smaller image.

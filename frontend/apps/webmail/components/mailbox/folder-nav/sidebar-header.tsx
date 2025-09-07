@@ -39,7 +39,7 @@ export function SidebarHeader({
       </div>
 
       {/* Compose actions: 写邮件 + AI 写邮件 at the very top of the sidebar */}
-      <div className="flex gap-1.5 px-3 pb-2">
+      <div className="flex gap-1.5 px-3 pb-2 pt-3">
         <Button className="min-w-0 flex-1" onClick={onCompose}>
           <PenLine className="size-4" />
           {t("write")}
