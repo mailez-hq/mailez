@@ -247,9 +247,11 @@ export function MailShell({ children }: { children: React.ReactNode }) {
         onCalendar={openCalendar}
         onDrive={openDrive}
         onLogout={logout}
-        onScheduled={() => {
-          setScheduledOpen(true);
-          loadScheduled();
+        onScheduled={async () => {
+          // Opening a management dialog with nothing in it adds friction:
+          // only show it when there is actually a scheduled send to manage.
+          const list = await loadScheduled();
+          if (list.length > 0) setScheduledOpen(true);
         }}
         onSnoozed={openSnoozed}
         onClose={() => setSidebarOpen(false)}
