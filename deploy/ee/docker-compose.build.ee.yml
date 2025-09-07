@@ -12,20 +12,20 @@ services:
 
   backend:
     build:
-      context: ../..
-      dockerfile: backend/Dockerfile.ee
+      context: ../../backend
+      dockerfile: Dockerfile.ee
 
   frontend-admin:
     build:
-      context: ../..
-      dockerfile: frontend/apps/admin/Dockerfile
+      context: ../../frontend
+      dockerfile: apps/admin/Dockerfile
       args:
         MAILEZ_MODULES: ee
 
   frontend-webmail:
     build:
-      context: ../..
-      dockerfile: frontend/apps/webmail/Dockerfile
+      context: ../../frontend
+      dockerfile: apps/webmail/Dockerfile
       args:
         MAILEZ_MODULES: ee
 

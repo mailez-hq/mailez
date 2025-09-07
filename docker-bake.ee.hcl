@@ -40,8 +40,8 @@ group "mailezine" {
 }
 
 target "backend-ee" {
-  context = "."
-  dockerfile = "backend/Dockerfile.ee"
+  context = "./backend"
+  dockerfile = "Dockerfile.ee"
   args = {
     MAILEZ_LICENSE_PUBKEY = MAILEZ_LICENSE_PUBKEY
     MAILEZ_SERVICE_PUBKEY = MAILEZ_SERVICE_PUBKEY

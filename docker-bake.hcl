@@ -64,8 +64,8 @@ group "mailezine" {
 }
 
 target "backend" {
-  context = "."
-  dockerfile = "backend/Dockerfile"
+  context = "./backend"
+  dockerfile = "Dockerfile"
   tags = ["${REGISTRY}/mailez-backend:${VERSION}"]
   platforms = split(",", PLATFORMS)
 }
