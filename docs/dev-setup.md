@@ -14,7 +14,7 @@
 - **npm（前端）**：`frontend/.npmrc` 已指向 npmmirror。
 - **Go modules（后端）**：本机执行一次，写入全局 Go 配置：
   ```
-  go env -w GOPROXY=https://proxy.golang.com.cn,https://goproxy.io,direct
+  go env -w GOPROXY=https://goproxy.io,https://proxy.golang.com.cn,direct
   ```
 - **Docker Hub 基础镜像（alpine / redis 等）**：当前直连可用时无需配置；如果
   拉取慢，可在 Docker Desktop → Settings → Docker Engine 中配置
