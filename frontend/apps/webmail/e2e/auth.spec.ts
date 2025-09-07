@@ -29,8 +29,9 @@ test.describe("authentication", () => {
     await expect(page).toHaveURL(/\/mail\/Inbox/);
     await expect(page.getByRole("button", { name: "Write", exact: true }).first()).toBeVisible();
 
-    // Sign out returns to the login page.
-    await page.getByRole("button", { name: "Sign out" }).click();
+    // Sign out returns to the login page (via the top-right account menu).
+    await page.getByRole("button", { name: "My account" }).click();
+    await page.getByRole("menuitem", { name: "Sign out" }).click();
     await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
     void E2E_DOMAIN;
     void E2E_PASSWORD;

@@ -49,7 +49,6 @@ function baseProps(over: Record<string, unknown> = {}) {
     onBulkFlag: vi.fn(),
     onLoadMore: vi.fn(),
     searchInputRef: { current: null },
-    onMenu: vi.fn(),
     error: "",
     folders: ["Inbox"],
     onMoveToFolder: vi.fn(),

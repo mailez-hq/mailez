@@ -7,8 +7,6 @@ import {
   ExternalLink,
   Filter,
   HardDrive,
-  LogOut,
-  Settings,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,18 +29,14 @@ export function SidebarFooter({
   onContacts,
   onCalendar,
   onDrive,
-  onSettings,
   onSieve,
-  onLogout,
 }: {
   quotaPercent: number | null;
   quotaBarColor: string;
   onContacts: () => void;
   onCalendar: () => void;
   onDrive: () => void;
-  onSettings: () => void;
   onSieve: () => void;
-  onLogout: () => void;
 }) {
   const t = useTranslations("mail");
 
@@ -63,9 +57,6 @@ export function SidebarFooter({
         </Button>
         <Button variant="ghost" size="sm" onClick={onDrive} title={t("drive")}>
           <HardDrive className="size-4" />
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onSettings} title={t("settings")}>
-          <Settings className="size-4" />
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -88,9 +79,6 @@ export function SidebarFooter({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button variant="ghost" size="sm" onClick={onLogout} title={t("logout")}>
-          <LogOut className="size-4" />
-        </Button>
       </div>
       {quotaPercent !== null && (
         <div className="mt-1.5 px-3">

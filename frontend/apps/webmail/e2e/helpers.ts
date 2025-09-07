@@ -15,9 +15,16 @@ export async function login(page: Page): Promise<void> {
   await page.getByLabel("Password").fill(E2E_PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   // The landing page depends on the user's "after sign-in" preference
-  // (/home dashboard or the mailbox), so wait for the post-login sidebar
-  // instead of a specific URL.
-  await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible({ timeout: 20_000 });
+  // (/home dashboard or the mailbox), so wait for the post-login header —
+  // the account avatar lives in the top-right app header — instead of a
+  // specific URL.
+  await expect(page.getByRole("button", { name: "My account" })).toBeVisible({ timeout: 20_000 });
+}
+
+/** Sign out through the top-right account menu (modern-style avatar). */
+export async function signOut(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "My account" }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
 }
 
 /** Open the compose dialog via the sidebar "Write" button. */

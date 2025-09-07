@@ -17,6 +17,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { MailSettings } from "@/components/settings/mail-settings";
 import { MailContacts } from "@/components/contacts/mail-contacts";
+import { AppHeader } from "@/components/mailbox/app-header";
 import { FolderNav } from "@/components/mailbox/folder-nav";
 import { LabelManager } from "@/components/mailbox/label-manager";
 import { ComposePanel } from "@/components/compose/compose-panel";
@@ -29,7 +30,6 @@ import { DriveDrawer } from "@/components/drive/drive-drawer";
 import { textToHtml } from "@/components/mailbox/mail-utils";
 import { buildFolderTree, flattenTree, folderLabel } from "@/components/mailbox/folder-tree";
 import { mailAnnouncement, type MailAnnouncement, type OutboundAttachment } from "@/lib/api";
-import { cn } from "@/lib/utils";
 import { useMailStore } from "@/components/mailbox/mail-store";
 
 export function MailShell({ children }: { children: React.ReactNode }) {
@@ -186,7 +186,17 @@ export function MailShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+      {/* Global app header: brand on the left, account menu (settings +
+          sign-out) on the right, exactly like mainstream webmail/mainstream clients. */}
+      <AppHeader
+        email={me.email}
+        displayName={me.displayed_name}
+        onMenu={() => setSidebarOpen(true)}
+        onSettings={() => openSettingsSection("appearance")}
+        onLogout={logout}
+      />
+
       {announcement && (
         <div className="flex shrink-0 items-center justify-center gap-2 bg-primary px-4 py-1.5 text-xs text-primary-foreground">
           <span className="font-semibold">{announcement.subject}</span>
@@ -194,73 +204,69 @@ export function MailShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
       {!online && (
-        <div
-          className={cn(
-            "fixed inset-x-0 z-50 flex items-center justify-center gap-1.5 bg-ai py-1 text-xs text-ai-foreground",
-            announcement ? "top-7" : "top-0",
-          )}
-        >
+        <div className="flex shrink-0 items-center justify-center gap-1.5 bg-ai py-1 text-xs text-ai-foreground">
           <WifiOff className="size-3" />
           {t("offline")}
         </div>
       )}
-      <FolderNav
-        folders={folders}
-        unseen={unseen}
-        labels={knownLabels}
-        activeLabel={activeLabel}
-        savedSearches={savedSearches}
-        current={currentFolder}
-        email={me.email}
-        quotaBytes={me.quota_bytes}
-        quotaUsed={me.quota_bytes_used}
-        open={sidebarOpen}
-        accountList={accountList}
-        activeAccount={activeAccount}
-        delegateList={delegateList}
-        activeDelegate={activeDelegate}
-        onSwitchAccount={switchAccount}
-        onSwitchDelegate={switchDelegate}
-        onManageAccounts={() => openSettingsSection("accounts")}
-        onSelect={selectFolder}
-        onSelectLabel={selectLabel}
-        onManageLabels={() => setLabelManagerOpen(true)}
-        onDeleteLabel={deleteLabel}
-        onSelectSavedSearch={runSavedSearch}
-        onRemoveSavedSearch={removeSavedSearch}
-        onMoveToFolder={(dest, uid) => moveTo([uid], dest, t("toastMoved"))}
-        onCreateFolder={createFolder}
-        onRenameFolder={renameFolder}
-        onDeleteFolder={deleteFolder}
-        onClearFolder={clearFolder}
-        onCompose={() => openCompose()}
-        aiComposeEnabled={ai.draft}
-        aiComposeLocked={aiLocked}
-        aiComposeBusy={aiComposeBusy}
-        onAiCompose={() => {
-          setAiPrompt("");
-          setAiPromptOpen(true);
-        }}
-        onSettings={() => openSettingsSection("appearance")}
-        onContacts={() => setContactsOpen(true)}
-        onSieve={() => setSieveOpen(true)}
-        onCalendar={openCalendar}
-        onDrive={openDrive}
-        onLogout={logout}
-        onScheduled={async () => {
-          // Opening a management dialog with nothing in it adds friction:
-          // only show it when there is actually a scheduled send to manage.
-          const list = await loadScheduled();
-          if (list.length > 0) setScheduledOpen(true);
-        }}
-        onSnoozed={openSnoozed}
-        onClose={() => setSidebarOpen(false)}
-      />
 
-      {/* Content area: MailView on /mail, the workspace dashboard on /home.
-          Must stay a flex row so MailView's list + reading pane sit side by
-          side; without it the reading pane stacks below the list (blank). */}
-      <div className="flex min-w-0 flex-1">{children}</div>
+      <div className="flex min-h-0 flex-1">
+        <FolderNav
+          folders={folders}
+          unseen={unseen}
+          labels={knownLabels}
+          activeLabel={activeLabel}
+          savedSearches={savedSearches}
+          current={currentFolder}
+          email={me.email}
+          quotaBytes={me.quota_bytes}
+          quotaUsed={me.quota_bytes_used}
+          open={sidebarOpen}
+          accountList={accountList}
+          activeAccount={activeAccount}
+          delegateList={delegateList}
+          activeDelegate={activeDelegate}
+          onSwitchAccount={switchAccount}
+          onSwitchDelegate={switchDelegate}
+          onManageAccounts={() => openSettingsSection("accounts")}
+          onSelect={selectFolder}
+          onSelectLabel={selectLabel}
+          onManageLabels={() => setLabelManagerOpen(true)}
+          onDeleteLabel={deleteLabel}
+          onSelectSavedSearch={runSavedSearch}
+          onRemoveSavedSearch={removeSavedSearch}
+          onMoveToFolder={(dest, uid) => moveTo([uid], dest, t("toastMoved"))}
+          onCreateFolder={createFolder}
+          onRenameFolder={renameFolder}
+          onDeleteFolder={deleteFolder}
+          onClearFolder={clearFolder}
+          onCompose={() => openCompose()}
+          aiComposeEnabled={ai.draft}
+          aiComposeLocked={aiLocked}
+          aiComposeBusy={aiComposeBusy}
+          onAiCompose={() => {
+            setAiPrompt("");
+            setAiPromptOpen(true);
+          }}
+          onContacts={() => setContactsOpen(true)}
+          onSieve={() => setSieveOpen(true)}
+          onCalendar={openCalendar}
+          onDrive={openDrive}
+          onScheduled={async () => {
+            // Opening a management dialog with nothing in it adds friction:
+            // only show it when there is actually a scheduled send to manage.
+            const list = await loadScheduled();
+            if (list.length > 0) setScheduledOpen(true);
+          }}
+          onSnoozed={openSnoozed}
+          onClose={() => setSidebarOpen(false)}
+        />
+
+        {/* Content area: MailView on /mail, the workspace dashboard on /home.
+            Must stay a flex row so MailView's list + reading pane sit side by
+            side; without it the reading pane stacks below the list (blank). */}
+        <div className="flex min-w-0 flex-1">{children}</div>
+      </div>
 
       {/* Compose panel — non-modal right-side sheet */}
       {composeOpen && (
