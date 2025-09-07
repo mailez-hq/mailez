@@ -161,7 +161,6 @@ export function ExtraConfigPanel({ tab }: { tab: string }) {
     setAiBusy(true);
     try {
       await saveAIDrawer();
-      setAiMessage(t("aiSaved"));
     } catch (e) {
       setAiError(e instanceof Error ? e.message : t("aiFailed"));
     } finally {
@@ -182,9 +181,7 @@ export function ExtraConfigPanel({ tab }: { tab: string }) {
       const withKey = { ...tested, api_key: "" };
       setAiDrawer(withKey);
       replaceProvider(withKey);
-      if (tested.last_test_ok) {
-        setAiMessage(t("aiTestOk"));
-      } else {
+      if (!tested.last_test_ok) {
         setAiError(t("aiTestFail") + (tested.last_test_error ? `：${tested.last_test_error}` : ""));
       }
     } catch (e) {
@@ -200,9 +197,7 @@ export function ExtraConfigPanel({ tab }: { tab: string }) {
     try {
       const tested = await testAIConfig(p.id);
       replaceProvider(tested);
-      if (tested.last_test_ok) {
-        setAiMessage(t("aiTestOk"));
-      } else {
+      if (!tested.last_test_ok) {
         setAiError(t("aiTestFail") + (tested.last_test_error ? `：${tested.last_test_error}` : ""));
       }
     } catch (e) {
@@ -217,8 +212,9 @@ export function ExtraConfigPanel({ tab }: { tab: string }) {
     setAiBusy(true);
     try {
       const saved = await updateAIConfig(p.id, { enabled });
+      // Silent on success: the switch itself is the feedback, and the toast
+      // banner shifted the whole page layout every toggle.
       replaceProvider(saved);
-      if (enabled) setAiMessage(t("aiEnabledSaved"));
     } catch (e) {
       setAiError(e instanceof Error ? e.message : t("aiFailed"));
     } finally {
@@ -233,7 +229,6 @@ export function ExtraConfigPanel({ tab }: { tab: string }) {
       await updateAIConfig(p.id, { is_default: true });
       // Refresh the whole list: the other providers' default flags changed.
       setAiProviders(await getAIConfigs());
-      setAiMessage(t("aiDefaultSaved"));
     } catch (e) {
       setAiError(e instanceof Error ? e.message : t("aiFailed"));
     } finally {
@@ -248,7 +243,6 @@ export function ExtraConfigPanel({ tab }: { tab: string }) {
     try {
       await deleteAIConfig(p.id);
       setAiProviders((list) => list.filter((x) => x.id !== p.id));
-      setAiMessage(t("aiDeleted"));
     } catch (e) {
       setAiError(e instanceof Error ? e.message : t("aiFailed"));
     } finally {
@@ -433,12 +427,12 @@ export function ExtraConfigPanel({ tab }: { tab: string }) {
             {t("aiAdd")}
           </Button>
         </div>
-        {(aiError || aiMessage) && (
-          <div className="text-sm">
-            {aiError && <p className="text-red-600">{aiError}</p>}
-            {aiMessage && <p className="text-green-600">{aiMessage}</p>}
-          </div>
-        )}
+        {/* Always-rendered one-line status slot: reserving the height keeps
+            the banner from shifting the page on every action. */}
+        <div className="min-h-5 text-sm">
+          {aiError && <p className="text-red-600">{aiError}</p>}
+          {aiMessage && <p className="text-green-600">{aiMessage}</p>}
+        </div>
         <Card>
           <Table>
             <TableHeader>
@@ -463,8 +457,17 @@ export function ExtraConfigPanel({ tab }: { tab: string }) {
                 <TableRow key={p.id}>
                   <TableCell>
                     <div className="flex items-center gap-2 font-medium">
+                      {/* Always-rendered badge: a conditional one changes the
+                          cell width and re-balances the whole auto table when
+                          the default moves between rows. */}
+                      <Badge
+                        variant="secondary"
+                        className={p.is_default ? undefined : "invisible"}
+                        tabIndex={p.is_default ? undefined : -1}
+                      >
+                        {t("aiIsDefault")}
+                      </Badge>
                       {p.name}
-                      {p.is_default && <Badge variant="secondary">{t("aiIsDefault")}</Badge>}
                     </div>
                     {!p.last_test_ok && (
                       <p className="text-xs text-amber-600">{t("aiEnabledRequiresTest")}</p>
@@ -507,11 +510,21 @@ export function ExtraConfigPanel({ tab }: { tab: string }) {
                       <Button size="sm" variant="outline" onClick={() => onTestAIRow(p)} disabled={aiBusy}>
                         {t("aiTest")}
                       </Button>
-                      {p.enabled && !p.is_default && (
-                        <Button size="sm" variant="secondary" onClick={() => onSetAIDefault(p)} disabled={aiBusy}>
-                          {t("aiSetDefault")}
-                        </Button>
-                      )}
+                      {/* Always render to keep the column width stable: a
+                          conditional button would re-balance every column
+                          (table-auto) and horizontally shake the whole table
+                          on each enable/disable toggle. invisible keeps the
+                          space without hit-testing or focus. */}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className={p.enabled && !p.is_default ? undefined : "invisible"}
+                        onClick={() => onSetAIDefault(p)}
+                        disabled={aiBusy}
+                        tabIndex={p.enabled && !p.is_default ? undefined : -1}
+                      >
+                        {t("aiSetDefault")}
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
