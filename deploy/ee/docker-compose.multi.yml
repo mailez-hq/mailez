@@ -82,8 +82,8 @@ services:
     # 证书与授权仍按副本只读挂载；archive 合规 spool 在 KV/blob，无本地盘。
     volumes: !override
       - "/data"
-      - "./certs:/certs:ro"
-      - "./licenses:/licenses:ro"
+      - "../certs:/certs:ro"
+      - "../licenses:/licenses:ro"
 
   # backend 的引擎地址改走 engine-lb（IMAP/SMTP/Sieve/内部 MTA 直投）：
   # 引擎的邮件端口现在只接受带 PROXY 头的 LB 连接，直连会被拒。管理

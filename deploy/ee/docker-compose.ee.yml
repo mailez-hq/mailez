@@ -42,7 +42,7 @@ services:
       timeout: 3s
       retries: 5
     volumes:
-      - "./data/redis:/data"
+      - "../data/redis:/data"
 
   mysql:
     image: mysql:8.0
@@ -63,7 +63,7 @@ services:
       retries: 20
       start_period: 15s
     volumes:
-      - "./data/mysql:/var/lib/mysql"
+      - "../data/mysql:/var/lib/mysql"
     ports:
       - "127.0.0.1:13306:3306"
 
@@ -76,7 +76,7 @@ services:
     ports:
       - "127.0.0.1:4000:4000"
     volumes:
-      - "./data/tidb:/tmp/tidb"
+      - "../data/tidb:/tmp/tidb"
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/4000 && exec 3>&-'"]
       interval: 5s
@@ -99,7 +99,7 @@ services:
       timeout: 3s
       retries: 20
     volumes:
-      - "./data/minio:/data"
+      - "../data/minio:/data"
     ports:
       - "127.0.0.1:29000:9000"
       - "127.0.0.1:29001:9001"
@@ -107,7 +107,7 @@ services:
   backend:
     image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-backend-ee:${MAILEZ_IMAGE_TAG:-latest}
     restart: always
-    env_file: mailez.env
+    env_file: ../mailez.env
     environment:
       - MAILEZ_PORT=8080
       # 控制面默认 MySQL；mailez.env 可用 MAILEZ_DB_DRIVER / MAILEZ_DB_DSN
@@ -163,9 +163,9 @@ services:
     ports:
       - "${MAILEZ_API_PORT:-8081}:8080"
     volumes:
-      - "./data:/data"
-      - "./licenses:/licenses:ro"
-      - "./certs:/certs"
+      - "../data:/data"
+      - "../licenses:/licenses:ro"
+      - "../certs:/certs"
     depends_on:
       redis:
         condition: service_healthy
@@ -200,15 +200,15 @@ services:
     image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-nginx:${MAILEZ_IMAGE_TAG:-latest}
     pull_policy: missing
     restart: always
-    env_file: mailez.env
+    env_file: ../mailez.env
     environment:
       - MAILEZ_ENGINE=mailezine
     ports:
       - "${MAILEZ_HTTP_PORT:-80}:80"
       - "${MAILEZ_HTTPS_PORT:-443}:443"
     volumes:
-      - "./certs:/certs"
-      - "./overrides:/overrides"
+      - "../certs:/certs"
+      - "../overrides:/overrides"
     depends_on:
       - backend
 
@@ -219,7 +219,7 @@ services:
     # mailez.env 同时供给 backend 与引擎:MAILEZINE_STACK_SECRET 必须与
     # backend 侧的 MAILEZ_STACK_SECRET 保持同值——空值时 /stack 内部 API
     # 不鉴权(仅限本地开发),生产部署必须设置(见 mailez.env.example)。
-    env_file: mailez.env
+    env_file: ../mailez.env
     environment:
       - MAILEZINE_BACKEND_ADDRESS=backend:8080
       - MAILEZ_BACKEND_ADDRESS=backend
@@ -267,9 +267,9 @@ services:
       - MAILEZINE_LOG_LEVEL=info
     user: "82:101"
     volumes:
-      - "./data/mailezine:/data"
-      - "./certs:/certs:ro"
-      - "./licenses:/licenses:ro"
+      - "../data/mailezine:/data"
+      - "../certs:/certs:ro"
+      - "../licenses:/licenses:ro"
     ports:
       - "127.0.0.1:25:25"
       - "127.0.0.1:465:465"
@@ -299,16 +299,16 @@ services:
     image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-rspamd:${MAILEZ_IMAGE_TAG:-latest}
     pull_policy: missing
     restart: always
-    env_file: mailez.env
+    env_file: ../mailez.env
     environment:
       - MAILEZ_ENGINE=mailezine
     networks:
       default: {}
       no-egress: {}
     volumes:
-      - "./data/filter:/var/lib/rspamd"
-      - "./data/dkim:/dkim"
-      - "./overrides/rspamd:/etc/rspamd/override.d"
+      - "../data/filter:/var/lib/rspamd"
+      - "../data/dkim:/dkim"
+      - "../overrides/rspamd:/etc/rspamd/override.d"
     depends_on:
       - gateway
       - backend
@@ -325,7 +325,7 @@ services:
     image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-unbound:${MAILEZ_IMAGE_TAG:-latest}
     pull_policy: missing
     restart: always
-    env_file: mailez.env
+    env_file: ../mailez.env
 
 networks:
   default:
