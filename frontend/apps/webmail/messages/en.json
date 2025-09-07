@@ -211,6 +211,8 @@
     "scheduled": "Scheduled",
     "scheduledAt": "Scheduled for {time}",
     "scheduledEmpty": "No scheduled sends",
+    "toDraft": "Move to drafts",
+    "toastToDraft": "Moved to Drafts — continue editing there",
     "snoozed": "Snoozed",
     "toastScheduled": "Scheduled for {time}",
     "toastScheduledCancelled": "Scheduled send cancelled",

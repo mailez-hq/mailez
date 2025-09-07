@@ -311,6 +311,33 @@ func (c *Client) SaveDraft(email, token string, to, cc, bcc []string, subject, t
 	return st.UidNext - 1, nil
 }
 
+// RestoreDraftRaw appends an already-built RFC822 message (e.g. a cancelled
+// scheduled send) into Drafts as a \Draft message, so the sender can reopen
+// and edit it — the modern-style "cancel scheduled send → back to draft"
+// flow. The message's UID is returned when known.
+func (c *Client) RestoreDraftRaw(email, token, raw string) (uint32, error) {
+	if err := c.EnsureMailbox(email, token, "Drafts"); err != nil {
+		return 0, err
+	}
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return 0, err
+	}
+	defer cli.Logout()
+
+	if _, err := cli.Select("Drafts", false); err != nil {
+		return 0, fmt.Errorf("imap select drafts: %w", err)
+	}
+	if err := cli.Append("Drafts", []string{"\\Draft"}, time.Now(), appendLiteral{strings.NewReader(raw)}); err != nil {
+		return 0, fmt.Errorf("imap append draft: %w", err)
+	}
+	st, err := cli.Status("Drafts", []imap.StatusItem{imap.StatusUidNext})
+	if err != nil || st == nil || st.UidNext <= 1 {
+		return 0, nil // uid unknown; the draft is still saved
+	}
+	return st.UidNext - 1, nil
+}
+
 // draftBccHeader preserves blind recipients on the Drafts copy so reopening
 // the draft (here or in any IMAP client) restores them.
 func draftBccHeader(bcc []string) []Header {

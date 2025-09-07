@@ -20,6 +20,9 @@ type Gateway interface {
 	// APPEND (ActiveSync SaveInSentItems copies).
 	AppendRaw(email, token, folder, raw string, flags []string) error
 	SaveDraft(email, token string, to, cc, bcc []string, subject, text, html string, attachments []Attachment, replaceUID uint32) (uint32, error)
+	// RestoreDraftRaw returns a pre-built RFC 5322 message (e.g. a cancelled
+	// scheduled send) into Drafts so the sender can edit it again.
+	RestoreDraftRaw(email, token, raw string) (uint32, error)
 
 	// Mailbox
 	ListFolders(email, token string) ([]string, error)

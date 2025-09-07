@@ -450,6 +450,11 @@ export const aiReplies = (text: string) =>
 export const mailUndoSend = (outboxId: number) =>
   api<void>(`/mail/outbox/${outboxId}`, { method: "DELETE" });
 
+// mailScheduledToDraft cancels a scheduled send and moves it back to Drafts
+// so it can be viewed/edited again (modern-style cancel-to-draft).
+export const mailScheduledToDraft = (outboxId: number) =>
+  api<{ uid: number }>(`/mail/outbox/${outboxId}/to-draft`, { method: "POST" });
+
 // ScheduledSend is one queued message waiting for its send_at moment.
 export interface ScheduledSend {
   id: number;
