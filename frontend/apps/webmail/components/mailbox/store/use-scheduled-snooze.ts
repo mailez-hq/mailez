@@ -55,12 +55,15 @@ export function useScheduledSnooze({
   const [scheduledLoading, setScheduledLoading] = useState(false);
   const [snoozedMsgs, setSnoozedMsgs] = useState<SnoozedMessage[]>([]);
 
-  const loadScheduled = useCallback(async () => {
+  const loadScheduled = useCallback(async (): Promise<ScheduledSend[]> => {
     setScheduledLoading(true);
     try {
-      setScheduled(await mailScheduled());
+      const list = await mailScheduled();
+      setScheduled(list);
+      return list;
     } catch (e) {
       setError(e instanceof Error ? e.message : "load scheduled failed");
+      return [];
     } finally {
       setScheduledLoading(false);
     }

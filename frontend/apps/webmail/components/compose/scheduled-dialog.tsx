@@ -8,6 +8,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { useMailStore } from "@/components/mailbox/mail-store";
+import type { ScheduledSend } from "@/lib/api";
 
 // ScheduledDialog lists the user's queued scheduled sends with a cancel
 // button per row. Data is loaded fresh each time the dialog opens.
@@ -20,9 +21,9 @@ export function ScheduledDialog({
 }) {
   const t = useTranslations("mail");
   const { scheduled, scheduledLoading, loadScheduled, cancelScheduled } = useMailStore() as {
-    scheduled: { id: number; subject: string; send_at: string; recipients: string[] }[];
+    scheduled: ScheduledSend[];
     scheduledLoading: boolean;
-    loadScheduled: () => Promise<void>;
+    loadScheduled: () => Promise<ScheduledSend[]>;
     cancelScheduled: (id: number) => Promise<void>;
   };
 
