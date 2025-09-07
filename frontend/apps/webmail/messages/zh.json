@@ -67,7 +67,7 @@
     "contacts": "通讯录",
     "filterRules": "过滤规则（Sieve）",
     "search": "搜索",
-    "searchPlaceholder": "搜索 {folder}",
+    "searchPlaceholder": "搜索 {folder}","searchMail": "搜索邮件",
     "folderInbox": "收件箱",
     "folderSent": "已发送",
     "folderDrafts": "草稿箱",

@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Archive, Bookmark, Check, ChevronDown, Ellipsis, FolderSearch, Inbox, MailCheck, Plus, RefreshCw, Search, SearchX, ShieldCheck, SlidersHorizontal, Sparkles, Tag, Trash2, X } from "lucide-react";
+import { Archive, Bookmark, Check, ChevronDown, Inbox, MailCheck, Plus, RefreshCw, SearchX, ShieldCheck, SlidersHorizontal, Sparkles, Tag, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +14,6 @@ import { usePreferences } from "@/components/preferences-provider";
   import type { MailMessage, MailSearchSpec } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { MessageRow, ROW_HEIGHTS } from "@/components/mailbox/message-row";
-import { SearchBuilderDialog } from "@/components/mailbox/search-builder-dialog";
 import { VirtualList } from "@/components/mailbox/virtual-list";
 import { buildFolderTree, flattenTree, folderLabel } from "@/components/mailbox/folder-tree";
 
@@ -30,9 +28,6 @@ export function MessageListPanel({
   loading,
   query,
   searchSpec,
-  onQueryChange,
-  onApplySpec,
-  onSearch,
   onClearSearch,
   selectedUids,
   cursor,
@@ -49,25 +44,18 @@ export function MessageListPanel({
   spamFolder,
   onBulkRelease,
   onLoadMore,
-  searchInputRef,
   error,
   className,
   folders,
   onMoveToFolder,
   onSaveSearch,
-  onSaveSearchSpec,
-  searchAll,
-  onToggleSearchAll,
   category,
   onCategoryChange,
-  aiSearchEnabled,
   aiPriorityEnabled,
   prioritizing,
   priorityOn,
   categories,
   onTogglePriority,
-  aiSearching,
-  onAiSearch,
   refreshing,
   onRefresh,
   highlightTerms,
@@ -87,9 +75,6 @@ export function MessageListPanel({
   loading: boolean;
   query: string;
   searchSpec: MailSearchSpec | null;
-  onQueryChange: (q: string) => void;
-  onApplySpec: (spec: MailSearchSpec) => void;
-  onSearch: (q?: string) => void;
   onClearSearch: () => void;
   selectedUids: Set<number>;
   cursor: number;
@@ -106,25 +91,18 @@ export function MessageListPanel({
   spamFolder?: string;
   onBulkRelease?: () => void;
   onLoadMore: () => void;
-  searchInputRef: React.RefObject<HTMLInputElement | null>;
   error: string;
   className?: string;
   folders: string[];
   onMoveToFolder: (destination: string) => void;
   onSaveSearch: () => void;
-  onSaveSearchSpec: (name: string, spec: MailSearchSpec) => void;
-  searchAll: boolean;
-  onToggleSearchAll: () => void;
   category: string;
   onCategoryChange: (category: string) => void;
-  aiSearchEnabled: boolean;
   aiPriorityEnabled: boolean;
   prioritizing: boolean;
   priorityOn: boolean;
   categories?: Record<string, string>;
   onTogglePriority: () => void;
-  aiSearching: boolean;
-  onAiSearch: () => void;
   refreshing: boolean;
   onRefresh: () => void;
   highlightTerms?: string[];
@@ -139,15 +117,8 @@ export function MessageListPanel({
   const t = useTranslations("mail");
   const { density } = usePreferences();
   const rowHeight = ROW_HEIGHTS[density];
-  const [builderOpen, setBuilderOpen] = useState(false);
   const [labelPopoverOpen, setLabelPopoverOpen] = useState(false);
   const [bulkLabelName, setBulkLabelName] = useState("");
-  const activeFilterCount = useMemo(() => {
-    if (!searchSpec) return 0;
-    return Object.values(searchSpec).filter((v) =>
-      Array.isArray(v) ? v.length > 0 : Boolean(v),
-    ).length;
-  }, [searchSpec]);
   // Category pills filter the loaded page client-side (the backend still
   // returns every row; classification is a lightweight per-row tag).
   const categoryOf = (m: MailMessage) => categories?.[String(m.uid)] ?? m.category;
@@ -182,53 +153,44 @@ export function MessageListPanel({
     <div className={cn("flex min-h-0 min-w-0 flex-col border-r border-border bg-card", className)}>
       <div className="border-b border-border p-2">
         <div className="flex items-center gap-1.5">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              onSearch();
-            }}
-            className="relative flex-1"
-          >
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              ref={searchInputRef}
-              value={query}
-              onChange={(e) => onQueryChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  onClearSearch();
-                  e.currentTarget.blur();
+          {showCategoryFilter && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button size="xs" variant="outline" className="shrink-0">
+                    <span className="max-w-32 truncate">{categoryLabel(category)}</span>
+                    <ChevronDown className="size-3" />
+                  </Button>
                 }
-              }}
-              placeholder={t("searchPlaceholder", { folder: folderLabel(t, folder) })}
-              className="h-8 pl-8 pr-12"
-            />
-            {query.trim() !== "" ? (
-              <button
-                type="button"
-                onClick={onClearSearch}
-                title={t("clearSearch")}
-                className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <X className="size-3.5" />
-              </button>
-            ) : (
-              <kbd className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded border border-border px-1.5 py-0.5 font-sans text-[10px] text-muted-foreground">
-                /
-              </kbd>
-            )}
-          </form>
+              />
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => onCategoryChange("")}>
+                  {t("categoryAll")}
+                  {category === "" && <Check className="ml-auto size-4" />}
+                </DropdownMenuItem>
+                {categoryOptions.map((c) => (
+                  <DropdownMenuItem key={c} onClick={() => onCategoryChange(c)}>
+                    {categoryLabel(c)}
+                    {category === c && <Check className="ml-auto size-4" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <select
-            value={sortDir === "asc" && sortBy === "date" ? "date-asc" : `${sortBy}-${sortDir}`}
+            value={`${sortBy}-${sortDir}`}
             onChange={(e) => onChangeSort(e.target.value)}
             title={t("sortLabel")}
             className="h-7 rounded-md border border-border bg-transparent px-1 text-xs text-muted-foreground outline-none focus-visible:border-ring"
           >
             <option value="date-desc">{t("sortNewest")}</option>
             <option value="date-asc">{t("sortOldest")}</option>
-            <option value="from">{t("sortFrom")}</option>
-            <option value="subject">{t("sortSubject")}</option>
-            <option value="size">{t("sortSize")}</option>
+            {/* Option values must stay canonical "<field>-<dir>": the select
+                is controlled by `${sortBy}-${sortDir}`, and a bare "size"
+                value would match nothing and visibly refuse to switch. */}
+            <option value="from-asc">{t("sortFrom")}</option>
+            <option value="subject-asc">{t("sortSubject")}</option>
+            <option value="size-asc">{t("sortSize")}</option>
           </select>
           <Button
             variant="ghost"
@@ -240,98 +202,39 @@ export function MessageListPanel({
           >
             <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  title={t("more")}
-                  className={cn("relative shrink-0", activeFilterCount > 0 && "text-primary")}
-                >
-                  <Ellipsis className="size-4" />
-                  {activeFilterCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-semibold text-primary-foreground">
-                      {activeFilterCount}
-                    </span>
-                  )}
-                </Button>
-              }
-            />
-            <DropdownMenuContent align="end">
-              {searching && query.trim() !== "" && (
-                <DropdownMenuItem onClick={onSaveSearch}>
-                  <Bookmark className="size-4" />
-                  {t("saveSearch")}
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={() => setBuilderOpen(true)}>
-                <SlidersHorizontal className="size-4" />
-                {t("advancedSearch")}
-                {activeFilterCount > 0 && (
-                  <span className="ml-auto rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onToggleSearchAll}>
-                <FolderSearch className="size-4" />
-                {t("searchAll")}
-                {searchAll && <Check className="ml-auto size-4" />}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onMarkAllRead}>
-                <MailCheck className="size-4" />
-                {t("markAllRead")}
-              </DropdownMenuItem>
-              {aiSearchEnabled && (
-                <DropdownMenuItem onClick={() => onAiSearch()} disabled={aiSearching}>
-                  <Sparkles className={cn("size-4", aiSearching && "animate-pulse")} />
-                  {t("aiSearch")}
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={onMarkAllRead}
+            title={t("markAllRead")}
+            className="shrink-0"
+          >
+            <MailCheck className="size-4" />
+          </Button>
+          {searching && query.trim() !== "" && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onSaveSearch}
+              title={t("saveSearch")}
+              className="shrink-0"
+            >
+              <Bookmark className="size-4" />
+            </Button>
+          )}
+          {aiPriorityEnabled && (
+            <Button
+              size="xs"
+              variant={priorityOn ? "default" : "outline"}
+              onClick={onTogglePriority}
+              disabled={prioritizing}
+              className="ml-auto shrink-0"
+            >
+              <Sparkles className="size-3" />
+              {prioritizing ? t("prioritizing") : t("aiPriority")}
+            </Button>
+          )}
         </div>
-        {(showCategoryFilter || aiPriorityEnabled) && (
-          <div className="mt-1.5 flex items-center gap-1">
-            {showCategoryFilter && (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button size="xs" variant="outline">
-                      <span className="max-w-32 truncate">{categoryLabel(category)}</span>
-                      <ChevronDown className="size-3" />
-                    </Button>
-                  }
-                />
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem onClick={() => onCategoryChange("")}>
-                    {t("categoryAll")}
-                    {category === "" && <Check className="ml-auto size-4" />}
-                  </DropdownMenuItem>
-                  {categoryOptions.map((c) => (
-                    <DropdownMenuItem key={c} onClick={() => onCategoryChange(c)}>
-                      {categoryLabel(c)}
-                      {category === c && <Check className="ml-auto size-4" />}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            {aiPriorityEnabled && (
-              <Button
-                size="xs"
-                variant={priorityOn ? "default" : "outline"}
-                onClick={onTogglePriority}
-                disabled={prioritizing}
-                className="ml-auto"
-              >
-                <Sparkles className="size-3" />
-                {prioritizing ? t("prioritizing") : t("aiPriority")}
-              </Button>
-            )}
-          </div>
-        )}
       </div>
 
       {error && (
@@ -474,38 +377,53 @@ export function MessageListPanel({
           {searching || category ? t("noMatches") : t("noMessages")}
         </div>
       ) : (
-        <VirtualList
-          items={shown}
-          rowHeight={rowHeight}
-          scrollKey={`${folder}-${searching}`}
-          onEndReached={onLoadMore}
-          onPullRefresh={onRefresh}
-          // IMAP UIDs are only unique per mailbox: search-all results mix
-          // folders, so two different messages can share a uid. Qualify the
-          // key with the source folder when the row carries one.
-          getKey={(m) => (m.folder ? `${m.folder}/${m.uid}` : m.uid)}
-          className="flex-1"
-          renderRow={(m, i) => (
-            <MessageRow
-              message={m}
-              index={i}
-              density={density}
-              category={categories?.[String(m.uid)] ?? m.category}
-              selected={m.id === openId && !!openId}
-              selectedInBulk={selectedUids.has(m.uid)}
-              cursorActive={i === cursor && !searching}
-              // Handlers pass straight through (no per-row closures) so
-              // MessageRow's memoization sees stable identities.
-              onOpen={onOpen}
-              onToggleSelect={onToggleSelect}
-              onDelete={onDelete}
-              onArchive={onArchive}
-              onStar={onStar}
-              highlightTerms={highlightTerms}
-              onContextMenu={onContextMenu}
-            />
+        <div className="relative min-h-0 flex-1">
+          <VirtualList
+            items={shown}
+            rowHeight={rowHeight}
+            scrollKey={`${folder}-${searching}`}
+            onEndReached={onLoadMore}
+            onPullRefresh={onRefresh}
+            // IMAP UIDs are only unique per mailbox: search-all results mix
+            // folders, so two different messages can share a uid. Qualify the
+            // key with the source folder when the row carries one.
+            getKey={(m) => (m.folder ? `${m.folder}/${m.uid}` : m.uid)}
+            className={cn(
+              "h-full",
+              loading && messages.length > 0 && "pointer-events-none opacity-50 transition-opacity",
+            )}
+            renderRow={(m, i) => (
+              <MessageRow
+                message={m}
+                index={i}
+                density={density}
+                category={categories?.[String(m.uid)] ?? m.category}
+                selected={m.id === openId && !!openId}
+                selectedInBulk={selectedUids.has(m.uid)}
+                cursorActive={i === cursor && !searching}
+                // Handlers pass straight through (no per-row closures) so
+                // MessageRow's memoization sees stable identities.
+                onOpen={onOpen}
+                onToggleSelect={onToggleSelect}
+                onDelete={onDelete}
+                onArchive={onArchive}
+                onStar={onStar}
+                highlightTerms={highlightTerms}
+                onContextMenu={onContextMenu}
+              />
+            )}
+          />
+          {/* In-place refresh feedback: when rows already exist, dim them and
+              float a small spinner pill instead of swapping to skeletons. */}
+          {loading && messages.length > 0 && (
+            <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
+              <span className="flex items-center gap-1.5 rounded-full border border-border bg-background/90 px-2.5 py-1 text-xs text-muted-foreground shadow-sm">
+                <RefreshCw className="size-3 animate-spin" />
+                {t("loading")}
+              </span>
+            </div>
           )}
-        />
+        </div>
       )}
 
       {!searching && !loading && messages.length > 0 && messages.length < total && (
@@ -527,12 +445,6 @@ export function MessageListPanel({
         </button>
       )}
 
-      <SearchBuilderDialog
-        open={builderOpen}
-        onOpenChange={setBuilderOpen}
-        onApply={onApplySpec}
-        onSave={onSaveSearchSpec}
-      />
     </div>
   );
 }

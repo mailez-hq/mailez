@@ -76,7 +76,9 @@ export function useMailList({
     const nextDir = d === "asc" ? "asc" : nextBy === "date" ? "desc" : "asc";
     setSortBy(nextBy);
     setSortDir(nextDir);
-    loadMessages(folder, 0, true);
+    // NOT silent: a sort switch is a user-initiated list change and must
+    // show the loading state instead of freezing on stale rows.
+    loadMessages(folder, 0, false);
   }
 
   function toggleSelect(m: MailMessage) {

@@ -8,7 +8,8 @@
 // them. All mailbox state lives in the MailStoreProvider that mounts this.
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { SearchBuilderDialog } from "@/components/mailbox/search-builder-dialog";
+import { usePathname, useRouter } from "next/navigation";
 import { Sparkles, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +35,8 @@ import { useMailStore } from "@/components/mailbox/mail-store";
 
 export function MailShell({ children }: { children: React.ReactNode }) {
   const [aiPromptOpen, setAiPromptOpen] = useState(false);
+  // Advanced search builder lives with the header search pill now.
+  const [builderOpen, setBuilderOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const {
     t,
@@ -128,8 +131,18 @@ export function MailShell({ children }: { children: React.ReactNode }) {
     setSubject,
     openMessage,
     loadMessages,
+    query,
     setQuery,
+    doSearch,
+    clearSearch,
+    searchRef,
     doAiSearch,
+    aiSearching,
+    searchSpec,
+    applySearchSpec,
+    searchAll,
+    setSearchAll,
+    saveSearchSpec,
     settingsOpen,
     paletteOpen,
     setPaletteOpen,
@@ -169,6 +182,7 @@ export function MailShell({ children }: { children: React.ReactNode }) {
   // highlight a folder row while the workspace dashboard is open — only a
   // real /mail route has an active folder.
   const pathname = usePathname();
+  const router = useRouter();
   const currentFolder = pathname?.startsWith("/mail") ? folder : "";
 
   // The global admin announcement banner: fetched once per session, hidden
@@ -192,6 +206,22 @@ export function MailShell({ children }: { children: React.ReactNode }) {
       <AppHeader
         email={me.email}
         displayName={me.displayed_name}
+        query={query}
+        onQueryChange={setQuery}
+        onSearchSubmit={() => {
+          doSearch();
+          // mainstream webmail behaviour: submitting the header search always lands on
+          // the result list, even from the workspace dashboard.
+          if (!pathname.startsWith("/mail")) router.push("/mail/Inbox");
+        }}
+        onClearSearch={clearSearch}
+        searchInputRef={searchRef}
+        searchAll={searchAll}
+        onToggleSearchAll={() => setSearchAll((v: boolean) => !v)}
+        aiSearchEnabled={ai.search}
+        aiSearching={aiSearching}
+        onAiSearch={doAiSearch}
+        onOpenAdvanced={() => setBuilderOpen(true)}
         onMenu={() => setSidebarOpen(true)}
         onSettings={() => openSettingsSection("appearance")}
         onLogout={logout}
@@ -348,6 +378,13 @@ export function MailShell({ children }: { children: React.ReactNode }) {
           openMessage(m, src);
           setContactsOpen(false);
         }}
+      />
+
+      <SearchBuilderDialog
+        open={builderOpen}
+        onOpenChange={setBuilderOpen}
+        onApply={applySearchSpec}
+        onSave={saveSearchSpec}
       />
 
       <CommandPalette
