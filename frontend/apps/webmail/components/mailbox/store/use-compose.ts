@@ -373,13 +373,24 @@ export function useCompose({
     }
   }
 
+  // Reply-All participants = original From + To + Cc, minus the replier's own
+  // address — EXCEPT when that would leave nobody (e.g. a mail you sent to
+  // yourself), in which case fall back to the full participant list. Mail
+  // clients like Tencent Exmail behave this way: a reply always has at least
+  // one recipient, even for self-sent mail.
+  function replyAllRecipients(m: MailMessage): string {
+    const participants = [...m.from, ...(m.cc || []), ...(m.to || [])];
+    const others = participants.filter(
+      (a) => a.email && a.email.toLowerCase() !== me.email.toLowerCase(),
+    );
+    const chosen = others.length > 0 ? others : participants;
+    const unique = [...new Set(chosen.map((a) => a.email).filter(Boolean))];
+    return unique.join(", ");
+  }
+
   function replyAllFrom(m: MailMessage) {
-    const recipients = new Set<string>();
-    [...m.from, ...(m.cc || []), ...(m.to || [])].forEach((a) => {
-      if (a.email && a.email.toLowerCase() !== me.email.toLowerCase()) recipients.add(a.email);
-    });
     openCompose(
-      [...recipients].join(", "),
+      replyAllRecipients(m),
       m.subject.startsWith("Re:") ? m.subject : `Re: ${m.subject}`,
       textToHtml(quoteText(m), {collapseQuote: prefs.collapseReplyQuote}),
       quoteText(m),
@@ -525,16 +536,9 @@ export function useCompose({
 
   function replyAll() {
     if (!detail) return;
-    const recipients = new Set<string>();
-    // Reply All addresses every participant of the original message except
-    // the replier: sender, explicit recipients AND cc. (The row context-menu
-    // variant already included cc; this one was dropping it.)
-    [...detail.from, ...(detail.cc || []), ...detail.to].forEach((a) => {
-      if (a.email && a.email.toLowerCase() !== me.email.toLowerCase()) recipients.add(a.email);
-    });
     const quote = selectedQuote(detail);
     openCompose(
-      [...recipients].join(", "),
+      replyAllRecipients(detail),
       detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`,
       textToHtml(quote, {collapseQuote: prefs.collapseReplyQuote}),
       quote,
