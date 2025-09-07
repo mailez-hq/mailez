@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Archive, Bookmark, Check, ChevronDown, Ellipsis, FolderSearch, Inbox, MailCheck, Menu, Plus, RefreshCw, Search, SearchX, ShieldCheck, SlidersHorizontal, Sparkles, Tag, Trash2, X } from "lucide-react";
+import { Archive, Bookmark, Check, ChevronDown, Ellipsis, FolderSearch, Inbox, MailCheck, Plus, RefreshCw, Search, SearchX, ShieldCheck, SlidersHorizontal, Sparkles, Tag, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +50,6 @@ export function MessageListPanel({
   onBulkRelease,
   onLoadMore,
   searchInputRef,
-  onMenu,
   error,
   className,
   folders,
@@ -108,7 +107,6 @@ export function MessageListPanel({
   onBulkRelease?: () => void;
   onLoadMore: () => void;
   searchInputRef: React.RefObject<HTMLInputElement | null>;
-  onMenu: () => void;
   error: string;
   className?: string;
   folders: string[];
@@ -184,10 +182,6 @@ export function MessageListPanel({
     <div className={cn("flex min-h-0 min-w-0 flex-col border-r border-border bg-card", className)}>
       <div className="border-b border-border p-2">
         <div className="flex items-center gap-1.5">
-          <Button variant="ghost" size="icon-sm" className="shrink-0 md:hidden" onClick={onMenu}>
-            <Menu className="size-4" />
-            <span className="sr-only">{t("menu")}</span>
-          </Button>
           <form
             onSubmit={(e) => {
               e.preventDefault();

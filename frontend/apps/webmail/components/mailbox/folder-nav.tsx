@@ -56,12 +56,10 @@ export function FolderNav({
   aiComposeLocked,
   aiComposeBusy,
   onAiCompose,
-  onSettings,
   onContacts,
   onSieve,
   onCalendar,
   onDrive,
-  onLogout,
   onClose,
 }: {
   folders: string[];
@@ -100,12 +98,10 @@ export function FolderNav({
   aiComposeLocked?: boolean;
   aiComposeBusy: boolean;
   onAiCompose: () => void;
-  onSettings: () => void;
   onContacts: () => void;
   onSieve: () => void;
   onCalendar: () => void;
   onDrive: () => void;
-  onLogout: () => void;
   onClose: () => void;
 }) {
   const t = useTranslations("mail");
@@ -321,9 +317,7 @@ export function FolderNav({
           onContacts={onContacts}
           onCalendar={onCalendar}
           onDrive={onDrive}
-          onSettings={onSettings}
           onSieve={onSieve}
-          onLogout={onLogout}
         />
       </aside>
 

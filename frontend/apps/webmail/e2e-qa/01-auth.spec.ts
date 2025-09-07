@@ -36,7 +36,8 @@ test.describe("auth & session", () => {
 
   test("sign out returns to the login page", async ({ page }) => {
     await login(page);
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await page.getByRole("button", { name: "My account" }).click();
+    await page.getByRole("menuitem", { name: "Sign out" }).click();
     await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible({ timeout: 30_000 });
   });
 

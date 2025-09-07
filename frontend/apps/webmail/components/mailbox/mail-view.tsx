@@ -72,7 +72,6 @@ export function MailView() {
     labelColors,
     folder,
     spamFolder,
-    setSidebarOpen,
     moveSelectedTo,
     openMessage,
     detail,
@@ -219,7 +218,6 @@ export function MailView() {
           onToggleSearchAll={() => setSearchAll((v: boolean) => !v)}
           category={categoryFilter}
           onCategoryChange={setCategoryFilter}
-          onMenu={() => setSidebarOpen(true)}
           aiSearchEnabled={ai.search}
           aiPriorityEnabled={ai.priority}
           prioritizing={prioritizing}

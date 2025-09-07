@@ -52,7 +52,10 @@ export async function attemptLogin(
       .catch(() => false);
     if (navigated) {
       if (!page.url().includes("/mail")) await page.goto("/mail/Inbox");
-      await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible({ timeout: 45_000 });
+      // The signed-in shell is ready once the top-right account avatar in the
+      // global app header is visible (the exit moved from the sidebar footer
+      // into that avatar's menu, mirroring mainstream webmail).
+      await expect(page.getByRole("button", { name: "My account" })).toBeVisible({ timeout: 45_000 });
       await page.waitForLoadState("networkidle").catch(() => {});
       return { outcome: "navigated", finalUrl: page.url() };
     }

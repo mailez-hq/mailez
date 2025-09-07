@@ -1,14 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import Link from "next/link";
-import { Menu, PenLine, Sparkles } from "lucide-react";
+import { PenLine, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/logo";
-import { useBrand } from "@/lib/use-brand";
 import { HAS_OPTIONAL_MODULES } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
+// SidebarHeader sits under the global AppHeader (which now owns the brand and
+// the account/sign-out menu). It only holds the compose actions and, on small
+// screens, a drawer-close control for the mobile drawer.
 export function SidebarHeader({
   onClose,
   onCompose,
@@ -25,40 +25,20 @@ export function SidebarHeader({
   onAiCompose: () => void;
 }) {
   const t = useTranslations("mail");
-  // White-label: branded deployments show the org name (and logo when
-  // configured) instead of the built-in Mailez wordmark.
-  const brand = useBrand();
 
   return (
     <>
-      <div className="flex h-12 items-center justify-between px-3">
-        {/* Logo navigates straight into the workspace instead of "/" (the
-            sign-in route), so clicking it never flashes the login page or
-            re-runs the auth check. */}
-        <Link
-          href="/home"
-          onClick={onClose}
-          className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-foreground hover:opacity-80"
-        >
-          {brand.logo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={brand.logo_url}
-              alt={brand.title}
-              className="size-8 shrink-0 rounded-lg object-contain"
-            />
-          ) : (
-            <Logo />
-          )}
-          {brand.title || "Mailez Webmail"}
-        </Link>
-        <Button variant="ghost" size="sm" onClick={onClose} className="lg:hidden">
-          <Menu className="size-4" />
-          <span className="sr-only">{t("menu")}</span>
+      {/* Mobile drawer close: while the drawer is open it covers the app
+          header, so it carries its own way out (desktop lg+ is static and
+          never needs this). */}
+      <div className="flex items-center justify-end px-2 pt-1 lg:hidden">
+        <Button variant="ghost" size="icon-sm" onClick={onClose} title={t("close")}>
+          <X className="size-4" />
+          <span className="sr-only">{t("close")}</span>
         </Button>
       </div>
 
-      {/* Compose actions: 写邮件 + AI 写邮件, at the very top of the sidebar */}
+      {/* Compose actions: 写邮件 + AI 写邮件 at the very top of the sidebar */}
       <div className="flex gap-1.5 px-3 pb-2">
         <Button className="min-w-0 flex-1" onClick={onCompose}>
           <PenLine className="size-4" />
