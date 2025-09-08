@@ -79,11 +79,14 @@ export const MessageRow = memo(function MessageRow({
   // The tiny label-colors context only: subscribing to the whole store here
   // would defeat the row memo.
   const labelColors = useLabelColors();
+  // flags can arrive null for From-less/system mails (wire type says string[]
+  // but older backend payloads carry null), so guard the array itself once.
+  const flags = message.flags ?? [];
   // Conversation-view rows carry thread-level aggregates: any member unread /
   // starred flips the whole row, and the sender line lists the participants.
-  const unread = message.thread_unread ?? !message.flags.includes("\\Seen");
-  const starred = message.thread_flagged ?? message.flags.includes("\\Flagged");
-  const recalled = message.flags.includes("$RecallSent");
+  const unread = message.thread_unread ?? !flags.includes("\\Seen");
+  const starred = message.thread_flagged ?? flags.includes("\\Flagged");
+  const recalled = flags.includes("$RecallSent");
   const sender =
     message.thread_senders && message.thread_senders.length > 0
       ? message.thread_senders.slice(0, 2).join(", ") +
@@ -176,7 +179,7 @@ export const MessageRow = memo(function MessageRow({
               {t("recalled")}
             </span>
           )}
-          {message.flags
+          {flags
             .filter((f) => isUserLabel(f) && f !== category)
             .slice(0, 2)
             .map((f) => {

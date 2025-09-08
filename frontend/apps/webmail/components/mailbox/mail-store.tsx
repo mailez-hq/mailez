@@ -21,7 +21,7 @@ import {
   logout as apiLogout,
   type CalendarEvent, type DriveEntry, type MailMessage, type Me,
 } from "@/lib/api";
-import { isPinned, isSnoozed } from "@/components/mailbox/mail-utils";
+import { isPinned, isSnoozed, normalizeMessage } from "@/components/mailbox/mail-utils";
 import { viewCacheGet, viewCachePut } from "@/lib/view-cache";
 import { useToast } from "./store/use-toast";
 import { useUiChrome } from "./store/use-ui-chrome";
@@ -515,8 +515,9 @@ export function useMailStoreValue(me: Me) {
         ? mailMessage(pf, { uid: Number(pathId) })
         : mailMessage(pf, { id: pathId });
     fetch
-      .then((full) => {
+      .then((raw) => {
         if (cancelled) return;
+        const full = raw ? normalizeMessage(raw) : raw;
         viewCachePut(detailCache, detailKey, full);
         setSelected(full);
         setDetail(full);

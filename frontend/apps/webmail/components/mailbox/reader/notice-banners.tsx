@@ -24,7 +24,7 @@ export function ReceiptBanner({
   onSendReceipt: (folder: string, uid: number) => Promise<boolean>;
 }) {
   const t = useTranslations("mail");
-  if (!detail.receipt_requested || detail.flags.includes("$MDNSent")) return null;
+  if (!detail.receipt_requested || (detail.flags ?? []).includes("$MDNSent")) return null;
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs">
       <MailCheck className="size-4 text-muted-foreground" />
@@ -208,7 +208,7 @@ export function BurnGate({
 }) {
   const t = useTranslations("mail");
   if (!(detail.burn_after_minutes && detail.burn_after_minutes > 0 &&
-    !detail.flags.includes("$BurnRead") && !burnRevealed)) {
+    !(detail.flags ?? []).includes("$BurnRead") && !burnRevealed)) {
     return null;
   }
   return (

@@ -44,7 +44,7 @@ export function MessageBody({
   const t = useTranslations("mail");
   return (
     <div className="mail-body" ref={bodyRef}>
-      {(burnRevealed || detail.flags.includes("$BurnRead")) && (
+      {(burnRevealed || (detail.flags ?? []).includes("$BurnRead")) && (
         <div className="pointer-events-none fixed bottom-3 right-3 z-40 rounded bg-black/70 px-2 py-1 text-[10px] text-white">
           {meEmail} · {fmtFullDate(new Date().toISOString())}
         </div>

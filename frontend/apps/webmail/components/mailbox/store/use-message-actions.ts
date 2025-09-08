@@ -12,7 +12,7 @@ import {
   updateMeSettings,
   type MailMessage,
 } from "@/lib/api";
-import { PIN_FLAG, MUTE_FLAG, isPinned, isMuted } from "@/components/mailbox/mail-utils";
+import { PIN_FLAG, MUTE_FLAG, isPinned, isMuted, normalizeThread } from "@/components/mailbox/mail-utils";
 import type { Translate } from "./use-folder-mgmt";
 import { detailCache } from "./view-caches";
 
@@ -226,9 +226,10 @@ export function useMessageActions({
         void (async () => {
           try {
             const th = await mailThread(f, threadId);
+            const members = normalizeThread(th ?? { thread_id: threadId, messages: [] }).messages;
             await Promise.all(
-              th.messages
-                .filter((t) => !t.flags.includes("\\Seen"))
+              members
+                .filter((t) => !(t.flags ?? []).includes("\\Seen"))
                 .map((t) => mailFlag(f, t.uid, "\\Seen", true).catch(() => {})),
             );
           } catch {
@@ -419,7 +420,7 @@ export function useMessageActions({
     }
     try {
       const th = await mailThread(m.folder || folder, m.thread_id);
-      const msgs = th.messages || [];
+      const msgs = normalizeThread(th ?? { thread_id: m.thread_id, messages: [] }).messages;
       const muted = msgs.some((x) => isMuted(x));
       const targets = msgs.length ? msgs : [m];
       const uids = targets.map((x) => x.uid);

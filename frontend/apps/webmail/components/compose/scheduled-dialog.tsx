@@ -95,7 +95,7 @@ export function ScheduledDialog({
                   <p className="truncate text-xs text-muted-foreground">
                     {t("scheduledAt", { time: fmt(s.send_at) })}
                     <span className="mx-1">·</span>
-                    {s.recipients.join(", ")}
+                    {(s.recipients ?? []).join(", ")}
                   </p>
                 </div>
                 <Button

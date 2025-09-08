@@ -20,7 +20,7 @@ export function fmtSize(n: number) {
 }
 
 function attachmentIcon(a: MailAttachment) {
-  const ct = a.content_type;
+  const ct = a.content_type || "";
   const cls = "size-4 shrink-0";
   if (ct.startsWith("image/")) return <ImageIcon className={cls} />;
   if (ct.startsWith("audio/")) return <FileAudio className={cls} />;
@@ -33,8 +33,11 @@ function attachmentIcon(a: MailAttachment) {
 
 export function AttachmentCard({ attachment }: { attachment: MailAttachment }) {
   const t = useTranslations("mail");
-  const isImage = attachment.content_type.startsWith("image/") && attachment.data;
-  const isPdf = attachment.content_type.includes("pdf") && attachment.data;
+  // content_type/filename can be absent on malformed attachments.
+  const ct = attachment.content_type || "application/octet-stream";
+  const filename = attachment.filename || "attachment";
+  const isImage = ct.startsWith("image/") && attachment.data;
+  const isPdf = ct.includes("pdf") && attachment.data;
   const [previewOpen, setPreviewOpen] = useState(false);
   return (
     <div className="w-48 rounded-lg border border-border p-2 transition-colors hover:bg-muted/50">
@@ -42,19 +45,19 @@ export function AttachmentCard({ attachment }: { attachment: MailAttachment }) {
         // User-supplied data-URI preview: next/image cannot optimize these.
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={`data:${attachment.content_type};base64,${attachment.data}`}
-          alt={attachment.filename}
+          src={`data:${ct};base64,${attachment.data}`}
+          alt={filename}
           className="mb-2 max-h-24 w-full rounded-md object-cover"
         />
       )}
       <a
-        href={`data:${attachment.content_type};base64,${attachment.data}`}
-        download={attachment.filename}
+        href={`data:${ct};base64,${attachment.data}`}
+        download={filename}
         className="flex items-center gap-2"
       >
         {attachmentIcon(attachment)}
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-xs font-medium">{attachment.filename}</span>
+          <span className="block truncate text-xs font-medium">{filename}</span>
           <span className="block text-[11px] text-muted-foreground">
             {fmtSize(attachment.size)}
           </span>
