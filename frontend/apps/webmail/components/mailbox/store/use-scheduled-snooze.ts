@@ -3,6 +3,7 @@
 import { useCallback, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 
 import { mailSnooze, mailSnoozed, mailScheduled, mailUndoSend, type MailMessage, type MailSearchSpec, type ScheduledSend, type SnoozedMessage } from "@/lib/api";
+import { normalizeMessage } from "@/components/mailbox/mail-utils";
 import type { Translate } from "./use-folder-mgmt";
 
 /**
@@ -64,7 +65,7 @@ export function useScheduledSnooze({
   const loadScheduled = useCallback(async (): Promise<ScheduledSend[]> => {
     setScheduledLoading(true);
     try {
-      const list = await mailScheduled();
+      const list = (await mailScheduled()) ?? [];
       setScheduled(list);
       return list;
     } catch (e) {
@@ -148,7 +149,7 @@ export function useScheduledSnooze({
     setSelected(null);
     setDetail(null);
     try {
-      const list = await mailSnoozed();
+      const list = ((await mailSnoozed()) ?? []).map(normalizeMessage) as SnoozedMessage[];
       if (seq !== searchSeqRef.current) return; // superseded by a newer view
       setSnoozedMsgs(list);
       setMessages(list as unknown as MailMessage[]);

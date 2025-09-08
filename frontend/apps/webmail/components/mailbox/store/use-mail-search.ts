@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 
-import { SAVED_SEARCH_KEY, type SavedSearch } from "@/components/mailbox/mail-utils";
+import { SAVED_SEARCH_KEY, normalizeMessage, type SavedSearch } from "@/components/mailbox/mail-utils";
 import { mailSearchSpec, mailUnseen, type MailMessage, type MailSearchSpec } from "@/lib/api";
 import { buildSearchSpec } from "@/lib/mail-search";
 
@@ -94,9 +94,9 @@ export function useMailSearch({
       router.replace(`/mail/${encodeURIComponent(folder)}`, { scroll: false });
     }
     try {
-      const results = await mailSearchSpec(searchAll ? "all" : folder, spec);
+      const results = (await mailSearchSpec(searchAll ? "all" : folder, spec)) ?? [];
       if (seq !== searchSeq.current) return;
-      setMessages(results);
+      setMessages(results.map(normalizeMessage));
       lastSearchRef.current = spec.text?.join(" ") ?? "";
     } catch (err) {
       if (seq !== searchSeq.current) return;

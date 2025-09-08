@@ -312,7 +312,7 @@ export function MessageHeader({
           </span>
         )}
         {labels
-          .filter((l) => detail.flags.includes(l))
+          .filter((l) => (detail.flags ?? []).includes(l))
           .map((l) => {
             const color = labelColor(l, labelColors?.[l]);
             return (
@@ -343,7 +343,7 @@ export function MessageHeader({
             <div className="absolute top-full left-0 z-20 mt-1 w-52 rounded-lg border border-border bg-popover p-2 shadow-lg">
               <div className="mb-2 flex flex-wrap gap-1">
                 {labels.map((l) => {
-                  const has = detail.flags.includes(l);
+                  const has = (detail.flags ?? []).includes(l);
                   return (
                     <button
                       key={l}

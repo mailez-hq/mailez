@@ -42,7 +42,7 @@ export function RecipientInput({
 
   const filtered = (suggestions || []).filter(
     (s) =>
-      (s.email.toLowerCase().includes(text.toLowerCase()) ||
+      ((s.email || "").toLowerCase().includes(text.toLowerCase()) ||
         (s.name || "").toLowerCase().includes(text.toLowerCase())) &&
       !value.includes(s.email),
   );

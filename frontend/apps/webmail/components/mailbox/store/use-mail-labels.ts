@@ -78,11 +78,11 @@ export function useMailLabels({
   // Load label definitions once so the sidebar lists labels even when no
   // currently loaded message carries the keyword.
   useEffect(() => {
-    mailLabels().then(setLabelDefs).catch(() => {});
+    mailLabels().then((ls) => setLabelDefs(ls ?? [])).catch(() => {});
   }, []);
 
   async function toggleLabel(m: MailMessage, label: string) {
-    const has = m.flags.includes(label);
+    const has = (m.flags ?? []).includes(label);
     setError("");
     // Applying a brand-new tag creates its definition so it stays listed and
     // gets a stable color; the palette fallback covers races.

@@ -431,9 +431,10 @@ export function MailShell({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => {
                   setCtxMenu(null);
+                  const subj = m.subject || "";
                   openCompose(
-                    m.from[0]?.email || "",
-                    m.subject.startsWith("Re:") ? m.subject : `Re: ${m.subject}`,
+                    m.from?.[0]?.email || "",
+                    subj.startsWith("Re:") ? subj : `Re: ${subj}`,
                     textToHtml(quoteText(m)),
                     quoteText(m),
                     "editor",
@@ -455,9 +456,10 @@ export function MailShell({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => {
                   setCtxMenu(null);
+                  const subj = m.subject || "";
                   openCompose(
                     "",
-                    m.subject.startsWith("Fwd:") ? m.subject : `Fwd: ${m.subject}`,
+                    subj.startsWith("Fwd:") ? subj : `Fwd: ${subj}`,
                     textToHtml(quoteText(m)),
                     quoteText(m),
                     "to",
@@ -475,7 +477,7 @@ export function MailShell({ children }: { children: React.ReactNode }) {
                 }}
                 className="w-full rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent"
               >
-                {m.flags.includes("\\Seen") ? t("unread") : t("read")}
+                {(m.flags ?? []).includes("\\Seen") ? t("unread") : t("read")}
               </button>
               <button
                 onClick={() => {
@@ -484,7 +486,7 @@ export function MailShell({ children }: { children: React.ReactNode }) {
                 }}
                 className="w-full rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent"
               >
-                {m.flags.includes("\\Flagged") ? t("unstar") : t("star")}
+                {(m.flags ?? []).includes("\\Flagged") ? t("unstar") : t("star")}
               </button>
               <div className="my-1 border-t border-border" />
               <button

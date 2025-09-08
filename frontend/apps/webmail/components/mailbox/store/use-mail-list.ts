@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 
 import { mailMessages, type MailMessage } from "@/lib/api";
+import { normalizeMessage } from "@/components/mailbox/mail-utils";
 
 /**
  * Message-list cluster: the loaded folder page set (messages/total/page),
@@ -45,18 +46,19 @@ export function useMailList({
     try {
       const res = await mailMessages(f, p, sortBy, sortDir, conversation);
       if (seq !== loadSeq.current) return;
+      const msgs = (res?.messages ?? []).map(normalizeMessage);
       setMessages(
         p === 0
-          ? res.messages
+          ? msgs
           : // Offset pages over a shifting sorted list can re-serve a
             // message that a new delivery already pushed into the previous
             // page; keep the first occurrence so rows keep stable uid keys.
             (prev) => {
               const seen = new Set(prev.map((m) => m.uid));
-              return [...prev, ...res.messages.filter((m) => !seen.has(m.uid))];
+              return [...prev, ...msgs.filter((m) => !seen.has(m.uid))];
             },
       );
-      setTotal(res.total);
+      setTotal(res?.total ?? msgs.length);
       setPage(p);
     } catch (e) {
       if (seq !== loadSeq.current) return;

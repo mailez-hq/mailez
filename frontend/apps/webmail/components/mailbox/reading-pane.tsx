@@ -459,7 +459,8 @@ export function ReadingPane({
       } else {
         recipients.add(sender);
       }
-      const subject = target.subject.startsWith("Re:") ? target.subject : `Re: ${target.subject}`;
+      const subject0 = target.subject || "";
+      const subject = subject0.startsWith("Re:") ? subject0 : `Re: ${subject0}`;
       const ok = await onQuickReply(
         [...recipients],
         [],

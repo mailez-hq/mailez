@@ -44,7 +44,7 @@ export function useFolderMgmt({
   }, [email]);
 
   const refreshUnseen = useCallback(() => {
-    mailUnseen().then(setUnseen).catch(() => {});
+    mailUnseen().then((u) => setUnseen(u ?? {})).catch(() => {});
   }, []);
 
   const loadFolders = useCallback(async () => {
@@ -52,7 +52,7 @@ export function useFolderMgmt({
     // parallel instead of after the folders response lands.
     refreshUnseen();
     try {
-      const list = await mailFolders();
+      const list = (await mailFolders()) ?? [];
       writeCachedFolders(email, list);
       setFolders(list);
     } catch (e) {

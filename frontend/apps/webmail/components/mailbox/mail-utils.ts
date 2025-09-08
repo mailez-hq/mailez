@@ -14,6 +14,29 @@ export const MUTE_FLAG = "$Muted";
 export const SNOOZE_FLAG = "$Snoozed";
 export const SNOOZE_UNTIL_PREFIX = "$SnoozedUntil-";
 
+import type { MailMessage, MailThread } from "@/lib/api";
+
+// normalizeMessage patches the wire-vs-type gap: the backend can emit null
+// for array-typed fields (Go zero values / omitempty), and every unguarded
+// .flags.includes / .from[0] in a render path or handler then throws and
+// takes the whole route down. Every message entering the store passes
+// through here, so components can rely on the arrays existing.
+export function normalizeMessage(m: MailMessage): MailMessage {
+  return {
+    ...m,
+    flags: m.flags ?? [],
+    from: m.from ?? [],
+    to: m.to ?? [],
+    cc: m.cc ?? [],
+    bcc: m.bcc ?? [],
+    attachments: m.attachments ?? [],
+  };
+}
+
+export function normalizeThread(th: MailThread): MailThread {
+  return { ...th, messages: (th?.messages ?? []).map(normalizeMessage) };
+}
+
 // Custom keywords are case-insensitive on the wire and go-imap canonicalizes
 // unknown flags to lowercase, so match case-insensitively.
 const hasFlag = (flags: string[], flag: string) =>

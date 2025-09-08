@@ -91,7 +91,7 @@ export function LabelManager({
     ...knownLabels
       .filter((l) => !labelDefs.some((d) => d.name === l))
       .map((l) => ({ key: l, name: l, color: "" })),
-  ].sort((a, b) => a.name.localeCompare(b.name));
+  ].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
   async function run(action: () => Promise<void>) {
     setError("");

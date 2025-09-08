@@ -768,7 +768,7 @@ function ContactDetail({
                 <span className="min-w-0 flex-1 truncate">
                   <span className="block truncate font-medium">{m.subject || tm("noSubject")}</span>
                   <span className="block truncate text-muted-foreground">
-                    {m.from[0]?.name || m.from[0]?.email || "?"}
+                    {m.from?.[0]?.name || m.from?.[0]?.email || "?"}
                   </span>
                 </span>
                 <span className="shrink-0 text-muted-foreground">{fmtShort(m.date)}</span>

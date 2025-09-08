@@ -70,9 +70,11 @@ await withSession("/mail/Inbox", async (page) => {
 
 // ---------- 3. detail-view delete: list sync + URL routed back ----------
 await withSession("/mail/Inbox", async (page) => {
-  // Delete the OLDEST row: stable text (no new copies arrive mid-test).
-  const anyRow = page.locator(".mail-scroll [role='button']").last();
+  // Delete a STABLE row: nth(2) sits inside the virtual window and is an old
+  // mail (no realtime churn), unlike the newest rows.
+  const anyRow = page.locator(".mail-scroll [role='button']").nth(2);
   await anyRow.waitFor({ state: "visible", timeout: 60000 });
+  await stableList(page);
   const fullRowText = (await anyRow.innerText()).trim();
   await anyRow.click();
   await page.waitForTimeout(2000);

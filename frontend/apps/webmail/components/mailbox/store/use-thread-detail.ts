@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { mailMessage, mailThread, type MailMessage, type MailThread } from "@/lib/api";
+import { normalizeMessage, normalizeThread } from "@/components/mailbox/mail-utils";
 import { viewCacheGet, viewCachePut } from "@/lib/view-cache";
 import { threadCache } from "./view-caches";
 
@@ -63,8 +64,9 @@ export function useThreadDetail({
     if (viewCacheGet(threadCache, threadKey)) return;
     let cancelled = false;
     mailThread(folder, detail.thread_id)
-      .then((th) => {
+      .then((raw) => {
         if (cancelled) return;
+        const th = normalizeThread(raw ?? { thread_id: detail.thread_id, messages: [] });
         viewCachePut(threadCache, threadKey, th);
         setThread(th);
         setThreadOpen(true);
@@ -91,7 +93,7 @@ export function useThreadDetail({
       setThreadLoading(true);
       setError("");
       try {
-        setThread(await mailThread(folder, detail.thread_id));
+        setThread(normalizeThread((await mailThread(folder, detail.thread_id)) ?? { thread_id: detail.thread_id, messages: [] }));
       } catch (e) {
         setError(e instanceof Error ? e.message : "thread failed");
       } finally {
@@ -104,7 +106,7 @@ export function useThreadDetail({
     if (!detail) return;
     setError("");
     try {
-      const next = await mailMessage(folder, { uid });
+      const next = normalizeMessage(await mailMessage(folder, { uid }));
       setDetail(next);
       // Keep the URL pinned to the opened thread member so it stays shareable.
       router.push(`/mail/${encodeURIComponent(folder)}/${next.id || next.uid}`);
