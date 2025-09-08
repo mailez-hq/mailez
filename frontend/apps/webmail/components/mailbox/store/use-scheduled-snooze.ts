@@ -12,6 +12,9 @@ import type { Translate } from "./use-folder-mgmt";
  */
 export function useScheduledSnooze({
   folder,
+  selected,
+  detail,
+  activeView,
   setMessages,
   setTotal,
   setSelected,
@@ -30,6 +33,9 @@ export function useScheduledSnooze({
   t,
 }: {
   folder: string;
+  selected: MailMessage | null;
+  detail: MailMessage | null;
+  activeView: string;
   setMessages: Dispatch<SetStateAction<MailMessage[]>>;
   setTotal: Dispatch<SetStateAction<number>>;
   setSelected: Dispatch<SetStateAction<MailMessage | null>>;
@@ -74,6 +80,9 @@ export function useScheduledSnooze({
     try {
       await mailUndoSend(id);
       await loadScheduled();
+      // The backend returns the cancelled send to Drafts; a user sitting on
+      // the Drafts folder must see it appear without a manual refresh.
+      if (folder === "Drafts") await refreshMail();
       showToast(t("toastScheduledCancelled"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "cancel scheduled failed");
@@ -88,10 +97,22 @@ export function useScheduledSnooze({
       if (untilMs > 0) {
         // Hide from the current list; it now lives under the Snoozed view.
         setMessages((ms) => ms.filter((x) => x.uid !== m.uid));
+        setTotal((n) => Math.max(0, n - 1));
+        // Snoozing from the reading pane must not leave the hidden message
+        // on screen; the folder badge must also stop counting it.
+        if (selected?.uid === m.uid || detail?.uid === m.uid) {
+          setSelected(null);
+          setDetail(null);
+        }
+        refreshMail();
         showToast(t("toastSnoozed"));
       } else {
         setSnoozedMsgs((ms) => ms.filter((x) => x.uid !== m.uid));
-        refreshMail();
+        // Waking from inside the Snoozed view must refresh the SNOOZED list
+        // (refreshMail would silently swap in the plain folder contents
+        // while the view indicator still says "Snoozed").
+        if (activeView === "snoozed") await openSnoozed();
+        else refreshMail();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "snooze failed");

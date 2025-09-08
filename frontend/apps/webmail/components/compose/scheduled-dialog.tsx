@@ -20,11 +20,13 @@ export function ScheduledDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const t = useTranslations("mail");
-  const { scheduled, scheduledLoading, loadScheduled, cancelScheduled } = useMailStore() as {
+  const { scheduled, scheduledLoading, loadScheduled, cancelScheduled, selectFolder, loadMessages } = useMailStore() as {
     scheduled: ScheduledSend[];
     scheduledLoading: boolean;
     loadScheduled: () => Promise<ScheduledSend[]>;
     cancelScheduled: (id: number) => Promise<void>;
+    selectFolder: (f: string) => void;
+    loadMessages: (f: string, p?: number, silent?: boolean) => Promise<void>;
   };
 
   useEffect(() => {
@@ -49,6 +51,15 @@ export function ScheduledDialog({
     try {
       await mailScheduledToDraft(s.id);
       await loadScheduled();
+      // The row vanishes from this list, so show where it went: close the
+      // dialog and land on Drafts with the restored message visible.
+      onOpenChange(false);
+      selectFolder("Drafts");
+      // When Drafts is already the open folder, selectFolder is a routing
+      // no-op and the list would keep showing its stale snapshot (hiding the
+      // restored draft until a manual refresh). Force a reload; the store's
+      // sequence guard makes the possible double fetch harmless.
+      void loadMessages("Drafts", 0, false);
     } catch {
       // row stays visible; a failed call leaves the schedule intact
     } finally {

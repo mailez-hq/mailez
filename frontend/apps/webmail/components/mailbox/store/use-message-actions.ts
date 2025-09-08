@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 
 import {
@@ -33,6 +34,7 @@ export function useMessageActions({
   setSelected,
   setDetail,
   setMessages,
+  setTotal,
   setSelectedUids,
   setError,
   showToast,
@@ -53,6 +55,7 @@ export function useMessageActions({
   setSelected: Dispatch<SetStateAction<MailMessage | null>>;
   setDetail: Dispatch<SetStateAction<MailMessage | null>>;
   setMessages: Dispatch<SetStateAction<MailMessage[]>>;
+  setTotal: Dispatch<SetStateAction<number>>;
   setSelectedUids: Dispatch<SetStateAction<Set<number>>>;
   setError: Dispatch<SetStateAction<string>>;
   showToast: (label: string, onUndo?: () => void, duration?: number) => void;
@@ -79,6 +82,11 @@ export function useMessageActions({
     return groups;
   }
 
+  // The folder at undo-click time may differ from the folder at move time;
+  // restore into whatever the user is looking at now.
+  const folderRef = useRef(folder);
+  folderRef.current = folder;
+
   // moveTo moves messages to a folder and offers an undo that moves them back.
   async function moveTo(uids: number[], destination: string, successLabel: string) {
     setError("");
@@ -88,20 +96,37 @@ export function useMessageActions({
       refreshUnseen();
       const uidSet = new Set(uids);
       setMessages((ms) => ms.filter((x) => !uidSet.has(x.uid)));
+      // Keep `total` honest: only uids that actually left the open folder
+      // shrink it, otherwise "Load more (N)" counts ghosts.
+      const here = groups.get(folder)?.length ?? 0;
+      if (here > 0) setTotal((n) => Math.max(0, n - here));
+      // The optimistic filter above can be overwritten by a list reload that
+      // was already in flight BEFORE the move landed (e.g. triggered by a
+      // realtime arrival): its response still contains the moved rows, so
+      // they pop right back. A silent reload issued NOW starts after the
+      // server confirmed the move, so its snapshot is guaranteed post-move.
+      void loadMessages(folderRef.current, 0, true);
       setSelectedUids((prev) => {
         const next = new Set(prev);
         uids.forEach((u) => next.delete(u));
         return next;
       });
-      if (selected && uidSet.has(selected.uid)) {
+      // Check both: a path may set detail without selected (thread detail).
+      if ((selected && uidSet.has(selected.uid)) || (detail && uidSet.has(detail.uid))) {
         setSelected(null);
         setDetail(null);
+        // The detail view is URL-driven: leaving the dead uid in the URL
+        // turns the next reload into the "message gone" error path.
+        router.push(`/mail/${encodeURIComponent(folder)}`);
       }
       showToast(successLabel, () => {
         // Undo returns each batch to the folder it came from.
         Promise.all([...groups].map(([src, us]) => mailMove(destination, us, src)))
           .catch(() => {})
-          .finally(() => loadMessages(folder));
+          .finally(() => {
+            loadMessages(folderRef.current);
+            refreshUnseen();
+          });
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "move failed");
@@ -360,6 +385,9 @@ export function useMessageActions({
       const apply = (x: MailMessage) => (x.uid === m.uid ? applySeenState(x, value) : x);
       setMessages((ms) => ms.map(apply));
       setDetail((d) => (d && d.uid === m.uid ? apply(d) : d));
+      // Rows flip optimistically but the sidebar badge only knows via the
+      // unseen count — refresh it (setSeen and bulkFlag already do this).
+      refreshUnseen();
     } catch (e) {
       setError(e instanceof Error ? e.message : "mark read failed");
     }
@@ -376,6 +404,13 @@ export function useMessageActions({
         await mailFlag(m.folder || folder, m.uid, MUTE_FLAG, !muted);
         if (!muted) await mailMove(m.folder || folder, [m.uid], "Archive");
         refreshMail();
+        // The muted message just left the folder; if mute was invoked from
+        // the reading pane, stop rendering it (mirrors moveTo's cleanup).
+        if (selected && selected.uid === m.uid) {
+          setSelected(null);
+          setDetail(null);
+          router.push(`/mail/${encodeURIComponent(folder)}`);
+        }
         showToast(t(muted ? "toastUnmuted" : "toastMuted"));
       } catch (e) {
         setError(e instanceof Error ? e.message : "mute failed");
@@ -396,6 +431,13 @@ export function useMessageActions({
         await mailMove(src, uids, "Archive");
       }
       refreshMail();
+      // Same reading-pane cleanup as the single-message branch: the thread
+      // moved to Archive, so the open pane must not keep rendering it.
+      if (selected && (uids.includes(selected.uid) || selected.thread_id === m.thread_id)) {
+        setSelected(null);
+        setDetail(null);
+        router.push(`/mail/${encodeURIComponent(folder)}`);
+      }
       showToast(t(muted ? "toastUnmuted" : "toastMuted"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "mute failed");

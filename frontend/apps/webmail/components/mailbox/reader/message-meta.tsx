@@ -75,7 +75,7 @@ export function MessageDetails({
       </p>
       <p>
         <span className="font-medium text-foreground/80">To: </span>
-        {detail.to.map((a) => a.name || a.email).join(", ") || "—"}
+        {(detail.to ?? []).map((a) => a.name || a.email).join(", ") || "—"}
       </p>
       {detail.cc && detail.cc.length > 0 && (
         <p>
