@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { highlightTerms } from "@/components/mailbox/highlight";
 import { MessageListPanel } from "@/components/mailbox/message-list-panel";
 import { ReadingPane } from "@/components/mailbox/reading-pane";
+import { PaneErrorBoundary } from "@/components/mailbox/reader/pane-error-boundary";
 import { isMuted } from "@/components/mailbox/mail-utils";
 import { cn } from "@/lib/utils";
 import { useMailStore } from "@/components/mailbox/mail-store";
@@ -225,7 +226,8 @@ export function MailView() {
 
       <div className={cn("min-w-0 flex-1", detail ? "flex" : "hidden md:flex")}>
         {detail ? (
-          <ReadingPane
+          <PaneErrorBoundary resetKey={`${detail.folder ?? folder}\u0000${detail.uid}\u0000${detail.id ?? ""}`}>
+            <ReadingPane
             detail={detail}
             detailLoading={detailLoading}
             aiEnabled={ai.summary}
@@ -271,6 +273,7 @@ export function MailView() {
             onEditDraft={editDraft}
             onSnooze={(untilMs) => detail && snoozeMessage(detail, untilMs)}
           />
+          </PaneErrorBoundary>
         ) : detailLoading ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 bg-secondary p-6 text-sm text-muted-foreground dark:bg-background">
             <Loader2 className="size-9 animate-spin opacity-40" />

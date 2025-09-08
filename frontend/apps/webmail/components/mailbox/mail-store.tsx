@@ -332,6 +332,7 @@ export function useMailStoreValue(me: Me) {
     setSelected,
     setDetail,
     setMessages,
+    setTotal,
     setSelectedUids,
     setError,
     showToast,
@@ -350,6 +351,9 @@ export function useMailStoreValue(me: Me) {
     snoozedMsgs, snoozeMessage, unsnooze, openSnoozed,
   } = useScheduledSnooze({
     folder,
+    selected,
+    detail,
+    activeView,
     setMessages,
     setTotal,
     setSelected,
@@ -622,6 +626,19 @@ export function useMailStoreValue(me: Me) {
     ) {
       clearSearch();
       setCategoryFilter("");
+      return;
+    }
+    if (f === folder) {
+      // Same-folder jump with nothing to clear: on the mail view router.push
+      // is still a no-op, so force a reload — the click doubles as "refresh
+      // this folder" (View Sent toast link, g i / g s hotkeys, palette
+      // jumps). From the workspace /home, though, the sidebar is mounted but
+      // the list is not visible: there a same-folder click must navigate.
+      if (pathname?.startsWith("/mail")) {
+        void loadMessages(folder, 0, false);
+      } else {
+        router.push(`/mail/${encodeURIComponent(f)}`);
+      }
       return;
     }
     router.push(`/mail/${encodeURIComponent(f)}`);

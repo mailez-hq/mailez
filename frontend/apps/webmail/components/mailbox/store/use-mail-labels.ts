@@ -156,9 +156,20 @@ export function useMailLabels({
         const saved = await mailLabelSave(name, "");
         setLabelDefs((ds) => [...ds, saved]);
       }
+      // Resolve each uid to its owning folder (IMAP uids are per-folder):
+      // cross-folder searchAll / AI-search selections must flag the message
+      // they visibly represent, not a same-uid stranger in the open folder.
+      const byUid = new Map(messages.map((m) => [m.uid, m.folder || folder]));
+      const byFolder = new Map<string, number[]>();
       for (const uid of selectedUids) {
-        await mailFlag(folder, uid, name, true);
+        const f = byUid.get(uid) || folder;
+        const list = byFolder.get(f);
+        if (list) list.push(uid);
+        else byFolder.set(f, [uid]);
       }
+      await Promise.all(
+        [...byFolder].map(([f, uids]) => Promise.all(uids.map((u) => mailFlag(f, u, name, true)))),
+      );
       setSelectedUids(new Set());
       showToast(t("toastLabelApplied"));
       refreshMail();

@@ -68,7 +68,7 @@ export function ThreadMessage({
 }) {
   const t = useTranslations("mail");
   const mounted = useMounted();
-  const sender = message.from[0];
+  const sender = message.from?.[0];
   const senderName = sender?.name || sender?.email || "?";
 
   const segments = useMemo(
@@ -196,7 +196,7 @@ export function ThreadMessage({
           </p>
           <p>
             <span className="font-medium text-foreground/80">To: </span>
-            {message.to.map((a) => a.name || a.email).join(", ") || "—"}
+            {(message.to ?? []).map((a) => a.name || a.email).join(", ") || "—"}
           </p>
           {message.cc && message.cc.length > 0 && (
             <p>

@@ -171,7 +171,10 @@ export function ReadingPane({
   // overlay that hides the conversation). null = newest member.
   const [quickReplyTargetUid, setQuickReplyTargetUid] = useState<number | null>(null);
 
-  const senderDomain = (detail.from[0]?.email || "").split("@").pop() || "";
+  // detail.from can be null on transient render states (thread aggregates,
+  // draft members); the optional chain must cover the array itself, not just
+  // the [0] result.
+  const senderDomain = (detail.from?.[0]?.email || "").split("@").pop() || "";
   const [remoteLoaded, setRemoteLoaded] = useState(() =>
     rememberedRemoteSenders().includes(senderDomain),
   );
@@ -182,11 +185,11 @@ export function ReadingPane({
   // runs during render (React's "adjust state when props change" pattern)
   // instead of inside an effect, so the fresh message never renders with the
   // previous message's panel state.
-  const detailKey = `${detail.uid}\u0000${detail.from[0]?.email || ""}`;
+  const detailKey = `${detail.uid}\u0000${detail.from?.[0]?.email || ""}`;
   const [prevDetailKey, setPrevDetailKey] = useState(detailKey);
   if (prevDetailKey !== detailKey) {
     setPrevDetailKey(detailKey);
-    const domain = (detail.from[0]?.email || "").split("@").pop() || "";
+    const domain = (detail.from?.[0]?.email || "").split("@").pop() || "";
     setExpandedUid(detail.uid);
     setDetailsOpen(false);
     setExpandedQuotes(new Set());
@@ -316,8 +319,8 @@ export function ReadingPane({
     return foldHtmlQuotes(guarded, t("quotedText"));
   }, [detail.html_body, remoteImages, remoteLoaded, pgpPlaintext, isPgpEncrypted, t]);
 
-  const starred = detail.flags.includes("\\Flagged");
-  const sender = detail.from[0];
+  const starred = detail.flags?.includes("\\Flagged") ?? false;
+  const sender = detail.from?.[0];
   const senderName = sender?.name || sender?.email || "?";
 
   // Only trust the loaded conversation when it belongs to the opened message.
@@ -419,8 +422,8 @@ export function ReadingPane({
   function doPrint() {
     const w = window.open("", "_blank");
     if (!w) return;
-    const sender = detail.from.map((a) => a.name || a.email).join(", ");
-    const recipients = [...detail.to, ...(detail.cc || [])].map((a) => a.email).join(", ");
+    const sender = (detail.from ?? []).map((a) => a.name || a.email).join(", ");
+    const recipients = [...(detail.to ?? []), ...(detail.cc ?? [])].map((a) => a.email).join(", ");
     // The print window executes scripts (window.onload=print), so the body
     // MUST go through the same sanitization as the reading pane: raw
     // html_body could carry inline handlers that would run same-origin.
@@ -445,12 +448,12 @@ export function ReadingPane({
     if (!text) return;
     setQuickSending(true);
     try {
-      const sender = target.from[0]?.email;
+      const sender = target.from?.[0]?.email;
       if (!sender) return;
       const meLower = meEmail.toLowerCase();
       const recipients = new Set<string>();
       if (quickReplyAll) {
-        [...target.from, ...(target.cc || []), ...target.to].forEach((a) => {
+        [...(target.from ?? []), ...(target.cc ?? []), ...(target.to ?? [])].forEach((a) => {
           if (a.email && a.email.toLowerCase() !== meLower) recipients.add(a.email);
         });
       } else {

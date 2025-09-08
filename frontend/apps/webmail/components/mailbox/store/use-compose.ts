@@ -200,6 +200,10 @@ export function useCompose({
         const res = await mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, bcc, attachments);
         draftUidRef.current = res.uid || draftUidRef.current;
         setDraftSaved(true);
+        // Auto-save creates/updates a draft just like the manual save does;
+        // a user watching the Drafts folder must see it without a manual
+        // refresh (manual save :227 and close :259 already do this).
+        refreshDraftsIfActive();
       } catch {
         // silent: keep editing, the next idle window retries
       } finally {
@@ -747,32 +751,17 @@ export function useCompose({
       const finalFrom = from;
       const delay = prefs.undoSendSeconds;
 
-      // Mail merge (逐封群发): each line is "email, 姓名" and the subject/body
-      // may reference {{name}}, {{email}} and custom {{var}} placeholders.
-      if (mergeOn) {
-        const recipients = parseMergeRecipients(mergeText);
-        if (recipients.length === 0) {
-          setComposeError(t("mergeNoRecipients"));
-          return;
+      // Sending an edited draft must remove the original from Drafts; the
+      // backend only handles the outbox, not draft cleanup.
+      const removeEditedDraft = async (draftUid: number | null) => {
+        if (!draftUid) return;
+        try {
+          await mailDelete("Drafts", draftUid);
+          refreshDraftsIfActive();
+        } catch {
+          // The draft may already be gone; the next folder load reconciles.
         }
-        const res = await mailMerge({
-          subject: finalSubject,
-          body: finalText,
-          html: finalHtml,
-          from: finalFrom,
-          recipients,
-        });
-        setMergeText("");
-        setMergeOn(false);
-        closeCompose();
-        showToast(t("mergeSent", { count: res.sent }));
-        if (res.failed.length > 0) {
-          setComposeError(t("mergeFailed", { count: res.failed.length }));
-        }
-        return;
-      }
-      // datetime-local value -> RFC3339 (interpreted as local time).
-      const sendAt = scheduleAt ? new Date(scheduleAt).toISOString() : undefined;
+      };
 
       const resetCompose = () => {
         lastDraftRef.current = null;
@@ -791,20 +780,39 @@ export function useCompose({
         replyHeadersRef.current = null;
       };
 
-      // Sending an edited draft must remove the original from Drafts; the
-      // backend only handles the outbox, not draft cleanup.
-      const removeEditedDraft = async (draftUid: number | null) => {
-        if (!draftUid) return;
-        try {
-          await mailDelete("Drafts", draftUid);
-          refreshDraftsIfActive();
-        } catch {
-          // The draft may already be gone; the next folder load reconciles.
+      // Mail merge (逐封群发): each line is "email, 姓名" and the subject/body
+      // may reference {{name}}, {{email}} and custom {{var}} placeholders.
+      if (mergeOn) {
+        const recipients = parseMergeRecipients(mergeText);
+        if (recipients.length === 0) {
+          setComposeError(t("mergeNoRecipients"));
+          return;
         }
-      };
+        const res = await mailMerge({
+          subject: finalSubject,
+          body: finalText,
+          html: finalHtml,
+          from: finalFrom,
+          recipients,
+        });
+        // Mirror the immediate-send close-out: drop the draft being sent and
+        // reset BEFORE closing. Calling closeCompose with the fields still
+        // holding the sent content would save-on-close and resurrect the sent
+        // mail as a draft; resetCompose also clears mergeOn/mergeText.
+        removeEditedDraft(draftUidRef.current);
+        resetCompose();
+        // Merge output lands in Sent, not the open folder; refresh whatever
+        // is open silently (the toast is the feedback).
+        loadMessages(folderRef.current, 0, true);
+        showToast(t("mergeSent", { count: res.sent }));
+        if (res.failed.length > 0) {
+          setComposeError(t("mergeFailed", { count: res.failed.length }));
+        }
+        return;
+      }
+      // datetime-local value -> RFC3339 (interpreted as local time).
+      const sendAt = scheduleAt ? new Date(scheduleAt).toISOString() : undefined;
 
-      // Scheduled send: the backend parks the message until send_at. Cancel it
-      // from the Scheduled dialog, not the send/undo toast.
       if (sendAt) {
         await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, 0, sendAt, receiptOn, burnAfter, replyHeadersRef.current?.inReplyTo, replyHeadersRef.current?.references);
         removeEditedDraft(draftUidRef.current);
