@@ -114,6 +114,8 @@
     "toastUnsubscribed": "已退订",
     "toastUnsubscribeFailed": "退订失败，请手动退订",
     "draftSaved": "已自动保存草稿",
+    "draftClosedSaved": "草稿已保存",
+    "draftCloseFailed": "草稿保存失败，再次点“写邮件”可找回内容",
     "sending": "正在发送…",
     "undo": "撤销",
     "attach": "添加附件",

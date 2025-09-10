@@ -261,8 +261,16 @@ export function useCompose({
           draftUidRef.current = res.uid || draftUidRef.current;
           if (lastDraftRef.current) lastDraftRef.current.uid = draftUidRef.current;
           refreshDraftsIfActive();
+          // The panel is already gone by the time this lands, so without a
+          // toast the draft simply appears in Drafts: the user cannot tell a
+          // save from a discard when closing a half-written message.
+          showToast(t("draftClosedSaved"));
         })
-        .catch(() => {});
+        .catch(() => {
+          // The content stays recoverable (the next Write restores it), but a
+          // silent failure here would look exactly like a successful save.
+          showToast(t("draftCloseFailed"));
+        });
     } else {
       lastDraftRef.current = null;
     }

@@ -57,7 +57,7 @@ function StatCard({
 }: {
   icon: typeof Inbox;
   label: string;
-  value: number;
+  value: number | string;
   caption?: string;
   onClick: () => void;
   tone: string;
@@ -98,7 +98,7 @@ export default function WorkspacePage() {
   const t = useTranslations("home");
   const locale = useLocale();
   const router = useRouter();
-  const { me, unseen, setContactsOpen, setCalendarOpen, openCalendarEvent, openSnoozed, openDriveFile } = useMailStore();
+  const { me, unseen, unseenLoaded, setContactsOpen, setCalendarOpen, openCalendarEvent, openSnoozed, openDriveFile } = useMailStore();
   const [todoCount, setTodoCount] = useState(0);
   const [contactCount, setContactCount] = useState(0);
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
@@ -186,8 +186,11 @@ export default function WorkspacePage() {
           <StatCard
             icon={Inbox}
             label={t("unread")}
-            value={inboxUnread}
-            caption={t("unreadTotal", { count: totalUnread })}
+            // Counts arrive after the first paint: an empty map means "not
+            // loaded yet", so the tile shows a dash instead of a confident 0
+            // that flips to the real number a moment later.
+            value={unseenLoaded ? inboxUnread : "—"}
+            caption={unseenLoaded ? t("unreadTotal", { count: totalUnread }) : undefined}
             onClick={() => router.push("/mail/Inbox")}
             tone="bg-sky-500/10 text-sky-600 dark:text-sky-400"
           />

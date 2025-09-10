@@ -111,7 +111,7 @@ export function useMailStoreValue(me: Me) {
 
   // ---- folders: list, unseen counts, CRUD ----
   const {
-    folders, unseen, setUnseen, refreshUnseen, loadFolders,
+    folders, unseen, unseenLoaded, setUnseen, refreshUnseen, loadFolders,
     createFolder, renameFolder, deleteFolder, clearFolder, spamFolder,
   } = useFolderMgmt({
     email: me.email,
@@ -717,6 +717,7 @@ export function useMailStoreValue(me: Me) {
     online,
     folders,
     unseen,
+    unseenLoaded,
     knownLabels,
     labelDefs,
     labelColors,

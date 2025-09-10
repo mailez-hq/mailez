@@ -32,7 +32,11 @@ function avatarColor(seed: string) {
 
 function fmtTime(d: string) {
   const date = new Date(d);
-  if (Number.isNaN(date.getTime())) return "";
+  // A message with no Date header carries the engine's zero time
+  // ("0001-01-01T00:00:00Z"), which used to render as "1年1月1日" / "Jan 1,
+  // 0001" in the list. Treat anything before the common era as "no date",
+  // matching the reader's fmtShort/fmtFullDate guard.
+  if (Number.isNaN(date.getTime()) || date.getFullYear() < 100) return "";
   const now = new Date();
   const sameYear = date.getFullYear() === now.getFullYear();
   const sameDay = date.toDateString() === now.toDateString();
