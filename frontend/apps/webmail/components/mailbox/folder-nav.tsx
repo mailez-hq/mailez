@@ -237,7 +237,11 @@ export function FolderNav({
             className={cn(
               "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
               onHome
-                ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                ? // Same active language as the folder tree: --sidebar-accent
+                  // barely contrasts against the sidebar background, and
+                  // --primary (unlike --sidebar-primary) follows the
+                  // data-accent theme families.
+                  "bg-primary/20 font-medium text-primary shadow-[inset_2px_0_0_0_var(--primary)] hover:bg-primary/25"
                 : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
             )}
           >
