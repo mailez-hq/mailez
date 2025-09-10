@@ -46,13 +46,6 @@ export function AiSection({
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label>{t("aiPriority")}</Label>
-            <Switch
-              checked={prefs.ai.priority}
-              onCheckedChange={(v) => setAi({ ...prefs.ai, priority: v })}
-            />
-          </div>
-          <div className="flex items-center justify-between">
             <Label>{t("aiSearch")}</Label>
             <Switch
               checked={prefs.ai.search}
