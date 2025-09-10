@@ -292,11 +292,35 @@ func (c *Client) SaveDraft(email, token string, to, cc, bcc []string, subject, t
 		return 0, fmt.Errorf("imap select drafts: %w", err)
 	}
 	if replaceUID > 0 {
+		// Overwrite semantics, enforced: exactly ONE draft must survive a
+		// save. First check the replace target still exists — a stale UID
+		// (another tab/device already replaced it) must fail the save
+		// instead of silently appending a second copy; IMAP Store on a
+		// vanished UID returns OK, so it cannot be trusted alone.
 		seqset := new(imap.SeqSet)
 		seqset.AddNum(replaceUID)
-		if err := cli.UidStore(seqset, imap.AddFlags, []interface{}{imap.RawString("\\Deleted")}, nil); err == nil {
-			deleted := make(chan uint32, 1)
-			_ = cli.Expunge(deleted)
+		fetchCh := make(chan *imap.Message, 1)
+		if err := cli.UidFetch(seqset, []imap.FetchItem{imap.FetchUid}, fetchCh); err != nil {
+			return 0, fmt.Errorf("imap probe old draft %d: %w", replaceUID, err)
+		}
+		exists := false
+		for range fetchCh {
+			exists = true
+		}
+		if !exists {
+			return 0, fmt.Errorf("draft %d no longer exists (already replaced elsewhere); reload before saving", replaceUID)
+		}
+		// The old draft MUST actually go away before the new one lands.
+		// Swallowing a failed Store/Expunge here used to grow Drafts by one
+		// duplicate per edit (every save appended while the replace target
+		// silently survived), so failures now fail the whole save: the
+		// client keeps the old UID and its next save retries the replace.
+		if err := cli.UidStore(seqset, imap.AddFlags, []interface{}{imap.RawString("\\Deleted")}, nil); err != nil {
+			return 0, fmt.Errorf("imap delete old draft %d: %w", replaceUID, err)
+		}
+		deleted := make(chan uint32, 8)
+		if err := cli.Expunge(deleted); err != nil {
+			return 0, fmt.Errorf("imap expunge old draft %d: %w", replaceUID, err)
 		}
 	}
 

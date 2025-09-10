@@ -118,10 +118,27 @@ export function useCompose({
   const replyHeadersRef = useRef<{ inReplyTo: string; references: string } | null>(null);
   const draftBaselineRef = useRef("");
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Set synchronously by closeCompose so an already-queued auto-save can
+  // never fire after (or alongside) the close save: two saves carrying the
+  // same stale replace_uid is exactly how Drafts grew one duplicate per
+  // edit-open-close round.
+  const draftClosingRef = useRef(false);
   // Serializes draft saves: while a save is in flight the draft UID is not yet
   // known, so a second overlapping save would create a duplicate draft instead
   // of updating the first one.
   const draftSavingRef = useRef(false);
+  // Mirror of the compose content, refreshed on EVERY render. The close
+  // paths must save what the editor holds NOW — a close handler holding a
+  // stale closure once re-saved the pre-edit body over the user's just
+  // saved edits (the "draft lost my typing" bug).
+  const composeLatestRef = useRef({
+    to: [] as string[], cc: [] as string[], bcc: [] as string[],
+    subject: "", body: "", bodyText: "", attachments: [] as OutboundAttachment[],
+  });
+  composeLatestRef.current = {to, cc, bcc, subject, body, bodyText, attachments};
+  // Signature of the content currently on the server (set by every
+  // successful save). Close with unchanged content must not save again.
+  const lastSavedSigRef = useRef<string | null>(null);
 
   // Current folder by reference: delayed post-send callbacks (undo-window
   // reload) must target whatever folder the user is browsing when they
@@ -194,11 +211,14 @@ export function useCompose({
     setDraftSaved(false);
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(async () => {
-      if (draftSavingRef.current) return; // a manual save already persists this content
+      // closeCompose already owns this save (it cancelled the timer, but a
+      // timer queued before the close must not double-append a draft).
+      if (draftSavingRef.current || draftClosingRef.current) return;
       draftSavingRef.current = true;
       try {
         const res = await mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, bcc, attachments);
         draftUidRef.current = res.uid || draftUidRef.current;
+        lastSavedSigRef.current = composeSignature({to, cc, bcc, subject, body, bodyText, attachments});
         setDraftSaved(true);
         // Auto-save creates/updates a draft just like the manual save does;
         // a user watching the Drafts folder must see it without a manual
@@ -227,6 +247,7 @@ export function useCompose({
     try {
       const res = await mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, bcc, attachments);
       draftUidRef.current = res.uid || draftUidRef.current;
+      lastSavedSigRef.current = composeSignature({to, cc, bcc, subject, body, bodyText, attachments});
       setDraftSaved(true);
       refreshDraftsIfActive();
     } catch (e) {
@@ -238,27 +259,59 @@ export function useCompose({
 
   // closeCompose saves the draft (fire-and-forget) and dismisses the panel.
   // Without this, closing within the 30s auto-save window would lose edits.
+  // It reads composeLatestRef — never the render closure — so whichever
+  // path closes the panel (X button, overlay click, a future keyboard
+  // shortcut mounted once at mount time) saves the editor's CURRENT content.
   function closeCompose() {
+    const cur = composeLatestRef.current;
     const hasContent =
-      to.length > 0 || cc.length > 0 || bcc.length > 0 || subject.trim() !== "" || bodyText.trim() !== "" || attachments.length > 0;
+      cur.to.length > 0 || cur.cc.length > 0 || cur.bcc.length > 0 ||
+      cur.subject.trim() !== "" || cur.bodyText.trim() !== "" || cur.attachments.length > 0;
+    // From here on the close owns the final save: the auto-save timer is
+    // cancelled and queued auto-save callbacks bail out on this flag.
+    draftClosingRef.current = true;
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    const sig = composeSignature({
+      to: cur.to, cc: cur.cc, bcc: cur.bcc, subject: cur.subject,
+      body: cur.body, bodyText: cur.bodyText, attachments: cur.attachments,
+    });
+    // This exact content is already on the server (the save the user just
+    // made, or the auto-save that ran moments ago): closing must not fire
+    // another save. Firing one anyway — with a stale closure's content —
+    // is exactly how a saved draft got overwritten with older text.
+    if (lastSavedSigRef.current !== null && sig === lastSavedSigRef.current) {
+      lastDraftRef.current = null;
+      setComposeOpen(false);
+      return;
+    }
     // Closing a pristine reply (auto quote, no edits, no existing draft)
     // dismisses it without polluting the Drafts folder.
     const pristine =
       draftUidRef.current == null &&
-      draftBaselineRef.current ===
-        composeSignature({to, cc, bcc, subject, body, bodyText, attachments});
+      draftBaselineRef.current === sig;
     // A create (uid == null) must not race another in-flight create, otherwise
     // two drafts appear; updating an existing draft is always safe.
     if (hasContent && !pristine && (draftUidRef.current != null || !draftSavingRef.current)) {
+      // An auto-save is already writing exactly this content (the timer
+      // closure always carries the latest state) — let it finish instead of
+      // firing a second save whose stale replace_uid would append a
+      // duplicate draft.
+      if (draftSavingRef.current) {
+        setComposeOpen(false);
+        return;
+      }
+      draftSavingRef.current = true;
       // Remember the content synchronously so a quick reopen restores it even
       // before the async save resolves.
       lastDraftRef.current = {
-        to, cc, bcc, subject, body, bodyText, attachments,
+        to: cur.to, cc: cur.cc, bcc: cur.bcc, subject: cur.subject,
+        body: cur.body, bodyText: cur.bodyText, attachments: cur.attachments,
         uid: draftUidRef.current,
       };
-      mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, bcc, attachments)
+      mailSaveDraft(cur.subject, cur.bodyText, cur.body, draftUidRef.current ?? 0, cur.to, cur.cc, cur.bcc, cur.attachments)
         .then((res) => {
           draftUidRef.current = res.uid || draftUidRef.current;
+          lastSavedSigRef.current = sig;
           if (lastDraftRef.current) lastDraftRef.current.uid = draftUidRef.current;
           refreshDraftsIfActive();
           // The panel is already gone by the time this lands, so without a
@@ -270,6 +323,9 @@ export function useCompose({
           // The content stays recoverable (the next Write restores it), but a
           // silent failure here would look exactly like a successful save.
           showToast(t("draftCloseFailed"));
+        })
+        .finally(() => {
+          draftSavingRef.current = false;
         });
     } else {
       lastDraftRef.current = null;
@@ -295,6 +351,8 @@ export function useCompose({
     if (!toAddr && !subj && !html && !text && lastDraftRef.current) {
       const s = lastDraftRef.current;
       lastDraftRef.current = null;
+      draftClosingRef.current = false;
+      lastSavedSigRef.current = null;
       setTo(s.to);
       setCc(s.cc);
       setBcc(s.bcc);
@@ -341,6 +399,8 @@ export function useCompose({
     setEncryptOn(false);
     setDraftSaved(false);
     draftUidRef.current = null;
+    draftClosingRef.current = false;
+    lastSavedSigRef.current = null;
     // Baseline for pristine-reply detection: only real user edits (or an
     // existing draft) should trigger auto/close-save.
     draftBaselineRef.current = composeSignature({
@@ -522,6 +582,12 @@ export function useCompose({
     setEncryptOn(false);
     setDraftSaved(false);
     draftUidRef.current = m.uid;
+    draftClosingRef.current = false;
+    // The server currently holds exactly this draft content: closing
+    // without edits must not re-save it.
+    lastSavedSigRef.current = composeSignature({
+      to, cc, bcc, subject: m.subject || "", body: html, bodyText: text, attachments: atts,
+    });
     replyHeadersRef.current = null;
     draftBaselineRef.current = composeSignature({
       to, cc, bcc, subject: m.subject || "", body: html, bodyText: text, attachments: atts,
@@ -785,6 +851,8 @@ export function useCompose({
         setScheduleAt("");
         setDraftSaved(false);
         draftUidRef.current = null;
+        draftClosingRef.current = false;
+        lastSavedSigRef.current = null;
         replyHeadersRef.current = null;
       };
 
