@@ -222,18 +222,14 @@ export function useMailStoreValue(me: Me) {
     t,
   });
 
-  // ---- ai (capability flags, reading-pane summary, priority inbox, NL search) ----
+  // ---- ai (capability flags, reading-pane summary, NL search) ----
   const {
     summary, setSummary,
     summarizing,
-    prioritizing,
     aiSearching,
-    priorityOn, setPriorityOn,
-    priorityCategories, setPriorityCategories,
-    setBaseMessages,
     ai,
     aiLocked,
-    summarize, togglePriority, doAiSearch,
+    summarize, doAiSearch,
   } = useMailAi({
     prefsAiEnabled: prefs.ai.enabled,
     prefsAi: prefs.ai,
@@ -429,13 +425,9 @@ export function useMailStoreValue(me: Me) {
     setDetail(null);
     setThread(null);
     setThreadOpen(false);
-    setPriorityOn(false);
-    setPriorityCategories({});
     setActiveView("all");
     setActiveLabel("");
-    setBaseMessages(null);
   }
-
   useEffect(() => {
     // Fetch-on-mount: loadFolders resolves every setState after await.
     loadFolders();
@@ -571,10 +563,8 @@ export function useMailStoreValue(me: Me) {
   // Enter/x/s acted on a different (reordered or hidden) message.
   const shownMessages = useMemo(() => {
     if (!categoryFilter) return displayMessages;
-    return displayMessages.filter(
-      (m) => (priorityCategories[String(m.uid)] ?? m.category) === categoryFilter,
-    );
-  }, [displayMessages, categoryFilter, priorityCategories]);
+    return displayMessages.filter((m) => m.category === categoryFilter);
+  }, [displayMessages, categoryFilter]);
 
   function loadMore() {
     if (loadingMoreRef.current || searching || messages.length >= total) return;
@@ -809,10 +799,6 @@ export function useMailStoreValue(me: Me) {
     searchRef,
     ai,
     aiLocked,
-    prioritizing,
-    priorityOn,
-    priorityCategories,
-    togglePriority,
     aiSearching,
     refreshMail,
     logout,

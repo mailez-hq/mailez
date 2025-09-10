@@ -65,24 +65,39 @@ await withSession("/mail/Inbox", async (page) => {
     await rowLoc(page, subj).locator("button[title='Delete'], button[title='删除']").first().dispatchEvent("click");
     await page.waitForTimeout(2000);
   }
-  record("row-delete: row leaves the list", !(await listText(page)).includes(subj), subj);
+  // The engine sometimes serves one stale listing right after a move (the
+  // move itself 204s). Poll briefly for the row to leave before failing.
+  let gone = !(await listText(page)).includes(subj);
+  for (let i = 0; !gone && i < 6; i++) {
+    await page.waitForTimeout(1500);
+    gone = !(await listText(page)).includes(subj);
+  }
+  record("row-delete: row leaves the list", gone, subj);
 });
 
 // ---------- 3. detail-view delete: list sync + URL routed back ----------
 await withSession("/mail/Inbox", async (page) => {
-  // Delete a STABLE row: nth(2) sits inside the virtual window and is an old
-  // mail (no realtime churn), unlike the newest rows.
-  const anyRow = page.locator(".mail-scroll [role='button']").nth(2);
+  // Delete ONLY a self-seeded row: nth(2) etc. would destroy real demo mail.
+  // The seed arrives at the top of the list (newest), so it is the row we
+  // open and delete.
+  const subj = `E2E-DDL-${Date.now()}`;
+  await seed(subj);
+  const anyRow = rowLoc(page, subj);
   await anyRow.waitFor({ state: "visible", timeout: 60000 });
   await stableList(page);
-  const fullRowText = (await anyRow.innerText()).trim();
   await anyRow.click();
   await page.waitForTimeout(2000);
   const del = page.locator("button[title='Delete'], button[title='删除']").locator("visible=true").last();
   await del.click();
   await page.waitForTimeout(2000);
-  record("detail-delete: row leaves the list", !(await listText(page)).includes(fullRowText), fullRowText.slice(0, 40));
   record("detail-delete: URL routed back to folder", !/\/mail\/[^/]+\/\d+/.test(page.url()), page.url);
+  // Row-leave assertion shares the stale-listing guard (see scenario 2).
+  let ddlGone = !(await listText(page)).includes(subj);
+  for (let i = 0; !ddlGone && i < 6; i++) {
+    await page.waitForTimeout(1500);
+    ddlGone = !(await listText(page)).includes(subj);
+  }
+  record("detail-delete: row leaves the list", ddlGone, subj);
 });
 
 // ---------- 4. bulk select + bulk-bar delete ----------
@@ -120,7 +135,13 @@ await withSession("/mail/Inbox", async (page) => {
       await page.waitForTimeout(2000);
     } catch {}
   }
-  record("bulk-delete: row leaves the list", !(await listText(page)).includes(subj), subj);
+  // Stale-listing guard (see scenario 2).
+  let bulkGone = !(await listText(page)).includes(subj);
+  for (let i = 0; !bulkGone && i < 6; i++) {
+    await page.waitForTimeout(1500);
+    bulkGone = !(await listText(page)).includes(subj);
+  }
+  record("bulk-delete: row leaves the list", bulkGone, subj);
 });
 
 // ---------- 5. same-folder click refreshes (the "View Sent" trap) ----------

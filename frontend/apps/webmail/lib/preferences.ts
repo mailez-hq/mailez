@@ -20,7 +20,6 @@ export type AiPrefs = {
   enabled: boolean;
   summary: boolean;
   draft: boolean;
-  priority: boolean;
   search: boolean;
 };
 
@@ -37,6 +36,9 @@ export type Preferences = {
   readerFont: ReaderFontSize;
   paneWidth: ReadingPaneWidth;
   conversation: boolean;
+  // listPreview shows a one-line body excerpt under the subject in the mail
+  // list (rows get taller); compact density keeps single lines regardless.
+  listPreview: boolean;
   // autoSignature appends the personal signature to new compose automatically.
   autoSignature: boolean;
   // collapseReplyQuote folds the quoted original into a "…" row in reply
@@ -51,13 +53,14 @@ export const DEFAULT_PREFS: Preferences = {
   theme: "system",
   density: "cozy",
   accent: "blue",
-  ai: { enabled: true, summary: true, draft: true, priority: true, search: true },
+  ai: { enabled: true, summary: true, draft: true, search: true },
   notifications: true,
   undoSendSeconds: 5,
   spellcheck: true,
   readerFont: "md",
   paneWidth: "md",
   conversation: true,
+  listPreview: true,
   autoSignature: true,
   collapseReplyQuote: true,
   landing: "home",
@@ -82,7 +85,6 @@ export function readPreferences(): Preferences {
         enabled: parsed.ai?.enabled !== false,
         summary: parsed.ai?.summary !== false,
         draft: parsed.ai?.draft !== false,
-        priority: parsed.ai?.priority !== false,
         search: parsed.ai?.search !== false,
       },
       notifications: parsed.notifications !== false,
@@ -97,6 +99,7 @@ export function readPreferences(): Preferences {
         ? (parsed.paneWidth as ReadingPaneWidth)
         : "md",
       conversation: parsed.conversation !== false,
+      listPreview: parsed.listPreview !== false,
       autoSignature: parsed.autoSignature !== false,
       collapseReplyQuote: parsed.collapseReplyQuote !== false,
       landing: parsed.landing === "inbox" ? "inbox" : "home",

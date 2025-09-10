@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Archive, Bookmark, Check, ChevronDown, Inbox, MailCheck, Plus, RefreshCw, SearchX, ShieldCheck, SlidersHorizontal, Sparkles, Tag, Trash2, X } from "lucide-react";
+import { Archive, Bookmark, Check, ChevronDown, Inbox, MailCheck, Plus, RefreshCw, SearchX, ShieldCheck, SlidersHorizontal, Tag, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,7 @@ import {
 import { usePreferences } from "@/components/preferences-provider";
   import type { MailMessage, MailSearchSpec } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { MessageRow, ROW_HEIGHTS } from "@/components/mailbox/message-row";
+import { MessageRow, rowHeightFor } from "@/components/mailbox/message-row";
 import { VirtualList } from "@/components/mailbox/virtual-list";
 import { buildFolderTree, flattenTree, folderLabel } from "@/components/mailbox/folder-tree";
 
@@ -51,11 +51,6 @@ export function MessageListPanel({
   onSaveSearch,
   category,
   onCategoryChange,
-  aiPriorityEnabled,
-  prioritizing,
-  priorityOn,
-  categories,
-  onTogglePriority,
   refreshing,
   onRefresh,
   highlightTerms,
@@ -98,11 +93,6 @@ export function MessageListPanel({
   onSaveSearch: () => void;
   category: string;
   onCategoryChange: (category: string) => void;
-  aiPriorityEnabled: boolean;
-  prioritizing: boolean;
-  priorityOn: boolean;
-  categories?: Record<string, string>;
-  onTogglePriority: () => void;
   refreshing: boolean;
   onRefresh: () => void;
   highlightTerms?: string[];
@@ -115,13 +105,13 @@ export function MessageListPanel({
   onMarkAllRead: () => void;
 }) {
   const t = useTranslations("mail");
-  const { density } = usePreferences();
-  const rowHeight = ROW_HEIGHTS[density];
+  const { density, listPreview } = usePreferences();
+  const rowHeight = rowHeightFor(density, listPreview);
   const [labelPopoverOpen, setLabelPopoverOpen] = useState(false);
   const [bulkLabelName, setBulkLabelName] = useState("");
   // Category pills filter the loaded page client-side (the backend still
   // returns every row; classification is a lightweight per-row tag).
-  const categoryOf = (m: MailMessage) => categories?.[String(m.uid)] ?? m.category;
+  const categoryOf = (m: MailMessage) => m.category;
   const filtered = category ? displayMessages.filter((m) => categoryOf(m) === category) : displayMessages;
   const shown = filtered;
   // Only show category pills for categories that actually appear in the
@@ -136,7 +126,7 @@ export function MessageListPanel({
       found.has(c),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayMessages, categories]);
+  }, [displayMessages]);
   // "其他" alone is not a useful filter (filtering it equals showing all), so
   // the category row only appears when a real category exists on the page;
   // "其他" is still offered when it mixes with real categories.
@@ -222,24 +212,23 @@ export function MessageListPanel({
               <Bookmark className="size-4" />
             </Button>
           )}
-          {aiPriorityEnabled && (
-            <Button
-              size="xs"
-              variant={priorityOn ? "default" : "outline"}
-              onClick={onTogglePriority}
-              disabled={prioritizing}
-              className="ml-auto shrink-0"
-            >
-              <Sparkles className="size-3" />
-              {prioritizing ? t("prioritizing") : t("aiPriority")}
-            </Button>
-          )}
         </div>
       </div>
 
       {error && (
-        <div className="border-b border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs text-destructive">
-          {error}
+        <div className="flex items-center gap-2 border-b border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs text-destructive">
+          <span className="min-w-0 flex-1">{error}</span>
+          {/* A failed load (e.g. a request that hit its deadline) leaves the
+              user on an error banner with no way back: retry re-runs whatever
+              the list was showing. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 shrink-0 px-2 text-xs text-destructive hover:bg-destructive/10"
+            onClick={onRefresh}
+          >
+            {t("retry")}
+          </Button>
         </div>
       )}
 
@@ -397,7 +386,8 @@ export function MessageListPanel({
                 message={m}
                 index={i}
                 density={density}
-                category={categories?.[String(m.uid)] ?? m.category}
+                showPreview={listPreview}
+                category={m.category}
                 selected={m.id === openId && !!openId}
                 selectedInBulk={selectedUids.has(m.uid)}
                 cursorActive={i === cursor && !searching}

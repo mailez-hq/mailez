@@ -26,6 +26,7 @@ type PreferencesContextValue = {
   readerFont: ReaderFontSize;
   paneWidth: ReadingPaneWidth;
   conversation: boolean;
+  listPreview: boolean;
   autoSignature: boolean;
   collapseReplyQuote: boolean;
   landing: Landing;
@@ -39,6 +40,7 @@ type PreferencesContextValue = {
   setReaderFont: (size: ReaderFontSize) => void;
   setPaneWidth: (width: ReadingPaneWidth) => void;
   setConversation: (enabled: boolean) => void;
+  setListPreview: (enabled: boolean) => void;
   setAutoSignature: (enabled: boolean) => void;
   setCollapseReplyQuote: (enabled: boolean) => void;
   setLanding: (landing: Landing) => void;
@@ -124,6 +126,10 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     (conversation: boolean) => update({ ...prefs, conversation }),
     [prefs, update],
   );
+  const setListPreview = useCallback(
+    (listPreview: boolean) => update({ ...prefs, listPreview }),
+    [prefs, update],
+  );
   const setAutoSignature = useCallback(
     (autoSignature: boolean) => update({ ...prefs, autoSignature }),
     [prefs, update],
@@ -147,6 +153,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       readerFont: prefs.readerFont,
       paneWidth: prefs.paneWidth,
       conversation: prefs.conversation,
+      listPreview: prefs.listPreview,
       autoSignature: prefs.autoSignature,
       collapseReplyQuote: prefs.collapseReplyQuote,
       landing: prefs.landing,
@@ -160,12 +167,13 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       setReaderFont,
       setPaneWidth,
       setConversation,
+      setListPreview,
       setAutoSignature,
       setCollapseReplyQuote,
       setLanding,
       resolvedDark,
     }),
-    [prefs, setTheme, setDensity, setAccent, setAi, setNotifications, setUndoSend, setSpellcheck, setReaderFont, setPaneWidth, setConversation, setAutoSignature, setCollapseReplyQuote, setLanding, resolvedDark],
+    [prefs, setTheme, setDensity, setAccent, setAi, setNotifications, setUndoSend, setSpellcheck, setReaderFont, setPaneWidth, setConversation, setListPreview, setAutoSignature, setCollapseReplyQuote, setLanding, resolvedDark],
   );
 
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;
