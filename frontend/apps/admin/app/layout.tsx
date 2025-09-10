@@ -1,20 +1,13 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { fetchPublicBrand } from "@/lib/branding";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
+// No web fonts: the layout ships no next/font import at all. An air-gapped /
+// on-prem install must render and build without reaching fonts.googleapis.com,
+// so globals.css defines --font-sans / --font-mono from the fonts the OS
+// already has (see the stack there).
 // White-label: the tab title follows the admin-console branding. The layout
 // renders dynamically (cookies below), so this fetch runs per request; a
 // down backend degrades to the built-in Mailez brand.
@@ -40,7 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const messages = (await import(`../messages/${locale}.json`)).default;
 
   return (
-    <html lang={locale} className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang={locale}>
       <body className="min-h-screen font-sans antialiased">
         <Providers locale={locale} messages={messages}>
           {children}

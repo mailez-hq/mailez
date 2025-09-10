@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
-import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { PreferencesProvider } from "@/components/preferences-provider";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
@@ -8,16 +7,10 @@ import { parseThemeCookie } from "@/lib/preferences";
 import { fetchPublicBrand } from "@/lib/branding";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
+// No web fonts: the layout ships no next/font import at all. An air-gapped /
+// on-prem install must render and build without reaching fonts.googleapis.com,
+// so globals.css defines --font-sans / --font-mono from the fonts the OS
+// already has (see the stack there).
 // White-label: the tab title and the installed-PWA name follow the branding
 // configured in the admin console. The layout already renders dynamically
 // (cookies below), so this fetch runs per request; a down backend degrades
@@ -64,7 +57,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html
       lang={locale}
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable}${theme?.dark ? " dark" : ""}`}
+      className={theme?.dark ? "dark" : undefined}
       {...(theme ? { "data-density": theme.density, "data-accent": theme.accent } : {})}
     >
       <body className="min-h-screen bg-background font-sans text-foreground">

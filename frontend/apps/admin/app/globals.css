@@ -14,8 +14,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans), "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
-  --font-mono: var(--font-geist-mono);
+  /* Self-contained stacks: no web font is fetched, so an air-gapped /
+     on-prem build and a first render with no internet both work. The UI uses
+     the platform's own UI font, with the CJK families that ship with
+     Windows/macOS/Linux kept as fallbacks for the Chinese UI. */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", "Courier New", monospace;
   --font-heading: var(--font-sans);
   --color-ai: var(--ai);
   --color-ai-foreground: var(--ai-foreground);
@@ -58,76 +64,81 @@
 }
 
 :root {
+  /* Fresh light palette (slate neutrals + vivid blue), custom-designed
+     Webmail's design tokens — shared with apps/webmail so both apps read
+     as one product. */
   --background: #ffffff;
-  --foreground: #18181b;
+  --foreground: #0f172a;
   --card: #ffffff;
-  --card-foreground: #18181b;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #18181b;
-  --primary: #2f8e6c;
+  --popover-foreground: #0f172a;
+  --primary: #3b82f6;
   --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #e5f2ec;
-  --accent-foreground: #175a44;
-  --destructive: #c94b4b;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #2f8e6c;
-  --ai: #2e6e8e;
+  --secondary: #f8fafc;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #dbeafe;
+  --accent-foreground: #1e40af;
+  --destructive: #ef4444;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #94a3b8;
+  --ai: #3b82f6;
   --ai-foreground: #ffffff;
-  --chart-1: #2f8e6c;
-  --chart-2: #2e6e8e;
-  --chart-3: #71717a;
-  --chart-4: #c9a227;
-  --chart-5: #5b8c5a;
-  --radius: 0.625rem;
-  --sidebar: #fafafa;
-  --sidebar-foreground: #52525b;
-  --sidebar-primary: #2f8e6c;
+  --chart-1: #3b82f6;
+  --chart-2: #22c55e;
+  --chart-3: #f59e0b;
+  --chart-4: #ef4444;
+  --chart-5: #8b5cf6;
+  --radius: 0.5rem;
+  --sidebar: #f8fafc;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #3b82f6;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e5f2ec;
-  --sidebar-accent-foreground: #175a44;
-  --sidebar-border: #e4e4e7;
-  --sidebar-ring: #2f8e6c;
+  --sidebar-accent: #f1f5f9;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #94a3b8;
 }
 
 .dark {
-  --background: #101012;
-  --foreground: #f4f4f5;
-  --card: #18181b;
-  --card-foreground: #f4f4f5;
-  --popover: #18181b;
-  --popover-foreground: #f4f4f5;
-  --primary: #3ba77f;
-  --primary-foreground: #0b231b;
-  --secondary: #27272a;
-  --secondary-foreground: #f4f4f5;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
-  --accent: #1f3d33;
-  --accent-foreground: #8fd9be;
-  --destructive: #e56b6b;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.12);
-  --ring: #3ba77f;
-  --ai: #4d8fac;
-  --ai-foreground: #0e1d26;
-  --chart-1: #3ba77f;
-  --chart-2: #4d8fac;
-  --chart-3: #a1a1aa;
-  --chart-4: #c9a227;
-  --chart-5: #5b8c5a;
-  --sidebar: #141416;
-  --sidebar-foreground: #a1a1aa;
-  --sidebar-primary: #3ba77f;
-  --sidebar-primary-foreground: #0b231b;
-  --sidebar-accent: #1f3d33;
-  --sidebar-accent-foreground: #8fd9be;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: #3ba77f;
+  /* Monochrome near-black dark mode (minimal-style): ink surfaces, white
+     primary actions, hairline gray borders, blue reserved for accents/AI. */
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #141414;
+  --card-foreground: #fafafa;
+  --popover: #1c1c1c;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #171717;
+  --secondary: #262626;
+  --secondary-foreground: #fafafa;
+  --muted: #262626;
+  --muted-foreground: #a3a3a3;
+  --accent: #1e3a8a;
+  --accent-foreground: #dbeafe;
+  --destructive: #ef4444;
+  --border: rgba(128, 128, 128, 0.3);
+  --input: #262626;
+  --ring: #d4d4d4;
+  --ai: #60a5fa;
+  --ai-foreground: #0a0a0a;
+  --chart-1: #60a5fa;
+  --chart-2: #4ade80;
+  --chart-3: #fbbf24;
+  --chart-4: #f87171;
+  --chart-5: #a78bfa;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #fafafa;
+  --sidebar-primary-foreground: #171717;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #262626;
+  --sidebar-ring: #d4d4d4;
 }
 
 @layer base {
@@ -139,6 +150,21 @@
   }
   html {
     @apply font-sans;
+  }
+  /* Minimalist scrollbar everywhere (minimal-style). */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
   }
   /* Tailwind v4 preflight uses `cursor: default` on buttons; restore the
      pointer so every interactive element (native buttons and Base UI roles

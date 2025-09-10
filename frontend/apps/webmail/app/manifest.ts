@@ -16,8 +16,8 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
       : "Mailez webmail — mail easy",
     start_url: "/",
     display: "standalone",
-    background_color: "#fafaf7",
-    theme_color: "#2f8e6c",
+    background_color: "#f8fafc",
+    theme_color: "#2E6E8E",
     icons: [
       {
         src: "/mailez-icon.svg",
