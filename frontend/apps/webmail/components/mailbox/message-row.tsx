@@ -129,10 +129,20 @@ export const MessageRow = memo(function MessageRow({
         "group flex h-full w-full cursor-pointer items-center gap-2 border-b border-border transition-colors",
         pad,
         selected
-          ? "bg-accent shadow-[inset_3px_0_0_0_var(--primary)]"
-          : cursorActive
-            ? "bg-muted"
-            : "hover:bg-muted/60",
+          ? // Selected must survive a glance: tint with the active primary at
+            // a strength the light and dark backgrounds can both show (~20%
+            // over white ≈ a clearly blue row; ~30% over the dark card), and
+            // keep the inset primary bar as the orientation anchor. Plain
+            // --accent was nearly invisible against the light list.
+            "bg-primary/20 shadow-[inset_3px_0_0_0_var(--primary)] hover:bg-primary/25 dark:bg-primary/30 dark:hover:bg-primary/35"
+          : selectedInBulk
+            ? // Bulk-checked rows get a fainter tint of the same hue: visible
+              // at a glance which rows the bulk bar will act on, without
+              // competing with the opened row.
+              "bg-primary/10 hover:bg-primary/15 dark:bg-primary/15 dark:hover:bg-primary/20"
+            : cursorActive
+              ? "bg-muted"
+              : "hover:bg-muted/60",
       )}
     >
       <input

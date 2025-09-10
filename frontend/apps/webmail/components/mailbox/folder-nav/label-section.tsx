@@ -55,7 +55,11 @@ export function LabelSection({
             className={cn(
               "flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
               activeLabel === label
-                ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                ? // Same active treatment as the folder tree: primary tint +
+                  // inset bar, because --sidebar-accent barely contrasts
+                  // against the sidebar background. --primary follows the
+                  // data-accent theme families.
+                  "bg-primary/20 font-medium text-primary shadow-[inset_2px_0_0_0_var(--primary)] hover:bg-primary/25"
                 : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
             )}
           >

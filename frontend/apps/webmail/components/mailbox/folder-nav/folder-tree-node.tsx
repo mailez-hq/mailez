@@ -125,7 +125,14 @@ export function FolderTreeNode({
                 className={cn(
                   "flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
                   active
-                    ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                    ? // The active folder must be findable at a glance:
+                      // --sidebar-accent (#f1f5f9) sits on --sidebar
+                      // (#f8fafc) with almost no contrast, so tint with the
+                      // accent's own primary color instead and anchor it
+                      // with an inset left bar. --primary (not
+                      // --sidebar-primary) is what the data-accent families
+                      // override, so the tint follows theme switches.
+                      "bg-primary/20 font-medium text-primary shadow-[inset_2px_0_0_0_var(--primary)] hover:bg-primary/25"
                     : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
                 )}
               >
