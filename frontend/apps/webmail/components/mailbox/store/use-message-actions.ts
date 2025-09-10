@@ -254,21 +254,32 @@ export function useMessageActions({
     return moveTo([m.uid], "Trash", t("toastDeleted"));
   }
 
+  // Bulk actions act on rows the user can see. A background refresh can
+  // replace the list while a selection is held; uids that fell out of the
+  // current list are stale — moving them anyway would sweep invisible
+  // messages under the open folder's name (a stale select-all once moved an
+  // entire mailbox to Trash this way). Single-message actions (row/detail)
+  // keep their own resolution and are not filtered here.
+  function filterKnownUids(uids: number[]): number[] {
+    const known = new Set(messages.map((m) => m.uid));
+    return uids.filter((u) => known.has(u));
+  }
+
   async function bulkDelete() {
-    const ids = [...selectedUids];
+    const ids = filterKnownUids([...selectedUids]);
     await moveTo(ids, "Trash", t("toastDeleted"));
   }
 
   async function bulkArchive() {
-    await moveTo([...selectedUids], "Archive", t("toastArchived"));
+    await moveTo(filterKnownUids([...selectedUids]), "Archive", t("toastArchived"));
   }
 
   async function bulkSpam() {
-    await moveTo([...selectedUids], spamFolder, t("toastSpam"));
+    await moveTo(filterKnownUids([...selectedUids]), spamFolder, t("toastSpam"));
   }
 
   function moveSelectedTo(destination: string) {
-    return moveTo([...selectedUids], destination, t("toastMoved"));
+    return moveTo(filterKnownUids([...selectedUids]), destination, t("toastMoved"));
   }
 
   function moveDetailTo(destination: string) {
@@ -276,7 +287,7 @@ export function useMessageActions({
   }
 
   async function bulkFlag(flag: string, value: boolean) {
-    const ids = [...selectedUids];
+    const ids = filterKnownUids([...selectedUids]);
     setError("");
     try {
       const groups = groupUidsByFolder(ids);

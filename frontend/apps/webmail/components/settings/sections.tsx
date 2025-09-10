@@ -37,6 +37,7 @@ export type SettingsSectionsProps = {
   readerFont: ReaderFontSize; setReaderFont: (v: ReaderFontSize) => void;
   paneWidth: ReadingPaneWidth; setPaneWidth: (v: ReadingPaneWidth) => void;
   conversation: boolean; setConversation: (v: boolean) => void;
+  listPreview: boolean; setListPreview: (v: boolean) => void;
   autoSignature: boolean; setAutoSignature: (v: boolean) => void;
   collapseReplyQuote: boolean; setCollapseReplyQuote: (v: boolean) => void;
   landing: Landing; setLanding: (v: Landing) => void;
@@ -149,6 +150,7 @@ export function SettingsSections(props: SettingsSectionsProps) {
     t, section, profile,
     theme, setTheme, density, setDensity, accent, setAccent, spellcheck, setSpellcheck,
     readerFont, setReaderFont, paneWidth, setPaneWidth, conversation, setConversation,
+    listPreview, setListPreview,
     autoSignature, setAutoSignature, collapseReplyQuote, setCollapseReplyQuote, landing, setLanding,
     prefs, setAi, setNotifications,
     displayedName, setDisplayedName, signature, setSignature,
@@ -215,6 +217,7 @@ export function SettingsSections(props: SettingsSectionsProps) {
                 readerFont={readerFont} setReaderFont={setReaderFont}
                 paneWidth={paneWidth} setPaneWidth={setPaneWidth}
                 conversation={conversation} setConversation={setConversation}
+                listPreview={listPreview} setListPreview={setListPreview}
                 collapseReplyQuote={collapseReplyQuote} setCollapseReplyQuote={setCollapseReplyQuote}
               />
             )}

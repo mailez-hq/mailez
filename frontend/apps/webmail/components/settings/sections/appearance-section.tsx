@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Segmented } from "./segmented";
 
 const ACCENT_COLORS: Record<Accent, string> = {
+  // "blue" is the legacy slot id for the 石青 / azurite brand accent.
   blue: "#2E6E8E",
   green: "#2F8E6C",
   purple: "#6B4FA0",
@@ -26,6 +27,7 @@ export function AppearanceSection({
   readerFont, setReaderFont,
   paneWidth, setPaneWidth,
   conversation, setConversation,
+  listPreview, setListPreview,
   collapseReplyQuote, setCollapseReplyQuote,
 }: {
   t: (key: string) => string;
@@ -37,6 +39,7 @@ export function AppearanceSection({
   readerFont: ReaderFontSize; setReaderFont: (v: ReaderFontSize) => void;
   paneWidth: ReadingPaneWidth; setPaneWidth: (v: ReadingPaneWidth) => void;
   conversation: boolean; setConversation: (v: boolean) => void;
+  listPreview: boolean; setListPreview: (v: boolean) => void;
   collapseReplyQuote: boolean; setCollapseReplyQuote: (v: boolean) => void;
 }) {
   return (
@@ -130,6 +133,13 @@ export function AppearanceSection({
           <p className="text-xs text-muted-foreground">{t("conversationViewHint")}</p>
         </div>
         <Switch checked={conversation} onCheckedChange={setConversation} />
+      </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <Label>{t("listPreview")}</Label>
+          <p className="text-xs text-muted-foreground">{t("listPreviewHint")}</p>
+        </div>
+        <Switch checked={listPreview} onCheckedChange={setListPreview} />
       </div>
       <div className="flex items-center justify-between">
         <div>

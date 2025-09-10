@@ -67,7 +67,7 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
   const {
     theme, setTheme, density, setDensity, accent, setAccent,
     spellcheck, setSpellcheck, readerFont, setReaderFont, paneWidth, setPaneWidth,
-    conversation, setConversation, autoSignature, setAutoSignature,
+    conversation, setConversation, listPreview, setListPreview, autoSignature, setAutoSignature,
     collapseReplyQuote, setCollapseReplyQuote, landing, setLanding,
     prefs, setAi, setNotifications,
   } = usePreferences();
@@ -664,6 +664,8 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
               setPaneWidth={setPaneWidth}
               conversation={conversation}
               setConversation={setConversation}
+              listPreview={listPreview}
+              setListPreview={setListPreview}
               autoSignature={autoSignature}
               setAutoSignature={setAutoSignature}
               collapseReplyQuote={collapseReplyQuote}

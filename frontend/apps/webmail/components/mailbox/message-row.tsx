@@ -16,6 +16,13 @@ export const ROW_HEIGHTS: Record<Density, number> = {
   relaxed: 52,
 };
 
+// Row height with the preview line enabled. Compact density never shows the
+// excerpt (minimal-style: density stays tight), cozy/relaxed grow one line.
+export function rowHeightFor(density: Density, showPreview: boolean): number {
+  if (!showPreview || density === "compact") return ROW_HEIGHTS[density];
+  return ROW_HEIGHTS[density] + 16;
+}
+
 const AVATAR_COLORS = [
   "bg-accent text-accent-foreground",
   "bg-ai/15 text-ai",
@@ -52,6 +59,7 @@ export const MessageRow = memo(function MessageRow({
   message,
   index,
   density,
+  showPreview,
   category,
   selected,
   selectedInBulk,
@@ -67,6 +75,7 @@ export const MessageRow = memo(function MessageRow({
   message: MailMessage;
   index: number;
   density: Density;
+  showPreview: boolean;
   category?: string;
   selected: boolean;
   selectedInBulk: boolean;
@@ -210,6 +219,11 @@ export const MessageRow = memo(function MessageRow({
             <Paperclip className="size-3 shrink-0 text-muted-foreground" />
           )}
         </div>
+        {showPreview && density !== "compact" && !!message.preview && (
+          <div className="truncate pt-0.5 text-xs leading-4 text-muted-foreground">
+            <Highlight text={message.preview} terms={highlightTerms} />
+          </div>
+        )}
       </div>
       <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
         <button

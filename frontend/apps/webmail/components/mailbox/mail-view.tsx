@@ -109,10 +109,6 @@ export function MailView() {
     saveCurrentSearch,
     ai,
   aiLocked,
-    prioritizing,
-    priorityOn,
-    priorityCategories,
-    togglePriority,
     refreshMail,
     refreshing,
     openContextMenu,
@@ -203,11 +199,6 @@ export function MailView() {
           onChangeSort={changeSort}
           category={categoryFilter}
           onCategoryChange={setCategoryFilter}
-          aiPriorityEnabled={ai.priority}
-          prioritizing={prioritizing}
-          priorityOn={priorityOn}
-          categories={priorityCategories}
-          onTogglePriority={togglePriority}
           refreshing={refreshing}
           onRefresh={refreshMail}
           highlightTerms={highlightTerms(query)}

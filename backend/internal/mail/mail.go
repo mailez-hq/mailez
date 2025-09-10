@@ -71,6 +71,10 @@ type Message struct {
 	// Category is the deterministic auto-classification (work/social/
 	// newsletter/shopping/finance/other) derived from sender and headers.
 	Category string `json:"category,omitempty"`
+	// Preview is a short plain-text excerpt of the body for list rows,
+	// fetched as a partial IMAP body section (see preview.go). Empty when
+	// the message has no readable text part or the fetch failed.
+	Preview string `json:"preview,omitempty"`
 	// Invitation is the parsed text/calendar iTIP payload (meeting
 	// REQUEST/REPLY/CANCEL), nil for ordinary messages.
 	Invitation *Invitation `json:"invitation,omitempty"`
@@ -280,10 +284,12 @@ func (c *Client) ListMessagesSorted(email, token, folder string, page int, sortB
 	}()
 
 	var out []Message
+	raws := make(map[uint32]*imap.Message, PageSize)
 	for msg := range messages {
 		m := envelopeToMessage(msg)
 		m.Category = classifyFetched(msg, headerSection)
 		out = append(out, m)
+		raws[msg.Uid] = msg
 	}
 	if err := <-done; err != nil {
 		return nil, 0, fmt.Errorf("imap fetch: %w", err)
@@ -292,6 +298,7 @@ func (c *Client) ListMessagesSorted(email, token, folder string, page int, sortB
 	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
 		out[i], out[j] = out[j], out[i]
 	}
+	c.hydratePreviews(cli, out, raws)
 	// Annotate the page with conversation metadata gathered from a wider
 	// window, so the UI can show "N in thread" and walk the conversation.
 	if len(out) > 0 {
@@ -332,10 +339,12 @@ func (c *Client) listDateAsc(cli *pooledConn, total uint32, page int) ([]Message
 	}()
 
 	var out []Message
+	raws := make(map[uint32]*imap.Message, PageSize)
 	for msg := range messages {
 		m := envelopeToMessage(msg)
 		m.Category = classifyFetched(msg, headerSection)
 		out = append(out, m)
+		raws[msg.Uid] = msg
 	}
 	if err := <-done; err != nil {
 		return nil, 0, fmt.Errorf("imap fetch: %w", err)
@@ -343,6 +352,7 @@ func (c *Client) listDateAsc(cli *pooledConn, total uint32, page int) ([]Message
 	sort.SliceStable(out, func(i, j int) bool {
 		return out[i].Date.Before(out[j].Date)
 	})
+	c.hydratePreviews(cli, out, raws)
 	return out, int(total), nil
 }
 
@@ -383,6 +393,7 @@ func (c *Client) ListConversationsSorted(email, token, folder string, page int, 
 	}()
 
 	groups := map[string][]Message{}
+	raws := make(map[uint32]*imap.Message, 64)
 	for msg := range messages {
 		m := envelopeToMessage(msg)
 		m.ThreadID = threadID(m.Subject)
@@ -393,6 +404,7 @@ func (c *Client) ListConversationsSorted(email, token, folder string, page int, 
 			key = "uid:" + strconv.FormatUint(uint64(msg.Uid), 10)
 		}
 		groups[key] = append(groups[key], m)
+		raws[msg.Uid] = msg
 	}
 	if err := <-done; err != nil {
 		return nil, 0, fmt.Errorf("imap fetch: %w", err)
@@ -461,7 +473,10 @@ func (c *Client) ListConversationsSorted(email, token, folder string, page int, 
 	if end > total {
 		end = total
 	}
-	return reps[skip:end], total, nil
+	pageRows := reps[skip:end]
+	// The newest member represents the row; its preview is the excerpt shown.
+	c.hydratePreviews(cli, pageRows, raws)
+	return pageRows, total, nil
 }
 
 func senderKey(m Message) string {
@@ -544,10 +559,12 @@ func (c *Client) fetchSortedPage(cli *pooledConn, uids []uint32, page int) ([]Me
 		done <- cli.UidFetch(uidset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure, imap.FetchRFC822Size, headerSection.FetchItem()}, messages)
 	}()
 	byUID := make(map[uint32]Message, len(pageUIDs))
+	raws := make(map[uint32]*imap.Message, len(pageUIDs))
 	for msg := range messages {
 		m := envelopeToMessage(msg)
 		m.Category = classifyFetched(msg, headerSection)
 		byUID[msg.Uid] = m
+		raws[msg.Uid] = msg
 	}
 	if err := <-done; err != nil {
 		return nil, 0, fmt.Errorf("imap fetch: %w", err)
@@ -558,6 +575,7 @@ func (c *Client) fetchSortedPage(cli *pooledConn, uids []uint32, page int) ([]Me
 			out = append(out, m)
 		}
 	}
+	c.hydratePreviews(cli, out, raws)
 	return out, total, nil
 }
 
@@ -574,10 +592,12 @@ func (c *Client) listAllSortedFull(cli *pooledConn, folder string, total uint32,
 		done <- cli.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure, imap.FetchRFC822Size, headerSection.FetchItem()}, messages)
 	}()
 	var out []Message
+	raws := make(map[uint32]*imap.Message, 64)
 	for msg := range messages {
 		m := envelopeToMessage(msg)
 		m.Category = classifyFetched(msg, headerSection)
 		out = append(out, m)
+		raws[msg.Uid] = msg
 	}
 	if err := <-done; err != nil {
 		return nil, 0, fmt.Errorf("imap fetch: %w", err)
@@ -622,7 +642,11 @@ func (c *Client) listAllSortedFull(cli *pooledConn, folder string, total uint32,
 	if end > len(out) {
 		end = len(out)
 	}
-	return out[start:end], len(out), nil
+	pageRows := out[start:end]
+	// Preview hydration runs on the final slice only: the full snapshot was
+	// needed for sorting, but bodies must not be fetched for off-page rows.
+	c.hydratePreviews(cli, pageRows, raws)
+	return pageRows, len(out), nil
 }
 
 // ListAllMessages returns envelope + flags + size for every message in the

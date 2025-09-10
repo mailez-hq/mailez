@@ -58,6 +58,9 @@ export type MailMessage = {
   // Deterministic auto-classification: work | social | newsletter | shopping |
   // finance | other. Derived server-side from sender domain and headers.
   category?: string;
+  // Short plain-text body excerpt for list rows (minimal-style preview).
+  // Present on list responses only; empty/absent = no readable text part.
+  preview?: string;
   // Parsed iTIP meeting invitation (REQUEST/REPLY/CANCEL) when present.
   invitation?: MailInvitation;
   // Read-receipt request (RFC 3798 Disposition-Notification-To). The reader
