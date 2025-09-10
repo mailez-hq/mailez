@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -38,7 +37,6 @@ func (h *Handler) registerAI(r fiber.Router) {
 	r.Post("/ai/draft", h.aiDraft)
 	r.Post("/ai/compose", h.aiCompose)
 	r.Post("/ai/compose/stream", h.aiComposeStream)
-	r.Post("/ai/prioritize", h.aiPrioritize)
 	r.Post("/ai/search", h.aiSearch)
 	r.Post("/ai/translate", h.aiTranslate)
 	r.Post("/ai/replies", h.aiReplies)
@@ -245,40 +243,6 @@ func (h *Handler) aiDraft(c *fiber.Ctx) error {
 		return core.Fail(c, 502, err, "mail service error")
 	}
 	return c.JSON(fiber.Map{"draft": draft})
-}
-
-// aiPrioritize scores a batch of emails by importance.
-// aiPrioritize scores a batch of emails by importance.
-// @Summary Prioritize inbox
-// @Tags ai
-// @Accept json
-// @Produce json
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} models.APIError
-// @Router /ai/prioritize [post]
-func (h *Handler) aiPrioritize(c *fiber.Ctx) error {
-	if !h.AI.Enabled() {
-		return c.Status(400).JSON(fiber.Map{"error": "ai is disabled"})
-	}
-	var in struct {
-		Messages []PriorityItem `json:"messages"`
-	}
-	if err := c.BodyParser(&in); err != nil || len(in.Messages) == 0 {
-		return c.Status(400).JSON(fiber.Map{"error": "messages are required"})
-	}
-	scores, err := h.AI.Prioritize(c.Context(), in.Messages)
-	if err != nil {
-		return core.Fail(c, 502, err, "mail service error")
-	}
-	outScores := make(map[string]int, len(scores.Scores))
-	for uid, s := range scores.Scores {
-		outScores[strconv.FormatUint(uint64(uid), 10)] = s
-	}
-	outCategories := make(map[string]string, len(scores.Categories))
-	for uid, cat := range scores.Categories {
-		outCategories[strconv.FormatUint(uint64(uid), 10)] = string(cat)
-	}
-	return c.JSON(fiber.Map{"scores": outScores, "categories": outCategories})
 }
 
 // aiSearch interprets a natural-language query and runs an IMAP search with

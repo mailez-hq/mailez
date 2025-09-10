@@ -965,12 +965,6 @@ export async function aiComposeStream(
   }
 }
 
-export const aiPrioritize = (messages: { uid: number; subject: string; from: string }[]) =>
-  api<{ scores: Record<string, number>; categories?: Record<string, string> }>("/ai/prioritize", {
-    method: "POST",
-    body: JSON.stringify({ messages }),
-  });
-
 export const aiSearch = (query: string) =>
   api<{ query: string; messages: MailMessage[] }>("/ai/search", {
     method: "POST",

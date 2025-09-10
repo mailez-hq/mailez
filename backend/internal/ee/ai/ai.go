@@ -413,31 +413,6 @@ func cleanReplies(in []string) []string {
 	return out
 }
 
-// PriorityItem is a lightweight mail descriptor sent for AI ranking.
-type PriorityItem struct {
-	UID     uint32 `json:"uid"`
-	Subject string `json:"subject"`
-	From    string `json:"from"`
-}
-
-// PriorityCategory is one of the coarse inbox buckets the AI may assign.
-type PriorityCategory string
-
-const (
-	CategoryWork       PriorityCategory = "work"
-	CategoryNewsletter PriorityCategory = "newsletter"
-	CategorySocial     PriorityCategory = "social"
-	CategoryShopping   PriorityCategory = "shopping"
-	CategoryFinance    PriorityCategory = "finance"
-	CategoryOther      PriorityCategory = "other"
-)
-
-// PriorityResult pairs an importance score with an inbox category per uid.
-type PriorityResult struct {
-	Scores     map[uint32]int
-	Categories map[uint32]PriorityCategory
-}
-
 // SearchSpec is the structured interpretation of a natural-language search
 // request such as "emails with attachments from Amy last month".
 type SearchSpec struct {
@@ -448,64 +423,6 @@ type SearchSpec struct {
 	HasAttachment bool     `json:"has_attachment"`
 	Before        string   `json:"before"` // YYYY-MM-DD, optional
 	After         string   `json:"after"`  // YYYY-MM-DD, optional
-}
-
-// Prioritize scores a batch of emails from 1 (lowest) to 5 (highest) and
-// buckets each into a PriorityCategory with a single provider call returning a
-// JSON object keyed by uid.
-func (m *Manager) Prioritize(ctx context.Context, items []PriorityItem) (PriorityResult, error) {
-	p := m.load()
-	if p == nil {
-		return PriorityResult{}, ErrDisabled
-	}
-	var b strings.Builder
-	b.WriteString("Rate each email below by importance for a busy professional, from 1 (lowest) to 5 (highest), and classify each into exactly one of: work, newsletter, social, shopping, finance, other. Consider the sender relationship, urgency and subject.\n\n")
-	for _, it := range items {
-		fmt.Fprintf(&b, "- uid=%d from=%q subject=%q\n", it.UID, it.From, it.Subject)
-	}
-	b.WriteString("\nRespond ONLY with a JSON object mapping uid to {\"score\": 1-5, \"category\": \"work\"}, e.g. {\"12\": {\"score\": 5, \"category\": \"work\"}, \"3\": {\"score\": 2, \"category\": \"newsletter\"}}.")
-
-	raw, err := p.Chat(ctx, prioritySystem, b.String())
-	if err != nil {
-		return PriorityResult{}, err
-	}
-	raw = strings.TrimSpace(raw)
-	raw = strings.TrimPrefix(raw, "```json")
-	raw = strings.TrimPrefix(raw, "```")
-	raw = strings.TrimSuffix(raw, "```")
-	raw = strings.TrimSpace(raw)
-	start, end := strings.Index(raw, "{"), strings.LastIndex(raw, "}")
-	if start < 0 || end <= start {
-		return PriorityResult{}, fmt.Errorf("ai prioritize: unexpected response %q", raw)
-	}
-	var parsed map[string]struct {
-		Score    int    `json:"score"`
-		Category string `json:"category"`
-	}
-	if err := json.Unmarshal([]byte(raw[start:end+1]), &parsed); err != nil {
-		return PriorityResult{}, fmt.Errorf("ai prioritize: parse: %w", err)
-	}
-	res := PriorityResult{
-		Scores:     make(map[uint32]int, len(parsed)),
-		Categories: make(map[uint32]PriorityCategory, len(parsed)),
-	}
-	for k, v := range parsed {
-		var uid uint64
-		if _, err := fmt.Sscanf(k, "%d", &uid); err != nil {
-			continue
-		}
-		score := v.Score
-		if score < 1 {
-			score = 1
-		} else if score > 5 {
-			score = 5
-		}
-		res.Scores[uint32(uid)] = score
-		if v.Category != "" {
-			res.Categories[uint32(uid)] = PriorityCategory(v.Category)
-		}
-	}
-	return res, nil
 }
 
 // InterpretSearch translates a natural-language search into structured
@@ -539,8 +456,6 @@ const draftSystem = "You are an email assistant. Write a polite reply draft to t
 const draftConciseSystem = "You are an email assistant. Write a short, direct reply draft to the email below. Use as few words as possible without being rude, in the same language as the email. Return only the reply body, no subject."
 
 const draftFriendlySystem = "You are an email assistant. Write a warm, friendly reply draft to the email below, in the same language as the email. Return only the reply body, no subject."
-
-const prioritySystem = "You are an email prioritization assistant. Return only a JSON object mapping each uid to {\"score\": 1-5, \"category\": \"work|newsletter|social|shopping|finance|other\"}."
 
 const searchSystem = `You translate natural-language email search requests into structured criteria.
 Return ONLY JSON with this exact shape:

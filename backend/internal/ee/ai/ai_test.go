@@ -26,53 +26,6 @@ func (f fakeProvider) ChatStream(_ context.Context, _, _ string, onDelta func(st
 	return nil
 }
 
-func TestPrioritizeParsesScores(t *testing.T) {
-	m := &Manager{envFallback: fakeProvider{out: `{"1": {"score": 5, "category": "work"}, "2": {"score": 2, "category": "newsletter"}, "3": {"score": 7, "category": "other"}}`}}
-	res, err := m.Prioritize(context.Background(), []PriorityItem{
-		{UID: 1}, {UID: 2}, {UID: 3},
-	})
-	if err != nil {
-		t.Fatalf("prioritize: %v", err)
-	}
-	if res.Scores[1] != 5 || res.Scores[2] != 2 {
-		t.Errorf("scores: %v", res.Scores)
-	}
-	if res.Scores[3] != 5 {
-		t.Errorf("score must clamp to 5, got %d", res.Scores[3])
-	}
-	if res.Categories[1] != "work" || res.Categories[2] != "newsletter" {
-		t.Errorf("categories: %v", res.Categories)
-	}
-}
-
-func TestPrioritizeToleratesFences(t *testing.T) {
-	m := &Manager{envFallback: fakeProvider{out: "```json\n{\"7\": {\"score\": 4, \"category\": \"finance\"}}\n```"}}
-	res, err := m.Prioritize(context.Background(), []PriorityItem{{UID: 7}})
-	if err != nil {
-		t.Fatalf("prioritize: %v", err)
-	}
-	if res.Scores[7] != 4 {
-		t.Errorf("scores: %v", res.Scores)
-	}
-	if res.Categories[7] != "finance" {
-		t.Errorf("categories: %v", res.Categories)
-	}
-}
-
-func TestPrioritizeDisabled(t *testing.T) {
-	m := &Manager{}
-	if _, err := m.Prioritize(context.Background(), []PriorityItem{{UID: 1}}); err != ErrDisabled {
-		t.Fatalf("expected ErrDisabled, got %v", err)
-	}
-}
-
-func TestPrioritizeGarbageResponse(t *testing.T) {
-	m := &Manager{envFallback: fakeProvider{out: "sorry, no scores"}}
-	if _, err := m.Prioritize(context.Background(), []PriorityItem{{UID: 1}}); err == nil {
-		t.Fatal("expected error for garbage response")
-	}
-}
-
 func TestInterpretSearch(t *testing.T) {
 	m := &Manager{
 		envFallback: fakeProvider{

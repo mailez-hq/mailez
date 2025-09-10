@@ -44,35 +44,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/ai/prioritize": {
-            "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ai"
-                ],
-                "summary": "Prioritize inbox",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/mailez_backend_internal_core_models.APIError"
-                        }
-                    }
-                }
-            }
-        },
         "/ai/search": {
             "post": {
                 "consumes": [
