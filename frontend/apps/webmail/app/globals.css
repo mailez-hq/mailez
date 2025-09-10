@@ -13,8 +13,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans), "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
-  --font-mono: var(--font-geist-mono);
+  /* Self-contained stacks: no web font is fetched, so an air-gapped /
+     on-prem build and a first render with no internet both work. The UI uses
+     the platform's own UI font, with the CJK families that ship with
+     Windows/macOS/Linux kept as fallbacks for the Chinese UI. */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", "Courier New", monospace;
   --font-heading: var(--font-sans);
   --color-ai: var(--ai);
   --color-ai-foreground: var(--ai-foreground);
@@ -57,76 +63,81 @@
 }
 
 :root {
+  /* Fresh light palette (slate neutrals + 石青 azurite), custom-designed
+     Webmail's design tokens: white surfaces, slate-200 hairlines, slate-500
+     secondary text and a single saturated accent for actions/highlights. */
   --background: #ffffff;
-  --foreground: #18181b;
+  --foreground: #0f172a;
   --card: #ffffff;
-  --card-foreground: #18181b;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #18181b;
+  --popover-foreground: #0f172a;
   --primary: #2e6e8e;
   --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
+  --secondary: #f8fafc;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
   --accent: #e2edf2;
   --accent-foreground: #1d4a63;
-  --destructive: #c94b4b;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #2e6e8e;
+  --destructive: #ef4444;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #94a3b8;
   --ai: #2e6e8e;
   --ai-foreground: #ffffff;
-  --chart-1: #2f8e6c;
-  --chart-2: #2e6e8e;
-  --chart-3: #71717a;
-  --chart-4: #c9a227;
-  --chart-5: #5b8c5a;
-  --radius: 0.625rem;
-  --sidebar: #fafafa;
-  --sidebar-foreground: #52525b;
-  --sidebar-primary: #2f8e6c;
+  --chart-1: #2e6e8e;
+  --chart-2: #22c55e;
+  --chart-3: #f59e0b;
+  --chart-4: #ef4444;
+  --chart-5: #8b5cf6;
+  --radius: 0.5rem;
+  --sidebar: #f8fafc;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #2e6e8e;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e2edf2;
-  --sidebar-accent-foreground: #1d4a63;
-  --sidebar-border: #e4e4e7;
-  --sidebar-ring: #2e6e8e;
+  --sidebar-accent: #f1f5f9;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #94a3b8;
 }
 
 .dark {
-  --background: #101012;
-  --foreground: #f4f4f5;
-  --card: #18181b;
-  --card-foreground: #f4f4f5;
-  --popover: #18181b;
-  --popover-foreground: #f4f4f5;
-  --primary: #4d8fac;
-  --primary-foreground: #0b231b;
-  --secondary: #27272a;
-  --secondary-foreground: #f4f4f5;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
+  /* Monochrome near-black dark mode (minimal-style): ink surfaces, white
+     primary actions, hairline gray borders, 石青 reserved for accents/AI. */
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #141414;
+  --card-foreground: #fafafa;
+  --popover: #1c1c1c;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #171717;
+  --secondary: #262626;
+  --secondary-foreground: #fafafa;
+  --muted: #262626;
+  --muted-foreground: #a3a3a3;
   --accent: #1f3d4d;
   --accent-foreground: #8fc7e0;
-  --destructive: #e56b6b;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.12);
-  --ring: #4d8fac;
+  --destructive: #ef4444;
+  --border: rgba(128, 128, 128, 0.3);
+  --input: #262626;
+  --ring: #d4d4d4;
   --ai: #4d8fac;
-  --ai-foreground: #0e1d26;
-  --chart-1: #3ba77f;
-  --chart-2: #4d8fac;
-  --chart-3: #a1a1aa;
-  --chart-4: #c9a227;
-  --chart-5: #5b8c5a;
-  --sidebar: #141416;
-  --sidebar-foreground: #a1a1aa;
-  --sidebar-primary: #3ba77f;
-  --sidebar-primary-foreground: #0b231b;
-  --sidebar-accent: #1f3d4d;
-  --sidebar-accent-foreground: #8fc7e0;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: #4d8fac;
+  --ai-foreground: #0a0a0a;
+  --chart-1: #4d8fac;
+  --chart-2: #4ade80;
+  --chart-3: #fbbf24;
+  --chart-4: #f87171;
+  --chart-5: #a78bfa;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #fafafa;
+  --sidebar-primary-foreground: #171717;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #262626;
+  --sidebar-ring: #d4d4d4;
 }
 
 @layer base {
@@ -171,8 +182,9 @@
 }
 
 /* Accent families: data-accent on <html> overrides the brand color. The
-   default "blue" (stone cyan) is the default theme and needs no override;
-   "green" (mailez brand teal) is the legacy default. */
+   default (no attribute) is 石青 / azurite — the "blue" accent slot keeps its
+   legacy id, but the hue is the mailez brand 石青 defined in :root; "green"
+   (mailez brand teal) is the legacy default kept as an option. */
 [data-accent="green"] {
   --primary: #2f8e6c;
   --ring: #2f8e6c;
@@ -291,7 +303,7 @@
   font-size: 0.8125rem;
 }
 .mail-prose .tiptap code {
-  font-family: var(--font-geist-mono);
+  font-family: var(--font-mono);
   font-size: 0.8em;
 }
 .mail-prose .tiptap a {
@@ -376,6 +388,23 @@
   max-width: 100%;
   height: auto;
   border-radius: 0.375rem;
+}
+
+/* Minimalist scrollbar everywhere (minimal-style): slim, transparent track,
+   border-colored rounded thumb that darkens on hover. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
 }
 
 /* Virtual list scrollbar: slim and unobtrusive */

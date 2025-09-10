@@ -18,7 +18,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This app deliberately ships **no web fonts**: nothing is downloaded from Google Fonts or any other font CDN, so an air-gapped / on-prem install builds and renders offline. `app/globals.css` defines `--font-sans` / `--font-mono` from the fonts the OS already has (platform UI font plus the common CJK families).
 
 ## Learn More
 

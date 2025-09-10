@@ -95,7 +95,7 @@ export function AppSidebar({ me }: { me: Me }) {
             <Logo className="size-9" />
           )}
           {brand.title || "Mailez"}{" "}
-          <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-[#60A5FA] to-[#2563EB] bg-clip-text text-transparent">
             Admin
           </span>
         </Link>

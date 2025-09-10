@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Mailez EZ">
   <defs>
     <linearGradient id="mz-bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2F8E6C"/>
-      <stop offset="1" stop-color="#2E6E8E"/>
+      <stop offset="0" stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#2563EB"/>
     </linearGradient>
   </defs>
   <rect x="24" y="24" width="464" height="464" rx="100" fill="url(#mz-bg)"/>
