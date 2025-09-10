@@ -170,8 +170,42 @@ function handleUnauthorized(path: string) {
   window.location.href = target;
 }
 
-export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${mailPath(path)}`, {
+// fetch has no deadline of its own. A stalled request (backend restarting, a
+// dropped IMAP connection) used to leave the mailbox pinned to its loading
+// skeleton indefinitely, because the promise simply never settled. Every
+// request now aborts on a deadline and reports it through the ordinary error
+// path; LOAD_TIMEOUT_MS is the tighter budget for the reads that gate the
+// first paint of the list (folder counts, message page, search), so a stuck
+// load tells the user instead of spinning forever.
+const DEFAULT_TIMEOUT_MS = 60_000;
+export const LOAD_TIMEOUT_MS = 30_000;
+
+export type ApiInit = RequestInit & { timeoutMs?: number };
+
+function requestTimeoutText(): string {
+  const zh =
+    typeof document !== "undefined" &&
+    /(?:^|;\s*)NEXT_LOCALE=zh/.test(document.cookie);
+  return zh ? "请求超时，请稍后重试" : "The request timed out. Please try again.";
+}
+
+async function requestWithTimeout(url: string, init: ApiInit = {}): Promise<Response> {
+  // An explicit signal still wins: callers that manage their own cancellation
+  // keep full control of the request's lifetime.
+  const { timeoutMs, ...rest } = init;
+  const signal = rest.signal ?? AbortSignal.timeout(timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...rest, signal });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "TimeoutError") {
+      throw new ApiError(requestTimeoutText(), 0);
+    }
+    throw err;
+  }
+}
+
+export async function api<T>(path: string, init?: ApiInit): Promise<T> {
+  const res = await requestWithTimeout(`${API}${mailPath(path)}`, {
     headers: { "Content-Type": "application/json", ...mailHeaders() },
     ...init,
   });
@@ -263,7 +297,8 @@ export async function me(): Promise<Me> {
   return api<Me>("/sso/me");
 }
 
-export const mailFolders = () => api<string[]>("/mail/folders");
+export const mailFolders = () =>
+  api<string[]>("/mail/folders", { timeoutMs: LOAD_TIMEOUT_MS });
 
 export const mailFolderCreate = (name: string) =>
   apiPost<void>("/mail/folders", { name });
@@ -277,12 +312,16 @@ export const mailFolderDelete = (name: string) =>
 export const mailFolderClear = (name: string) =>
   apiPost<void>("/mail/folders/clear", { name });
 
-export const mailUnseen = () => api<Record<string, number>>("/mail/unseen");
+export const mailUnseen = () =>
+  api<Record<string, number>>("/mail/unseen", { timeoutMs: LOAD_TIMEOUT_MS });
 
 export async function mailMessages(folder: string, page = 0, sort = "date", dir = "", conversation = false): Promise<MailPage> {
-  const res = await fetch(
+  const res = await requestWithTimeout(
     `${API}${mailPath(`/mail/messages?folder=${encodeURIComponent(folder)}&page=${page}&sort=${encodeURIComponent(sort)}&dir=${encodeURIComponent(dir)}${conversation ? "&conversation=1" : ""}`)}`,
-    { headers: { "Content-Type": "application/json", ...mailHeaders() } },
+    {
+      headers: { "Content-Type": "application/json", ...mailHeaders() },
+      timeoutMs: LOAD_TIMEOUT_MS,
+    },
   );
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -297,13 +336,16 @@ export async function mailMessages(folder: string, page = 0, sort = "date", dir 
 }
 
 export const mailSearch = (folder: string, q: string) =>
-  api<MailMessage[]>(`/mail/search?folder=${encodeURIComponent(folder)}&q=${encodeURIComponent(q)}`);
+  api<MailMessage[]>(`/mail/search?folder=${encodeURIComponent(folder)}&q=${encodeURIComponent(q)}`, {
+    timeoutMs: LOAD_TIMEOUT_MS,
+  });
 
 // mailSearchSpec runs a structured search (built visually, no syntax parsing).
 export const mailSearchSpec = (folder: string, spec: MailSearchSpec) =>
   api<MailMessage[]>("/mail/search", {
     method: "POST",
     body: JSON.stringify({ folder, query: spec }),
+    timeoutMs: LOAD_TIMEOUT_MS,
   });
 
 // mailMessage fetches a single message. It is addressed by its stable routable

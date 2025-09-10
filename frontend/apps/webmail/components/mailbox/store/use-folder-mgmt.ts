@@ -33,6 +33,10 @@ export function useFolderMgmt({
 }) {
   const [folders, setFolders] = useState<string[]>([]);
   const [unseen, setUnseen] = useState<Record<string, number>>({});
+  // The counts arrive after the first paint. Until then an empty map means
+  // "not loaded yet", not "everything is read" — the home overview used to
+  // show a confident 0 while the real numbers were still in flight.
+  const [unseenLoaded, setUnseenLoaded] = useState(false);
 
   // Hydrate from the per-account cache so the sidebar paints populated on
   // the first frame (see lib/folders-cache.ts); the mount-time loadFolders
@@ -44,7 +48,12 @@ export function useFolderMgmt({
   }, [email]);
 
   const refreshUnseen = useCallback(() => {
-    mailUnseen().then((u) => setUnseen(u ?? {})).catch(() => {});
+    mailUnseen()
+      .then((u) => {
+        setUnseen(u ?? {});
+        setUnseenLoaded(true);
+      })
+      .catch(() => {});
   }, []);
 
   const loadFolders = useCallback(async () => {
@@ -115,7 +124,7 @@ export function useFolderMgmt({
   }, [folders]);
 
   return {
-    folders, unseen, setUnseen,
+    folders, unseen, unseenLoaded, setUnseen,
     refreshUnseen, loadFolders,
     createFolder, renameFolder, deleteFolder, clearFolder,
     spamFolder,

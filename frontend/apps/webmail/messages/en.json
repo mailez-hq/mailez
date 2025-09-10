@@ -87,6 +87,8 @@
     "toastUnsubscribed": "Unsubscribed",
     "toastUnsubscribeFailed": "Unsubscribe failed; please unsubscribe manually",
     "draftSaved": "Draft auto-saved",
+    "draftClosedSaved": "Draft saved",
+    "draftCloseFailed": "Could not save the draft — reopen Write to recover the text",
     "sending": "Sending…",
     "undo": "Undo",
     "attach": "Attach",
