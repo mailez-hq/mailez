@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T19:25:39.757Z",
+  "generatedAt": "2026-09-11T19:28:23.998Z",
   "total": 8,
   "pass": 7,
   "fail": 1,
@@ -9,13 +9,13 @@
       "module": "VERIFY3",
       "name": "Burn: the list preview does NOT leak the burned body",
       "status": "PASS",
-      "detail": "row=\"A admin@example.com 03:24 E2E-BURN2-1789154684025 1\""
+      "detail": "row=\"A admin@example.com 03:27 E2E-BURN2-1789154830780 1\""
     },
     {
       "module": "VERIFY3",
       "name": "Burn: first open reveals the body and flags $BurnRead",
       "status": "FAIL",
-      "detail": "revealButton=0 bodyVisible=false flags=[\\Seen]"
+      "detail": "revealButton=1 bodyVisible=false flags=[$BurnRead]"
     },
     {
       "module": "VERIFY3",

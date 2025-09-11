@@ -31,8 +31,10 @@ try {
   check(MOD, "Burn: the list preview does NOT leak the burned body",
     !rowText.includes("BURNSECRET"), `row="${rowText.replace(/\s+/g, " ").slice(0, 60)}"`);
 
-  await web.page.locator(".mail-scroll [role='button']", { hasText: BURN }).first().click();
-  await web.page.waitForTimeout(3000);
+  // Open by deep link: clicking a row right after a list load is racy (the row
+  // can be swapped mid-click and the reader never mounts), which produced two
+  // different false failures. The reader URL is deterministic.
+  await gotoMail(web.page, `/mail/Inbox/${encodeURIComponent(bm.id)}`, { settleMs: 6000 });
   const firstPane = await paneText(web.page);
   const reveal = web.page.locator("button", { hasText: /Reveal|查看邮件|Open message/ }).first();
   const hadReveal = await reveal.count();
@@ -41,7 +43,7 @@ try {
     // The reveal flags the message over IMAP and the reader re-renders after
     // that round-trip; 3s was too tight (the body showed up at ~5s in
     // _debug-burn.mjs), so give it a proper budget before asserting.
-    await web.page.waitForTimeout(8000);
+    await web.page.waitForTimeout(6000);
   }
   const firstAfter = await paneText(web.page);
   const flags1 = (await withImap((c) => c.uidFetch(bm.uid))).flags || [];
@@ -53,8 +55,7 @@ try {
 
   await gotoMail(web.page, "/mail/Inbox");
   await stableList(web.page, 20000);
-  await web.page.locator(".mail-scroll [role='button']", { hasText: BURN }).first().click();
-  await web.page.waitForTimeout(4000);
+  await gotoMail(web.page, `/mail/Inbox/${encodeURIComponent(bm.id)}`, { settleMs: 6000 });
   const secondPane = await paneText(web.page);
   const secondRow = await web.page.locator(".mail-scroll [role='button']", { hasText: BURN }).first().innerText();
   check(MOD, "Burn: second open does not show the body again",
