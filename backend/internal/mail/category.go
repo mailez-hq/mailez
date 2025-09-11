@@ -12,9 +12,14 @@ import (
 // classifyFetched derives a category for a freshly fetched list row, reading
 // the sender and subject from the envelope and the List-Unsubscribe header
 // from the separately fetched header section.
-func classifyFetched(msg *imap.Message, headerSection *imap.BodySectionName) string {
+// classifyFetched returns the deterministic category plus the burn-after-read
+// minutes carried by the message header (0 for ordinary mail). Both come from
+// the same header block the list paths already fetched, so exposing the burn
+// flag here costs no extra round-trip.
+func classifyFetched(msg *imap.Message, headerSection *imap.BodySectionName) (string, int) {
 	from := ""
 	subject := ""
+	burn := 0
 	if msg.Envelope != nil {
 		subject = msg.Envelope.Subject
 		if len(msg.Envelope.From) > 0 {
@@ -25,12 +30,13 @@ func classifyFetched(msg *imap.Message, headerSection *imap.BodySectionName) str
 	headers := map[string]string{}
 	if r := msg.GetBody(headerSection); r != nil {
 		if raw, err := io.ReadAll(r); err == nil {
+			burn = parseBurnAfter(raw)
 			if hdr, err := mail.ReadMessage(bytes.NewReader(raw)); err == nil {
 				headers["List-Unsubscribe"] = hdr.Header.Get("List-Unsubscribe")
 			}
 		}
 	}
-	return classifyMessage(from, subject, headers)
+	return classifyMessage(from, subject, headers), burn
 }
 
 // Category values assigned by classify() and returned in Message.Category. The

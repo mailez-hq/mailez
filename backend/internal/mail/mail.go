@@ -287,7 +287,7 @@ func (c *Client) ListMessagesSorted(email, token, folder string, page int, sortB
 	raws := make(map[uint32]*imap.Message, PageSize)
 	for msg := range messages {
 		m := envelopeToMessage(msg)
-		m.Category = classifyFetched(msg, headerSection)
+		m.Category, m.BurnAfterMinutes = classifyFetched(msg, headerSection)
 		out = append(out, m)
 		raws[msg.Uid] = msg
 	}
@@ -342,7 +342,7 @@ func (c *Client) listDateAsc(cli *pooledConn, total uint32, page int) ([]Message
 	raws := make(map[uint32]*imap.Message, PageSize)
 	for msg := range messages {
 		m := envelopeToMessage(msg)
-		m.Category = classifyFetched(msg, headerSection)
+		m.Category, m.BurnAfterMinutes = classifyFetched(msg, headerSection)
 		out = append(out, m)
 		raws[msg.Uid] = msg
 	}
@@ -397,7 +397,7 @@ func (c *Client) ListConversationsSorted(email, token, folder string, page int, 
 	for msg := range messages {
 		m := envelopeToMessage(msg)
 		m.ThreadID = threadID(m.Subject)
-		m.Category = classifyFetched(msg, headerSection)
+		m.Category, m.BurnAfterMinutes = classifyFetched(msg, headerSection)
 		key := m.ThreadID
 		if key == "" {
 			// Messages without a subject never group; keep them as singletons.
@@ -562,7 +562,7 @@ func (c *Client) fetchSortedPage(cli *pooledConn, uids []uint32, page int) ([]Me
 	raws := make(map[uint32]*imap.Message, len(pageUIDs))
 	for msg := range messages {
 		m := envelopeToMessage(msg)
-		m.Category = classifyFetched(msg, headerSection)
+		m.Category, m.BurnAfterMinutes = classifyFetched(msg, headerSection)
 		byUID[msg.Uid] = m
 		raws[msg.Uid] = msg
 	}
@@ -595,7 +595,7 @@ func (c *Client) listAllSortedFull(cli *pooledConn, folder string, total uint32,
 	raws := make(map[uint32]*imap.Message, 64)
 	for msg := range messages {
 		m := envelopeToMessage(msg)
-		m.Category = classifyFetched(msg, headerSection)
+		m.Category, m.BurnAfterMinutes = classifyFetched(msg, headerSection)
 		out = append(out, m)
 		raws[msg.Uid] = msg
 	}

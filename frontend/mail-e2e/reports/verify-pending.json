@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-09-11T19:07:12.197Z",
+  "total": 8,
+  "pass": 7,
+  "fail": 1,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "VERIFY3",
+      "name": "Burn: the list preview does NOT leak the burned body",
+      "status": "PASS",
+      "detail": "row=\"A admin@example.com 03:06 E2E-BURN2-1789153568544 1\""
+    },
+    {
+      "module": "VERIFY3",
+      "name": "Burn: first open reveals the body and flags $BurnRead",
+      "status": "FAIL",
+      "detail": "revealButton=1 bodyVisible=false flags=[\\Seen,$BurnRead]"
+    },
+    {
+      "module": "VERIFY3",
+      "name": "Burn: second open does not show the body again",
+      "status": "PASS",
+      "detail": "paneHasSecret=false listHasSecret=false"
+    },
+    {
+      "module": "VERIFY3",
+      "name": "Accounts: sidebar shows the active account control",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "VERIFY3",
+      "name": "Accounts: clicking the account control exposes switching/aggregation entries",
+      "status": "PASS",
+      "detail": "entriesFound=true"
+    },
+    {
+      "module": "VERIFY3",
+      "name": "Accounts: aggregation API agrees (reachable)",
+      "status": "PASS",
+      "detail": "count=0"
+    },
+    {
+      "module": "VERIFY3",
+      "name": "Accounts: delegations endpoint",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "module": "VERIFY3",
+      "name": "Cleanup: pending-verification mail purged",
+      "status": "PASS",
+      "detail": "expunged=2"
+    }
+  ]
+}
