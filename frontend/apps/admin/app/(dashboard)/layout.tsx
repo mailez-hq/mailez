@@ -24,7 +24,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen">
+    // Fixed viewport height, not min-height: the main column scrolls
+    // INTERNALLY (overflow-auto needs a bounded parent) so the sidebar —
+    // with the locale switcher and user card at its bottom — stays fully
+    // visible no matter how long the page content is.
+    <div className="flex h-screen overflow-hidden">
       <AppSidebar me={user} />
       <main className="flex-1 overflow-auto p-6">{children}</main>
     </div>
