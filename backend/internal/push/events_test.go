@@ -124,6 +124,20 @@ func TestEventWatcherDetectsNewMail(t *testing.T) {
 	default:
 	}
 
+	// Another client deleting/moving a message SHRINKS the count without
+	// touching UIDNEXT: open tabs must still be told, otherwise the deleted
+	// row sits in their list until a manual refresh.
+	fake.set("a@example.com", "Inbox", mail.FolderStat{UidNext: 2, Messages: 1, Unseen: 1})
+	w.pollOnce()
+	select {
+	case ev := <-ch:
+		if len(ev.Folders) != 1 || ev.Folders[0] != "Inbox" {
+			t.Fatalf("unexpected event: %+v", ev)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("expected an event when the message count shrinks")
+	}
+
 	// A snooze wake-up resurfaces an old message as unread: UNSEEN grows
 	// without UIDNEXT or count changing, and that must fire so the client
 	// refreshes (engine sweeper → delivery receipt → Kick path).

@@ -330,8 +330,13 @@ func (w *EventWatcher) checkEmail(email string) {
 			// regardless of read state; a growing UNSEEN count also fires,
 			// because a snooze wake-up (engine sweeper) resurfaces an old
 			// message as unread and the client must refresh then too.
-			// Other flag-only changes (read/archive) don't fire.
-			if cur.UidNext > old.UidNext || cur.Messages > old.Messages || cur.Unseen > old.Unseen {
+			//
+			// A SHRINKING message count is the other direction: another
+			// client deleted, moved or archived the message out of this
+			// folder, and this tab must drop the row instead of showing it
+			// until a manual refresh. Read-state changes still stay quiet
+			// (UNSEEN dropping on its own is not a reason to refetch).
+			if cur.UidNext != old.UidNext || cur.Messages != old.Messages || cur.Unseen > old.Unseen {
 				changed = append(changed, folder)
 			}
 		}

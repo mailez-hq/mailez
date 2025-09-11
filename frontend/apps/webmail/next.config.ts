@@ -36,6 +36,15 @@ const nextConfig: NextConfig = {
   // Next's own gzip would buffer proxied SSE frames (text/event-stream) and
   // the mailbox push would never reach the browser.
   compress: false,
+  experimental: {
+    // The mailbox API is proxied through Next. Its defaults (30s timeout,
+    // small proxied-body cap) made an 11MB attachment fail with 408 while the
+    // backend was still working — and the message was actually sent, so a
+    // retry would duplicate it. Give the proxy room for the backend's own
+    // 50MB message limit.
+    proxyTimeout: 180_000,
+    proxyClientMaxBodySize: 64 * 1024 * 1024,
+  },
   async rewrites() {
     return [
       { source: "/api/v1/:path*", destination: `${API_TARGET}/api/v1/:path*` },
