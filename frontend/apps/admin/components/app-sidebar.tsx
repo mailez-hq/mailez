@@ -112,7 +112,11 @@ export function AppSidebar({ me }: { me: Me }) {
               className={cn(
                 "relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
                 active
-                  ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                  ? // Same active language as the webmail sidebar: --sidebar-accent
+                    // barely contrasts against --sidebar, so tint with
+                    // --primary (which the data-accent families override)
+                    // and anchor with an inset bar.
+                    "bg-primary/20 font-medium text-primary shadow-[inset_2px_0_0_0_var(--primary)] hover:bg-primary/25"
                   : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
               )}
             >
