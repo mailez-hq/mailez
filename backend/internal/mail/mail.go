@@ -712,7 +712,8 @@ func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, 
 	}
 	defer cli.Logout()
 
-	if _, err := c.selectFolder(cli, folder, true); err != nil {
+	mbox, err := c.selectFolder(cli, folder, true)
+	if err != nil {
 		return nil, fmt.Errorf("imap select %q: %w", folder, err)
 	}
 
@@ -737,7 +738,21 @@ func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, 
 	}
 
 	out := envelopeToMessage(msg)
-	out.ThreadID = threadID(out.Subject)
+	// The conversation id MUST come from the same grouping the list scan
+	// uses (message-id / in-reply-to chains with a subject fallback). The
+	// previous subject-only id mismatched the list rows whenever a
+	// conversation had real reply headers: the list advertised "2 in
+	// thread", the reading pane then fetched a thread id that matched no
+	// member and degraded to a single message.
+	if meta, err := c.threadMeta(cli, mbox.Messages); err == nil {
+		if tid := meta.ids[msg.Uid]; tid != "" {
+			out.ThreadID = tid
+		} else {
+			out.ThreadID = threadID(out.Subject)
+		}
+	} else {
+		out.ThreadID = threadID(out.Subject)
+	}
 	if body := msg.GetBody(section); body != nil {
 		raw, err := io.ReadAll(body)
 		if err == nil {
