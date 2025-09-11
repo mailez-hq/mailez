@@ -144,7 +144,11 @@ export function ReadingPane({
   const [recallHandled, setRecallHandled] = useState(false);
   const [replies, setReplies] = useState<string[]>([]);
   const [repliesLoading, setRepliesLoading] = useState(false);
-  const [burnRevealed, setBurnRevealed] = useState(false);
+  // Burn-after-read: the body arrives from POST /mail/burn/reveal (never from
+  // the detail fetch) and is remembered per message for this session.
+  const [burnBody, setBurnBody] = useState<{ uid: number; text: string; html: string } | null>(null);
+  const revealedBody = burnBody && burnBody.uid === detail.uid ? burnBody : null;
+  const burnRevealed = revealedBody !== null;
   const [pgpPlaintext, setPgpPlaintext] = useState<string | null>(null);
   const [decrypting, setDecrypting] = useState(false);
   const [pgpError, setPgpError] = useState("");
@@ -297,18 +301,23 @@ export function ReadingPane({
     }
   }
 
+  // A revealed burn message renders the body the server handed over; ordinary
+  // mail (and a locked/consumed burn message, whose body the server withholds)
+  // renders whatever the detail response carried.
+  const bodyText = revealedBody ? revealedBody.text : detail.text_body || "";
+  const bodyHTML = revealedBody ? revealedBody.html : detail.html_body || "";
   const segments = useMemo(
-    () => parseBody(pgpPlaintext ?? (detail.text_body || "")),
-    [detail.text_body, pgpPlaintext],
+    () => parseBody(pgpPlaintext ?? bodyText),
+    [bodyText, pgpPlaintext],
   );
   const remoteImages = useMemo(
-    () => hasRemoteImages(detail.html_body),
-    [detail.html_body],
+    () => hasRemoteImages(bodyHTML),
+    [bodyHTML],
   );
   const htmlBody = useMemo(() => {
-    if (!detail.html_body) return "";
+    if (!bodyHTML) return "";
     if (pgpPlaintext !== null || isPgpEncrypted) return "";
-    const clean = sanitizeMailHTML(detail.html_body);
+    const clean = sanitizeMailHTML(bodyHTML);
     const guarded =
       remoteImages && !remoteLoaded
         ? blockRemoteImages(clean)
@@ -317,7 +326,7 @@ export function ReadingPane({
     // engine's auto-generated html carries the whole "> " chain as nested
     // blockquotes that would otherwise render in full.
     return foldHtmlQuotes(guarded, t("quotedText"));
-  }, [detail.html_body, remoteImages, remoteLoaded, pgpPlaintext, isPgpEncrypted, t]);
+  }, [bodyHTML, remoteImages, remoteLoaded, pgpPlaintext, isPgpEncrypted, t]);
 
   const starred = detail.flags?.includes("\\Flagged") ?? false;
   const sender = detail.from?.[0];
@@ -411,11 +420,13 @@ export function ReadingPane({
 
   // revealBurn unlocks a burn-after-read message once (flags it $BurnRead).
   async function revealBurn() {
-    setBurnRevealed(true);
     try {
-      await mailFlag(detail.folder || folder, detail.uid, "$BurnRead", true);
+      const { mailBurnReveal } = await import("@/lib/api");
+      const fresh = await mailBurnReveal(detail.folder || folder, detail.uid);
+      setBurnBody({ uid: detail.uid, text: fresh?.text_body ?? "", html: fresh?.html_body ?? "" });
     } catch {
-      // non-fatal: the body is shown for this session regardless
+      // The server refused (already burned, or not a burn message): keep the
+      // gate so the notice can explain the state.
     }
   }
 
@@ -762,7 +773,7 @@ export function ReadingPane({
             {/* Burn-after-read: the body is not rendered at all until this
                 session reveals it, so an unrevealed message can never be read
                 from the DOM. */}
-            {(!(detail.burn_after_minutes ?? 0) || burnRevealed) && (
+            {(!detail.burn_locked || burnRevealed) && (
             <MessageBody
               mounted={mounted}
               htmlBody={htmlBody}

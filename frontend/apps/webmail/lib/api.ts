@@ -532,6 +532,12 @@ export const mailSaveDraft = (
 export const mailFlag = (folder: string, uid: number, flag: string, value: boolean) =>
   apiPost("/mail/flag", { folder, uid, flag, value });
 
+// mailBurnReveal opens a burn-after-read message. The server starts the reveal
+// window and only then returns the body, so the content is never on the wire
+// before the user asks for it (and never after the window closes).
+export const mailBurnReveal = (folder: string, uid: number) =>
+  api<MailMessage>("/mail/burn/reveal", { method: "POST", body: JSON.stringify({ folder, uid }) });
+
 // Snooze: until is a unix-seconds timestamp, or 0/null to wake the message up.
 export const mailSnooze = (folder: string, uid: number, until: number | null) =>
   apiPost("/mail/snooze", { folder, uid, until: until ?? 0 });

@@ -72,6 +72,10 @@ export type MailMessage = {
   // Burn-after-read (阅后即焚): the reader shows the body once and flags the
   // message $BurnRead. 0 or absent = normal message.
   burn_after_minutes?: number;
+  /** Burn-after-read, not revealed yet: the server sends no body at all. */
+  burn_locked?: boolean;
+  /** Burn-after-read whose reveal window has closed: the body is gone. */
+  burn_consumed?: boolean;
 };
 
 export type MailInvitation = {

@@ -211,7 +211,7 @@ export function BurnGate({
   if (burnMinutes <= 0 || burnRevealed) return null;
   // Opened in an earlier session: the body is gone for good. Say so instead of
   // leaving the reader blank (the body itself is not rendered at all).
-  if ((detail.flags ?? []).includes("$BurnRead")) {
+  if (detail.burn_consumed) {
     return (
       <div className="relative mb-4 rounded-lg border border-border bg-muted/40 p-4 text-center">
         <Flame className="mx-auto mb-2 size-5 text-muted-foreground" />
