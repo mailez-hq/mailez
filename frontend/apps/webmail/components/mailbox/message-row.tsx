@@ -229,7 +229,8 @@ export const MessageRow = memo(function MessageRow({
             <Paperclip className="size-3 shrink-0 text-muted-foreground" />
           )}
         </div>
-        {showPreview && density !== "compact" && !!message.preview && (
+        {/* Burn-after-read mail must never show a body excerpt in the list. */}
+        {showPreview && density !== "compact" && !message.burn_after_minutes && !!message.preview && (
           <div className="truncate pt-0.5 text-xs leading-4 text-muted-foreground">
             <Highlight text={message.preview} terms={highlightTerms} />
           </div>
