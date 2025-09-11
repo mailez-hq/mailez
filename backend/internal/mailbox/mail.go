@@ -21,6 +21,7 @@ func (h *Handler) registerMail(r fiber.Router) {
 	r.Get("/mail/unseen", h.mailUnseen)
 	r.Get("/mail/messages", h.mailMessages)
 	r.Get("/mail/message", h.mailMessage)
+	r.Post("/mail/burn/reveal", h.mailBurnReveal)
 	r.Get("/mail/raw", h.mailRaw)
 	r.Get("/mail/thread", h.mailThread)
 	r.Get("/mail/search", h.mailSearch)
@@ -610,6 +611,9 @@ func (h *Handler) mailMessage(c *fiber.Ctx) error {
 	}
 	if msg != nil {
 		msg.Flags = decodeLabelFlags(msg.Flags, h.labelNamesByKeyword(mailboxIdentity(c)))
+		// Burn-after-read: the body only travels while inside the reveal
+		// window, so no client can read it early or after it burned.
+		gateBurn(msg)
 	}
 	return c.JSON(msg)
 }

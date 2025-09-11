@@ -68,6 +68,12 @@ type Message struct {
 	// BurnAfterMinutes marks a burn-after-read (阅后即焚) message: the reader
 	// shows the body once and flags it $BurnRead. 0 = normal message.
 	BurnAfterMinutes int `json:"burn_after_minutes,omitempty"`
+	// BurnLocked marks a burn-after-read message whose body has not been
+	// revealed yet: the server sends no content at all in this state.
+	BurnLocked bool `json:"burn_locked,omitempty"`
+	// BurnConsumed marks a burn-after-read message whose reveal window has
+	// closed: the content is gone and will not be served again.
+	BurnConsumed bool `json:"burn_consumed,omitempty"`
 	// Category is the deterministic auto-classification (work/social/
 	// newsletter/shopping/finance/other) derived from sender and headers.
 	Category string `json:"category,omitempty"`
