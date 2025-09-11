@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T19:24:13.505Z",
+  "generatedAt": "2026-09-11T19:25:39.757Z",
   "total": 8,
   "pass": 7,
   "fail": 1,
@@ -9,13 +9,13 @@
       "module": "VERIFY3",
       "name": "Burn: the list preview does NOT leak the burned body",
       "status": "PASS",
-      "detail": "row=\"A admin@example.com 03:23 E2E-BURN2-1789154601110 1\""
+      "detail": "row=\"A admin@example.com 03:24 E2E-BURN2-1789154684025 1\""
     },
     {
       "module": "VERIFY3",
       "name": "Burn: first open reveals the body and flags $BurnRead",
       "status": "FAIL",
-      "detail": "revealButton=1 bodyVisible=false flags=[\\Seen,$BurnRead]"
+      "detail": "revealButton=0 bodyVisible=false flags=[\\Seen]"
     },
     {
       "module": "VERIFY3",
@@ -51,7 +51,7 @@
       "module": "VERIFY3",
       "name": "Cleanup: pending-verification mail purged",
       "status": "PASS",
-      "detail": "expunged=2"
+      "detail": "expunged=1"
     }
   ]
 }

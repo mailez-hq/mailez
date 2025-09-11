@@ -38,7 +38,10 @@ try {
   const hadReveal = await reveal.count();
   if (hadReveal) {
     await reveal.click({ timeout: 8000 }).catch(() => {});
-    await web.page.waitForTimeout(3000);
+    // The reveal flags the message over IMAP and the reader re-renders after
+    // that round-trip; 3s was too tight (the body showed up at ~5s in
+    // _debug-burn.mjs), so give it a proper budget before asserting.
+    await web.page.waitForTimeout(8000);
   }
   const firstAfter = await paneText(web.page);
   const flags1 = (await withImap((c) => c.uidFetch(bm.uid))).flags || [];
