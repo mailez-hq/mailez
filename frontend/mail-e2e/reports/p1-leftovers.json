@@ -1,0 +1,69 @@
+{
+  "generatedAt": "2026-09-11T17:46:12.736Z",
+  "total": 10,
+  "pass": 9,
+  "fail": 1,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "P1-left",
+      "name": "Snooze: the message disappears from the open Inbox view",
+      "status": "PASS",
+      "detail": "uiGone=true apiGone=false after 140s"
+    },
+    {
+      "module": "P1-left",
+      "name": "Snooze: API list agrees it left Inbox",
+      "status": "FAIL",
+      "detail": "apiGone=false"
+    },
+    {
+      "module": "P1-left",
+      "name": "Snooze: it is listed in /mail/snoozed",
+      "status": "PASS",
+      "detail": "count=1"
+    },
+    {
+      "module": "P1-left",
+      "name": "Snooze: unsnooze returns it to Inbox",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "P1-left",
+      "name": "Burn: first read shows the body and marks it read-once",
+      "status": "PASS",
+      "detail": "flags=[\\Seen,$BurnRead]"
+    },
+    {
+      "module": "P1-left",
+      "name": "Burn: second open no longer reveals the body",
+      "status": "PASS",
+      "detail": "bodyVisibleAgain=true"
+    },
+    {
+      "module": "P1-left",
+      "name": "Theme: dark/light apply immediately without a reload",
+      "status": "PASS",
+      "detail": "start=false afterDark=true afterLight=false"
+    },
+    {
+      "module": "P1-left",
+      "name": "LDAP: group-sync settings surface is readable",
+      "status": "PASS",
+      "detail": "/api/v1/ldap -> keys=enabled,host,port,security,base_dn,bind_dn,user_filter,mail_attr"
+    },
+    {
+      "module": "P1-left",
+      "name": "LDAP: probed endpoints",
+      "status": "PASS",
+      "detail": "/api/v1/ldap=200"
+    },
+    {
+      "module": "P1-left",
+      "name": "Cleanup: leftover probes purged",
+      "status": "PASS",
+      "detail": "expunged=4"
+    }
+  ]
+}

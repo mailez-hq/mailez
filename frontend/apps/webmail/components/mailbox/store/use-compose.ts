@@ -22,6 +22,13 @@ import { composeSignature } from "@/lib/compose-signature";
 import { parseMergeRecipients } from "@/lib/mail-merge";
 import type { MailToastLink } from "./use-toast";
 
+// Recipients are free text until send time; a typo used to be handed straight
+// to the outbox, which queued an undeliverable message and closed the composer
+// with no feedback. Mirrors what the engine can actually deliver: a local part,
+// an @, and a dotted domain.
+const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;.]+$/;
+const isEmailAddress = (value: string) => EMAIL_RE.test(value.trim());
+
 function fmtDate(d: string) {
   return new Date(d).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
@@ -793,6 +800,26 @@ export function useCompose({
   async function send(e: React.FormEvent) {
     e.preventDefault();
     setComposeError("");
+    // Validate the recipient list up front: an address the engine cannot
+    // deliver must produce a visible error, not a queued message that vanishes
+    // into the outbox and leaves the user thinking it was sent.
+    const addressed = [...to, ...cc, ...bcc].map((a) => a.trim()).filter(Boolean);
+    if (!mergeOn && addressed.length === 0) {
+      setComposeError(t("noRecipients"));
+      return;
+    }
+    const badAddress = addressed.find((a) => !isEmailAddress(a));
+    if (badAddress) {
+      setComposeError(t("invalidRecipient", { address: badAddress }));
+      return;
+    }
+    // An empty subject is almost always an oversight; ask the user to add one
+    // (or save the text as a draft) instead of quietly sending subject-less
+    // mail, which is hard to find again in the recipient's inbox.
+    if (!mergeOn && !subject.trim()) {
+      setComposeError(t("noSubject"));
+      return;
+    }
     try {
       let text = bodyText;
       let html = stripCollapseMarkers(body);

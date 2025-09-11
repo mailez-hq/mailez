@@ -1,0 +1,63 @@
+{
+  "generatedAt": "2026-09-11T14:45:01.996Z",
+  "total": 9,
+  "pass": 8,
+  "fail": 1,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "P0-draft",
+      "name": "auto-save creates exactly one draft",
+      "status": "PASS",
+      "detail": "rows=1"
+    },
+    {
+      "module": "P0-draft",
+      "name": "server holds the auto-saved draft (API)",
+      "status": "PASS",
+      "detail": "count=1 uid=57"
+    },
+    {
+      "module": "P0-draft",
+      "name": "reopening a draft restores subject",
+      "status": "PASS",
+      "detail": "open=true subject=\"E2E-DRAFT-1789137745857\" (typed \"E2E-DRAFT-1789137745857\")"
+    },
+    {
+      "module": "P0-draft",
+      "name": "reopening a draft restores body text",
+      "status": "PASS",
+      "detail": "body=\" draft body v1\""
+    },
+    {
+      "module": "P0-draft",
+      "name": "edit + close keeps a single draft (overwrite, not duplicate)",
+      "status": "PASS",
+      "detail": "rows=1"
+    },
+    {
+      "module": "P0-draft",
+      "name": "edits made before closing are preserved",
+      "status": "PASS",
+      "detail": "open=true body=\" draft body v1 v2\""
+    },
+    {
+      "module": "P0-draft",
+      "name": "closing right after typing still saves the draft",
+      "status": "PASS",
+      "detail": "rows=1"
+    },
+    {
+      "module": "P0-draft",
+      "name": "close-saved draft keeps its body (API)",
+      "status": "PASS",
+      "detail": "uid=59 preview=\"closing must keep this text\""
+    },
+    {
+      "module": "P0-draft",
+      "name": "Cleanup: draft probes purged",
+      "status": "FAIL",
+      "detail": "expunged=0"
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "generatedAt": "2026-09-11T17:34:19.769Z",
+  "total": 10,
+  "pass": 6,
+  "fail": 3,
+  "blocked": 1,
+  "results": [
+    {
+      "module": "P2",
+      "name": "AI: status endpoint answers",
+      "status": "PASS",
+      "detail": "status=200 payload={\"enabled\":true,\"provider\":\"openai\"}"
+    },
+    {
+      "module": "P2",
+      "name": "AI: natural-language search responds",
+      "status": "FAIL",
+      "detail": "status=502"
+    },
+    {
+      "module": "P2",
+      "name": "PGP: key status endpoint answers",
+      "status": "PASS",
+      "detail": "status=200 body={\"has_key\":false}"
+    },
+    {
+      "module": "P2",
+      "name": "Templates: create + list",
+      "status": "PASS",
+      "detail": "create=200 list=200 listed=true"
+    },
+    {
+      "module": "P2",
+      "name": "Contacts: create + list",
+      "status": "PASS",
+      "detail": "create=201 list=200"
+    },
+    {
+      "module": "P2",
+      "name": "Calendar: create + list",
+      "status": "FAIL",
+      "detail": "create=400 list=200"
+    },
+    {
+      "module": "P2",
+      "name": "Accounts: aggregation endpoint answers",
+      "status": "PASS",
+      "detail": "status=200 count=0"
+    },
+    {
+      "module": "P2",
+      "name": "Mail merge: per-recipient copy is delivered",
+      "status": "FAIL",
+      "detail": "status=400 uid=-"
+    },
+    {
+      "module": "P2",
+      "name": "Unsubscribe: one-click flow",
+      "status": "BLOCKED",
+      "detail": "no List-Unsubscribe header available through the send API; the flow performs an outbound request and was not triggered"
+    },
+    {
+      "module": "P2",
+      "name": "Cleanup: P2 probes purged",
+      "status": "PASS",
+      "detail": "expunged=2"
+    }
+  ]
+}

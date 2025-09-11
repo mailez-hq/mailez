@@ -159,6 +159,17 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 		extra = append(extra, mail.Header{Key: "X-Mailez-Burn-After", Value: strconv.Itoa(in.BurnAfter)})
 	}
 	if err := h.Mail.With(d).Send(d.Email, d.Token, from, in.To, in.Cc, in.Bcc, in.Subject, in.Body, in.HTML, in.Attachments, extra...); err != nil {
+		// A submission the delivery policy refuses (554 "message rejected by
+		// policy", or a per-recipient sieve rejection) is not a service
+		// outage: the message will never be accepted, so surface it as a
+		// client error with the engine's own wording instead of a bare
+		// "mail service error" that tells the user nothing.
+		if msg, ok := policyRejection(err); ok {
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+				"error": msg,
+				"code":  "policy_rejected",
+			})
+		}
 		return core.Fail(c, 502, err, "mail service error")
 	}
 	return c.SendStatus(fiber.StatusNoContent)

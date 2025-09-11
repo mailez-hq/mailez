@@ -1,0 +1,87 @@
+{
+  "generatedAt": "2026-09-11T15:45:31.433Z",
+  "total": 13,
+  "pass": 13,
+  "fail": 0,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "P0-settings",
+      "name": "Settings: changes apply immediately (no reload)",
+      "status": "PASS",
+      "detail": "density=compact accent=purple class=\"\""
+    },
+    {
+      "module": "P0-settings",
+      "name": "Settings: survive a full page reload",
+      "status": "PASS",
+      "detail": "density=compact accent=purple"
+    },
+    {
+      "module": "P0-settings",
+      "name": "Settings: SSR mirror cookie carries the same values",
+      "status": "PASS",
+      "detail": "cookie=\"NEXT_LOCALE=en; mailez_session=9ca4afab4b16fe3ee1b401bb3cf0a6aef5ffeb46941b58082\""
+    },
+    {
+      "module": "P0-settings",
+      "name": "Settings: the dialog reflects the persisted selection",
+      "status": "PASS",
+      "detail": "accentSelected=true lightBtn=\"flex-1 rounded-md px-2 py-1 text-xs tran\""
+    },
+    {
+      "module": "P0-settings",
+      "name": "Settings: original values restored after the test",
+      "status": "PASS",
+      "detail": "density=cozy accent=blue (was cozy/blue)"
+    },
+    {
+      "module": "P0-settings",
+      "name": "Language: switching to 中文 translates the shell",
+      "status": "PASS",
+      "detail": "hasInbox=true hasWrite=true"
+    },
+    {
+      "module": "P0-settings",
+      "name": "Language: choice persists across a reload",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "P0-settings",
+      "name": "Language: switching back to EN restores English",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "P0-settings",
+      "name": "Cross-cutting: seeded mail is visible before opening",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "P0-settings",
+      "name": "Cross-cutting: opening a message produces a deep link",
+      "status": "PASS",
+      "detail": "/mail/Inbox/PDUyZTEyNzU0MmMxZDI1OWQ0NWM4YzdhMkBleGFtcGxlLmNvbT4"
+    },
+    {
+      "module": "P0-settings",
+      "name": "Cross-cutting: refreshing the deep link restores the message",
+      "status": "PASS",
+      "detail": "url=/mail/Inbox/PDUyZTEyNzU0MmMxZDI1OWQ0NWM4YzdhMkBleGFtcGxlLmNvbT4"
+    },
+    {
+      "module": "P0-settings",
+      "name": "Cross-cutting: browser back returns to the previous view",
+      "status": "PASS",
+      "detail": "after back=/mail/Inbox/PDUyZTEyNzU0MmMxZDI1OWQ0NWM4YzdhMkBleGFtcGxlLmNvbT4"
+    },
+    {
+      "module": "P0-settings",
+      "name": "Cleanup: settings-probe mail purged",
+      "status": "PASS",
+      "detail": "expunged=2"
+    }
+  ]
+}

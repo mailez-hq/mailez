@@ -1,0 +1,99 @@
+{
+  "generatedAt": "2026-09-11T17:30:39.103Z",
+  "total": 15,
+  "pass": 15,
+  "fail": 0,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "P1-admin",
+      "name": "Users: create + list",
+      "status": "PASS",
+      "detail": "status=201 listed=true"
+    },
+    {
+      "module": "P1-admin",
+      "name": "Users: delete",
+      "status": "PASS",
+      "detail": "status=204"
+    },
+    {
+      "module": "P1-admin",
+      "name": "Aliases: create + list",
+      "status": "PASS",
+      "detail": "status=201 listed=true"
+    },
+    {
+      "module": "P1-admin",
+      "name": "Aliases: delete",
+      "status": "PASS",
+      "detail": "status=204"
+    },
+    {
+      "module": "P1-admin",
+      "name": "Domains: create + list",
+      "status": "PASS",
+      "detail": "status=201 listed=true"
+    },
+    {
+      "module": "P1-admin",
+      "name": "Domains: delete",
+      "status": "PASS",
+      "detail": "status=204"
+    },
+    {
+      "module": "P1-admin",
+      "name": "Announcement: publish via admin API",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "module": "P1-admin",
+      "name": "Announcement: readable from the user API",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "module": "P1-admin",
+      "name": "Announcement: webmail home shows the banner",
+      "status": "PASS",
+      "detail": "homeHasStamp=true"
+    },
+    {
+      "module": "P1-admin",
+      "name": "Audit: the log returns entries",
+      "status": "PASS",
+      "detail": "status=200 entries=50"
+    },
+    {
+      "module": "P1-admin",
+      "name": "Audit: this session's admin actions are recorded",
+      "status": "PASS",
+      "detail": "found this run's identifier"
+    },
+    {
+      "module": "P1-admin",
+      "name": "UI: turning message previews off changes the row height",
+      "status": "PASS",
+      "detail": "rowHeight 60px → 44px"
+    },
+    {
+      "module": "P1-admin",
+      "name": "UI: accent switch repaints --primary without a reload",
+      "status": "PASS",
+      "detail": "before=#2e6e8e purple=#6b4fa0"
+    },
+    {
+      "module": "P1-admin",
+      "name": "UI: accent can be restored to the default",
+      "status": "PASS",
+      "detail": "restored=#2e6e8e (was #2e6e8e)"
+    },
+    {
+      "module": "P1-admin",
+      "name": "Cleanup: admin/UI probes removed",
+      "status": "PASS",
+      "detail": "expunged=2"
+    }
+  ]
+}

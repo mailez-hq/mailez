@@ -1,0 +1,93 @@
+{
+  "generatedAt": "2026-09-11T15:42:14.029Z",
+  "total": 14,
+  "pass": 14,
+  "fail": 0,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "P0-thread",
+      "name": "Thread: root message delivered",
+      "status": "PASS",
+      "detail": "uid=423"
+    },
+    {
+      "module": "P0-thread",
+      "name": "Thread: root exposes a Message-ID for replies",
+      "status": "PASS",
+      "detail": "message-id=<9d7048894ae88b02fe57ba31@example.com>"
+    },
+    {
+      "module": "P0-thread",
+      "name": "Thread: conversation view reports 3 members (API)",
+      "status": "PASS",
+      "detail": "thread_count=3 subject=Re: E2E-THR-1789141119203"
+    },
+    {
+      "module": "P0-thread",
+      "name": "Thread: single-message view lists the 3 members separately (API)",
+      "status": "PASS",
+      "detail": "rows=3"
+    },
+    {
+      "module": "P0-thread",
+      "name": "Thread: UI collapses the thread into one row",
+      "status": "PASS",
+      "detail": "rows=1"
+    },
+    {
+      "module": "P0-thread",
+      "name": "Thread: reader shows every member of the conversation",
+      "status": "PASS",
+      "detail": "reply bodies rendered=3"
+    },
+    {
+      "module": "P0-thread",
+      "name": "Thread: turning conversation view off splits the thread into 3 rows",
+      "status": "PASS",
+      "detail": "rows=3 (switch was aria-checked=true)"
+    },
+    {
+      "module": "P0-thread",
+      "name": "Attachment: message with a CJK-named attachment is delivered",
+      "status": "PASS",
+      "detail": "uid=426 has_attachment=true"
+    },
+    {
+      "module": "P0-thread",
+      "name": "Attachment: list flags the message as carrying an attachment",
+      "status": "PASS",
+      "detail": "has_attachment=true"
+    },
+    {
+      "module": "P0-thread",
+      "name": "Search: keyword finds the seeded thread",
+      "status": "PASS",
+      "detail": "listHasSubject=true"
+    },
+    {
+      "module": "P0-thread",
+      "name": "Search: has:attachment returns the attachment message",
+      "status": "PASS",
+      "detail": "snippet=\"云山大学 A Write AI compose A admin@example.com Workspace FOLDERS Inbox 3 Sent Draft\""
+    },
+    {
+      "module": "P0-thread",
+      "name": "Search: a non-matching query reports 'No matches'",
+      "status": "PASS",
+      "detail": "snippet=\"云山大学 A Write AI compose A admin@example.com Workspace FOLDER\""
+    },
+    {
+      "module": "P0-thread",
+      "name": "Search: hostile query string is handled without a crash",
+      "status": "PASS",
+      "detail": "chars=309"
+    },
+    {
+      "module": "P0-thread",
+      "name": "Cleanup: thread/search subjects purged",
+      "status": "PASS",
+      "detail": "expunged=7"
+    }
+  ]
+}

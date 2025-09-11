@@ -413,7 +413,29 @@ func (h *Handler) mailMessages(c *fiber.Ctx) error {
 		return core.Fail(c, 502, err, "mail service error")
 	}
 	c.Set("X-Total-Messages", strconv.Itoa(total))
-	return c.JSON(h.decodeMessages(mailboxIdentity(c), messages))
+	// Snoozed mail is hidden from every folder view (the Snoozed view reads
+	// /mail/snoozed). Without this the list API kept returning a message the
+	// webmail had already hidden, so any direct API consumer disagreed with
+	// the UI about what the folder contains.
+	visible := messages[:0]
+	for _, m := range messages {
+		if hasSnoozeFlag(m.Flags) {
+			continue
+		}
+		visible = append(visible, m)
+	}
+	return c.JSON(h.decodeMessages(mailboxIdentity(c), visible))
+}
+
+// hasSnoozeFlag reports whether a row carries the engine's snooze keyword
+// (see mail.SnoozeFlag / mail.SnoozeUntilPrefix).
+func hasSnoozeFlag(flags []string) bool {
+	for _, f := range flags {
+		if strings.EqualFold(f, mail.SnoozeFlag) || strings.HasPrefix(strings.ToLower(f), strings.ToLower(mail.SnoozeUntilPrefix)) {
+			return true
+		}
+	}
+	return false
 }
 
 // mailSearch searches messages in a folder or all folders.

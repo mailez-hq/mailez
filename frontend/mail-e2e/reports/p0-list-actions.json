@@ -1,0 +1,117 @@
+{
+  "generatedAt": "2026-09-11T15:32:01.581Z",
+  "total": 18,
+  "pass": 18,
+  "fail": 0,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "P0-list",
+      "name": "Unread: new mail arrives unread (IMAP flags)",
+      "status": "PASS",
+      "detail": "uid=407 flags=[]"
+    },
+    {
+      "module": "P0-list",
+      "name": "Unread: opening a message marks it read (IMAP)",
+      "status": "PASS",
+      "detail": "flags=[\\Seen]"
+    },
+    {
+      "module": "P0-list",
+      "name": "Unread: seeded message starts unread",
+      "status": "PASS",
+      "detail": "uid=408"
+    },
+    {
+      "module": "P0-list",
+      "name": "Unread: 'Mark all as read' clears unseen (IMAP)",
+      "status": "PASS",
+      "detail": "flags=[\\Seen]"
+    },
+    {
+      "module": "P0-list",
+      "name": "Star: toggling the row star flags the message (IMAP)",
+      "status": "PASS",
+      "detail": "flags=[\\Flagged]"
+    },
+    {
+      "module": "P0-list",
+      "name": "Star: toggling again removes the flag (IMAP)",
+      "status": "PASS",
+      "detail": "flags=[]"
+    },
+    {
+      "module": "P0-list",
+      "name": "Delete: row leaves Inbox (API)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "P0-list",
+      "name": "Delete: message is filed in Trash (API)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "P0-list",
+      "name": "Delete: message is really gone from Inbox (IMAP)",
+      "status": "PASS",
+      "detail": "imap=[]"
+    },
+    {
+      "module": "P0-list",
+      "name": "Bulk delete: both selected rows leave Inbox (API)",
+      "status": "PASS",
+      "detail": "remaining="
+    },
+    {
+      "module": "P0-list",
+      "name": "Archive: message leaves Inbox and lands in Archive",
+      "status": "PASS",
+      "detail": "Archive folder present"
+    },
+    {
+      "module": "P0-list",
+      "name": "Folders: UI creates a custom folder",
+      "status": "PASS",
+      "detail": "folders=[Inbox, Archive, Drafts, E2E-FOLDER-1789140523446, Junk, Sent, Trash]"
+    },
+    {
+      "module": "P0-list",
+      "name": "Move: message lands in the custom folder (API)",
+      "status": "PASS",
+      "detail": "inFolder=true"
+    },
+    {
+      "module": "P0-list",
+      "name": "Move: custom folder really holds the message (IMAP)",
+      "status": "PASS",
+      "detail": "imap uids=[1]"
+    },
+    {
+      "module": "P0-list",
+      "name": "Move: message no longer in Inbox (API)",
+      "status": "PASS",
+      "detail": "stillInbox=false"
+    },
+    {
+      "module": "P0-list",
+      "name": "Sort: 'Oldest first' shows the oldest message first",
+      "status": "PASS",
+      "detail": "ui=\"A admin@example.com 17:47 Re: 辞职申请 2 收到，感谢你一直以\" api=\"辞职申请\""
+    },
+    {
+      "module": "P0-list",
+      "name": "Pagination: scrolling Sent loads the next page",
+      "status": "PASS",
+      "detail": "total=59 before=21 after=22"
+    },
+    {
+      "module": "P0-list",
+      "name": "Cleanup: P0 list subjects purged",
+      "status": "PASS",
+      "detail": "expunged=14"
+    }
+  ]
+}

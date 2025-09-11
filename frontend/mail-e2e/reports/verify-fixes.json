@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-09-11T16:31:01.191Z",
+  "total": 7,
+  "pass": 7,
+  "fail": 0,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "VERIFY",
+      "name": "D1: a valid recipient still sends end-to-end",
+      "status": "PASS",
+      "detail": "uid=438"
+    },
+    {
+      "module": "VERIFY",
+      "name": "D1: invalid recipient keeps the composer open",
+      "status": "PASS",
+      "detail": "composerOpen=true"
+    },
+    {
+      "module": "VERIFY",
+      "name": "D1: invalid recipient shows an inline error",
+      "status": "PASS",
+      "detail": "errorText=\"“not-an-email” is not a valid email address\""
+    },
+    {
+      "module": "VERIFY",
+      "name": "D1: nothing was queued for the invalid address",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "VERIFY",
+      "name": "D2: seeded row visible before the external move",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "VERIFY",
+      "name": "D2: open tab drops the row without a manual refresh",
+      "status": "PASS",
+      "detail": "converged in 2877ms"
+    },
+    {
+      "module": "VERIFY",
+      "name": "Cleanup: verification mail purged",
+      "status": "PASS",
+      "detail": "expunged=5"
+    }
+  ]
+}

@@ -72,6 +72,20 @@ export function useRealtime({
     });
   }, [email, refreshUnseen, loadMessages]);
 
+  // Safety net for changes the SSE watcher cannot see: its folder counters
+  // only move on add/remove, so flag-only edits made in ANOTHER tab or client
+  // (star, read) would otherwise leave this tab stale until a manual refresh.
+  // One silent list refresh a minute keeps open tabs convergent without
+  // turning the mailbox into a polling client.
+  useEffect(() => {
+    if (!email) return;
+    const id = setInterval(() => {
+      refreshUnseen();
+      void loadMessages(folderRef.current, 0, true);
+    }, 60000);
+    return () => clearInterval(id);
+  }, [email, refreshUnseen, loadMessages]);
+
   // connection status banner (initial value seeds navigator.onLine where it
   // exists; the effect only subscribes to changes — no state writes).
   useEffect(() => {

@@ -1,0 +1,33 @@
+{
+  "generatedAt": "2026-09-11T17:37:21.661Z",
+  "total": 4,
+  "pass": 4,
+  "fail": 0,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "P2-retest",
+      "name": "Calendar: create + list with the documented shape",
+      "status": "PASS",
+      "detail": "create=200 listed=true"
+    },
+    {
+      "module": "P2-retest",
+      "name": "Calendar: delete",
+      "status": "PASS",
+      "detail": "status=204"
+    },
+    {
+      "module": "P2-retest",
+      "name": "Mail merge: one personalised copy per recipient is delivered",
+      "status": "PASS",
+      "detail": "status=200 body={\"failed\":null,\"sent\":1} uid=460"
+    },
+    {
+      "module": "P2-retest",
+      "name": "Cleanup: P2 retest probes purged",
+      "status": "PASS",
+      "detail": "expunged=2"
+    }
+  ]
+}

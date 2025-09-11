@@ -1,0 +1,75 @@
+{
+  "generatedAt": "2026-09-11T17:40:02.911Z",
+  "total": 11,
+  "pass": 7,
+  "fail": 4,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "P2-ui",
+      "name": "AI: status advertises provider",
+      "status": "PASS",
+      "detail": "{\"enabled\":true,\"provider\":\"openai\"}"
+    },
+    {
+      "module": "P2-ui",
+      "name": "AI summarize returns usable content",
+      "status": "FAIL",
+      "detail": "status=400 keys=error"
+    },
+    {
+      "module": "P2-ui",
+      "name": "AI compose returns usable content",
+      "status": "FAIL",
+      "detail": "status=400 keys=error"
+    },
+    {
+      "module": "P2-ui",
+      "name": "AI draft returns usable content",
+      "status": "FAIL",
+      "detail": "status=400 keys=error"
+    },
+    {
+      "module": "P2-ui",
+      "name": "PGP: no key configured in this deployment",
+      "status": "PASS",
+      "detail": "{\"has_key\":false}"
+    },
+    {
+      "module": "P2-ui",
+      "name": "PGP: composer exposes a sign toggle",
+      "status": "PASS",
+      "detail": "buttons=1"
+    },
+    {
+      "module": "P2-ui",
+      "name": "PGP: enabling sign without a key gives visible feedback",
+      "status": "PASS",
+      "detail": "feedbackShown=true"
+    },
+    {
+      "module": "P2-ui",
+      "name": "Accounts: aggregation API reachable",
+      "status": "PASS",
+      "detail": "count=0"
+    },
+    {
+      "module": "P2-ui",
+      "name": "Accounts: account menu exposes switching/aggregation entry",
+      "status": "FAIL",
+      "detail": "menuSnippet=云山大学 / A Write AI compose A admin@example.com Workspace FOLDERS Inbox 2 Sent Drafts 3 Tras"
+    },
+    {
+      "module": "P2-ui",
+      "name": "Edition: EE-only endpoints are present in this build",
+      "status": "PASS",
+      "detail": "audit=200 announcement=204"
+    },
+    {
+      "module": "P2-ui",
+      "name": "Cleanup: P2 UI probes purged",
+      "status": "PASS",
+      "detail": "expunged=3"
+    }
+  ]
+}

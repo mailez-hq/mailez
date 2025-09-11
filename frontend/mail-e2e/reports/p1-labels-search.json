@@ -1,0 +1,99 @@
+{
+  "generatedAt": "2026-09-11T16:58:57.004Z",
+  "total": 15,
+  "pass": 15,
+  "fail": 0,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "P1-label",
+      "name": "fixture: label target delivered",
+      "status": "PASS",
+      "detail": "uid=445"
+    },
+    {
+      "module": "P1-label",
+      "name": "Labels: create returns success and lists the label",
+      "status": "PASS",
+      "detail": "status=200 labels=[E2E-LBLNAME-1789145732050]"
+    },
+    {
+      "module": "P1-label",
+      "name": "Labels: the new label shows up in the sidebar",
+      "status": "PASS",
+      "detail": "sidebarHasLabel=true"
+    },
+    {
+      "module": "P1-label",
+      "name": "Labels: applying a label shows it on the message row",
+      "status": "PASS",
+      "detail": "row=\"A admin@example.com 00:55 E2E-LBL-1789145732050 E2E-LBLNAME-\""
+    },
+    {
+      "module": "P1-label",
+      "name": "Labels: the label view lists the labelled message",
+      "status": "PASS",
+      "detail": "labelViewHasSubject=true"
+    },
+    {
+      "module": "P1-label",
+      "name": "Labels: rename updates the sidebar entry",
+      "status": "PASS",
+      "detail": "status=204 hasNew=true hasOld=false"
+    },
+    {
+      "module": "P1-label",
+      "name": "Labels: delete removes the sidebar entry",
+      "status": "PASS",
+      "detail": "status=204"
+    },
+    {
+      "module": "P1-label",
+      "name": "Saved search: the save affordance appears for an active search",
+      "status": "PASS",
+      "detail": "buttons=1"
+    },
+    {
+      "module": "P1-label",
+      "name": "Saved search: persists into the sidebar's saved list",
+      "status": "PASS",
+      "detail": "hasSection=false"
+    },
+    {
+      "module": "P1-label",
+      "name": "Syntax search: subject: matches",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "P1-label",
+      "name": "Syntax search: from: matches own mail",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "P1-label",
+      "name": "Syntax search: has:attachment matches the attachment mail",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "P1-label",
+      "name": "Syntax search: before:2000-01-01 returns nothing",
+      "status": "PASS",
+      "detail": "snippet=\"a message Welcome to Mailez — press ? to see keyboard shortcuts Got it\""
+    },
+    {
+      "module": "P1-label",
+      "name": "Syntax search: after: + subject: combined matches",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "P1-label",
+      "name": "Cleanup: labels + E2E mail removed",
+      "status": "PASS",
+      "detail": "expunged=4 labelsLeft=[]"
+    }
+  ]
+}

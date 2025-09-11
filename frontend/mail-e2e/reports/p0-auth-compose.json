@@ -1,0 +1,129 @@
+{
+  "generatedAt": "2026-09-11T15:51:34.710Z",
+  "total": 20,
+  "pass": 19,
+  "fail": 1,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "P0",
+      "name": "Auth: signed-out /home is bounced to the login page",
+      "status": "PASS",
+      "detail": "url=http://127.0.0.1:8083/?next=%2Fhome"
+    },
+    {
+      "module": "P0",
+      "name": "Auth: form login reaches /home",
+      "status": "PASS",
+      "detail": "url=http://127.0.0.1:8083/home"
+    },
+    {
+      "module": "P0",
+      "name": "Auth: sign-out leaves the signed-in area",
+      "status": "PASS",
+      "detail": "url=http://127.0.0.1:8083/?next=%2Fhome"
+    },
+    {
+      "module": "P0",
+      "name": "Compose: UI send delivers to own Inbox (API)",
+      "status": "PASS",
+      "detail": "uid=428"
+    },
+    {
+      "module": "P0",
+      "name": "Compose: delivered copy visible over IMAP",
+      "status": "PASS",
+      "detail": "imap=[428]"
+    },
+    {
+      "module": "P0",
+      "name": "Compose: a copy is filed in Sent",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "P0",
+      "name": "Security: <script> in subject/body does not execute",
+      "status": "PASS",
+      "detail": "dialogs=[] payloadVisibleAsText=true"
+    },
+    {
+      "module": "P0",
+      "name": "Security: injected markup is shown as text, not markup",
+      "status": "PASS",
+      "detail": "reader rendered the payload as content"
+    },
+    {
+      "module": "P0",
+      "name": "Compose: empty subject is handled deliberately (sent or refused with a message)",
+      "status": "PASS",
+      "detail": "delivered uid=430 subject=\"\""
+    },
+    {
+      "module": "P0",
+      "name": "Compose: 190-char subject round-trips intact",
+      "status": "PASS",
+      "detail": "len=203"
+    },
+    {
+      "module": "P0",
+      "name": "Compose: invalid recipient is rejected with a message",
+      "status": "FAIL",
+      "detail": "composeOpen=false url=/mail/Inbox"
+    },
+    {
+      "module": "P0",
+      "name": "Reply: subject prefixed and original quoted",
+      "status": "PASS",
+      "detail": "subject=\"Re: E2E-SEND-1789141573508\" quotedChars=43"
+    },
+    {
+      "module": "P0",
+      "name": "Reply: reply is delivered back to the inbox",
+      "status": "PASS",
+      "detail": "uid=432"
+    },
+    {
+      "module": "P0",
+      "name": "Forward: subject prefixed",
+      "status": "PASS",
+      "detail": "subject=\"Fwd: E2E-SEND-1789141573508\""
+    },
+    {
+      "module": "P0",
+      "name": "Forward: forwarded copy is delivered",
+      "status": "PASS",
+      "detail": "uid=433"
+    },
+    {
+      "module": "P0",
+      "name": "Draft: auto-save creates exactly one draft",
+      "status": "PASS",
+      "detail": "rows=1"
+    },
+    {
+      "module": "P0",
+      "name": "Draft: reopening restores subject and body",
+      "status": "PASS",
+      "detail": "editorOpen=true subject=\"E2E-DRAFT-1789141573508\" bodyChars=16"
+    },
+    {
+      "module": "P0",
+      "name": "Draft: edit + close keeps a single draft (overwrite semantics)",
+      "status": "PASS",
+      "detail": "rows=1"
+    },
+    {
+      "module": "P0",
+      "name": "Draft: closed edits are not lost",
+      "status": "PASS",
+      "detail": "editorOpen=true body=\" draft body v1 v2\""
+    },
+    {
+      "module": "P0",
+      "name": "Cleanup: E2E-* subjects purged from all folders",
+      "status": "PASS",
+      "detail": "expunged=11"
+    }
+  ]
+}

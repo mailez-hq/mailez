@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-09-11T18:31:16.470Z",
+  "total": 7,
+  "pass": 7,
+  "fail": 0,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "VERIFY2",
+      "name": "D4: SEARCH on Trash is no longer ~45s",
+      "status": "PASS",
+      "detail": "took=6400ms hits=0"
+    },
+    {
+      "module": "VERIFY2",
+      "name": "D8: snoozed mail is filtered out of the list API",
+      "status": "PASS",
+      "detail": "stillListed=false"
+    },
+    {
+      "module": "VERIFY2",
+      "name": "D8: it still shows in /mail/snoozed",
+      "status": "PASS",
+      "detail": "count=1"
+    },
+    {
+      "module": "VERIFY2",
+      "name": "D3: star applied in tab A reaches the server",
+      "status": "PASS",
+      "detail": "flags=[\\Flagged]"
+    },
+    {
+      "module": "VERIFY2",
+      "name": "D3: tab B converges without a manual refresh",
+      "status": "PASS",
+      "detail": "converged=true after 56s"
+    },
+    {
+      "module": "VERIFY2",
+      "name": "D5: sending with an empty subject is refused with a message",
+      "status": "PASS",
+      "detail": "composerOpen=true"
+    },
+    {
+      "module": "VERIFY2",
+      "name": "Cleanup: verification mail purged",
+      "status": "PASS",
+      "detail": "expunged=4"
+    }
+  ]
+}

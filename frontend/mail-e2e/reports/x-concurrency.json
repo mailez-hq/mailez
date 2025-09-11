@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-09-11T16:32:42.624Z",
+  "total": 7,
+  "pass": 6,
+  "fail": 1,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "X-concurrency",
+      "name": "Both contexts show the seeded message",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "X-concurrency",
+      "name": "Deleting in tab B disappears from tab A without a manual refresh",
+      "status": "PASS",
+      "detail": "tab A converged"
+    },
+    {
+      "module": "X-concurrency",
+      "name": "Server agrees the message is gone (API)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "module": "X-concurrency",
+      "name": "Star set in tab A is flagged on the server",
+      "status": "PASS",
+      "detail": "flags=[\\Flagged]"
+    },
+    {
+      "module": "X-concurrency",
+      "name": "Tab B reflects the star without a manual refresh",
+      "status": "PASS",
+      "detail": "starClass=\"lucide lucide-star size-3.5\""
+    },
+    {
+      "module": "X-concurrency",
+      "name": "Un-star from tab B clears the server flag (single source of truth)",
+      "status": "FAIL",
+      "detail": "flags=[\\Flagged]"
+    },
+    {
+      "module": "X-concurrency",
+      "name": "Cleanup: concurrency probes purged",
+      "status": "PASS",
+      "detail": "expunged=3"
+    }
+  ]
+}
