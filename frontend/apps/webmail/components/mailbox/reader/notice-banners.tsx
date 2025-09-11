@@ -207,16 +207,24 @@ export function BurnGate({
   onReveal: () => void;
 }) {
   const t = useTranslations("mail");
-  if (!(detail.burn_after_minutes && detail.burn_after_minutes > 0 &&
-    !(detail.flags ?? []).includes("$BurnRead") && !burnRevealed)) {
-    return null;
+  const burnMinutes = detail.burn_after_minutes ?? 0;
+  if (burnMinutes <= 0 || burnRevealed) return null;
+  // Opened in an earlier session: the body is gone for good. Say so instead of
+  // leaving the reader blank (the body itself is not rendered at all).
+  if ((detail.flags ?? []).includes("$BurnRead")) {
+    return (
+      <div className="relative mb-4 rounded-lg border border-border bg-muted/40 p-4 text-center">
+        <Flame className="mx-auto mb-2 size-5 text-muted-foreground" />
+        <p className="text-sm font-medium">{t("burnNotice")}</p>
+      </div>
+    );
   }
   return (
     <div className="relative mb-4 rounded-lg border border-orange-300/60 bg-orange-50 p-6 text-center dark:border-orange-700/50 dark:bg-orange-950/30">
       <Flame className="mx-auto mb-2 size-6 text-orange-500" />
       <p className="text-sm font-medium">{t("burnNotice")}</p>
       <p className="mt-1 text-xs text-muted-foreground">
-        {t("burnHint", { minutes: detail.burn_after_minutes })}
+        {t("burnHint", { minutes: burnMinutes })}
       </p>
       <Button className="mt-3" size="sm" onClick={onReveal}>
         {t("burnReveal")}

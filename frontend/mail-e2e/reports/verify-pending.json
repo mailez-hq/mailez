@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T19:07:12.197Z",
+  "generatedAt": "2026-09-11T19:24:13.505Z",
   "total": 8,
   "pass": 7,
   "fail": 1,
@@ -9,7 +9,7 @@
       "module": "VERIFY3",
       "name": "Burn: the list preview does NOT leak the burned body",
       "status": "PASS",
-      "detail": "row=\"A admin@example.com 03:06 E2E-BURN2-1789153568544 1\""
+      "detail": "row=\"A admin@example.com 03:23 E2E-BURN2-1789154601110 1\""
     },
     {
       "module": "VERIFY3",

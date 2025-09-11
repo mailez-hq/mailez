@@ -759,6 +759,10 @@ export function ReadingPane({
             />
 
             {/* Message body: HTML preferred, plain text as fallback */}
+            {/* Burn-after-read: the body is not rendered at all until this
+                session reveals it, so an unrevealed message can never be read
+                from the DOM. */}
+            {(!(detail.burn_after_minutes ?? 0) || burnRevealed) && (
             <MessageBody
               mounted={mounted}
               htmlBody={htmlBody}
@@ -773,6 +777,7 @@ export function ReadingPane({
               onToggleQuote={toggleQuote}
               bodyRef={bodyRef}
             />
+            )}
 
             {/* Attachments */}
             <AttachmentList detail={detail} onDownloadAll={downloadAllAttachments} />
