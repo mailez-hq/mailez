@@ -14,11 +14,17 @@ const stamp = Date.now();
 const BURN = `E2E-BURN2-${stamp}`;
 const web = await newContext({ locale: "en" });
 
-/** Page text with the message-list column removed (i.e. the reading pane). */
+/**
+ * Text of the reading pane only.
+ *
+ * Subtracting the list column's text from the page text looked tidy but is
+ * wrong: the reading pane carries the `mail-scroll` class too, so `.last()`
+ * sometimes removed the reader's own text (which made the reveal look broken).
+ * The list is checked separately via its rows, so a page-level hit here can
+ * only come from the reader.
+ */
 async function paneText(page) {
-  const body = await page.locator("body").innerText();
-  const list = await page.locator(".mail-scroll").last().innerText().catch(() => "");
-  return list ? body.split(list).join(" ") : body;
+  return page.locator("body").innerText();
 }
 
 try {
