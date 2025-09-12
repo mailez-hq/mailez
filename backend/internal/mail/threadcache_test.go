@@ -1,6 +1,53 @@
 package mail
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/emersion/go-imap"
+)
+
+// countingFetcher counts scans so the cached wrapper's memoisation is
+// observable without an IMAP server.
+type countingFetcher struct {
+	fakeThreadFetcher
+	calls int
+}
+
+func (f *countingFetcher) Fetch(seqset *imap.SeqSet, items []imap.FetchItem, ch chan *imap.Message) error {
+	f.calls++
+	return f.fakeThreadFetcher.Fetch(seqset, items, ch)
+}
+
+func TestThreadMetaCachedSkipsRepeatScan(t *testing.T) {
+	threadCacheReset()
+	c := &Client{}
+	ff := &countingFetcher{fakeThreadFetcher: fakeThreadFetcher{msgs: []*imap.Message{
+		env(1, "计划", "root@example.com", "", d(10)),
+	}}}
+
+	first, err := c.threadMetaCached(ff, 1, "user@test.dist", "Inbox")
+	if err != nil {
+		t.Fatalf("threadMetaCached: %v", err)
+	}
+	scans := ff.calls
+	second, err := c.threadMetaCached(ff, 1, "user@test.dist", "Inbox")
+	if err != nil {
+		t.Fatalf("threadMetaCached (cached): %v", err)
+	}
+	if ff.calls != scans {
+		t.Fatalf("repeat lookup rescanned the mailbox: %d scans, want %d", ff.calls, scans)
+	}
+	if second != first {
+		t.Fatalf("cached lookup returned a different meta: %p vs %p", second, first)
+	}
+	// A delivery or expunge changes the count: the entry must not be reused.
+	if _, err := c.threadMetaCached(ff, 2, "user@test.dist", "Inbox"); err != nil {
+		t.Fatalf("threadMetaCached (count changed): %v", err)
+	}
+	if ff.calls == scans {
+		t.Fatal("a changed message count must invalidate the cached entry")
+	}
+}
 
 func TestThreadCacheHitMissAndTTL(t *testing.T) {
 	threadCacheReset()

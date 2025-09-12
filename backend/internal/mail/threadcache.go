@@ -1,6 +1,7 @@
 package mail
 
 import (
+	"strconv"
 	"sync"
 	"time"
 )
@@ -22,6 +23,22 @@ var threadCache = struct {
 	mu sync.Mutex
 	en map[string]threadCacheEntry
 }{en: map[string]threadCacheEntry{}}
+
+// threadMetaCached builds thread metadata for a mailbox, reusing the previous
+// scan while the mailbox still holds the same number of messages. A NUL
+// separates the account and folder, so no folder name can forge a key.
+func (c *Client) threadMetaCached(cli fetcher, total uint32, email, folder string) (*threadMeta, error) {
+	key := email + "\x00" + folder + "\x00" + strconv.FormatUint(uint64(total), 10)
+	if meta, ok := threadCacheGet(key); ok {
+		return meta, nil
+	}
+	meta, err := c.threadMeta(cli, total)
+	if err != nil {
+		return nil, err
+	}
+	threadCachePut(key, meta)
+	return meta, nil
+}
 
 type threadCacheEntry struct {
 	meta   *threadMeta
