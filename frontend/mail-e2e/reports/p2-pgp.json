@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-09-12T01:08:38.907Z",
+  "total": 7,
+  "pass": 7,
+  "fail": 0,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "P2-pgp",
+      "name": "PGP: status before",
+      "status": "PASS",
+      "detail": "status=200 {\"fingerprint\":\"087EBA219409B59A3804164C4D8D51996F011A26\",\"has_key\":true,\"public_key\":\"-----BEGIN PGP PUBLIC K"
+    },
+    {
+      "module": "P2-pgp",
+      "name": "PGP: the account now has a key",
+      "status": "PASS",
+      "detail": "status=200 {\"fingerprint\":\"087EBA219409B59A3804164C4D8D51996F011A26\",\"has_key\":true,\"public_key\":\"-----BEGIN PGP PUBLIC K"
+    },
+    {
+      "module": "P2-pgp",
+      "name": "PGP: key list",
+      "status": "PASS",
+      "detail": "status=200 []"
+    },
+    {
+      "module": "P2-pgp",
+      "name": "PGP: sign",
+      "status": "PASS",
+      "detail": "status=200 {\"signature\":\"-----BEGIN PGP SIGNATURE-----\\n\\nwsCpBAABCABdBYJqpKYWCRBNjVGZbwEaJjUUAAAAAAAcABBzYWx0QG5vdGF0aW9"
+    },
+    {
+      "module": "P2-pgp",
+      "name": "PGP: verify accepts the signature this account produced",
+      "status": "PASS",
+      "detail": "status=200 {\"valid\":true}"
+    },
+    {
+      "module": "P2-pgp",
+      "name": "PGP: encrypt to the account's own key",
+      "status": "PASS",
+      "detail": "status=200 {\"encrypted\":\"-----BEGIN PGP MESSAGE-----\\n\\nwcBMA+pYnGhqBXT2AQf9EJt3J4SzRbAL+N7SW2BLI9a+v9F174TK8R3sfIeiTgXy\\"
+    },
+    {
+      "module": "P2-pgp",
+      "name": "PGP: decrypt returns the original plaintext",
+      "status": "PASS",
+      "detail": "status=200 {\"plaintext\":\"PGP round-trip probe\"}"
+    }
+  ]
+}
