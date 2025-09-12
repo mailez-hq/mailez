@@ -5,6 +5,7 @@ package ai
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -64,6 +65,9 @@ func (h *Handler) aiCompose(c *fiber.Ctx) error {
 	draft, err := h.AI.ComposeFromInstruction(c.Context(), in.Instruction)
 	if err != nil {
 		return core.Fail(c, 502, err, "mail service error")
+	}
+	if strings.TrimSpace(draft.Body) == "" && len(draft.To) == 0 {
+		return core.Fail(c, 502, errors.New("ai provider returned no draft"), "mail service error")
 	}
 	return c.JSON(draft)
 }
@@ -201,6 +205,12 @@ func (h *Handler) aiSummarize(c *fiber.Ctx) error {
 	if err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}
+	if strings.TrimSpace(summary) == "" {
+		// A model that answers nothing is a provider failure, not a summary:
+		// reporting it as 200 {"summary":""} leaves the UI with an empty box
+		// and nothing to tell the user.
+		return core.Fail(c, 502, errors.New("ai provider returned no summary"), "mail service error")
+	}
 	return c.JSON(fiber.Map{"summary": summary})
 }
 
@@ -241,6 +251,10 @@ func (h *Handler) aiDraft(c *fiber.Ctx) error {
 	}
 	if err != nil {
 		return core.Fail(c, 502, err, "mail service error")
+	}
+	if strings.TrimSpace(draft) == "" {
+		// Same as summarize: an empty reply is not a draft.
+		return core.Fail(c, 502, errors.New("ai provider returned no draft"), "mail service error")
 	}
 	return c.JSON(fiber.Map{"draft": draft})
 }
