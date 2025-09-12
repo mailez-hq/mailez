@@ -848,7 +848,10 @@ func parseUnsubscribe(raw []byte) (url string, post bool) {
 			url = candidate
 		}
 	}
-	return url, strings.EqualFold(strings.TrimSpace(msg.Header.Get("List-Unsubscribe-Post")), "One-Click")
+	// RFC 8058 spells the header as "List-Unsubscribe=One-Click"; comparing the
+	// whole value to "One-Click" never matched, so one-click was never
+	// recognised and the UI fell back to the manual flow.
+	return url, strings.Contains(strings.ToLower(strings.TrimSpace(msg.Header.Get("List-Unsubscribe-Post"))), "one-click")
 }
 
 // GetRaw returns the full RFC 822 source of a message, for the "view raw"
