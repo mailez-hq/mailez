@@ -83,7 +83,9 @@ try {
     `Subject: ${UNSUB}\r\n` +
     `Date: ${new Date().toUTCString()}\r\n` +
     `Message-ID: <unsub-${stamp}@example.com>\r\n` +
-    `List-Unsubscribe: <http://127.0.0.1:9/unsubscribe?u=${stamp}>\r\n` +
+    // https:// (not http://): the backend only surfaces a secure or mailto
+    // target, which is the right default for a one-click unsubscribe.
+    `List-Unsubscribe: <https://127.0.0.1:9/unsubscribe?u=${stamp}>\r\n` +
     `List-Unsubscribe-Post: List-Unsubscribe=One-Click\r\n` +
     `\r\n` +
     `newsletter body\r\n`;

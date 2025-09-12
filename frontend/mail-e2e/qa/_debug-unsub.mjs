@@ -12,7 +12,9 @@ const raw =
   `Subject: ${SUBJ}\r\n` +
   `Date: ${new Date().toUTCString()}\r\n` +
   `Message-ID: <uns-${stamp}@example.com>\r\n` +
-  `List-Unsubscribe: <http://127.0.0.1:9/unsub?u=${stamp}>\r\n` +
+  // HTTPS on a dead local port: parseUnsubscribe (correctly) only accepts
+  // https:// or mailto:, so a plain-http fixture is ignored by design.
+  `List-Unsubscribe: <https://127.0.0.1:9/unsub?u=${stamp}>\r\n` +
   `List-Unsubscribe-Post: List-Unsubscribe=One-Click\r\n` +
   `\r\n` +
   `body\r\n`;
@@ -32,7 +34,10 @@ const row = (await listFolder("Inbox", 0)).messages.find((m) => (m.subject || ""
 console.log("list row:", row ? `uid=${row.uid} category=${row.category} unsubscribe_url=${row.unsubscribe_url ?? "-"}` : "NOT FOUND");
 if (row) {
   const detail = await api(`/api/v1/mail/message?folder=Inbox&uid=${row.uid}`);
-  console.log("detail:", `status=${detail.status} unsubscribe_url=${detail.json?.unsubscribe_url ?? "-"} post=${detail.json?.unsubscribe_post}`);
+  console.log("detail:", `status=${detail.status} unsubscribe_url=${detail.json?.unsubscribe_url ?? "-"} post=${detail.json?.unsubscribe_post ?? "false"}`);
+  console.log("ASSERT:", detail.json?.unsubscribe_url?.startsWith("https://") && detail.json?.unsubscribe_post === true
+    ? "PASS  (url surfaced + one-click recognised)"
+    : "FAIL  (expected an https url and unsubscribe_post=true)");
   const rawMsg = await api(`/api/v1/mail/raw?folder=Inbox&uid=${row.uid}`);
   const body = rawMsg.json?.raw || rawMsg.text || "";
   console.log("raw has List-Unsubscribe:", /list-unsubscribe:/i.test(body), "| raw has -Post:", /list-unsubscribe-post:/i.test(body));
