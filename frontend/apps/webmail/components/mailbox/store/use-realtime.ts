@@ -72,11 +72,12 @@ export function useRealtime({
     });
   }, [email, refreshUnseen, loadMessages]);
 
-  // Safety net for changes the SSE watcher cannot see: its folder counters
-  // only move on add/remove, so flag-only edits made in ANOTHER tab or client
-  // (star, read) would otherwise leave this tab stale until a manual refresh.
-  // One silent list refresh a minute keeps open tabs convergent without
-  // turning the mailbox into a polling client.
+  // Safety net for whatever the push path misses: the watcher now watches the
+  // mailbox version, so flag-only edits made in another tab or client (star,
+  // read) push like everything else — but a dropped stream, a failed tick or
+  // an event lost to a sleeping tab would still leave this one stale. One
+  // silent list refresh a minute keeps tabs convergent without turning the
+  // mailbox into a polling client.
   useEffect(() => {
     if (!email) return;
     const id = setInterval(() => {
