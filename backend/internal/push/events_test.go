@@ -4,30 +4,44 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"mailez/backend/internal/mail"
 )
 
-// fakeStater returns canned FolderStat counters keyed by "email/folder".
-type fakeStater struct {
-	mu   sync.Mutex
-	stat map[string]mail.FolderStat
-	err  error
+// fakeVersions returns canned mailbox versions keyed by "email/folder";
+// missing marks the folders a server reports no HIGHESTMODSEQ for.
+type fakeVersions struct {
+	mu      sync.Mutex
+	version map[string]uint64
+	missing map[string]bool
+	err     error
 }
 
-func (f *fakeStater) FolderStat(email, token, folder string) (mail.FolderStat, error) {
+func newFakeVersions() *fakeVersions {
+	return &fakeVersions{version: map[string]uint64{}, missing: map[string]bool{}}
+}
+
+func (f *fakeVersions) FolderVersion(email, token, folder string) (uint64, bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.err != nil {
-		return mail.FolderStat{}, f.err
+		return 0, false, f.err
 	}
-	return f.stat[email+"/"+folder], nil
+	k := email + "/" + folder
+	if f.missing[k] {
+		return 0, false, nil
+	}
+	return f.version[k], true, nil
 }
 
-func (f *fakeStater) set(email, folder string, st mail.FolderStat) {
+func (f *fakeVersions) set(email, folder string, v uint64) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.stat[email+"/"+folder] = st
+	f.version[email+"/"+folder] = v
+}
+
+func (f *fakeVersions) setMissing(email, folder string, missing bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.missing[email+"/"+folder] = missing
 }
 
 func TestHubSubscribePublishUnsubscribe(t *testing.T) {
@@ -89,11 +103,11 @@ func TestEventWatcherDetectsNewMail(t *testing.T) {
 	ch, unsub := hub.Subscribe("a@example.com", "tok")
 	defer unsub()
 
-	fake := &fakeStater{stat: map[string]mail.FolderStat{}}
-	fake.set("a@example.com", "Inbox", mail.FolderStat{UidNext: 1, Messages: 1, Unseen: 1})
-	fake.set("a@example.com", "Junk", mail.FolderStat{UidNext: 1, Messages: 0, Unseen: 0})
+	fake := newFakeVersions()
+	fake.set("a@example.com", "Inbox", 3)
+	fake.set("a@example.com", "Junk", 1)
 
-	w := &EventWatcher{Mail: fake, Hub: hub, baseline: map[string]map[string]mail.FolderStat{}}
+	w := &EventWatcher{Mail: fake, Hub: hub, baseline: map[string]map[string]uint64{}}
 
 	// First poll only establishes the baseline.
 	w.pollOnce()
@@ -103,8 +117,8 @@ func TestEventWatcherDetectsNewMail(t *testing.T) {
 	default:
 	}
 
-	// New mail advances UIDNEXT and the message count.
-	fake.set("a@example.com", "Inbox", mail.FolderStat{UidNext: 2, Messages: 2, Unseen: 2})
+	// New mail bumps the mailbox version.
+	fake.set("a@example.com", "Inbox", 4)
 	w.pollOnce()
 	select {
 	case ev := <-ch:
@@ -115,19 +129,23 @@ func TestEventWatcherDetectsNewMail(t *testing.T) {
 		t.Fatal("expected mail event")
 	}
 
-	// Flag-only changes (reading a message) must not fire an event.
-	fake.set("a@example.com", "Inbox", mail.FolderStat{UidNext: 2, Messages: 2, Unseen: 1})
+	// Flag-only changes (starred, read) bump the version too: that is what
+	// keeps a second tab in sync without waiting for its safety refresh — the
+	// counter diff this replaced could not see them at all (report D3).
+	fake.set("a@example.com", "Inbox", 5)
 	w.pollOnce()
 	select {
 	case ev := <-ch:
-		t.Fatalf("flag change must not publish, got %+v", ev)
-	default:
+		if len(ev.Folders) != 1 || ev.Folders[0] != "Inbox" {
+			t.Fatalf("unexpected event: %+v", ev)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("expected an event for a flag-only change")
 	}
 
-	// Another client deleting/moving a message SHRINKS the count without
-	// touching UIDNEXT: open tabs must still be told, otherwise the deleted
-	// row sits in their list until a manual refresh.
-	fake.set("a@example.com", "Inbox", mail.FolderStat{UidNext: 2, Messages: 1, Unseen: 1})
+	// Another client deleting/moving a message also bumps the version: open
+	// tabs must drop the row instead of showing it until a manual refresh.
+	fake.set("a@example.com", "Inbox", 6)
 	w.pollOnce()
 	select {
 	case ev := <-ch:
@@ -138,10 +156,9 @@ func TestEventWatcherDetectsNewMail(t *testing.T) {
 		t.Fatal("expected an event when the message count shrinks")
 	}
 
-	// A snooze wake-up resurfaces an old message as unread: UNSEEN grows
-	// without UIDNEXT or count changing, and that must fire so the client
-	// refreshes (engine sweeper → delivery receipt → Kick path).
-	fake.set("a@example.com", "Inbox", mail.FolderStat{UidNext: 2, Messages: 2, Unseen: 2})
+	// A snooze wake-up re-flags an old message, which must fire too (engine
+	// sweeper → delivery receipt → Kick path).
+	fake.set("a@example.com", "Inbox", 7)
 	w.pollOnce()
 	select {
 	case ev := <-ch:
@@ -149,18 +166,16 @@ func TestEventWatcherDetectsNewMail(t *testing.T) {
 			t.Fatalf("unexpected wake event: %+v", ev)
 		}
 	case <-time.After(time.Second):
-		t.Fatal("expected mail event on unseen growth (snooze wake)")
+		t.Fatal("expected mail event on a snooze wake-up")
 	}
 }
 
 func TestEventWatcherToleratesErrorsAndPrunes(t *testing.T) {
 	hub := NewHub()
 	ch, unsub := hub.Subscribe("a@example.com", "tok")
-	fake := &fakeStater{
-		err:  nil,
-		stat: map[string]mail.FolderStat{"a@example.com/Inbox": {UidNext: 5, Messages: 5}},
-	}
-	w := &EventWatcher{Mail: fake, Hub: hub, baseline: map[string]map[string]mail.FolderStat{}}
+	fake := newFakeVersions()
+	fake.set("a@example.com", "Inbox", 5)
+	w := &EventWatcher{Mail: fake, Hub: hub, baseline: map[string]map[string]uint64{}}
 	w.pollOnce() // baseline
 
 	// Transient error: keep the old baseline, no event.
@@ -174,12 +189,23 @@ func TestEventWatcherToleratesErrorsAndPrunes(t *testing.T) {
 
 	// Recovery: growth after the error still fires because the baseline was kept.
 	fake.err = nil
-	fake.stat["a@example.com/Inbox"] = mail.FolderStat{UidNext: 6, Messages: 6}
+	fake.set("a@example.com", "Inbox", 6)
 	w.pollOnce()
 	select {
 	case <-ch:
 	default:
 		t.Fatal("expected event after error recovery")
+	}
+
+	// A server that reports no version keeps the baseline and stays quiet
+	// rather than firing on every tick.
+	fake.set("a@example.com", "Inbox", 7)
+	fake.setMissing("a@example.com", "Inbox", true)
+	w.pollOnce()
+	select {
+	case ev := <-ch:
+		t.Fatalf("a version-less server must not publish, got %+v", ev)
+	default:
 	}
 
 	unsub()
@@ -233,10 +259,10 @@ func TestEventWatcherIdleLifecycle(t *testing.T) {
 	hub := NewHub()
 	fake := newFakeIdleWatcher()
 	w := &EventWatcher{
-		Mail:      &fakeStater{stat: map[string]mail.FolderStat{}},
+		Mail:      newFakeVersions(),
 		Hub:       hub,
 		Idle:      fake,
-		baseline:  map[string]map[string]mail.FolderStat{},
+		baseline:  map[string]map[string]uint64{},
 		idleStops: map[string]chan struct{}{},
 	}
 	hub.SetLifecycle(w.startIdleWatch, w.stopIdleWatch)
@@ -284,7 +310,7 @@ func TestEventWatcherIdleLifecycle(t *testing.T) {
 // worker token (defensive against hub/lifecycle races).
 func TestEventWatcherIdleNilWatcherAndNoToken(t *testing.T) {
 	hub := NewHub()
-	w := &EventWatcher{Hub: hub, baseline: map[string]map[string]mail.FolderStat{}}
+	w := &EventWatcher{Hub: hub, baseline: map[string]map[string]uint64{}}
 	w.startIdleWatch("nobody@example.com") // Idle == nil: must be a no-op
 	w.idleMu.Lock()
 	if len(w.idleStops) != 0 {
