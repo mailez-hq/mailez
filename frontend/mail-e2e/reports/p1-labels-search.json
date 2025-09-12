@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T16:58:57.004Z",
+  "generatedAt": "2026-09-12T05:25:03.281Z",
   "total": 15,
   "pass": 15,
   "fail": 0,
@@ -9,13 +9,13 @@
       "module": "P1-label",
       "name": "fixture: label target delivered",
       "status": "PASS",
-      "detail": "uid=445"
+      "detail": "uid=510"
     },
     {
       "module": "P1-label",
       "name": "Labels: create returns success and lists the label",
       "status": "PASS",
-      "detail": "status=200 labels=[E2E-LBLNAME-1789145732050]"
+      "detail": "status=200 labels=[E2E-LBLNAME-1789190567298]"
     },
     {
       "module": "P1-label",
@@ -27,7 +27,7 @@
       "module": "P1-label",
       "name": "Labels: applying a label shows it on the message row",
       "status": "PASS",
-      "detail": "row=\"A admin@example.com 00:55 E2E-LBL-1789145732050 E2E-LBLNAME-\""
+      "detail": "row=\"A admin@example.com 13:22 E2E-LBL-1789190567298 E2E-LBLNAME-\""
     },
     {
       "module": "P1-label",
@@ -93,7 +93,7 @@
       "module": "P1-label",
       "name": "Cleanup: labels + E2E mail removed",
       "status": "PASS",
-      "detail": "expunged=4 labelsLeft=[]"
+      "detail": "expunged=5 labelsLeft=[]"
     }
   ]
 }
