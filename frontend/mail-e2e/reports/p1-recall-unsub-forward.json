@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-09-12T00:56:27.204Z",
+  "total": 8,
+  "pass": 6,
+  "fail": 2,
+  "blocked": 0,
+  "results": [
+    {
+      "module": "P1-gap",
+      "name": "Recall fixture: inbox + sent copies exist",
+      "status": "PASS",
+      "detail": "inbox=483 sent=379"
+    },
+    {
+      "module": "P1-gap",
+      "name": "Recall: the API accepts a recall request",
+      "status": "PASS",
+      "detail": "status=200 body={\"notified\":1}"
+    },
+    {
+      "module": "P1-gap",
+      "name": "Recall: effect on the recipient copy (observed semantics)",
+      "status": "PASS",
+      "detail": "notice:\"撤回：E2E-RECALL-1789174528110\"; detail.recall=null"
+    },
+    {
+      "module": "P1-gap",
+      "name": "Unsubscribe fixture: APPEND over IMAP",
+      "status": "PASS",
+      "detail": "a49368 OK [APPENDUID 1 485] APPEND completed"
+    },
+    {
+      "module": "P1-gap",
+      "name": "Unsubscribe fixture: message with List-Unsubscribe is visible",
+      "status": "FAIL",
+      "detail": "unsubscribe_url=-"
+    },
+    {
+      "module": "P1-gap",
+      "name": "Unsubscribe: the reader offers the action for such a message",
+      "status": "FAIL",
+      "detail": "buttons=0"
+    },
+    {
+      "module": "P1-gap",
+      "name": "Navigation: browser back then forward restores the Sent view",
+      "status": "PASS",
+      "detail": "sent=/mail/Sent back=/mail/Inbox forward=/mail/Sent"
+    },
+    {
+      "module": "P1-gap",
+      "name": "Cleanup: gap-closing fixtures purged",
+      "status": "PASS",
+      "detail": "expunged=5"
+    }
+  ]
+}

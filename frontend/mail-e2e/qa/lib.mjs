@@ -296,6 +296,11 @@ export class ImapClient {
     }
   }
 
+  /** Read the next raw response line (APPEND's literal handshake needs it). */
+  nextLine(timeoutMs = 45000) {
+    return this.#next(timeoutMs);
+  }
+
   async login(user = USER.email, pass = USER.pw) {
     const r = await this.cmd(`LOGIN ${imapQuote(user)} ${imapQuote(pass)}`);
     if (!r.ok) throw new Error(`imap login failed: ${r.status}`);
