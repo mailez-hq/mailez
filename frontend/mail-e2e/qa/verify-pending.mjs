@@ -64,9 +64,24 @@ try {
   await gotoMail(web.page, `/mail/Inbox/${encodeURIComponent(bm.id)}`, { settleMs: 6000 });
   const secondPane = await paneText(web.page);
   const secondRow = await web.page.locator(".mail-scroll [role='button']", { hasText: BURN }).first().innerText();
-  check(MOD, "Burn: second open does not show the body again",
-    !secondPane.includes("BURNSECRET"),
+  // Documented semantics: the body stays readable for the reveal window, so a
+  // reopen INSIDE it must still show the content — and never the list preview.
+  check(MOD, "Burn: inside the reveal window a reopen still shows the body",
+    secondPane.includes("BURNSECRET") && !secondRow.includes("BURNSECRET"),
     `paneHasSecret=${secondPane.includes("BURNSECRET")} listHasSecret=${secondRow.includes("BURNSECRET")}`);
+
+  // Expiry path: back-date the window instead of waiting minutes for it, then
+  // the server must withhold the body and report burn_consumed.
+  const past = Math.floor(Date.now() / 1000) - 60;
+  await api("/api/v1/mail/flag", {
+    method: "POST",
+    body: { folder: "Inbox", uid: bm.uid, flag: `$BurnReadUntil-${past}`, value: true },
+  });
+  await sleep(2500);
+  const expired = await api(`/api/v1/mail/message?folder=Inbox&uid=${bm.uid}`);
+  check(MOD, "Burn: past the window the server withholds the body (burn_consumed)",
+    expired.json?.burn_consumed === true && !(expired.json?.text_body || "").includes("BURNSECRET"),
+    `consumed=${expired.json?.burn_consumed} bodyLen=${(expired.json?.text_body || "").length}`);
   await shot(web.page, "verify3-burn-second");
 
   // ------------------------------------------------------ B) multi-account UI

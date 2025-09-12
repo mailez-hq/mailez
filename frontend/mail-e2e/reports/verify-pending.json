@@ -1,27 +1,33 @@
 {
-  "generatedAt": "2026-09-12T00:50:22.037Z",
-  "total": 8,
-  "pass": 7,
-  "fail": 1,
+  "generatedAt": "2026-09-12T00:52:38.587Z",
+  "total": 9,
+  "pass": 9,
+  "fail": 0,
   "blocked": 0,
   "results": [
     {
       "module": "VERIFY3",
       "name": "Burn: the list preview does NOT leak the burned body",
       "status": "PASS",
-      "detail": "row=\"A admin@example.com 08:49 E2E-BURN2-1789174168043 1\""
+      "detail": "row=\"A admin@example.com 08:51 E2E-BURN2-1789174298795 1\""
     },
     {
       "module": "VERIFY3",
       "name": "Burn: first open reveals the body and flags $BurnRead",
       "status": "PASS",
-      "detail": "revealButton=1 bodyVisible=true flags=[\\Seen,$BurnRead,$BurnReadUntil-1789174485]"
+      "detail": "revealButton=1 bodyVisible=true flags=[$BurnRead,$BurnReadUntil-1789174614]"
     },
     {
       "module": "VERIFY3",
-      "name": "Burn: second open does not show the body again",
-      "status": "FAIL",
+      "name": "Burn: inside the reveal window a reopen still shows the body",
+      "status": "PASS",
       "detail": "paneHasSecret=true listHasSecret=false"
+    },
+    {
+      "module": "VERIFY3",
+      "name": "Burn: past the window the server withholds the body (burn_consumed)",
+      "status": "PASS",
+      "detail": "consumed=true bodyLen=0"
     },
     {
       "module": "VERIFY3",
