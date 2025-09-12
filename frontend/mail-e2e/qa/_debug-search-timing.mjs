@@ -10,7 +10,9 @@ await cookie();
 const shapes = [
   ["subject: report", "subject:report"],
   ["from: example.com", "from:example.com"],
-  ["bare keyword", "E2E"],
+  ["keyword (headers hit)", "E2E"],
+  ["keyword (rare/absent)", "zzz-no-such-token-9f3c"],
+  ["keyword (body only)", process.env.SEARCH_BODY_TERM || "message"],
 ];
 for (const [label, q] of shapes) {
   for (let i = 0; i < 2; i++) {
