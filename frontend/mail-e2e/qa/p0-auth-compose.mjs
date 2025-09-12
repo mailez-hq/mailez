@@ -157,16 +157,23 @@ try {
     await web.page.locator("button", { hasText: /^Send$/ }).first().click();
     await web.page.waitForTimeout(4000);
     const emptySubjSent = await (async () => {
-      for (let i = 0; i < 20; i++) {
+      // D5: the composer refuses an empty subject, so this must stay empty —
+      // three looks are enough to catch a regression that sends anyway.
+      for (let i = 0; i < 3; i++) {
         const rows = (await listFolder("Inbox", 0)).messages.filter((m) => (m.preview || "").includes(`empty-subject probe ${stamp}`));
         if (rows.length) return rows[0];
         await sleep(1500);
       }
       return null;
     })();
-    check(MOD, "Compose: empty subject is handled deliberately (sent or refused with a message)",
-      !!emptySubjSent,
-      emptySubjSent ? `delivered uid=${emptySubjSent.uid} subject="${emptySubjSent.subject}"` : "not delivered and no error observed");
+    // The composer stays open with "Add a subject line before sending (or send
+    // it as a draft)" (messages/en.json → noSubject); it never silently sends.
+    const emptySubjText = await web.page.locator("body").innerText();
+    const askedForSubject = /subject line before sending|add a subject|先填写主题|发送前/i.test(emptySubjText);
+    const composerOpen = await web.page.locator('[data-testid="compose-subject"]').count();
+    check(MOD, "Compose: empty subject is refused with a message (D5)",
+      composerOpen > 0 && askedForSubject && !emptySubjSent,
+      `composerOpen=${composerOpen > 0} message=${askedForSubject} delivered=${!!emptySubjSent}`);
     await closeComposer(web.page);
 
     // --- very long subject ---

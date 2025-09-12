@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-09-11T17:34:19.769Z",
+  "generatedAt": "2026-09-12T07:23:59.020Z",
   "total": 10,
-  "pass": 6,
-  "fail": 3,
+  "pass": 9,
+  "fail": 0,
   "blocked": 1,
   "results": [
     {
@@ -14,14 +14,14 @@
     {
       "module": "P2",
       "name": "AI: natural-language search responds",
-      "status": "FAIL",
-      "detail": "status=502"
+      "status": "PASS",
+      "detail": "status=200"
     },
     {
       "module": "P2",
       "name": "PGP: key status endpoint answers",
       "status": "PASS",
-      "detail": "status=200 body={\"has_key\":false}"
+      "detail": "status=200 body={\"fingerprint\":\"087EBA219409B59A3804164C4D8D51996F011A26\",\"has_key\":true,\"public_key\":\"-----BEGIN PG"
     },
     {
       "module": "P2",
@@ -38,8 +38,8 @@
     {
       "module": "P2",
       "name": "Calendar: create + list",
-      "status": "FAIL",
-      "detail": "create=400 list=200"
+      "status": "PASS",
+      "detail": "create=200 list=200"
     },
     {
       "module": "P2",
@@ -50,8 +50,8 @@
     {
       "module": "P2",
       "name": "Mail merge: per-recipient copy is delivered",
-      "status": "FAIL",
-      "detail": "status=400 uid=-"
+      "status": "PASS",
+      "detail": "status=200 uid=564"
     },
     {
       "module": "P2",
@@ -63,7 +63,7 @@
       "module": "P2",
       "name": "Cleanup: P2 probes purged",
       "status": "PASS",
-      "detail": "expunged=2"
+      "detail": "expunged=4"
     }
   ]
 }

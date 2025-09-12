@@ -57,8 +57,14 @@ try {
   if (cId) await api(`/api/v1/contacts/${cId}`, { method: "DELETE" }).catch(() => {});
 
   // ------------------------------------------------------------- calendar
-  const start = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
-  const evCreate = await api("/api/v1/calendar/events", { method: "POST", body: { title: `E2E Event ${stamp}`, start, end: start, all_day: false } });
+  const start = new Date(Date.now() + 24 * 3600 * 1000);
+  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  // Documented shape: {summary,start,end} (see qa/p2-retest.mjs); "title"
+  // predates the API and returns 400.
+  const evCreate = await api("/api/v1/calendar/events", {
+    method: "POST",
+    body: { summary: `E2E Event ${stamp}`, start: start.toISOString(), end: end.toISOString(), all_day: false },
+  });
   const evList = await api("/api/v1/calendar/events");
   const evText = JSON.stringify(evList.json || "");
   check(MOD, "Calendar: create + list", evCreate.status < 300 && evText.includes(`E2E Event ${stamp}`),
@@ -74,7 +80,14 @@ try {
   // ------------------------------------------------------------ mail merge
   const merge = await api("/api/v1/mail/merge", {
     method: "POST",
-    body: { recipients: `${USER.email}, E2E`, subject: MERGE, text: "merge body {{name}}", html: "<p>merge body {{name}}</p>" },
+    // Documented shape: per-recipient objects with vars (see qa/p2-retest.mjs).
+    body: {
+      from: "",
+      subject: MERGE,
+      body: "merge body {{name}}",
+      html: "<p>merge body {{name}}</p>",
+      recipients: [{ email: USER.email, name: "E2E", vars: { name: "One" } }],
+    },
   });
   const merged = await awaitMail(MERGE, { timeoutMs: 60000 });
   check(MOD, "Mail merge: per-recipient copy is delivered",

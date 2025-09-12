@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T18:31:16.470Z",
+  "generatedAt": "2026-09-12T06:56:15.321Z",
   "total": 7,
   "pass": 7,
   "fail": 0,
@@ -9,7 +9,7 @@
       "module": "VERIFY2",
       "name": "D4: SEARCH on Trash is no longer ~45s",
       "status": "PASS",
-      "detail": "took=6400ms hits=0"
+      "detail": "took=1227ms hits=0"
     },
     {
       "module": "VERIFY2",
@@ -33,7 +33,7 @@
       "module": "VERIFY2",
       "name": "D3: tab B converges without a manual refresh",
       "status": "PASS",
-      "detail": "converged=true after 56s"
+      "detail": "converged=true after 8s"
     },
     {
       "module": "VERIFY2",
@@ -45,7 +45,7 @@
       "module": "VERIFY2",
       "name": "Cleanup: verification mail purged",
       "status": "PASS",
-      "detail": "expunged=4"
+      "detail": "expunged=3"
     }
   ]
 }

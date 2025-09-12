@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T14:19:49.634Z",
+  "generatedAt": "2026-09-12T06:57:37.844Z",
   "total": 18,
   "pass": 18,
   "fail": 0,
@@ -15,37 +15,37 @@
       "module": "P0-smoke",
       "name": "REST: /mail/folders returns the mailbox list",
       "status": "PASS",
-      "detail": "status=200 folders=[Inbox, Drafts, Junk, Sent, Trash]"
+      "detail": "status=200 folders=[Inbox, Archive, Drafts, Junk, Sent, Trash]"
     },
     {
       "module": "P0-smoke",
       "name": "REST: /mail/unseen returns per-folder counters",
       "status": "PASS",
-      "detail": "status=200 body={\"Drafts\":0,\"Inbox\":0,\"Junk\":0,\"Sent\":0,\"Trash\":161}"
+      "detail": "status=200 body={\"Archive\":0,\"Drafts\":2,\"Inbox\":0,\"Junk\":0,\"Sent\":0,\"Trash\":160}"
     },
     {
       "module": "P0-smoke",
       "name": "REST: /mail/messages returns a page + total",
       "status": "PASS",
-      "detail": "status=200 rows=2 total=3"
+      "detail": "status=200 rows=4 total=5"
     },
     {
       "module": "P0-smoke",
       "name": "IMAP: LOGIN + STATUS Inbox works",
       "status": "PASS",
-      "detail": "messages=3 unseen=0"
+      "detail": "messages=5 unseen=0"
     },
     {
       "module": "P0-smoke",
       "name": "IMAP: mailbox count matches REST total",
       "status": "PASS",
-      "detail": "imap=3 api=3"
+      "detail": "imap=5 api=5"
     },
     {
       "module": "P0-smoke",
       "name": "IMAP: LIST exposes the standard folders",
       "status": "PASS",
-      "detail": "mailboxes=[INBOX, Drafts, Junk, Sent, Trash]"
+      "detail": "mailboxes=[INBOX, Archive, Drafts, Junk, Sent, Trash]"
     },
     {
       "module": "P0-smoke",
@@ -57,19 +57,19 @@
       "module": "P0-smoke",
       "name": "Webmail: inbox list renders rows",
       "status": "PASS",
-      "detail": "rows=1"
+      "detail": "rows=3"
     },
     {
       "module": "P0-smoke",
       "name": "Mail: self-addressed send lands in Inbox (API)",
       "status": "PASS",
-      "detail": "uid=364 subject=E2E-SMOKE-1789136331041"
+      "detail": "uid=524 subject=E2E-SMOKE-1789196237129"
     },
     {
       "module": "P0-smoke",
       "name": "Mail: delivered message is visible over IMAP",
       "status": "PASS",
-      "detail": "imap uids=[364] api uid=364"
+      "detail": "imap uids=[524] api uid=524"
     },
     {
       "module": "P0-smoke",

@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-09-11T17:46:12.736Z",
+  "generatedAt": "2026-09-12T07:10:43.106Z",
   "total": 10,
-  "pass": 9,
-  "fail": 1,
+  "pass": 10,
+  "fail": 0,
   "blocked": 0,
   "results": [
     {
       "module": "P1-left",
       "name": "Snooze: the message disappears from the open Inbox view",
       "status": "PASS",
-      "detail": "uiGone=true apiGone=false after 140s"
+      "detail": "uiGone=true apiGone=true after 6s"
     },
     {
       "module": "P1-left",
       "name": "Snooze: API list agrees it left Inbox",
-      "status": "FAIL",
-      "detail": "apiGone=false"
+      "status": "PASS",
+      "detail": "apiGone=true"
     },
     {
       "module": "P1-left",
@@ -33,7 +33,7 @@
       "module": "P1-left",
       "name": "Burn: first read shows the body and marks it read-once",
       "status": "PASS",
-      "detail": "flags=[\\Seen,$BurnRead]"
+      "detail": "flags=[\\Seen,$BurnRead,$BurnReadUntil-1789197314]"
     },
     {
       "module": "P1-left",
@@ -63,7 +63,7 @@
       "module": "P1-left",
       "name": "Cleanup: leftover probes purged",
       "status": "PASS",
-      "detail": "expunged=4"
+      "detail": "expunged=5"
     }
   ]
 }

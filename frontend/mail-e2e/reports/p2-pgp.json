@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-12T01:08:38.907Z",
+  "generatedAt": "2026-09-12T07:31:23.017Z",
   "total": 7,
   "pass": 7,
   "fail": 0,
@@ -27,7 +27,7 @@
       "module": "P2-pgp",
       "name": "PGP: sign",
       "status": "PASS",
-      "detail": "status=200 {\"signature\":\"-----BEGIN PGP SIGNATURE-----\\n\\nwsCpBAABCABdBYJqpKYWCRBNjVGZbwEaJjUUAAAAAAAcABBzYWx0QG5vdGF0aW9"
+      "detail": "status=200 {\"signature\":\"-----BEGIN PGP SIGNATURE-----\\n\\nwsCpBAABCABdBYJqpP/KCRBNjVGZbwEaJjUUAAAAAAAcABBzYWx0QG5vdGF0aW9"
     },
     {
       "module": "P2-pgp",
@@ -39,7 +39,7 @@
       "module": "P2-pgp",
       "name": "PGP: encrypt to the account's own key",
       "status": "PASS",
-      "detail": "status=200 {\"encrypted\":\"-----BEGIN PGP MESSAGE-----\\n\\nwcBMA+pYnGhqBXT2AQf9EJt3J4SzRbAL+N7SW2BLI9a+v9F174TK8R3sfIeiTgXy\\"
+      "detail": "status=200 {\"encrypted\":\"-----BEGIN PGP MESSAGE-----\\n\\nwcBMA+pYnGhqBXT2AQgAwgkNhzG/Tzw+5a4/mciisYJdTwey6hRbImu9LumU3sLC\\"
     },
     {
       "module": "P2-pgp",

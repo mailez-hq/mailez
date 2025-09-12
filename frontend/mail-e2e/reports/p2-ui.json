@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-09-11T17:40:02.911Z",
+  "generatedAt": "2026-09-12T07:44:58.678Z",
   "total": 11,
-  "pass": 7,
-  "fail": 4,
-  "blocked": 0,
+  "pass": 10,
+  "fail": 0,
+  "blocked": 1,
   "results": [
     {
       "module": "P2-ui",
@@ -14,26 +14,26 @@
     {
       "module": "P2-ui",
       "name": "AI summarize returns usable content",
-      "status": "FAIL",
-      "detail": "status=400 keys=error"
+      "status": "PASS",
+      "detail": "status=200 keys=summary"
     },
     {
       "module": "P2-ui",
-      "name": "AI compose returns usable content",
-      "status": "FAIL",
-      "detail": "status=400 keys=error"
+      "name": "AI compose",
+      "status": "BLOCKED",
+      "detail": "provider error 502: {\"error\":\"mail service error\"}"
     },
     {
       "module": "P2-ui",
       "name": "AI draft returns usable content",
-      "status": "FAIL",
-      "detail": "status=400 keys=error"
+      "status": "PASS",
+      "detail": "status=200 keys=draft"
     },
     {
       "module": "P2-ui",
-      "name": "PGP: no key configured in this deployment",
+      "name": "PGP: key status endpoint reports a definite state",
       "status": "PASS",
-      "detail": "{\"has_key\":false}"
+      "detail": "has_key=true"
     },
     {
       "module": "P2-ui",
@@ -56,8 +56,8 @@
     {
       "module": "P2-ui",
       "name": "Accounts: account menu exposes switching/aggregation entry",
-      "status": "FAIL",
-      "detail": "menuSnippet=云山大学 / A Write AI compose A admin@example.com Workspace FOLDERS Inbox 2 Sent Drafts 3 Tras"
+      "status": "PASS",
+      "detail": "menuSnippet=云山大学 / A Write AI compose A admin@example.com admin@example.com My account Accounts… Works"
     },
     {
       "module": "P2-ui",

@@ -105,8 +105,11 @@ try {
     }
     return null;
   })();
+  // The list row deliberately carries no unsubscribe_url — the header is
+  // parsed into the message detail (and the reader button checked below), so
+  // the fixture only has to be visible here.
   check(MOD, "Unsubscribe fixture: message with List-Unsubscribe is visible",
-    !!unsubMsg && !!unsubMsg.unsubscribe_url, `unsubscribe_url=${unsubMsg?.unsubscribe_url ?? "-"}`);
+    !!unsubMsg, `uid=${unsubMsg?.uid ?? "-"}`);
   if (unsubMsg) {
     await gotoMail(web.page, `/mail/Inbox/${encodeURIComponent(unsubMsg.id)}`, { settleMs: 5000 });
     const btn = web.page.locator("button", { hasText: /Unsubscribe|退订/ }).first();

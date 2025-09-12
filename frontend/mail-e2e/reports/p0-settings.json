@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T15:45:31.433Z",
+  "generatedAt": "2026-09-12T07:08:48.929Z",
   "total": 13,
   "pass": 13,
   "fail": 0,
@@ -21,7 +21,7 @@
       "module": "P0-settings",
       "name": "Settings: SSR mirror cookie carries the same values",
       "status": "PASS",
-      "detail": "cookie=\"NEXT_LOCALE=en; mailez_session=9ca4afab4b16fe3ee1b401bb3cf0a6aef5ffeb46941b58082\""
+      "detail": "cookie=\"NEXT_LOCALE=en; mailez_session=0ca0fe1d6383992f3be5fe6a815adb58d01c7e4c3a1c73f2f\""
     },
     {
       "module": "P0-settings",
@@ -63,25 +63,25 @@
       "module": "P0-settings",
       "name": "Cross-cutting: opening a message produces a deep link",
       "status": "PASS",
-      "detail": "/mail/Inbox/PDUyZTEyNzU0MmMxZDI1OWQ0NWM4YzdhMkBleGFtcGxlLmNvbT4"
+      "detail": "/mail/Inbox/PDMyZDk4ZTdlNjQ5OGJmYjg0ZmJiZGI3OEBleGFtcGxlLmNvbT4"
     },
     {
       "module": "P0-settings",
       "name": "Cross-cutting: refreshing the deep link restores the message",
       "status": "PASS",
-      "detail": "url=/mail/Inbox/PDUyZTEyNzU0MmMxZDI1OWQ0NWM4YzdhMkBleGFtcGxlLmNvbT4"
+      "detail": "url=/mail/Inbox/PDMyZDk4ZTdlNjQ5OGJmYjg0ZmJiZGI3OEBleGFtcGxlLmNvbT4"
     },
     {
       "module": "P0-settings",
       "name": "Cross-cutting: browser back returns to the previous view",
       "status": "PASS",
-      "detail": "after back=/mail/Inbox/PDUyZTEyNzU0MmMxZDI1OWQ0NWM4YzdhMkBleGFtcGxlLmNvbT4"
+      "detail": "after back=/mail/Inbox/PDMyZDk4ZTdlNjQ5OGJmYjg0ZmJiZGI3OEBleGFtcGxlLmNvbT4"
     },
     {
       "module": "P0-settings",
       "name": "Cleanup: settings-probe mail purged",
       "status": "PASS",
-      "detail": "expunged=2"
+      "detail": "expunged=3"
     }
   ]
 }

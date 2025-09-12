@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-09-11T14:45:01.996Z",
+  "generatedAt": "2026-09-12T07:03:26.029Z",
   "total": 9,
-  "pass": 8,
-  "fail": 1,
+  "pass": 9,
+  "fail": 0,
   "blocked": 0,
   "results": [
     {
@@ -15,13 +15,13 @@
       "module": "P0-draft",
       "name": "server holds the auto-saved draft (API)",
       "status": "PASS",
-      "detail": "count=1 uid=57"
+      "detail": "count=1 uid=74"
     },
     {
       "module": "P0-draft",
       "name": "reopening a draft restores subject",
       "status": "PASS",
-      "detail": "open=true subject=\"E2E-DRAFT-1789137745857\" (typed \"E2E-DRAFT-1789137745857\")"
+      "detail": "open=true subject=\"E2E-DRAFT-1789196504326\" (typed \"E2E-DRAFT-1789196504326\")"
     },
     {
       "module": "P0-draft",
@@ -51,13 +51,13 @@
       "module": "P0-draft",
       "name": "close-saved draft keeps its body (API)",
       "status": "PASS",
-      "detail": "uid=59 preview=\"closing must keep this text\""
+      "detail": "uid=76 preview=\"closing must keep this text\""
     },
     {
       "module": "P0-draft",
       "name": "Cleanup: draft probes purged",
-      "status": "FAIL",
-      "detail": "expunged=0"
+      "status": "PASS",
+      "detail": "expunged=2"
     }
   ]
 }

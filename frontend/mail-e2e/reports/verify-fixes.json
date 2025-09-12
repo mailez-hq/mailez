@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T16:31:01.191Z",
+  "generatedAt": "2026-09-12T06:55:23.620Z",
   "total": 7,
   "pass": 7,
   "fail": 0,
@@ -9,7 +9,7 @@
       "module": "VERIFY",
       "name": "D1: a valid recipient still sends end-to-end",
       "status": "PASS",
-      "detail": "uid=438"
+      "detail": "uid=519"
     },
     {
       "module": "VERIFY",
@@ -39,7 +39,7 @@
       "module": "VERIFY",
       "name": "D2: open tab drops the row without a manual refresh",
       "status": "PASS",
-      "detail": "converged in 2877ms"
+      "detail": "converged in 1891ms"
     },
     {
       "module": "VERIFY",

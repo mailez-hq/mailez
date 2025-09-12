@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-09-12T00:56:27.204Z",
-  "total": 8,
-  "pass": 6,
-  "fail": 2,
+  "generatedAt": "2026-09-12T07:35:07.860Z",
+  "total": 9,
+  "pass": 9,
+  "fail": 0,
   "blocked": 0,
   "results": [
     {
       "module": "P1-gap",
       "name": "Recall fixture: inbox + sent copies exist",
       "status": "PASS",
-      "detail": "inbox=483 sent=379"
+      "detail": "inbox=587 sent=463"
     },
     {
       "module": "P1-gap",
@@ -21,25 +21,31 @@
       "module": "P1-gap",
       "name": "Recall: effect on the recipient copy (observed semantics)",
       "status": "PASS",
-      "detail": "notice:\"撤回：E2E-RECALL-1789174528110\"; detail.recall=null"
+      "detail": "notice:\"撤回：E2E-RECALL-1789198460474\"; detail.recall=null"
     },
     {
       "module": "P1-gap",
       "name": "Unsubscribe fixture: APPEND over IMAP",
       "status": "PASS",
-      "detail": "a49368 OK [APPENDUID 1 485] APPEND completed"
+      "detail": "a75585 OK [APPENDUID 1 589] APPEND completed"
     },
     {
       "module": "P1-gap",
       "name": "Unsubscribe fixture: message with List-Unsubscribe is visible",
-      "status": "FAIL",
-      "detail": "unsubscribe_url=-"
+      "status": "PASS",
+      "detail": "uid=589"
     },
     {
       "module": "P1-gap",
       "name": "Unsubscribe: the reader offers the action for such a message",
-      "status": "FAIL",
-      "detail": "buttons=0"
+      "status": "PASS",
+      "detail": "buttons=1"
+    },
+    {
+      "module": "P1-gap",
+      "name": "Unsubscribe: the attempt reports its outcome (no silent failure)",
+      "status": "PASS",
+      "detail": "snippet=\" Reply all Forward Quick reply AI Summary Move to… Inbox Sent Archive Junk newsletter body\""
     },
     {
       "module": "P1-gap",
@@ -51,7 +57,7 @@
       "module": "P1-gap",
       "name": "Cleanup: gap-closing fixtures purged",
       "status": "PASS",
-      "detail": "expunged=5"
+      "detail": "expunged=4"
     }
   ]
 }

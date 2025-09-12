@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-09-11T16:32:42.624Z",
+  "generatedAt": "2026-09-12T07:09:45.092Z",
   "total": 7,
-  "pass": 6,
-  "fail": 1,
+  "pass": 7,
+  "fail": 0,
   "blocked": 0,
   "results": [
     {
@@ -33,13 +33,13 @@
       "module": "X-concurrency",
       "name": "Tab B reflects the star without a manual refresh",
       "status": "PASS",
-      "detail": "starClass=\"lucide lucide-star size-3.5\""
+      "detail": "starClass=\"lucide lucide-star size-3.5 fill-current\""
     },
     {
       "module": "X-concurrency",
       "name": "Un-star from tab B clears the server flag (single source of truth)",
-      "status": "FAIL",
-      "detail": "flags=[\\Flagged]"
+      "status": "PASS",
+      "detail": "flags=[]"
     },
     {
       "module": "X-concurrency",

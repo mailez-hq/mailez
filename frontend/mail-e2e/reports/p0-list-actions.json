@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T15:32:01.581Z",
+  "generatedAt": "2026-09-12T07:20:59.309Z",
   "total": 18,
   "pass": 18,
   "fail": 0,
@@ -9,7 +9,7 @@
       "module": "P0-list",
       "name": "Unread: new mail arrives unread (IMAP flags)",
       "status": "PASS",
-      "detail": "uid=407 flags=[]"
+      "detail": "uid=555 flags=[]"
     },
     {
       "module": "P0-list",
@@ -21,7 +21,7 @@
       "module": "P0-list",
       "name": "Unread: seeded message starts unread",
       "status": "PASS",
-      "detail": "uid=408"
+      "detail": "uid=556"
     },
     {
       "module": "P0-list",
@@ -75,7 +75,7 @@
       "module": "P0-list",
       "name": "Folders: UI creates a custom folder",
       "status": "PASS",
-      "detail": "folders=[Inbox, Archive, Drafts, E2E-FOLDER-1789140523446, Junk, Sent, Trash]"
+      "detail": "folders=[Inbox, Archive, Drafts, E2E-FOLDER-1789197508312, Junk, Sent, Trash]"
     },
     {
       "module": "P0-list",
@@ -99,13 +99,13 @@
       "module": "P0-list",
       "name": "Sort: 'Oldest first' shows the oldest message first",
       "status": "PASS",
-      "detail": "ui=\"A admin@example.com 17:47 Re: 辞职申请 2 收到，感谢你一直以\" api=\"辞职申请\""
+      "detail": "ui=\"A admin@example.com 9月11日 Re: 辞职申请 2 收到，感谢你一直以\" api=\"辞职申请\""
     },
     {
       "module": "P0-list",
       "name": "Pagination: scrolling Sent loads the next page",
       "status": "PASS",
-      "detail": "total=59 before=21 after=22"
+      "detail": "total=56 before=21 after=22"
     },
     {
       "module": "P0-list",
