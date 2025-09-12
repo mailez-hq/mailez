@@ -144,7 +144,9 @@ func (h *Hub) Token(email string) string {
 // folderStater is the IMAP surface the watcher needs; *mail.Client and test
 // fakes implement it.
 type folderStater interface {
-	FolderStat(email, token, folder string) (mail.FolderStat, error)
+	// FolderVersion reports the mailbox's CONDSTORE version, and whether the
+	// server reported one.
+	FolderVersion(email, token, folder string) (uint64, bool, error)
 }
 
 // idleWatcher is the IDLE push surface; *mail.Client implements it.
@@ -177,7 +179,7 @@ type EventWatcher struct {
 	Idle idleWatcher
 
 	mu       sync.Mutex
-	baseline map[string]map[string]mail.FolderStat
+	baseline map[string]map[string]uint64
 	kicks    map[string]time.Time
 
 	idleMu    sync.Mutex
@@ -192,7 +194,7 @@ func NewEventWatcher(cfg core.Config, hub *Hub) *EventWatcher {
 		Hub:       hub,
 		Interval:  time.Duration(cfg.EventsInterval) * time.Second,
 		Idle:      mc,
-		baseline:  make(map[string]map[string]mail.FolderStat),
+		baseline:  make(map[string]map[string]uint64),
 		idleStops: make(map[string]chan struct{}),
 	}
 	hub.SetLifecycle(w.startIdleWatch, w.stopIdleWatch)
@@ -294,25 +296,38 @@ func (w *EventWatcher) pollOnce() {
 }
 
 // checkEmail diffs one connected user's watched folders against the baseline
-// and publishes a mail event on growth. The poll tick and the delivery-receipt
-// Kick share it.
+// and publishes a mail event for the ones that changed. The poll tick, the
+// IDLE wake-up and the delivery-receipt Kick share it.
+//
+// The mailbox version is the signal, not the counters: every delivery, flag
+// change, expunge and move bumps it, so one cheap STATUS per folder catches
+// the lot — including the flag-only edits (star, read) counters cannot see,
+// which is what keeps other tabs in sync without waiting for the client's
+// safety refresh. Reading counters instead would also cost a whole-mailbox
+// walk per folder per tick.
 func (w *EventWatcher) checkEmail(email string) {
 	token := w.Hub.Token(email)
 	if token == "" {
 		return
 	}
-	stats := make(map[string]mail.FolderStat, len(watchedFolders))
+	versions := make(map[string]uint64, len(watchedFolders))
 	for _, folder := range watchedFolders {
-		st, err := w.Mail.FolderStat(email, token, folder)
+		v, ok, err := w.Mail.FolderVersion(email, token, folder)
 		if err != nil {
 			// Transient IMAP errors (e.g. the engine restarting) are
 			// common; keep the old baseline and retry next tick.
-			log.Printf("events: stat %s/%s: %v", email, folder, err)
+			log.Printf("events: version %s/%s: %v", email, folder, err)
 			continue
 		}
-		stats[folder] = st
+		if !ok {
+			// A server without CONDSTORE cannot drive push; say so once per
+			// tick rather than silently never notifying.
+			log.Printf("events: version %s/%s: no HIGHESTMODSEQ reported", email, folder)
+			continue
+		}
+		versions[folder] = v
 	}
-	if len(stats) == 0 {
+	if len(versions) == 0 {
 		return
 	}
 
@@ -321,27 +336,17 @@ func (w *EventWatcher) checkEmail(email string) {
 	prev, ok := w.baseline[email]
 	if ok {
 		for _, folder := range watchedFolders {
-			cur, haveCur := stats[folder]
+			cur, haveCur := versions[folder]
 			old, haveOld := prev[folder]
 			if !haveCur || !haveOld {
 				continue
 			}
-			// New mail advances UIDNEXT (and usually the message count)
-			// regardless of read state; a growing UNSEEN count also fires,
-			// because a snooze wake-up (engine sweeper) resurfaces an old
-			// message as unread and the client must refresh then too.
-			//
-			// A SHRINKING message count is the other direction: another
-			// client deleted, moved or archived the message out of this
-			// folder, and this tab must drop the row instead of showing it
-			// until a manual refresh. Read-state changes still stay quiet
-			// (UNSEEN dropping on its own is not a reason to refetch).
-			if cur.UidNext != old.UidNext || cur.Messages != old.Messages || cur.Unseen > old.Unseen {
+			if cur != old {
 				changed = append(changed, folder)
 			}
 		}
 	}
-	w.baseline[email] = stats
+	w.baseline[email] = versions
 	w.mu.Unlock()
 
 	if len(changed) > 0 {

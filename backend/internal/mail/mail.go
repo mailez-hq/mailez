@@ -710,6 +710,47 @@ func (c *Client) FolderStat(email, token, folder string) (FolderStat, error) {
 	return FolderStat{Messages: st.Messages, Unseen: st.Unseen, UidNext: st.UidNext}, nil
 }
 
+// statusHighestModSeq is RFC 7162's STATUS item for the mailbox version. It is
+// not one of go-imap v1's named items: the client sends it verbatim and parks
+// the value in MailboxStatus.Items.
+const statusHighestModSeq imap.StatusItem = "HIGHESTMODSEQ"
+
+// FolderVersion returns the mailbox's CONDSTORE version, and whether the
+// server reported one. It is the cheapest complete change signal: every
+// delivery, flag change, expunge and move bumps it, while the counters
+// FolderStat reads move only on some of them and cost a whole-mailbox walk to
+// compute.
+func (c *Client) FolderVersion(email, token, folder string) (uint64, bool, error) {
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return 0, false, err
+	}
+	defer cli.Logout()
+
+	st, err := cli.Status(folder, []imap.StatusItem{statusHighestModSeq})
+	if err != nil {
+		return 0, false, fmt.Errorf("imap status %q: %w", folder, err)
+	}
+	v, ok := st.Items[statusHighestModSeq]
+	if !ok {
+		return 0, false, nil
+	}
+	switch n := v.(type) {
+	case uint32:
+		return uint64(n), true, nil
+	case int:
+		return uint64(n), true, nil
+	case string:
+		parsed, perr := strconv.ParseUint(strings.TrimSpace(n), 10, 64)
+		if perr != nil {
+			return 0, false, fmt.Errorf("imap status %q: bad HIGHESTMODSEQ %q", folder, n)
+		}
+		return parsed, true, nil
+	default:
+		return 0, false, fmt.Errorf("imap status %q: unexpected HIGHESTMODSEQ type %T", folder, v)
+	}
+}
+
 // GetMessage returns a full message body by UID.
 func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, error) {
 	cli, err := c.openIMAP(email, token)
