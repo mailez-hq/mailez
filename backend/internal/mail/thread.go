@@ -256,7 +256,7 @@ func (c *Client) Thread(email, token, folder, tid string) ([]Message, error) {
 	if err != nil {
 		return nil, fmt.Errorf("imap select %q: %w", folder, err)
 	}
-	meta, err := c.threadMeta(cli, mbox.Messages)
+	meta, err := c.threadMetaCached(cli, mbox.Messages, email, folder)
 	if err != nil {
 		return nil, err
 	}

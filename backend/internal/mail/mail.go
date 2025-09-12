@@ -308,7 +308,7 @@ func (c *Client) ListMessagesSorted(email, token, folder string, page int, sortB
 	// Annotate the page with conversation metadata gathered from a wider
 	// window, so the UI can show "N in thread" and walk the conversation.
 	if len(out) > 0 {
-		if meta, err := c.threadMeta(cli, mbox.Messages); err == nil {
+		if meta, err := c.threadMetaCached(cli, mbox.Messages, email, folder); err == nil {
 			for i := range out {
 				if tid, ok := meta.ids[out[i].UID]; ok {
 					out[i].ThreadID = tid
@@ -750,7 +750,7 @@ func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, 
 	// conversation had real reply headers: the list advertised "2 in
 	// thread", the reading pane then fetched a thread id that matched no
 	// member and degraded to a single message.
-	if meta, err := c.threadMeta(cli, mbox.Messages); err == nil {
+	if meta, err := c.threadMetaCached(cli, mbox.Messages, email, folder); err == nil {
 		if tid := meta.ids[msg.Uid]; tid != "" {
 			out.ThreadID = tid
 		} else {
