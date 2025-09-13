@@ -1,4 +1,4 @@
-// Package uploads implements the large-attachment relay (enterprise-style 超大
+// Package uploads implements the large-attachment relay (operator-grade 超大
 // 附件): files that exceed the inline attachment cap are stored server-side
 // and mailed as a token-protected download link instead.
 package uploads
