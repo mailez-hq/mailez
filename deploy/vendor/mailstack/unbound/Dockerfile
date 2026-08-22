@@ -17,7 +17,7 @@ ARG VERSION=local
 LABEL version=$VERSION
 
 RUN set -euxo pipefail \
-  ; apk add --no-cache ca-certificates bind-tools unbound \
+  ; apk add --no-cache ca-certificates curl bind-tools unbound \
   ; curl -so /etc/unbound/root.hints https://www.internic.net/domain/named.cache \
   ; chown root:unbound /etc/unbound \
   ; chmod 775 /etc/unbound \
