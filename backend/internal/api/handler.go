@@ -6,6 +6,7 @@ import (
 
 	"mailess/backend/internal/auth"
 	"mailess/backend/internal/config"
+	"mailess/backend/internal/mail"
 	"mailess/backend/internal/models"
 )
 
@@ -14,10 +15,16 @@ type Handler struct {
 	DB   *gorm.DB
 	Auth *auth.Manager
 	Cfg  config.Config
+	Mail *mail.Client
 }
 
 func New(db *gorm.DB, authMgr *auth.Manager, cfg config.Config) *Handler {
-	return &Handler{DB: db, Auth: authMgr, Cfg: cfg}
+	return &Handler{
+		DB:   db,
+		Auth: authMgr,
+		Cfg:  cfg,
+		Mail: mail.New(cfg.MailImapAddr, cfg.MailSmtpAddr),
+	}
 }
 
 // Register mounts the v1 endpoints. requireAuth guards the management surface.
@@ -26,6 +33,7 @@ func (h *Handler) Register(r fiber.Router) {
 	h.registerDomains(r)
 	h.registerUsers(r)
 	h.registerAliases(r)
+	h.registerMail(r)
 }
 
 // requireAuth allows any authenticated (non-anonymous) session.
