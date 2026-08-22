@@ -82,8 +82,8 @@ export const mailSearch = (folder: string, q: string) =>
 export const mailMessage = (folder: string, uid: number) =>
   api<MailMessage>(`/mail/message?folder=${encodeURIComponent(folder)}&uid=${uid}`);
 
-export const mailSend = (to: string, subject: string, body: string) =>
-  apiPost("/mail/send", { to, subject, body });
+export const mailSend = (to: string, subject: string, body: string, html?: string) =>
+  apiPost("/mail/send", { to, subject, body, html });
 
 export const mailFlag = (folder: string, uid: number, flag: string, value: boolean) =>
   apiPost("/mail/flag", { folder, uid, flag, value });

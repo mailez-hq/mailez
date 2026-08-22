@@ -128,3 +128,64 @@
     @apply font-sans;
   }
 }
+
+/* Rich-text compose editor typography */
+.mail-prose .tiptap {
+  min-height: 10rem;
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+.mail-prose .tiptap:focus {
+  outline: none;
+}
+.mail-prose .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.mail-prose .tiptap h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.375rem;
+}
+.mail-prose .tiptap h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.625rem 0 0.25rem;
+}
+.mail-prose .tiptap p {
+  margin: 0.25rem 0;
+}
+.mail-prose .tiptap ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin: 0.25rem 0;
+}
+.mail-prose .tiptap ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  margin: 0.25rem 0;
+}
+.mail-prose .tiptap blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 0.75rem;
+  color: var(--muted-foreground);
+  margin: 0.375rem 0;
+}
+.mail-prose .tiptap pre {
+  background: var(--muted);
+  border-radius: 0.375rem;
+  padding: 0.625rem;
+  overflow-x: auto;
+  font-size: 0.8125rem;
+}
+.mail-prose .tiptap code {
+  font-family: var(--font-geist-mono);
+  font-size: 0.8em;
+}
+.mail-prose .tiptap a {
+  color: oklch(0.488 0.243 264.376);
+  text-decoration: underline;
+}

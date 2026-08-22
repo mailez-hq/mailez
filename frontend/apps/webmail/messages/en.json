@@ -27,6 +27,7 @@
     "to": "To",
     "subject": "Subject",
     "body": "Body",
+    "bodyPlaceholder": "Write your message...",
     "send": "Send",
     "noTextBody": "(no text body)",
     "htmlVersion": "HTML version:",

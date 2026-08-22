@@ -52,3 +52,7 @@ protocols to the backend. To run locally, copy `deploy/mailu.env.example` to
 (`TLS_FLAVOR=notls`); for local testing with TLS run
 `deploy/scripts/generate-certs.ps1` (or `.sh`) and set `TLS_FLAVOR=cert` — see
 `deploy/certs/README.md` for production guidance.
+
+After the stack is up, run `go run ./cmd/e2e` from `backend/` (see
+`deploy/scripts/README.md`) to verify the full mail path: SMTP submission,
+IMAP delivery, DKIM signing and rspamd filtering.
