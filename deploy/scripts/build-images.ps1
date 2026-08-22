@@ -33,7 +33,7 @@ if ($LASTEXITCODE -ne 0) { throw 'docker daemon is not running' }
 
 function Build-Image([string]$name, [string]$dir) {
   Write-Host "==> building mailez/$name :local from $dir"
-  & $docker build --build-arg VERSION=local -t "mailez/$name`:local" $dir
+  & $docker build --build-arg VERSION=local --build-arg BASE_IMAGE="mailez/base:local" -t "mailez/$name`:local" $dir
   if ($LASTEXITCODE -ne 0) { throw "build failed: mailez/$name" }
 }
 

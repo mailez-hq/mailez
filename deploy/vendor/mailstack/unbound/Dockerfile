@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile-upstream:1.4.3
 
 # resolver image
-FROM base
+ARG BASE_IMAGE=mailez/base:local
+FROM ${BASE_IMAGE}
 
 ARG VERSION=local
 LABEL version=$VERSION
