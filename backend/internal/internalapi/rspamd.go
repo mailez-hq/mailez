@@ -6,7 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"mailess/backend/internal/models"
+	"mailez/backend/internal/models"
 )
 
 func (h *Handler) registerRspamd(r fiber.Router) {
@@ -14,7 +14,7 @@ func (h *Handler) registerRspamd(r fiber.Router) {
 	r.Get("/rspamd/local_domains", h.rspamdLocalDomains)
 }
 
-// rspamdDkimKey mirrors Mailu's /internal/rspamd/vault/v1/dkim/<domain>.
+// rspamdDkimKey mirrors the reference implementation's /internal/rspamd/vault/v1/dkim/<domain>.
 // Always 200: selectors stay empty unless the queried domain (or an
 // alternative's canonical domain) carries a DKIM key. Alternatives inherit the
 // key and advertise the queried (alternative) name.
@@ -46,7 +46,7 @@ func (h *Handler) rspamdDkimKey(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"data": fiber.Map{"selectors": selectors}})
 }
 
-// rspamdLocalDomains mirrors Mailu: a plain-text, newline-separated list of
+// rspamdLocalDomains mirrors the reference implementation: a plain-text, newline-separated list of
 // served domains and alternatives (not JSON).
 func (h *Handler) rspamdLocalDomains(c *fiber.Ctx) error {
 	var names []string

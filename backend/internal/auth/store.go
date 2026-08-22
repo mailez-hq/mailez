@@ -9,7 +9,7 @@ import (
 )
 
 // Store persists SSO sessions and temporary tokens. Sessions map a session id
-// to a user email; tokens map a token to a session id (Mailu-style).
+// to a user email; tokens map a token to a session id (the reference implementation-style).
 type Store interface {
 	Set(ctx context.Context, key, value string, ttl time.Duration) error
 	Get(ctx context.Context, key string) (string, bool, error)

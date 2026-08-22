@@ -1,5 +1,5 @@
-// Command e2e runs an end-to-end smoke test against a running mailess +
-// Mailu mail stack: backend health, admin SSO login, domain/user provisioning,
+// Command e2e runs an end-to-end smoke test against a running mailez +
+// the reference implementation mail stack: backend health, admin SSO login, domain/user provisioning,
 // DKIM key generation, authenticated SMTP submission, IMAP delivery, and the
 // DKIM-Signature / rspamd X-Spam headers on the delivered copy.
 //
@@ -27,6 +27,8 @@ import (
 
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
+
+	mailpk "mailez/backend/internal/mail"
 )
 
 type options struct {
@@ -49,7 +51,7 @@ func main() {
 	flag.IntVar(&opts.smtpPort, "smtp-port", 587, "SMTP submission port")
 	flag.IntVar(&opts.imapPort, "imap-port", 143, "IMAP port")
 	flag.StringVar(&opts.adminEmail, "admin-email", "admin@example.com", "global admin email")
-	flag.StringVar(&opts.adminPassword, "admin-password", "MailuDemo2026!", "global admin password")
+	flag.StringVar(&opts.adminPassword, "admin-password", "MailezDemo2026!", "global admin password")
 	flag.StringVar(&opts.domain, "domain", "e2e.example.com", "test domain")
 	flag.StringVar(&opts.user, "user", "e2e", "test user localpart")
 	flag.StringVar(&opts.alias, "alias", "", "alias localpart to test, e.g. team")
@@ -146,7 +148,7 @@ func main() {
 	}
 
 	// 5. SMTP submission (STARTTLS first, plain fallback, then port 25).
-	subject := fmt.Sprintf("mailess-e2e-%d", time.Now().Unix())
+	subject := fmt.Sprintf("mailez-e2e-%d", time.Now().Unix())
 	body := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\nE2E body",
 		userEmail, userEmail, subject)
 	sent := false
@@ -208,7 +210,7 @@ func main() {
 		} else if !containsEmail(aliases, aliasEmail) {
 			api.json("POST", "/aliases", map[string]string{"email": aliasEmail, "destination": userEmail}, nil)
 		}
-		subject2 := fmt.Sprintf("mailess-e2e-alias-%d", time.Now().Unix())
+		subject2 := fmt.Sprintf("mailez-e2e-alias-%d", time.Now().Unix())
 		body2 := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\nE2E alias body",
 			userEmail, aliasEmail, subject2)
 		ok := false
@@ -298,8 +300,13 @@ func smtpSend(host string, port int, user, pw, to, msg string) error {
 		return err
 	}
 	// STARTTLS when offered; plaintext fallback for TLS_FLAVOR=notls.
-	_ = c.StartTLS(&tls.Config{ServerName: host, InsecureSkipVerify: true})
-	if err := c.Auth(smtp.PlainAuth("", user, pw, host)); err != nil {
+	var auth smtp.Auth
+	if err := c.StartTLS(&tls.Config{ServerName: host, InsecureSkipVerify: true}); err == nil {
+		auth = smtp.PlainAuth("", user, pw, host)
+	} else {
+		auth = mailpk.NewPlainAuth(user, pw)
+	}
+	if err := c.Auth(auth); err != nil {
 		return err
 	}
 	if err := c.Mail(user); err != nil {

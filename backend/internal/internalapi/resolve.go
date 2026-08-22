@@ -3,7 +3,7 @@ package internalapi
 import (
 	"strings"
 
-	"mailess/backend/internal/models"
+	"mailez/backend/internal/models"
 )
 
 // resolveDomain splits an address into localpart and real domain, following
@@ -29,7 +29,7 @@ func (h *Handler) realDomain(domain string) string {
 }
 
 // resolveDestination computes delivery targets for localpart@domain, mirroring
-// Mailu's Email.resolve_destination: users (with forwarding), then aliases
+// the reference implementation's Email.resolve_destination: users (with forwarding), then aliases
 // (exact, wildcard, recipient-delimiter aware).
 func (h *Handler) resolveDestination(localpart, domain string, ignoreForwardKeep bool) []string {
 	stripped := h.stripDelimiter(localpart)

@@ -15,12 +15,12 @@ import (
 	"github.com/emersion/go-imap/client"
 	"gorm.io/gorm"
 
-	"mailess/backend/internal/crypto"
-	"mailess/backend/internal/models"
+	"mailez/backend/internal/crypto"
+	"mailez/backend/internal/models"
 )
 
 // Fetcher polls remote POP/IMAP accounts and delivers new mail to the local
-// user through the internal SMTP stack, mirroring Mailu's fetchmail service.
+// user through the internal SMTP stack, mirroring the reference implementation's fetchmail service.
 type Fetcher struct {
 	DB       *gorm.DB
 	SmtpAddr string // local smtp host:port for delivery

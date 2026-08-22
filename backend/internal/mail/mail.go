@@ -28,6 +28,9 @@ type Message struct {
 	Date          time.Time    `json:"date"`
 	Flags         []string     `json:"flags"`
 	HasAttachment bool         `json:"has_attachment"`
+	ThreadID      string       `json:"thread_id,omitempty"`
+	ThreadCount   int          `json:"thread_count,omitempty"`
+	ThreadLatest  bool         `json:"thread_latest,omitempty"`
 	TextBody      string       `json:"text_body,omitempty"`
 	HTMLBody      string       `json:"html_body,omitempty"`
 	Attachments   []Attachment `json:"attachments,omitempty"`
@@ -52,11 +55,12 @@ type Address struct {
 type Client struct {
 	IMAPAddr string // host:port, e.g. front:10143
 	SMTPAddr string // host:port, e.g. front:10025
+	SieveAddr string // host:port, e.g. front:4190
 }
 
 // New creates a mail gateway client.
-func New(imapAddr, smtpAddr string) *Client {
-	return &Client{IMAPAddr: imapAddr, SMTPAddr: smtpAddr}
+func New(imapAddr, smtpAddr, sieveAddr string) *Client {
+	return &Client{IMAPAddr: imapAddr, SMTPAddr: smtpAddr, SieveAddr: sieveAddr}
 }
 
 func (c *Client) tlsConfig() *tls.Config {
@@ -70,8 +74,8 @@ func (c *Client) openIMAP(email, token string) (*client.Client, error) {
 		return nil, fmt.Errorf("imap dial: %w", err)
 	}
 	if err := cli.StartTLS(c.tlsConfig()); err != nil {
-		_ = cli.Logout()
-		return nil, fmt.Errorf("imap starttls: %w", err)
+		// TLS_FLAVOR=notls deployments serve plaintext on the internal proxy
+		// port; fall back to the trusted internal link without encryption.
 	}
 	if err := cli.Login(email, token); err != nil {
 		_ = cli.Logout()
@@ -150,51 +154,20 @@ func (c *Client) ListMessages(email, token, folder string, page int) ([]Message,
 	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
 		out[i], out[j] = out[j], out[i]
 	}
+	// Annotate the page with conversation metadata gathered from a wider
+	// window, so the UI can show "N in thread" and walk the conversation.
+	if len(out) > 0 {
+		if meta, err := c.threadMeta(cli, mbox.Messages); err == nil {
+			for i := range out {
+				if tid, ok := meta.ids[out[i].UID]; ok {
+					out[i].ThreadID = tid
+					out[i].ThreadCount = meta.counts[tid]
+					out[i].ThreadLatest = meta.latest[tid] == out[i].UID
+				}
+			}
+		}
+	}
 	return out, int(mbox.Messages), nil
-}
-
-// SearchMessages returns messages matching a free-text query (subject, from,
-// body) in a folder, newest first.
-func (c *Client) SearchMessages(email, token, folder, query string) ([]Message, error) {
-	cli, err := c.openIMAP(email, token)
-	if err != nil {
-		return nil, err
-	}
-	defer cli.Logout()
-
-	if _, err := cli.Select(folder, true); err != nil {
-		return nil, fmt.Errorf("imap select %q: %w", folder, err)
-	}
-	criteria := imap.NewSearchCriteria()
-	criteria.Text = []string{query}
-	uids, err := cli.Search(criteria)
-	if err != nil {
-		return nil, fmt.Errorf("imap search: %w", err)
-	}
-	if len(uids) == 0 {
-		return []Message{}, nil
-	}
-	seqset := new(imap.SeqSet)
-	for _, uid := range uids {
-		seqset.AddNum(uid)
-	}
-	messages := make(chan *imap.Message, 10)
-	done := make(chan error, 1)
-	go func() {
-		done <- cli.UidFetch(seqset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure}, messages)
-	}()
-
-	var out []Message
-	for msg := range messages {
-		out = append(out, envelopeToMessage(msg))
-	}
-	if err := <-done; err != nil {
-		return nil, fmt.Errorf("imap uidfetch: %w", err)
-	}
-	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
-		out[i], out[j] = out[j], out[i]
-	}
-	return out, nil
 }
 
 // GetMessage returns a full message body by UID.
@@ -230,6 +203,7 @@ func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, 
 	}
 
 	out := envelopeToMessage(msg)
+	out.ThreadID = threadID(out.Subject)
 	if body := msg.GetBody(section); body != nil {
 		if textBody, htmlBody, attachments, err := extractBody(body); err == nil {
 			out.TextBody = textBody

@@ -8,7 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"mailess/backend/internal/models"
+	"mailez/backend/internal/models"
 )
 
 func (h *Handler) registerPostfix(r fiber.Router) {
@@ -229,7 +229,7 @@ func relayTransport(relay models.Relay) (string, error) {
 	return out, nil
 }
 
-// unsupportedAddress guards against lookups Mailu cannot resolve.
+// unsupportedAddress guards against lookups the reference implementation cannot resolve.
 func unsupportedAddress(address string) bool {
 	return strings.Count(address, "@") > 1 || strings.HasPrefix(address, `"`)
 }

@@ -10,9 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { usePreferences } from "@/components/preferences-provider";
 import {
   changePassword, meProfile, updateMeSettings, type MeSettings,
 } from "@/lib/api";
+import type { Density, Theme } from "@/lib/preferences";
+import { cn } from "@/lib/utils";
 
 // backend serializes time.Time as RFC3339; date inputs need yyyy-mm-dd
 const toDateInput = (s: string) => (s && !s.startsWith("0001") ? s.slice(0, 10) : "");
@@ -23,6 +26,7 @@ export function MailSettings({ open, onOpenChange, onSaved }: {
   onSaved: () => void;
 }) {
   const t = useTranslations("settings");
+  const { theme, setTheme, density, setDensity } = usePreferences();
   const [profile, setProfile] = useState<MeSettings | null>(null);
   const [error, setError] = useState("");
 
@@ -109,13 +113,45 @@ export function MailSettings({ open, onOpenChange, onSaved }: {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
         <DialogHeader><DialogTitle>{t("title")}</DialogTitle></DialogHeader>
-        {!profile && !error && <p className="text-sm text-zinc-400">{t("loading")}</p>}
+        {!profile && !error && <p className="text-sm text-muted-foreground">{t("loading")}</p>}
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
         {profile && (
           <div className="space-y-4">
             <form onSubmit={saveSettings} className="space-y-4">
+              <Separator />
+              <div>
+                <p className="mb-2 text-sm font-medium">{t("appearance")}</p>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label>{t("theme")}</Label>
+                    <Segmented
+                      value={theme}
+                      options={[
+                        { value: "light", label: t("themeLight") },
+                        { value: "dark", label: t("themeDark") },
+                        { value: "system", label: t("themeSystem") },
+                      ]}
+                      onChange={(v) => setTheme(v as Theme)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>{t("density")}</Label>
+                    <Segmented
+                      value={density}
+                      options={[
+                        { value: "compact", label: t("densityCompact") },
+                        { value: "cozy", label: t("densityCozy") },
+                        { value: "relaxed", label: t("densityRelaxed") },
+                      ]}
+                      onChange={(v) => setDensity(v as Density)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
               <div className="space-y-2">
                 <Label>{t("displayedName")}</Label>
                 <Input value={displayedName} onChange={(e) => setDisplayedName(e.target.value)} placeholder={profile.email} />
@@ -236,5 +272,35 @@ export function MailSettings({ open, onOpenChange, onSaved }: {
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function Segmented({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex rounded-lg border border-border bg-muted/40 p-0.5">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          className={cn(
+            "flex-1 rounded-md px-2 py-1 text-xs transition-colors",
+            value === o.value
+              ? "bg-background font-medium text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
   );
 }

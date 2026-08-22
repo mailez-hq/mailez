@@ -35,7 +35,7 @@ type User struct {
 }
 
 // Destination returns the comma-separated delivery destinations, honouring
-// forwarding settings (mirrors Mailu's User.destination).
+// forwarding settings (mirrors the reference implementation's User.destination).
 func (u *User) Destination() string {
 	if !u.ForwardEnabled {
 		return u.Email

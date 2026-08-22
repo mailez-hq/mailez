@@ -1,4 +1,4 @@
-module mailess/backend
+module mailez/backend
 
 go 1.26.3
 

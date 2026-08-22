@@ -37,7 +37,7 @@ export function AppSidebar({ me }: { me: Me }) {
     <aside className="flex w-56 shrink-0 flex-col border-r bg-white dark:bg-zinc-900">
       <div className="flex items-center justify-between px-4 py-4">
         <Link href={nav[0]?.href || "/"} className="text-lg font-semibold">
-          mailess
+          mailez
         </Link>
         <LocaleSwitcher />
       </div>

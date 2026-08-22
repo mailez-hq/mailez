@@ -30,7 +30,7 @@ func newRateLimiter(rdb *redis.Client, limit int) *rateLimiter {
 }
 
 // hit increments the counter for key and reports whether the limit is now
-// exceeded (mirrors Mailu's limiter.hit()).
+// exceeded (mirrors the reference implementation's limiter.hit()).
 func (l *rateLimiter) hit(key string) bool {
 	if l.limit <= 0 {
 		return false

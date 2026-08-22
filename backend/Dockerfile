@@ -3,11 +3,11 @@
 FROM golang:1.26-alpine AS build
 WORKDIR /src
 COPY . .
-RUN CGO_ENABLED=0 go build -o /out/mailess ./cmd/server
+RUN CGO_ENABLED=0 go build -o /out/mailez ./cmd/server
 
 FROM alpine:3.21
-RUN adduser -S -u 1000 mailess
-COPY --from=build /out/mailess /usr/local/bin/mailess
-USER mailess
+RUN adduser -S -u 1000 mailez
+COPY --from=build /out/mailez /usr/local/bin/mailez
+USER mailez
 EXPOSE 8081
-ENTRYPOINT ["mailess"]
+ENTRYPOINT ["mailez"]

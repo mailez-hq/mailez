@@ -1,8 +1,8 @@
 package internalapi
 
 // Contract tests for the /internal API consumed by the mail stack (postfix /
-// dovecot / nginx) through Mailu's podop bridge. The response formats below
-// must stay byte-compatible with Mailu's internal API, so these tests pin the
+// dovecot / nginx) through the reference implementation's podop bridge. The response formats below
+// must stay byte-compatible with the reference implementation's internal API, so these tests pin the
 // exact wire contract (status codes, JSON quoting, list formatting).
 
 import (
@@ -25,11 +25,11 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 
-	"mailess/backend/internal/auth"
-	"mailess/backend/internal/config"
-	"mailess/backend/internal/crypto"
-	"mailess/backend/internal/models"
-	"mailess/backend/internal/password"
+	"mailez/backend/internal/auth"
+	"mailez/backend/internal/config"
+	"mailez/backend/internal/crypto"
+	"mailez/backend/internal/models"
+	"mailez/backend/internal/password"
 )
 
 const testDkimKey = "-----BEGIN RSA PRIVATE KEY-----\nMOCKKEY\n-----END RSA PRIVATE KEY-----"
@@ -60,7 +60,7 @@ func newContractHarness(t *testing.T) (*Handler, *fiber.App) {
 	cfg := config.Config{
 		SecretKey:          "contract-test-secret",
 		RecipientDelimiter: "+",
-		Subnet:             "192.168.203.0/24",
+		Subnet:             "192.168.206.0/24",
 		Hostname:           "mail.example.com",
 		Domain:             "example.com",
 		MessageRateLimit:   200,
@@ -68,7 +68,7 @@ func newContractHarness(t *testing.T) (*Handler, *fiber.App) {
 		ImapAddress:        "imap",
 		SmtpAddress:        "smtp",
 	}
-	mgr := auth.NewManager(db, auth.NewMemoryStore(), "mailess_session", time.Hour)
+	mgr := auth.NewManager(db, auth.NewMemoryStore(), "mailez_session", time.Hour)
 	h := New(db, mgr, cfg, nil)
 	app := fiber.New()
 	h.Register(app.Group("/internal"))
@@ -534,7 +534,7 @@ func TestDovecotContract(t *testing.T) {
 	seedContractData(t, h)
 
 	if code, body := doGet(t, app, "/internal/dovecot/passdb/alice@example.com"); code != 200 ||
-		body != `{"allow_real_nets":"192.168.203.0/24","nopassword":"Y","password":null}` {
+		body != `{"allow_real_nets":"192.168.206.0/24","nopassword":"Y","password":null}` {
 		t.Fatalf("passdb: got %d %q", code, body)
 	}
 	if code, body := doGet(t, app, "/internal/dovecot/userdb/alice@example.com"); code != 200 ||
@@ -674,7 +674,7 @@ func TestIDNAContract(t *testing.T) {
 		t.Fatalf("domain unicode: got %d %q", code, body)
 	}
 
-	// rspamd vault advertises the punycode selector domain (Mailu parity).
+	// rspamd vault advertises the punycode selector domain (the reference implementation parity).
 	for _, q := range []string{punycode, unicode} {
 		code, body := doGet(t, app, "/internal/rspamd/vault/v1/dkim/"+q)
 		if code != 200 {
@@ -701,7 +701,7 @@ func TestIDNAContract(t *testing.T) {
 		t.Fatalf("alias destination: got %d %q", code, body)
 	}
 
-	// local_domains passes through the stored names (Mailu behaviour).
+	// local_domains passes through the stored names (the reference implementation behaviour).
 	code, body := doGet(t, app, "/internal/rspamd/local_domains")
 	if code != 200 || !strings.Contains(body, "bücher.example") {
 		t.Fatalf("local_domains: got %d %q", code, body)

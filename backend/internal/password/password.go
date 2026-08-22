@@ -14,7 +14,7 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
-// DefaultRounds mirrors Mailu's CREDENTIAL_ROUNDS default.
+// DefaultRounds mirrors the reference implementation's CREDENTIAL_ROUNDS default.
 const DefaultRounds = 12
 
 // Hash hashes a password with bcrypt (rounds = DefaultRounds).
@@ -27,7 +27,7 @@ func Hash(password string) (string, error) {
 }
 
 // Verify checks a password against a stored hash. It supports standard bcrypt
-// ($2a$/$2b$/$2y$) and Mailu's passlib bcrypt_sha256 scheme so migrated data
+// ($2a$/$2b$/$2y$) and the reference implementation's passlib bcrypt_sha256 scheme so migrated data
 // keeps working.
 func Verify(stored, password string) bool {
 	if stored == "" || password == "" {

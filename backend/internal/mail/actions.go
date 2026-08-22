@@ -30,8 +30,15 @@ func (c *Client) SetFlag(email, token, folder string, uid uint32, flag string, v
 	return nil
 }
 
-// Move relocates a message by UID to another folder.
-func (c *Client) Move(email, token, folder string, uid uint32, destination string) error {
+// MoveMany relocates messages by UID to another folder, creating the target
+// mailbox (Archive, Trash, Junk, ...) when it does not exist yet.
+func (c *Client) MoveMany(email, token, folder string, uids []uint32, destination string) error {
+	if len(uids) == 0 {
+		return nil
+	}
+	if err := c.EnsureMailbox(email, token, destination); err != nil {
+		return err
+	}
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return err
@@ -42,22 +49,27 @@ func (c *Client) Move(email, token, folder string, uid uint32, destination strin
 		return fmt.Errorf("imap select %q: %w", folder, err)
 	}
 	seqset := new(imap.SeqSet)
-	seqset.AddNum(uid)
+	for _, uid := range uids {
+		seqset.AddNum(uid)
+	}
 	if err := cli.UidMove(seqset, destination); err != nil {
 		return fmt.Errorf("imap move: %w", err)
 	}
 	return nil
 }
 
+// Move relocates a single message by UID to another folder.
+func (c *Client) Move(email, token, folder string, uid uint32, destination string) error {
+	return c.MoveMany(email, token, folder, []uint32{uid}, destination)
+}
+
 // Delete moves a message to Trash (creating it if needed).
 func (c *Client) Delete(email, token, folder string, uid uint32) error {
-	if err := c.ensureMailbox(email, token, "Trash"); err != nil {
-		return err
-	}
 	return c.Move(email, token, folder, uid, "Trash")
 }
 
-func (c *Client) ensureMailbox(email, token, name string) error {
+// EnsureMailbox creates the mailbox if it does not exist.
+func (c *Client) EnsureMailbox(email, token, name string) error {
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return err

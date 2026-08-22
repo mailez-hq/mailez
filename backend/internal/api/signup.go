@@ -5,8 +5,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"mailess/backend/internal/models"
-	"mailess/backend/internal/password"
+	"mailez/backend/internal/models"
+	"mailez/backend/internal/password"
 )
 
 // registerSignup mounts the public self-registration endpoints. These must be

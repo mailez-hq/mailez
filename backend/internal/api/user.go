@@ -6,8 +6,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"mailess/backend/internal/models"
-	"mailess/backend/internal/password"
+	"mailez/backend/internal/models"
+	"mailez/backend/internal/password"
 )
 
 func (h *Handler) registerUsers(r fiber.Router, mw fiber.Handler) {

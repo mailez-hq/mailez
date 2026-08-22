@@ -8,7 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"mailess/backend/internal/models"
+	"mailez/backend/internal/models"
 )
 
 func (h *Handler) registerAnonmail(r fiber.Router) {

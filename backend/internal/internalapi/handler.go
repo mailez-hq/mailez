@@ -5,13 +5,13 @@ import (
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
-	"mailess/backend/internal/auth"
-	"mailess/backend/internal/config"
+	"mailez/backend/internal/auth"
+	"mailez/backend/internal/config"
 )
 
 // Handler implements the internal API consumed by nginx (auth_request) and the
 // mail stack (nginx mail proxy auth). Its response contract must stay
-// byte-compatible with Mailu's internal API.
+// byte-compatible with the reference implementation's internal API.
 type Handler struct {
 	DB    *gorm.DB
 	Auth  *auth.Manager

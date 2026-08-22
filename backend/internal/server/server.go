@@ -12,12 +12,12 @@ import (
 	glebarezsqlite "github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
-	"mailess/backend/internal/api"
-	"mailess/backend/internal/auth"
-	"mailess/backend/internal/config"
-	"mailess/backend/internal/fetch"
-	"mailess/backend/internal/internalapi"
-	"mailess/backend/internal/models"
+	"mailez/backend/internal/api"
+	"mailez/backend/internal/auth"
+	"mailez/backend/internal/config"
+	"mailez/backend/internal/fetch"
+	"mailez/backend/internal/internalapi"
+	"mailez/backend/internal/models"
 )
 
 // Server bundles the Fiber app and its dependencies.
@@ -36,13 +36,13 @@ func New(cfg config.Config) *Server {
 	rdb := connectRedis(cfg)
 
 	app := fiber.New(fiber.Config{
-		AppName: "mailess",
+		AppName: "mailez",
 	})
 	app.Use(recover.New())
 	app.Use(cors.New())
 
 	s := &Server{App: app, DB: db, Redis: rdb, Cfg: cfg}
-	s.Auth = auth.NewManager(db, newStore(rdb), "mailess_session", time.Duration(cfg.SessionLifetime)*time.Second)
+	s.Auth = auth.NewManager(db, newStore(rdb), "mailez_session", time.Duration(cfg.SessionLifetime)*time.Second)
 	s.internal = internalapi.New(db, s.Auth, cfg, rdb)
 	s.routes()
 	// Start the external mailbox poller (fetchmail equivalent).
@@ -78,7 +78,7 @@ func (s *Server) health(c *fiber.Ctx) error {
 
 func connectDB(cfg config.Config) *gorm.DB {
 	// Pure-Go sqlite driver (no cgo) for local dev; mysql driver lands with phase 1.
-	// SingularTable keeps table names aligned with Mailu's schema for migration.
+	// SingularTable keeps table names aligned with the reference implementation's schema for migration.
 	db, err := gorm.Open(glebarezsqlite.Open(cfg.DBDSN), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{SingularTable: true},
 	})

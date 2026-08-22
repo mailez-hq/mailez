@@ -8,8 +8,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 
-	"mailess/backend/internal/models"
-	"mailess/backend/internal/password"
+	"mailez/backend/internal/models"
+	"mailez/backend/internal/password"
 )
 
 // seed creates a dev admin user and domain. For local development only.
@@ -24,7 +24,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	hash, err := password.Hash("MailuDemo2026!")
+	hash, err := password.Hash("MailezDemo2026!")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -44,12 +44,12 @@ func main() {
 	if err := db.FirstOrCreate(&user, "email = ?", "admin@example.com").Error; err != nil {
 		log.Fatal(err)
 	}
-	log.Println("seeded admin@example.com / MailuDemo2026!")
+	log.Println("seeded admin@example.com / MailezDemo2026!")
 }
 
 func dsn() string {
 	if v := os.Getenv("DB_DSN"); v != "" {
 		return v
 	}
-	return "mailess.db"
+	return "mailez.db"
 }

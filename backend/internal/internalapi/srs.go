@@ -9,7 +9,7 @@ import (
 )
 
 // srsCodec implements Sender Rewriting Scheme (SRS0) with an HMAC-SHA1
-// signature, matching Mailu's srslib address format:
+// signature, matching the reference implementation's srslib address format:
 //
 //	HASH.SRS0=TT=domain=localpart@srs_domain
 //

@@ -1,0 +1,135 @@
+# mailez 开发模式基础设施编排
+#
+# 只编排"不会去动的"邮件栈依赖（参考实现 的 nginx/postfix/dovecot/rspamd/
+# unbound 镜像）。mailez 自研部分（backend / webmail / admin / SSO）不在此
+# 容器化，而是在宿主机以开发模式运行（go run / npm run dev）。
+#
+# 用法（需要 Docker Desktop）：
+#   cd deploy
+#   copy mailez.env.example mailez.env   （改 SECRET_KEY / DOMAIN 等）
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# 宿主机后端必须监听 8080（参考实现 镜像硬编码 ADMIN_ADDRESS:8080 访问内部
+# API），详见 docs/dev-setup.md。
+
+services:
+
+  redis:
+    image: redis:alpine
+    pull_policy: missing
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - "./data/redis:/data"
+
+  front:
+    image: mailez/nginx:local
+    pull_policy: missing
+    restart: always
+    env_file: mailez.env
+    environment:
+      # 覆盖 mailez.env 里的 ADMIN_ADDRESS=backend：开发模式下后端在宿主机，
+      # 参考实现 镜像通过 host.docker.internal 访问它（端口固定 8080）。
+      - ADMIN_ADDRESS=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      # 80/443 intentionally omitted in dev: the host already has other
+      # gateways bound there (e.g. caddy); webmail/admin run directly on
+      # localhost:3001/3000.
+      - "127.0.0.1:25:25"
+      - "127.0.0.1:465:465"
+      - "127.0.0.1:587:587"
+      - "127.0.0.1:110:110"
+      - "127.0.0.1:995:995"
+      - "127.0.0.1:143:143"
+      - "127.0.0.1:993:993"
+      - "127.0.0.1:4190:4190"
+      # 容器网络内 backend 用的内部代理端口，映射出来供宿主机后端连接
+      - "127.0.0.1:10143:10143"
+      - "127.0.0.1:10025:10025"
+    volumes:
+      - "./certs:/certs"
+      - "./overrides/nginx-dev:/overrides"
+
+  imap:
+    image: mailez/dovecot:local
+    pull_policy: missing
+    restart: always
+    env_file: mailez.env
+    environment:
+      # 参考实现 images reach the control plane at ADMIN_ADDRESS:8080; in dev the
+      # backend runs on the host.
+      - ADMIN_ADDRESS=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - "./data/mail:/mail"
+      - "./overrides:/overrides"
+    depends_on:
+      - front
+
+  smtp:
+    image: mailez/postfix:local
+    pull_policy: missing
+    restart: always
+    env_file: mailez.env
+    environment:
+      - ADMIN_ADDRESS=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - "./overrides:/overrides"
+    depends_on:
+      - front
+
+  oletools:
+    image: mailez/oletools:local
+    pull_policy: missing
+    hostname: oletools
+    restart: always
+    networks:
+      - noinet
+
+  antispam:
+    image: mailez/rspamd:local
+    pull_policy: missing
+    restart: always
+    env_file: mailez.env
+    environment:
+      - ADMIN_ADDRESS=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - noinet
+    volumes:
+      - "./data/filter:/var/lib/rspamd"
+      - "./data/dkim:/dkim"
+      - "./overrides/rspamd:/etc/rspamd/override.d"
+    depends_on:
+      - front
+
+  resolver:
+    image: mailez/unbound:local
+    pull_policy: missing
+    env_file: mailez.env
+    restart: always
+    networks:
+      default:
+        ipv4_address: 192.168.206.254
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.206.0/24
+  noinet:
+    driver: bridge
+    internal: true

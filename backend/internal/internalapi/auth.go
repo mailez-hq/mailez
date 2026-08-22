@@ -7,13 +7,13 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"mailess/backend/internal/auth"
-	"mailess/backend/internal/models"
-	"mailess/backend/internal/password"
+	"mailez/backend/internal/auth"
+	"mailez/backend/internal/models"
+	"mailez/backend/internal/password"
 )
 
 // webmailPorts are the internal ports reserved for webmail traffic; temp tokens
-// are only accepted there (mirrors Mailu's WEBMAIL_PORTS).
+// are only accepted there (mirrors the reference implementation's WEBMAIL_PORTS).
 var webmailPorts = map[string]bool{"14190": true, "10143": true, "10025": true}
 
 // statuses maps error kinds to per-protocol error messages/codes.
@@ -150,7 +150,7 @@ func (h *Handler) checkCredentials(u *models.User, pw, ip, protocol, authPort st
 	return password.Verify(u.Password, pw)
 }
 
-// serverFor resolves the backend host:port for a protocol (mirrors Mailu's
+// serverFor resolves the backend host:port for a protocol (mirrors the reference implementation's
 // get_server). Hosts come from env, defaulting to the compose service names.
 func (h *Handler) serverFor(protocol string, authenticated bool) (string, string) {
 	imapAddr := h.Cfg.ImapAddress
