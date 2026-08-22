@@ -1,0 +1,8 @@
+# Normalize line endings: scripts and configs executed inside containers must
+# stay LF (CRLF breaks #!/usr/bin/env shebangs).
+*.py    text eol=lf
+*.sh    text eol=lf
+*.lua   text eol=lf
+Dockerfile text eol=lf
+*.conf  text eol=lf
+*.yml   text eol=lf
