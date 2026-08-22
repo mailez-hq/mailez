@@ -1,12 +1,9 @@
-export default function AdminHome() {
+import { LoginForm } from "@/components/login-form";
+
+export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-zinc-50 font-sans dark:bg-black">
-      <h1 className="text-4xl font-semibold tracking-tight text-black dark:text-zinc-50">
-        mailess
-      </h1>
-      <p className="text-lg text-zinc-500 dark:text-zinc-400">
-        Admin console — phase 0 scaffold
-      </p>
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <LoginForm />
     </div>
   );
 }
