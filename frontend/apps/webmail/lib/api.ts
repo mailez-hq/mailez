@@ -59,6 +59,12 @@ export const mailMessage = (folder: string, uid: number) =>
 export const mailSend = (to: string, subject: string, body: string) =>
   apiPost("/mail/send", { to, subject, body });
 
+export const mailFlag = (folder: string, uid: number, flag: string, value: boolean) =>
+  apiPost("/mail/flag", { folder, uid, flag, value });
+
+export const mailDelete = (folder: string, uid: number) =>
+  apiPost("/mail/delete", { folder, uid });
+
 export type AIStatus = { enabled: boolean; provider: string };
 
 export const aiStatus = () => api<AIStatus>("/ai/status");
