@@ -1,0 +1,11 @@
+ssl_certificate {{ .TLS.Cert }};
+ssl_certificate_key {{ .TLS.Key }};
+{{ if or (eq .TLSFlavor "letsencrypt") (eq .TLSFlavor "mail-letsencrypt") }}ssl_certificate {{ .TLS.AltCert }};
+ssl_certificate_key {{ .TLS.AltKey }};
+ssl_trusted_certificate /etc/ssl/certs/ca-cert-ISRG_Root_X1.pem;
+{{ end }}ssl_session_timeout 1d;
+ssl_session_tickets off; # this can be removed when we have nginx v1.23.2
+ssl_dhparam /conf/dhparam.pem;
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+ssl_prefer_server_ciphers off;
