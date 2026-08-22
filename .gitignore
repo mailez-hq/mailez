@@ -15,6 +15,10 @@ dist/
 .env.local
 deploy/*.env
 
+# TLS certificates (local, never commit; keep the docs)
+deploy/certs/*
+!deploy/certs/README.md
+
 # Data (local dev persistence)
 data/
 *.db

@@ -6,6 +6,7 @@ require (
 	github.com/emersion/go-imap v1.2.1
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gofiber/fiber/v2 v2.52.15
+	github.com/miekg/dns v1.1.73
 	github.com/redis/go-redis/v9 v9.22.0
 	golang.org/x/crypto v0.55.0
 	gorm.io/gorm v1.31.2
@@ -30,6 +31,7 @@ require (
 	github.com/valyala/fasthttp v1.51.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
+	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	modernc.org/libc v1.22.5 // indirect

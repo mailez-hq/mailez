@@ -14,5 +14,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&Token{},
 		&Fetch{},
 		&DomainAccess{},
+		&AuditLog{},
+		&Contact{},
 	)
 }

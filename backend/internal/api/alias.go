@@ -8,17 +8,21 @@ import (
 	"mailess/backend/internal/models"
 )
 
-func (h *Handler) registerAliases(r fiber.Router) {
-	r.Get("/aliases", h.listAliases)
-	r.Post("/aliases", h.createAlias)
-	r.Get("/aliases/:email", h.getAlias)
-	r.Put("/aliases/:email", h.updateAlias)
-	r.Delete("/aliases/:email", h.deleteAlias)
+func (h *Handler) registerAliases(r fiber.Router, mw fiber.Handler) {
+	r.Get("/aliases", mw, h.listAliases)
+	r.Post("/aliases", mw, h.createAlias)
+	r.Get("/aliases/:email", mw, h.getAlias)
+	r.Put("/aliases/:email", mw, h.updateAlias)
+	r.Delete("/aliases/:email", mw, h.deleteAlias)
 }
 
 func (h *Handler) listAliases(c *fiber.Ctx) error {
+	q := h.DB
+	if u := currentUser(c); !u.GlobalAdmin {
+		q = h.managedDomainScope(u, q)
+	}
 	var aliases []models.Alias
-	if err := h.DB.Find(&aliases).Error; err != nil {
+	if err := q.Find(&aliases).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(aliases)
@@ -28,6 +32,9 @@ func (h *Handler) getAlias(c *fiber.Ctx) error {
 	var a models.Alias
 	if err := h.DB.First(&a, "email = ?", c.Params("email")).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "alias not found"})
+	}
+	if !h.canManageDomain(currentUser(c), a.DomainName) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "no access to this domain"})
 	}
 	return c.JSON(a)
 }
@@ -49,6 +56,9 @@ func (h *Handler) createAlias(c *fiber.Ctx) error {
 	if err := h.DB.First(&domain, "name = ?", domainName).Error; err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "domain does not exist"})
 	}
+	if !h.canManageDomain(currentUser(c), domainName) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "no access to this domain"})
+	}
 	a := models.Alias{
 		Email:       in.Email,
 		Localpart:   localpart,
@@ -66,6 +76,9 @@ func (h *Handler) updateAlias(c *fiber.Ctx) error {
 	var a models.Alias
 	if err := h.DB.First(&a, "email = ?", c.Params("email")).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "alias not found"})
+	}
+	if !h.canManageDomain(currentUser(c), a.DomainName) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "no access to this domain"})
 	}
 	var in struct {
 		Destination string `json:"destination"`
@@ -91,7 +104,14 @@ func (h *Handler) updateAlias(c *fiber.Ctx) error {
 }
 
 func (h *Handler) deleteAlias(c *fiber.Ctx) error {
-	if err := h.DB.Delete(&models.Alias{}, "email = ?", c.Params("email")).Error; err != nil {
+	var a models.Alias
+	if err := h.DB.First(&a, "email = ?", c.Params("email")).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "alias not found"})
+	}
+	if !h.canManageDomain(currentUser(c), a.DomainName) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "no access to this domain"})
+	}
+	if err := h.DB.Delete(&a).Error; err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(204)

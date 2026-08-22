@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Card, CardContent, CardHeader, CardTitle,
@@ -18,6 +19,7 @@ import { api, apiDelete, apiPost } from "@/lib/api";
 import type { Alias } from "@/lib/types";
 
 export default function AliasesPage() {
+  const t = useTranslations("aliases");
   const [aliases, setAliases] = useState<Alias[]>([]);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
@@ -49,7 +51,7 @@ export default function AliasesPage() {
   }
 
   async function remove(a: Alias) {
-    if (!confirm(`Delete alias ${a.email}?`)) return;
+    if (!confirm(t("deleteConfirm", { email: a.email }))) return;
     try {
       await apiDelete(`/aliases/${encodeURIComponent(a.email)}`);
       load();
@@ -61,42 +63,40 @@ export default function AliasesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Aliases</h1>
+        <h1 className="text-2xl font-semibold">{t("title")}</h1>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>New alias</Button>
-          </DialogTrigger>
+          <DialogTrigger render={<Button>{t("new")}</Button>} />
           <DialogContent>
             <form onSubmit={create} className="space-y-4">
-              <DialogHeader><DialogTitle>New alias</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{t("new")}</DialogTitle></DialogHeader>
               <div className="space-y-2">
-                <Label>Alias address</Label>
+                <Label>{t("address")}</Label>
                 <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="info@example.com" required />
               </div>
               <div className="space-y-2">
-                <Label>Destination (comma separated)</Label>
+                <Label>{t("destination")}</Label>
                 <Input value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="user@example.com" required />
               </div>
               <div className="flex items-center justify-between">
-                <Label>Wildcard</Label>
+                <Label>{t("wildcard")}</Label>
                 <Switch checked={wildcard} onCheckedChange={setWildcard} />
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
-              <DialogFooter><Button type="submit">Create</Button></DialogFooter>
+              <DialogFooter><Button type="submit">{t("common:create")}</Button></DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Forwarding rules</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{t("forwardingRules")}</CardTitle></CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Alias</TableHead>
-                <TableHead>Destination</TableHead>
-                <TableHead>Wildcard</TableHead>
+                <TableHead>{t("alias")}</TableHead>
+                <TableHead>{t("destination")}</TableHead>
+                <TableHead>{t("wildcard")}</TableHead>
                 <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
@@ -105,15 +105,15 @@ export default function AliasesPage() {
                 <TableRow key={a.email}>
                   <TableCell className="font-medium">{a.email}</TableCell>
                   <TableCell>{a.destination}</TableCell>
-                  <TableCell>{a.wildcard ? "Yes" : "No"}</TableCell>
+                  <TableCell>{a.wildcard ? t("yes") : t("no")}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => remove(a)}>Delete</Button>
+                    <Button variant="ghost" size="sm" onClick={() => remove(a)}>{t("common:delete")}</Button>
                   </TableCell>
                 </TableRow>
               ))}
               {aliases.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-zinc-400">No aliases</TableCell>
+                  <TableCell colSpan={4} className="text-center text-zinc-400">{t("common:noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>

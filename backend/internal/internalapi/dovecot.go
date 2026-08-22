@@ -22,7 +22,7 @@ func (h *Handler) registerDovecot(r fiber.Router) {
 
 // dovecotPassdb tells Dovecot to accept the auth done by the nginx proxy.
 func (h *Handler) dovecotPassdb(c *fiber.Ctx) error {
-	email, _ := url.QueryUnescape(c.Params("email"))
+	email, _ := url.PathUnescape(c.Params("email"))
 	if h.findUser(email) == nil {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
@@ -44,7 +44,7 @@ func (h *Handler) dovecotUserdbList(c *fiber.Ctx) error {
 
 // dovecotUserdb returns the quota rule for a user.
 func (h *Handler) dovecotUserdb(c *fiber.Ctx) error {
-	email, _ := url.QueryUnescape(c.Params("email"))
+	email, _ := url.PathUnescape(c.Params("email"))
 	var u models.User
 	if err := h.DB.First(&u, "email = ?", email).Error; err != nil {
 		return c.SendStatus(fiber.StatusNotFound)
@@ -54,7 +54,7 @@ func (h *Handler) dovecotUserdb(c *fiber.Ctx) error {
 
 // dovecotQuota persists the used-quota reported by Dovecot.
 func (h *Handler) dovecotQuota(c *fiber.Ctx) error {
-	email, _ := url.QueryUnescape(c.Params("email"))
+	email, _ := url.PathUnescape(c.Params("email"))
 	var u models.User
 	if err := h.DB.First(&u, "email = ?", email).Error; err != nil {
 		return c.SendStatus(fiber.StatusNotFound)

@@ -10,6 +10,7 @@ func (h *Handler) registerMail(r fiber.Router) {
 	r.Get("/mail/folders", h.mailFolders)
 	r.Get("/mail/messages", h.mailMessages)
 	r.Get("/mail/message", h.mailMessage)
+	r.Get("/mail/search", h.mailSearch)
 	r.Post("/mail/send", h.mailSend)
 	r.Post("/mail/flag", h.mailFlag)
 	r.Post("/mail/move", h.mailMove)
@@ -104,7 +105,30 @@ func (h *Handler) mailMessages(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "token error"})
 	}
 	folder := c.Query("folder", "INBOX")
-	messages, err := h.Mail.ListMessages(user.Email, token, folder)
+	page, err := strconv.Atoi(c.Query("page", "0"))
+	if err != nil || page < 0 {
+		page = 0
+	}
+	messages, total, err := h.Mail.ListMessages(user.Email, token, folder, page)
+	if err != nil {
+		return c.Status(502).JSON(fiber.Map{"error": err.Error()})
+	}
+	c.Set("X-Total-Messages", strconv.Itoa(total))
+	return c.JSON(messages)
+}
+
+func (h *Handler) mailSearch(c *fiber.Ctx) error {
+	user := currentUser(c)
+	token, err := h.mailToken(c)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+	}
+	folder := c.Query("folder", "INBOX")
+	query := c.Query("q")
+	if query == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "q is required"})
+	}
+	messages, err := h.Mail.SearchMessages(user.Email, token, folder, query)
 	if err != nil {
 		return c.Status(502).JSON(fiber.Map{"error": err.Error()})
 	}

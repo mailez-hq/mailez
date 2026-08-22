@@ -1,13 +1,19 @@
 # mailess compose
 # Third-party components (nginx/postfix/dovecot/rspamd) are reused from Mailu
-# images. The mailess backend/frontend replace the Mailu admin/webmail images.
-# Work in progress: backend service is wired; frontend services arrive with phase 2.
+# images. The mailess backend replaces the Mailu admin container; the Mailu
+# images reach its internal API at http://backend:8080 (the port is hardcoded
+# to 8080 inside the Mailu images). Frontend services arrive with phase 2.
 
 services:
 
   redis:
     image: redis:alpine
     restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     volumes:
       - "./data/redis:/data"
 
@@ -28,20 +34,63 @@ services:
       - "127.0.0.1:4190:4190"
     volumes:
       - "./certs:/certs"
+      - "./overrides/nginx:/overrides"
+    depends_on:
+      - backend
 
   backend:
     build: ../backend
     restart: always
     env_file: mailu.env
     environment:
-      - MAILESS_PORT=8081
+      - MAILESS_PORT=8080
+      - DB_DSN=/data/mailess.db
       - REDIS_ADDR=redis:6379
+      - HOSTNAME=mail.example.com
+      - DOMAIN=example.com
+      - SUBNET=192.168.203.0/24
+      - RECIPIENT_DELIMITER=+
+      - MESSAGE_RATELIMIT=200
+      - DKIM_SELECTOR=dkim
+      - MAIL_IMAP_ADDR=front:10143
+      - MAIL_SMTP_ADDR=front:10025
+      - FETCH_INTERVAL=300
+      - AI_PROVIDER=none
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     ports:
-      - "127.0.0.1:8081:8081"
+      - "127.0.0.1:8081:8080"
     volumes:
       - "./data:/data"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+
+  admin:
+    build: ../frontend/apps/admin
+    restart: always
+    environment:
+      - API_TARGET=http://backend:8080
+      - PORT=3000
+    ports:
+      - "127.0.0.1:8082:3000"
+    depends_on:
+      - backend
+
+  webmail:
+    build: ../frontend/apps/webmail
+    restart: always
+    environment:
+      - API_TARGET=http://backend:8080
+      - PORT=3000
+    ports:
+      - "127.0.0.1:8083:3000"
+    depends_on:
+      - backend
 
   imap:
     image: ghcr.io/mailu/dovecot:master
@@ -82,6 +131,7 @@ services:
       - "./overrides/rspamd:/etc/rspamd/override.d"
     depends_on:
       - front
+      - backend
 
   resolver:
     image: ghcr.io/mailu/unbound:master
