@@ -1,0 +1,29 @@
+# Go
+backend/bin/
+backend/*.exe
+*.log
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
+deploy/*.env
+
+# Data (local dev persistence)
+data/
+*.db
+*.db-journal
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/

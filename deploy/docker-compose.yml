@@ -1,0 +1,103 @@
+# mailess compose
+# Third-party components (nginx/postfix/dovecot/rspamd) are reused from Mailu
+# images. The mailess backend/frontend replace the Mailu admin/webmail images.
+# Work in progress: backend service is wired; frontend services arrive with phase 2.
+
+services:
+
+  redis:
+    image: redis:alpine
+    restart: always
+    volumes:
+      - "./data/redis:/data"
+
+  front:
+    image: ghcr.io/mailu/nginx:master
+    restart: always
+    env_file: mailu.env
+    ports:
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:443:443"
+      - "127.0.0.1:25:25"
+      - "127.0.0.1:465:465"
+      - "127.0.0.1:587:587"
+      - "127.0.0.1:110:110"
+      - "127.0.0.1:995:995"
+      - "127.0.0.1:143:143"
+      - "127.0.0.1:993:993"
+      - "127.0.0.1:4190:4190"
+    volumes:
+      - "./certs:/certs"
+
+  backend:
+    build: ../backend
+    restart: always
+    env_file: mailu.env
+    environment:
+      - MAILESS_PORT=8081
+      - REDIS_ADDR=redis:6379
+    ports:
+      - "127.0.0.1:8081:8081"
+    volumes:
+      - "./data:/data"
+    depends_on:
+      - redis
+
+  imap:
+    image: ghcr.io/mailu/dovecot:master
+    restart: always
+    env_file: mailu.env
+    volumes:
+      - "./data/mail:/mail"
+      - "./overrides:/overrides"
+    depends_on:
+      - front
+
+  smtp:
+    image: ghcr.io/mailu/postfix:master
+    restart: always
+    env_file: mailu.env
+    volumes:
+      - "./overrides:/overrides"
+    depends_on:
+      - front
+
+  oletools:
+    image: ghcr.io/mailu/oletools:master
+    hostname: oletools
+    restart: always
+    networks:
+      - noinet
+
+  antispam:
+    image: ghcr.io/mailu/rspamd:master
+    restart: always
+    env_file: mailu.env
+    networks:
+      - default
+      - noinet
+    volumes:
+      - "./data/filter:/var/lib/rspamd"
+      - "./data/dkim:/dkim"
+      - "./overrides/rspamd:/etc/rspamd/override.d"
+    depends_on:
+      - front
+
+  resolver:
+    image: ghcr.io/mailu/unbound:master
+    env_file: mailu.env
+    restart: always
+    networks:
+      default:
+        ipv4_address: 192.168.203.254
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.203.0/24
+  noinet:
+    driver: bridge
+    internal: true
