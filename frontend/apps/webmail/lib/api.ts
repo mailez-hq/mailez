@@ -58,3 +58,13 @@ export const mailMessage = (folder: string, uid: number) =>
 
 export const mailSend = (to: string, subject: string, body: string) =>
   apiPost("/mail/send", { to, subject, body });
+
+export type AIStatus = { enabled: boolean; provider: string };
+
+export const aiStatus = () => api<AIStatus>("/ai/status");
+
+export const aiSummarize = (text: string) =>
+  api<{ summary: string }>("/ai/summarize", { method: "POST", body: JSON.stringify({ text }) });
+
+export const aiDraft = (context: string) =>
+  api<{ draft: string }>("/ai/draft", { method: "POST", body: JSON.stringify({ context }) });

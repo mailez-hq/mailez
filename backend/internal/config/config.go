@@ -22,6 +22,10 @@ type Config struct {
 	Hostname          string
 	MailImapAddr      string
 	MailSmtpAddr      string
+	AIProvider        string
+	AIBaseURL         string
+	AIAPIKey          string
+	AIModel           string
 }
 
 // Load reads configuration from the environment.
@@ -41,6 +45,10 @@ func Load() Config {
 		Hostname:          env("HOSTNAME", "localhost"),
 		MailImapAddr:      env("MAIL_IMAP_ADDR", "front:10143"),
 		MailSmtpAddr:      env("MAIL_SMTP_ADDR", "front:10025"),
+		AIProvider:        env("AI_PROVIDER", "none"),
+		AIBaseURL:         env("AI_BASE_URL", "https://api.openai.com/v1"),
+		AIAPIKey:          env("AI_API_KEY", ""),
+		AIModel:           env("AI_MODEL", "gpt-4o-mini"),
 	}
 }
 

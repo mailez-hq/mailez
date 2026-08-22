@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  aiStatus, aiSummarize,
   mailFolders, mailMessage, mailMessages, mailSend, type MailMessage, type Me,
 } from "@/lib/api";
 
@@ -21,6 +22,9 @@ export function MailView({ me }: { me: Me }) {
   const [detail, setDetail] = useState<MailMessage | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
   const [error, setError] = useState("");
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [summary, setSummary] = useState("");
+  const [summarizing, setSummarizing] = useState(false);
 
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
@@ -55,10 +59,25 @@ export function MailView({ me }: { me: Me }) {
   async function openMessage(m: MailMessage) {
     setSelected(m);
     setDetail(null);
+    setSummary("");
     try {
       setDetail(await mailMessage(folder, m.uid));
     } catch (e) {
       setError(e instanceof Error ? e.message : "load message failed");
+    }
+  }
+
+  async function summarize() {
+    if (!detail) return;
+    setSummarizing(true);
+    setSummary("");
+    try {
+      const res = await aiSummarize(detail.text_body || detail.html_body || "");
+      setSummary(res.summary);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "summarize failed");
+    } finally {
+      setSummarizing(false);
     }
   }
 
@@ -148,6 +167,24 @@ export function MailView({ me }: { me: Me }) {
               <span>·</span>
               <span>{fmtDate(detail.date)}</span>
             </div>
+            {aiEnabled && (
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={summarize}
+                  disabled={summarizing}
+                >
+                  {summarizing ? "Summarizing..." : "AI Summary"}
+                </Button>
+                {summary && (
+                  <div className="mt-2 rounded-md border bg-zinc-50 p-3 text-sm leading-6 dark:bg-zinc-900">
+                    <p className="mb-1 text-xs font-medium text-zinc-400">Summary</p>
+                    <p className="whitespace-pre-wrap">{summary}</p>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="mt-6 whitespace-pre-wrap text-[15px] leading-7">
               {detail.text_body || "(no text body)"}
             </div>
