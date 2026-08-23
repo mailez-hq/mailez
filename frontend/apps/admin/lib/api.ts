@@ -1,12 +1,7 @@
-export type Me = {
-  email: string;
-  displayed_name: string;
-  global_admin: boolean;
-  manager: boolean;
-  enabled: boolean;
-};
+import type { Alias, AuditLog, DkimInfo, LoginResult, Me, SignupDomain } from "@mailez/types";
 
-import type { Alias, AuditLog, DkimInfo, SignupDomain } from "@/lib/types";
+// Re-export the shared auth types for existing importers of @/lib/api.
+export type { Me, LoginResult };
 
 const API = "/api/v1";
 
@@ -38,9 +33,16 @@ export const apiPut = <T,>(path: string, body: unknown) =>
 export const apiDelete = (path: string) => api(path, { method: "DELETE" });
 
 export async function login(email: string, pw: string) {
-  return api<Me>("/sso/login", {
+  return api<LoginResult>("/sso/login", {
     method: "POST",
     body: JSON.stringify({ email, pw }),
+  });
+}
+
+export async function loginTotp(pendingToken: string, code: string) {
+  return api<{ email: string }>("/sso/login/totp", {
+    method: "POST",
+    body: JSON.stringify({ pending_token: pendingToken, code }),
   });
 }
 

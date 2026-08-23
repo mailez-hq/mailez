@@ -34,13 +34,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const messages = (await import(`../messages/${locale}.json`)).default;
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
-      <body
-        className={`min-h-screen bg-background font-sans text-foreground antialiased ${geistSans.variable} ${geistMono.variable}`}
-      >
+      <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <PreferencesProvider>
           <Providers locale={locale} messages={messages}>
             {children}

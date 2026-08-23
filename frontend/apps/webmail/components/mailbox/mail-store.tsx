@@ -1,0 +1,1469 @@
+"use client";
+
+// MailStore homes the mailbox state, side-effects and action handlers behind
+// a single context. MailView (mail-view.tsx) is kept a thin render shell on
+// top of useMailStore(), mirroring the backend where mailbox/compose/ai logic
+// lives in its own domain package but is wired by the mailbox layer.
+
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import { usePathname, useRouter } from "next/navigation";
+import { usePaletteActions } from "@/components/palette/palette-actions";
+import { usePreferences } from "@/components/preferences-provider";
+import { setupPushSubscription, teardownPushSubscription } from "@/lib/push";
+import {
+  aiDraft, aiStatus, aiSummarize,
+  aiPrioritize, aiSearch,
+  contacts, mailFlag, mailMove, mailIdentities,
+  mailFolders, mailMessage, mailMessages, mailSaveDraft, mailSearch, mailSend, mailThread, mailUnseen,
+  meProfile, updateMeSettings,
+  pgpEncrypt, pgpLookup, pgpSign,
+  type Contact, type DraftTone, type MailIdentity, type MailMessage, type MailThread, type Me,
+  type OutboundAttachment,
+} from "@/lib/api";
+import {
+  SYSTEM_FLAGS,
+  SAVED_SEARCH_KEY,
+  MAX_ATTACHMENT_BYTES,
+  escHtml,
+  readFileAsBase64,
+  textToHtml,
+} from "@/components/mailbox/mail-utils";
+
+// playChime rings a short notification tone without shipping an audio file.
+function playChime() {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.4);
+  } catch {
+    // audio unavailable; skip silently
+  }
+}
+
+// The store context is intentionally untyped for now: every field mirrors a
+// local inside the provider, and MailView stays a thin view on top of it.
+// A full MailStore interface lands together with the store-splitting refactor.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const MailStoreContext = createContext<any>(null);
+
+export function useMailStore() {
+  return useContext(MailStoreContext);
+}
+
+interface MailStoreProviderProps {
+  me: Me;
+  children: React.ReactNode;
+}
+
+export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
+  const t = useTranslations("mail");
+  const tp = useTranslations("palette");
+  const ts = useTranslations("settings");
+  const router = useRouter();
+  const { theme, setTheme, density, setDensity, prefs, setUndoSend } = usePreferences();
+
+  // ---- mailbox: folder / list / selection ----
+  const [folders, setFolders] = useState<string[]>([]);
+  const [unseen, setUnseen] = useState<Record<string, number>>({});
+  const [folder, setFolder] = useState("INBOX");
+  const [messages, setMessages] = useState<MailMessage[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [cursor, setCursor] = useState(0);
+  const [selected, setSelected] = useState<MailMessage | null>(null);
+  const [detail, setDetail] = useState<MailMessage | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [selectedUids, setSelectedUids] = useState<Set<number>>(new Set());
+  const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+
+  // ---- stack: compose / settings / contacts / palette / sieve / sidebar ----
+  const [composeOpen, setComposeOpen] = useState(false);
+  // Where the initial focus should land when the compose dialog opens:
+  // "to" (new message / forward) or "editor" (reply / reply all).
+  const [composeFocus, setComposeFocus] = useState<"to" | "editor">("to");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [contactsOpen, setContactsOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [sieveOpen, setSieveOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [listWidth, setListWidth] = useState(360);
+
+  // ---- ai: capability, summary, priority, search ----
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [summary, setSummary] = useState("");
+  const [summarizing, setSummarizing] = useState(false);
+  const [drafting, setDrafting] = useState(false);
+  const [prioritizing, setPrioritizing] = useState(false);
+  const [aiSearching, setAiSearching] = useState(false);
+  const [priorityOn, setPriorityOn] = useState(false);
+  const [priorityCategories, setPriorityCategories] = useState<Record<string, string>>({});
+  const [activeView, setActiveView] = useState("all");
+  const [activeLabel, setActiveLabel] = useState("");
+  const [knownLabels, setKnownLabels] = useState<string[]>([]);
+  const [savedSearches, setSavedSearches] = useState<string[]>([]);
+  const [searchAll, setSearchAll] = useState(false);
+  const [baseMessages, setBaseMessages] = useState<MailMessage[] | null>(null);
+  const [identities, setIdentities] = useState<MailIdentity[]>([]);
+  const [from, setFrom] = useState("");
+  const [toast, setToast] = useState<{ id: number; label: string; onUndo?: () => void } | null>(null);
+  const [online, setOnline] = useState(true);
+  const [thread, setThread] = useState<MailThread | null>(null);
+  const [threadOpen, setThreadOpen] = useState(false);
+  const [threadLoading, setThreadLoading] = useState(false);
+
+  // ---- compose: form fields ----
+  const [to, setTo] = useState<string[]>([]);
+  const [cc, setCc] = useState<string[]>([]);
+  const [bcc, setBcc] = useState<string[]>([]);
+  const [ccExpanded, setCcExpanded] = useState(false);
+  const [attachments, setAttachments] = useState<OutboundAttachment[]>([]);
+  const [dragOverCompose, setDragOverCompose] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; message: MailMessage } | null>(null);
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [bodyText, setBodyText] = useState("");
+  const [draftTone, setDraftTone] = useState<DraftTone>("formal");
+  const [signOn, setSignOn] = useState(false);
+  const [encryptOn, setEncryptOn] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [allContacts, setAllContacts] = useState<Contact[] | null>(null);
+
+  const searchRef = useRef<HTMLInputElement>(null);
+  const toInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const loadingMoreRef = useRef(false);
+  const pendingG = useRef(false);
+  const draftUidRef = useRef<number | null>(null);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSearchRef = useRef("");
+  const lastInboxUnseen = useRef<number | null>(null);
+  const resizeRef = useRef<{ x: number; w: number } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ---- core: unseen / folders / list loading ----
+  const refreshUnseen = useCallback(() => {
+    mailUnseen().then(setUnseen).catch(() => {});
+  }, []);
+
+  const loadFolders = useCallback(async () => {
+    try {
+      setFolders(await mailFolders());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "load folders failed");
+    }
+    refreshUnseen();
+  }, [refreshUnseen]);
+
+  const loadMessages = useCallback(async (f: string, p = 0, silent = false) => {
+    if (p === 0 && !silent) setLoading(true);
+    try {
+      const res = await mailMessages(f, p);
+      setMessages(p === 0 ? res.messages : (prev) => [...prev, ...res.messages]);
+      setTotal(res.total);
+      setPage(p);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "load messages failed");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFolders();
+  }, [loadFolders]);
+
+  // Auto-save the draft 30s after the user stops typing, replacing the
+  // previous auto-save so one compose session keeps exactly one draft.
+  useEffect(() => {
+    if (!composeOpen) return;
+    const hasContent =
+      to.length > 0 || cc.length > 0 || subject.trim() !== "" || bodyText.trim() !== "" || attachments.length > 0;
+    if (!hasContent) return;
+    setDraftSaved(false);
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, attachments);
+        draftUidRef.current = res.uid || draftUidRef.current;
+        setDraftSaved(true);
+      } catch {
+        // silent: keep editing, the next idle window retries
+      }
+    }, 30000);
+    return () => {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    };
+  }, [composeOpen, to, cc, subject, bodyText, body, attachments]);
+
+  // saveDraftNow writes the draft immediately (manual "save draft" button);
+  // auto-save also runs 30s after the user stops typing.
+  async function saveDraftNow() {
+    const hasContent =
+      to.length > 0 || cc.length > 0 || subject.trim() !== "" || bodyText.trim() !== "" || attachments.length > 0;
+    if (!hasContent) return;
+    setError("");
+    try {
+      const res = await mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, attachments);
+      draftUidRef.current = res.uid || draftUidRef.current;
+      setDraftSaved(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "save draft failed");
+    }
+  }
+
+  // closeCompose saves the draft (fire-and-forget) and dismisses the panel.
+  // Without this, closing within the 30s auto-save window would lose edits.
+  function closeCompose() {
+    const hasContent =
+      to.length > 0 || cc.length > 0 || subject.trim() !== "" || bodyText.trim() !== "" || attachments.length > 0;
+    if (hasContent) {
+      mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, attachments)
+        .then((res) => {
+          draftUidRef.current = res.uid || draftUidRef.current;
+        })
+        .catch(() => {});
+    }
+    setComposeOpen(false);
+  }
+
+  // Esc dismisses the compose panel (no Base UI dialog to handle it anymore).
+  useEffect(() => {
+    if (!composeOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeCompose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [composeOpen, to, cc, subject, bodyText, body, attachments]);
+
+  useEffect(() => {
+    setQuery("");
+    setSearching(false);
+    setSelectedUids(new Set());
+    setCursor(0);
+    setSelected(null);
+    setDetail(null);
+    setThread(null);
+    setThreadOpen(false);
+    setPriorityOn(false);
+    setPriorityCategories({});
+    setActiveView("all");
+    setActiveLabel("");
+    setBaseMessages(null);
+    loadMessages(folder);
+  }, [folder, loadMessages]);
+
+  // The URL (/mail/[folder] or /mail/[folder]/[uid]) is the single source of
+  // truth for the current folder and opened message. A route folder change is
+  // applied to local state (which then loads the message list); a route uid
+  // opens that message (optimistically from the current list row, then the
+  // full detail).
+  const pathname = usePathname();
+  const segs = pathname.split("/").filter(Boolean);
+  const pathFolder = segs[1] || "INBOX";
+  const pathId = segs.length > 2 ? segs[2] : null;
+
+  useEffect(() => {
+    if (pathFolder !== folder) setFolder(pathFolder);
+  }, [pathFolder, folder]);
+
+  useEffect(() => {
+    if (!pathId) {
+      setSelected(null);
+      setDetail(null);
+      setThreadOpen(false);
+      setDetailLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setDetailLoading(true);
+    // Optimistically show the row message (if already loaded) while the full
+    // detail is fetched by its stable id.
+    const row = messages.find((m) => m.id === pathId || m.uid === Number(pathId));
+    if (row) setSelected(row);
+    mailMessage(pathFolder, { id: pathId })
+      .then((full) => {
+        if (cancelled) return;
+        setSelected(full);
+        setDetail(full);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "load message failed");
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathId]);
+
+  // Prefer the existing junk folder name (Spam in some setups) over
+  // creating a duplicate Junk mailbox.
+  const spamFolder = useMemo(() => {
+    const hit = folders.find((f) => /^(junk|spam)$/i.test(f));
+    return hit || "Junk";
+  }, [folders]);
+
+  // Collect user labels (custom IMAP keywords) from loaded messages so the
+  // sidebar and reader can offer them for quick tagging/filtering.
+  useEffect(() => {
+    setKnownLabels((prev) => {
+      const set = new Set(prev);
+      messages.forEach((m) =>
+        m.flags.forEach((f) => {
+          if (!f.startsWith("\\") && !SYSTEM_FLAGS.has(f)) set.add(f);
+        }),
+      );
+      return [...set];
+    });
+  }, [messages]);
+
+  async function toggleLabel(m: MailMessage, label: string) {
+    const has = m.flags.includes(label);
+    setError("");
+    try {
+      await mailFlag(folder, m.uid, label, !has);
+      setMessages((ms) =>
+        ms.map((x) =>
+          x.uid === m.uid
+            ? { ...x, flags: has ? x.flags.filter((f) => f !== label) : [...x.flags, label] }
+            : x,
+        ),
+      );
+      setDetail((d) =>
+        d && d.uid === m.uid
+          ? { ...d, flags: has ? d.flags.filter((f) => f !== label) : [...d.flags, label] }
+          : d,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "label failed");
+    }
+  }
+
+  // clamp cursor when the list shrinks
+  useEffect(() => {
+    setCursor((c) => Math.min(c, Math.max(0, messages.length - 1)));
+  }, [messages.length]);
+
+  // load AI capability once; AI summary/draft only show when a provider is configured
+  useEffect(() => {
+    aiStatus().then((s) => setAiEnabled(s.enabled)).catch(() => setAiEnabled(false));
+  }, []);
+
+  // Effective per-feature AI flags: backend availability AND the user toggles.
+  const ai = useMemo(
+    () => ({
+      summary: aiEnabled && prefs.ai.enabled && prefs.ai.summary,
+      draft: aiEnabled && prefs.ai.enabled && prefs.ai.draft,
+      priority: aiEnabled && prefs.ai.enabled && prefs.ai.priority,
+      search: aiEnabled && prefs.ai.enabled && prefs.ai.search,
+    }),
+    [aiEnabled, prefs.ai],
+  );
+
+  // load the From identities (own address + aliases with DKIM status)
+  useEffect(() => {
+    mailIdentities()
+      .then((ids) => {
+        setIdentities(ids);
+        setFrom((f) => f || ids[0]?.email || me.email);
+      })
+      .catch(() => setFrom(me.email));
+  }, [me.email]);
+
+  // Register/unregister the push subscription with the backend when the
+  // notification preference changes.
+  useEffect(() => {
+    if (!me.email) return;
+    if (prefs.notifications) {
+      setupPushSubscription().catch(() => {});
+    } else {
+      teardownPushSubscription().catch(() => {});
+    }
+  }, [me.email, prefs.notifications]);
+
+  // connection status banner
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    setOnline(navigator.onLine);
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+
+  // New-mail notification: poll unseen counts; when the Inbox count grows and
+  // the tab is not focused, ring a chime and raise a desktop notification.
+  useEffect(() => {
+    if (!prefs.notifications) return;
+    const check = () => {
+      mailUnseen()
+        .then((counts) => {
+          const n = counts["INBOX"] ?? 0;
+          const prev = lastInboxUnseen.current;
+          lastInboxUnseen.current = n;
+          if (prev !== null && n > prev && !document.hasFocus()) {
+            playChime();
+            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+              try {
+                new Notification("mailez", { body: t("newMail", { count: n - prev }) });
+              } catch {
+                // notification rejected by the platform
+              }
+            }
+          }
+        })
+        .catch(() => {});
+    };
+    check();
+    const id = setInterval(check, 60000);
+    return () => clearInterval(id);
+  }, [prefs.notifications, t]);
+
+  function showToast(label: string, onUndo?: () => void, duration = 5000) {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ id: Date.now(), label, onUndo });
+    toastTimer.current = setTimeout(() => setToast(null), duration);
+  }
+
+  // moveTo moves messages to a folder and offers an undo that moves them back.
+  async function moveTo(uids: number[], destination: string, successLabel: string) {
+    setError("");
+    try {
+      await mailMove(folder, uids, destination);
+      refreshUnseen();
+      const uidSet = new Set(uids);
+      setMessages((ms) => ms.filter((x) => !uidSet.has(x.uid)));
+      setSelectedUids((prev) => {
+        const next = new Set(prev);
+        uids.forEach((u) => next.delete(u));
+        return next;
+      });
+      if (selected && uidSet.has(selected.uid)) {
+        setSelected(null);
+        setDetail(null);
+      }
+      showToast(successLabel, () => {
+        const src = folder;
+        mailMove(destination, uids, src)
+          .catch(() => {})
+          .finally(() => loadMessages(src));
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "move failed");
+    }
+  }
+
+  function archiveMessage(m: MailMessage) {
+    return moveTo([m.uid], "Archive", t("toastArchived"));
+  }
+
+  function spamMessage(m: MailMessage) {
+    return moveTo([m.uid], spamFolder, t("toastSpam"));
+  }
+
+  // Report not-spam: whitelist the sender and move the message back to Inbox.
+  async function reportNotSpam(m: MailMessage) {
+    const sender = m.from[0]?.email;
+    setError("");
+    try {
+      if (sender) {
+        const profile = await meProfile();
+        const current = (profile.whitelist || "").split(",").map((s) => s.trim()).filter(Boolean);
+        if (!current.includes(sender)) current.push(sender);
+        await updateMeSettings({ whitelist: current.join(", ") });
+      }
+      await moveTo([m.uid], "INBOX", t("toastNotSpam"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "not spam failed");
+    }
+  }
+
+  async function doSearch(e?: React.FormEvent | string) {
+    if (typeof e !== "string") e?.preventDefault();
+    const q = (typeof e === "string" ? e : query).trim();
+    if (!q) {
+      setSearching(false);
+      setActiveView("all");
+      setActiveLabel("");
+      return;
+    }
+    setSearching(true);
+    setSelected(null);
+    setDetail(null);
+    setCursor(0);
+    try {
+      setMessages(await mailSearch(searchAll ? "all" : folder, q));
+      lastSearchRef.current = q;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "search failed");
+    }
+  }
+
+  // Instant search: debounce manual typing so results appear live (except when
+  // a virtual view / label filter already ran its own explicit search).
+  useEffect(() => {
+    const q = query.trim();
+    if (q === "" || activeView !== "all" || activeLabel !== "" || q === lastSearchRef.current) return;
+    const id = setTimeout(() => doSearch(q), 400);
+    return () => clearTimeout(id);
+  }, [query, activeView, activeLabel]);
+
+  function clearSearch() {
+    setSearching(false);
+    setQuery("");
+    setActiveView("all");
+    setActiveLabel("");
+    lastSearchRef.current = "";
+    setCursor(0);
+    loadMessages(folder);
+  }
+
+  // refreshMail reloads the current view without blanking the list: re-runs an
+  // active search, otherwise refetches the folder plus unseen counts.
+  async function refreshMail() {
+    setRefreshing(true);
+    try {
+      if (searching) {
+        await doSearch(query);
+      } else {
+        await Promise.all([loadMessages(folder, 0, true), mailUnseen().then(setUnseen)]);
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  // Virtual views: unread / starred / attachments as FastMail-style filters.
+  function selectView(view: string) {
+    setActiveView(view);
+    const q =
+      view === "unread"
+        ? "is:unread"
+        : view === "flagged"
+          ? "is:flagged"
+          : view === "attachment"
+            ? "has:attachment"
+            : "";
+    if (q) {
+      setQuery(q);
+      doSearch(q);
+    } else {
+      setQuery("");
+      clearSearch();
+    }
+  }
+
+  // Label filter (clicking a tag in the sidebar).
+  function selectLabel(label: string) {
+    setActiveView("all");
+    setActiveLabel(label);
+    const q = label ? `label:${label}` : "";
+    if (q) {
+      setQuery(q);
+      doSearch(q);
+    } else {
+      setQuery("");
+      clearSearch();
+    }
+  }
+
+  // Saved searches (virtual folders).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SAVED_SEARCH_KEY);
+      if (raw) setSavedSearches(JSON.parse(raw));
+    } catch {
+      // storage unavailable
+    }
+  }, []);
+
+  function persistSearches(next: string[]) {
+    setSavedSearches(next);
+    try {
+      localStorage.setItem(SAVED_SEARCH_KEY, JSON.stringify(next));
+    } catch {
+      // storage unavailable
+    }
+  }
+
+  function saveCurrentSearch() {
+    const q = query.trim();
+    if (!q || savedSearches.includes(q)) return;
+    persistSearches([...savedSearches, q]);
+  }
+
+  function removeSavedSearch(q: string) {
+    persistSearches(savedSearches.filter((s) => s !== q));
+  }
+
+  function runSavedSearch(q: string) {
+    setQuery(q);
+    doSearch(q);
+  }
+
+  function openMessage(m: MailMessage, srcFolder = folder) {
+    if (!m.flags.includes("\\Seen")) {
+      mailFlag(srcFolder, m.uid, "\\Seen", true).then(refreshUnseen).catch(() => {});
+      m.flags.push("\\Seen");
+      setMessages((ms) => ms.map((x) => (x.uid === m.uid ? m : x)));
+    }
+    // Navigate to the message route; MailView follows the /mail/[folder]/[id]
+    // URL (pathId effect) to load and show the reading pane. The stable id
+    // keeps every view routable, shareable and survives mailbox moves.
+    router.push(`/mail/${srcFolder}/${m.id || m.uid}`);
+  }
+
+  function removeMessage(m: MailMessage) {
+    return moveTo([m.uid], "Trash", t("toastDeleted"));
+  }
+
+  function toggleSelect(m: MailMessage) {
+    setSelectedUids((prev) => {
+      const next = new Set(prev);
+      if (next.has(m.uid)) next.delete(m.uid);
+      else next.add(m.uid);
+      return next;
+    });
+  }
+
+  async function bulkDelete() {
+    const ids = [...selectedUids];
+    await moveTo(ids, "Trash", t("toastDeleted"));
+  }
+
+  async function bulkArchive() {
+    await moveTo([...selectedUids], "Archive", t("toastArchived"));
+  }
+
+  async function bulkSpam() {
+    await moveTo([...selectedUids], spamFolder, t("toastSpam"));
+  }
+
+  function moveSelectedTo(destination: string) {
+    return moveTo([...selectedUids], destination, t("toastMoved"));
+  }
+
+  function moveDetailTo(destination: string) {
+    if (detail) return moveTo([detail.uid], destination, t("toastMoved"));
+  }
+
+  async function bulkFlag(flag: string, value: boolean) {
+    const ids = [...selectedUids];
+    setError("");
+    try {
+      await Promise.all(ids.map((uid) => mailFlag(folder, uid, flag, value)));
+      refreshUnseen();
+      setMessages((ms) =>
+        ms.map((m) =>
+          selectedUids.has(m.uid)
+            ? { ...m, flags: value ? [...m.flags, flag] : m.flags.filter((f) => f !== flag) }
+            : m,
+        ),
+      );
+      setSelectedUids(new Set());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "bulk flag failed");
+    }
+  }
+
+  async function setSeen(m: MailMessage, value: boolean) {
+    try {
+      await mailFlag(folder, m.uid, "\\Seen", value);
+      refreshUnseen();
+      setMessages((ms) =>
+        ms.map((x) =>
+          x.uid === m.uid
+            ? {
+                ...x,
+                flags: value
+                  ? [...new Set([...x.flags, "\\Seen"])]
+                  : x.flags.filter((f) => f !== "\\Seen"),
+              }
+            : x,
+        ),
+      );
+      if (detail?.uid === m.uid) {
+        setDetail((d) =>
+          d
+            ? {
+                ...d,
+                flags: value
+                  ? [...new Set([...d.flags, "\\Seen"])]
+                  : d.flags.filter((f) => f !== "\\Seen"),
+              }
+            : d,
+        );
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "flag failed");
+    }
+  }
+
+  async function toggleStar(m: MailMessage) {
+    const starred = !m.flags.includes("\\Flagged");
+    try {
+      await mailFlag(folder, m.uid, "\\Flagged", starred);
+      setMessages((ms) =>
+        ms.map((x) =>
+          x.uid === m.uid
+            ? {
+                ...x,
+                flags: starred
+                  ? [...new Set([...x.flags, "\\Flagged"])]
+                  : x.flags.filter((f) => f !== "\\Flagged"),
+              }
+            : x,
+        ),
+      );
+      if (detail?.uid === m.uid) {
+        setDetail((d) =>
+          d
+            ? {
+                ...d,
+                flags: starred
+                  ? [...new Set([...d.flags, "\\Flagged"])]
+                  : d.flags.filter((f) => f !== "\\Flagged"),
+              }
+            : d,
+        );
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "star failed");
+    }
+  }
+
+  function loadMore() {
+    if (loadingMoreRef.current || searching || messages.length >= total) return;
+    loadingMoreRef.current = true;
+    loadMessages(folder, page + 1).finally(() => {
+      loadingMoreRef.current = false;
+    });
+  }
+
+  // quoteText builds the quoted original message used in replies/forwards.
+  const quoteText = (d: MailMessage) => {
+    const from = d.from.map((a) => a.name || a.email).join(", ");
+    const lines = (d.text_body || "").trim();
+    if (!lines) return "";
+    const quoted = lines.split("\n").map((l) => `> ${l}`).join("\n");
+    return `\n\nOn ${fmtDate(d.date)}, ${from} wrote:\n${quoted}`;
+  };
+
+  // Focus the recipient field when the compose dialog opens in "to" mode
+  // (new message / forward). A short delay keeps the focus from being
+  // stolen by Base UI's dialog focus management.
+  useEffect(() => {
+    if (!composeOpen || composeFocus !== "to") return;
+    const tm = setTimeout(() => toInputRef.current?.focus(), 60);
+    return () => clearTimeout(tm);
+  }, [composeOpen, composeFocus]);
+
+  function openCompose(toAddr = "", subj = "", html = "", text = "", focus: "to" | "editor" = "to") {
+    const identity = identities.find((i) => i.email === from);
+    const sig = identity?.signature?.trim() || me.signature?.trim();
+    let finalHtml = html;
+    let finalText = text;
+    if (sig) {
+      const sigHtml = sig
+        .split("\n")
+        .map((l) => (l.trim() ? `<p>${escHtml(l)}</p>` : "<p><br></p>"))
+        .join("");
+      finalHtml = `${html}<p><br></p><p>--</p>${sigHtml}`;
+      finalText = text ? `${text}\n\n-- \n${sig}` : `-- \n${sig}`;
+    }
+    setTo(toAddr ? toAddr.split(",").map((s) => s.trim()).filter(Boolean) : []);
+    setCc([]);
+    setBcc([]);
+    setCcExpanded(false);
+    setAttachments([]);
+    setSubject(subj);
+    setBody(finalHtml);
+    setBodyText(finalText);
+    setSignOn(false);
+    setEncryptOn(false);
+    setDraftSaved(false);
+    draftUidRef.current = null;
+    setComposeFocus(focus);
+    setComposeOpen(true);
+  }
+
+  async function addFiles(list: FileList | File[]) {
+    try {
+      const files = Array.from(list);
+      const oversized = files.find((f) => f.size > MAX_ATTACHMENT_BYTES);
+      if (oversized) {
+        setError(t("attachmentTooLarge", { name: oversized.name }));
+        return;
+      }
+      const ready = await Promise.all(files.map(readFileAsBase64));
+      setAttachments((prev) => [...prev, ...ready]);
+      setError("");
+    } catch {
+      setError(t("attachFailed"));
+    }
+  }
+
+  async function toggleRead(m: MailMessage) {
+    const value = !m.flags.includes("\\Seen");
+    try {
+      await mailFlag(m.folder || folder, m.uid, "\\Seen", value);
+      const apply = (x: MailMessage) =>
+        x.uid === m.uid
+          ? { ...x, flags: value ? [...x.flags, "\\Seen"] : x.flags.filter((f) => f !== "\\Seen") }
+          : x;
+      setMessages((ms) => ms.map(apply));
+      setDetail((d) => (d && d.uid === m.uid ? apply(d) : d));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "mark read failed");
+    }
+  }
+
+  function openContextMenu(e: React.MouseEvent, m: MailMessage) {
+    e.preventDefault();
+    setCtxMenu({ x: e.clientX, y: e.clientY, message: m });
+  }
+
+  function replyAllFrom(m: MailMessage) {
+    const recipients = new Set<string>();
+    [...m.from, ...(m.cc || []), ...(m.to || [])].forEach((a) => {
+      if (a.email && a.email.toLowerCase() !== me.email.toLowerCase()) recipients.add(a.email);
+    });
+    openCompose(
+      [...recipients].join(", "),
+      m.subject.startsWith("Re:") ? m.subject : `Re: ${m.subject}`,
+      textToHtml(quoteText(m)),
+      quoteText(m),
+      "editor",
+    );
+  }
+
+  // Close the row context menu on Escape.
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setCtxMenu(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [ctxMenu]);
+
+  // Swapping the From identity replaces the appended signature in place.
+  function applySignature(text: string, html: string, sig: string) {
+    const sigHtml = sig
+      .split("\n")
+      .map((l) => (l.trim() ? `<p>${escHtml(l)}</p>` : "<p><br></p>"))
+      .join("");
+    const cleanText = text.replace(/\n\n-- \n[\s\S]*$/, "");
+    const marker = "<p><br></p><p>--</p>";
+    const cleanHtml = (() => {
+      const idx = html.lastIndexOf(marker);
+      return idx >= 0 ? html.slice(0, idx) : html;
+    })();
+    return {
+      text: cleanText ? `${cleanText}\n\n-- \n${sig}` : `-- \n${sig}`,
+      html: `${cleanHtml}${marker}${sigHtml}`,
+    };
+  }
+
+  function selectIdentity(email: string) {
+    setFrom(email);
+    const idn = identities.find((i) => i.email === email);
+    const sig = idn?.signature?.trim();
+    if (sig) {
+      const next = applySignature(bodyText, body, sig);
+      setBodyText(next.text);
+      setBody(next.html);
+    }
+  }
+
+  // Recipient auto-suggest: lazily load the address book once and match the
+  // last comma-separated token typed in the To field.
+  function loadContactsOnce() {
+    if (allContacts === null) {
+      contacts().then(setAllContacts).catch(() => {});
+    }
+  }
+
+  function reply() {
+    if (!detail) return;
+    openCompose(
+      detail.from[0]?.email || "",
+      detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`,
+      textToHtml(quoteText(detail)),
+      quoteText(detail),
+      "editor",
+    );
+  }
+
+  function replyAll() {
+    if (!detail) return;
+    const recipients = new Set<string>();
+    [...detail.from, ...detail.to].forEach((a) => {
+      if (a.email && a.email.toLowerCase() !== me.email.toLowerCase()) recipients.add(a.email);
+    });
+    openCompose(
+      [...recipients].join(", "),
+      detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`,
+      textToHtml(quoteText(detail)),
+      quoteText(detail),
+      "editor",
+    );
+  }
+
+  function forward() {
+    if (!detail) return;
+    const from = detail.from.map((a) => a.name || a.email).join(", ");
+    const head = `---------- Forwarded message ----------\nFrom: ${from}\nDate: ${fmtDate(detail.date)}\nSubject: ${detail.subject}\n\n`;
+    openCompose(
+      "",
+      detail.subject.startsWith("Fwd:") ? detail.subject : `Fwd: ${detail.subject}`,
+      textToHtml(head + (detail.text_body || "")),
+      head + (detail.text_body || ""),
+    );
+  }
+
+  async function openThenReply(kind: "reply" | "replyAll" | "forward") {
+    const m = stateRef.current.messages[stateRef.current.cursor];
+    if (!m) return;
+    if (stateRef.current.detail?.uid === m.uid) {
+      (kind === "reply" ? reply : kind === "replyAll" ? replyAll : forward)();
+      return;
+    }
+    await openMessage(m);
+    setTimeout(() => {
+      (kind === "reply" ? reply : kind === "replyAll" ? replyAll : forward)();
+    }, 120);
+  }
+
+  async function aiDraftReply() {
+    if (!detail) return;
+    setDrafting(true);
+    setError("");
+    try {
+      const res = await aiDraft(detail.text_body || detail.html_body || "", draftTone);
+      setBody(textToHtml(res.draft));
+      setBodyText(res.draft);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "ai draft failed");
+    } finally {
+      setDrafting(false);
+    }
+  }
+
+  async function summarize() {
+    if (!detail) return;
+    setSummarizing(true);
+    setSummary("");
+    try {
+      const res = await aiSummarize(detail.text_body || detail.html_body || "");
+      setSummary(res.summary);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "summarize failed");
+    } finally {
+      setSummarizing(false);
+    }
+  }
+
+  async function togglePriority() {
+    if (priorityOn) {
+      if (baseMessages) setMessages(baseMessages);
+      setPriorityOn(false);
+      setPriorityCategories({});
+      setBaseMessages(null);
+      return;
+    }
+    if (!ai.priority || messages.length === 0) return;
+    setPrioritizing(true);
+    setError("");
+    try {
+      const items = messages.map((m) => ({
+        uid: m.uid,
+        subject: m.subject,
+        from: m.from[0]?.email || "",
+      }));
+      const { scores, categories } = await aiPrioritize(items);
+      setBaseMessages(messages);
+      setMessages(
+        [...messages].sort(
+          (a, b) => (scores[String(b.uid)] ?? 0) - (scores[String(a.uid)] ?? 0),
+        ),
+      );
+      setPriorityCategories(categories ?? {});
+      setPriorityOn(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "prioritize failed");
+    } finally {
+      setPrioritizing(false);
+    }
+  }
+
+  async function doAiSearch(q?: string) {
+    const searchQuery = (q ?? query).trim();
+    if (!searchQuery || !ai.search) return;
+    setAiSearching(true);
+    setError("");
+    try {
+      const res = await aiSearch(searchQuery);
+      setSearching(true);
+      setSelected(null);
+      setDetail(null);
+      setCursor(0);
+      setMessages(res.messages);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "ai search failed");
+    } finally {
+      setAiSearching(false);
+    }
+  }
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    try {
+      let text = bodyText;
+      let html = body;
+      if (signOn) {
+        const { signature } = await pgpSign(text || " ");
+        text = `${text}\n\n${signature}`;
+        html = textToHtml(text);
+      }
+      if (encryptOn) {
+        const recipient = to[0]?.trim();
+        if (!recipient) throw new Error(t("pgpNoRecipient"));
+        let publicKey: string;
+        try {
+          publicKey = (await pgpLookup(recipient)).public_key;
+        } catch {
+          throw new Error(t("pgpNoKeyForRecipient"));
+        }
+        const { encrypted } = await pgpEncrypt(text || " ", publicKey);
+        text = encrypted;
+        html = "";
+      }
+
+      const finalTo = [...to];
+      const finalCc = [...cc];
+      const finalBcc = [...bcc];
+      const finalAttachments = [...attachments];
+      const finalSubject = subject;
+      const finalText = text;
+      const finalHtml = html;
+      const finalFrom = from;
+      const delay = prefs.undoSendSeconds;
+
+      const resetCompose = () => {
+        setComposeOpen(false);
+        setTo([]);
+        setCc([]);
+        setBcc([]);
+        setCcExpanded(false);
+        setAttachments([]);
+        setSubject("");
+        setBody("");
+        setBodyText("");
+        setDraftSaved(false);
+        draftUidRef.current = null;
+      };
+
+      if (delay <= 0) {
+        await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments);
+        resetCompose();
+        loadMessages(folder);
+        return;
+      }
+
+      // Park the mail as a draft so an undo within the window aborts the send.
+      let draftUid = 0;
+      try {
+        const d = await mailSaveDraft(finalSubject, finalText, finalHtml, 0, finalTo, finalCc, finalAttachments);
+        draftUid = d.uid || 0;
+      } catch {
+        // sending can proceed without a parked draft
+      }
+      resetCompose();
+
+      let cancelled = false;
+      const timer = setTimeout(async () => {
+        if (cancelled) return;
+        try {
+          await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments);
+          if (draftUid) mailMove("Drafts", [draftUid], "Trash").catch(() => {});
+          loadMessages(folder);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "send failed");
+        }
+      }, delay * 1000);
+      showToast(t("sending"), () => {
+        cancelled = true;
+        clearTimeout(timer);
+        if (draftUid) mailMove("Drafts", [draftUid], "Trash").catch(() => {});
+      }, delay * 1000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "send failed");
+    }
+  }
+
+  function backToList() {
+    // Navigate back to the folder; the pathId effect clears the reading pane.
+    router.push(`/mail/${folder}`);
+    setSelected(null);
+    setDetail(null);
+    setThreadOpen(false);
+  }
+
+  function selectFolder(f: string) {
+    router.push(`/mail/${f}`);
+  }
+
+  async function toggleThread() {
+    if (!detail?.thread_id) return;
+    if (threadOpen && thread?.thread_id === detail.thread_id) {
+      setThreadOpen(false);
+      return;
+    }
+    setThreadOpen(true);
+    if (!thread || thread.thread_id !== detail.thread_id) {
+      setThreadLoading(true);
+      setError("");
+      try {
+        setThread(await mailThread(folder, detail.thread_id));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "thread failed");
+      } finally {
+        setThreadLoading(false);
+      }
+    }
+  }
+
+  async function selectThreadMessage(uid: number) {
+    if (!detail) return;
+    setError("");
+    try {
+      const next = await mailMessage(folder, { uid });
+      setDetail(next);
+      // Keep the URL pinned to the opened thread member so it stays shareable.
+      router.push(`/mail/${folder}/${next.id || next.uid}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "load message failed");
+    }
+  }
+
+  // ---- global keyboard shortcuts ----
+  const stateRef = useRef({
+    messages, cursor, folder, searching, detail,
+    composeOpen, settingsOpen, contactsOpen, paletteOpen, shortcutsOpen,
+  });
+  const apiRef = useRef({
+    openMessage, toggleSelect, removeMessage, toggleStar, setSeen,
+    archiveMessage, spamMessage,
+    openCompose, openThenReply, selectFolder, backToList,
+  });
+  // Keep the keyboard handler's snapshot refs in sync after every render
+  // (writing refs during render is a React 19 anti-pattern).
+  useEffect(() => {
+    stateRef.current = {
+      messages, cursor, folder, searching, detail,
+      composeOpen, settingsOpen, contactsOpen, paletteOpen, shortcutsOpen,
+    };
+    apiRef.current = {
+      openMessage, toggleSelect, removeMessage, toggleStar, setSeen,
+      archiveMessage, spamMessage,
+      openCompose, openThenReply, selectFolder, backToList,
+    };
+  });
+
+  useEffect(() => {
+    function isEditable(target: EventTarget | null) {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
+    }
+
+    function onKey(e: KeyboardEvent) {
+      const s = stateRef.current;
+      if (s.paletteOpen || s.shortcutsOpen || s.composeOpen || s.settingsOpen || s.contactsOpen) {
+        return;
+      }
+      if (isEditable(e.target)) return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen(true);
+        return;
+      }
+      if (mod) return;
+
+      const api = apiRef.current;
+      const m = s.messages[s.cursor];
+
+      if (e.shiftKey && e.key === "I") {
+        if (m) api.setSeen(m, true);
+        return;
+      }
+      if (e.shiftKey && e.key === "U") {
+        if (m) api.setSeen(m, false);
+        return;
+      }
+      if (e.key === "g") {
+        pendingG.current = true;
+        return;
+      }
+      if (pendingG.current) {
+        pendingG.current = false;
+        if (e.key === "i") api.selectFolder("INBOX");
+        if (e.key === "s") api.selectFolder("Sent");
+        return;
+      }
+
+      switch (e.key) {
+        case "/":
+          e.preventDefault();
+          searchRef.current?.focus();
+          break;
+        case "?":
+          setShortcutsOpen(true);
+          break;
+        case "n":
+          api.openCompose();
+          break;
+        case "j":
+          setCursor((c) => Math.min(c + 1, s.messages.length - 1));
+          break;
+        case "k":
+          setCursor((c) => Math.max(c - 1, 0));
+          break;
+        case "Enter":
+        case "o":
+          if (m) api.openMessage(m);
+          break;
+        case "x":
+          if (m) api.toggleSelect(m);
+          break;
+        case "#":
+          if (m) api.removeMessage(m);
+          break;
+        case "s":
+          if (m) api.toggleStar(m);
+          break;
+        case "e":
+          if (m) api.archiveMessage(m);
+          break;
+        case "!":
+          if (m) api.spamMessage(m);
+          break;
+        case "r":
+          api.openThenReply("reply");
+          break;
+        case "a":
+          api.openThenReply("replyAll");
+          break;
+        case "f":
+          api.openThenReply("forward");
+          break;
+        case "u":
+          api.backToList();
+          break;
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // ---- list width drag ----
+  function onResizeStart(e: React.PointerEvent<HTMLDivElement>) {
+    resizeRef.current = { x: e.clientX, w: listWidth };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onResizeMove(e: React.PointerEvent<HTMLDivElement>) {
+    const r = resizeRef.current;
+    if (!r) return;
+    setListWidth(Math.min(480, Math.max(300, r.w + e.clientX - r.x)));
+  }
+  function onResizeEnd() {
+    resizeRef.current = null;
+  }
+
+  const paletteActions = usePaletteActions({
+    t,
+    tp,
+    ts,
+    openCompose,
+    focusSearch: () => searchRef.current?.focus(),
+    selectFolder,
+    openSettings: () => setSettingsOpen(true),
+    openContacts: () => setContactsOpen(true),
+    theme,
+    setTheme,
+    density,
+    setDensity,
+  });
+
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  // The exposed value mirrors every local so MailView (and its sub-panels via
+  // useMailStore) can read state and call actions without prop drilling.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const value: any = {
+    t,
+    me,
+    online,
+    folders,
+    unseen,
+    knownLabels,
+    activeLabel,
+    savedSearches,
+    folder,
+    sidebarOpen,
+    setSidebarOpen,
+    selectFolder,
+    selectLabel,
+    runSavedSearch,
+    removeSavedSearch,
+    moveTo,
+    moveSelectedTo,
+    openCompose,
+    setSettingsOpen,
+    setContactsOpen,
+    setSieveOpen,
+    detail,
+    detailLoading,
+    listWidth,
+    messages,
+    total,
+    searching,
+    loading,
+    query,
+    setQuery,
+    setSearchAll,
+    doSearch,
+    clearSearch,
+    selectedUids,
+    cursor,
+    selected,
+    searchAll,
+    activeView,
+    selectView,
+    doAiSearch,
+    loadMessages,
+    openMessage,
+    toggleSelect,
+    removeMessage,
+    toggleStar,
+    archiveMessage,
+    bulkDelete,
+    bulkArchive,
+    bulkSpam,
+    bulkFlag,
+    loadMore,
+    error,
+    saveCurrentSearch,
+    searchRef,
+    ai,
+    prioritizing,
+    priorityOn,
+    priorityCategories,
+    togglePriority,
+    aiSearching,
+    refreshMail,
+    refreshing,
+    openContextMenu,
+    onResizeStart,
+    onResizeMove,
+    onResizeEnd,
+    summary,
+    summarizing,
+    summarize,
+    reply,
+    replyAll,
+    forward,
+    backToList,
+    moveDetailTo,
+    reportNotSpam,
+    toggleLabel,
+    thread,
+    threadOpen,
+    threadLoading,
+    toggleThread,
+    selectThreadMessage,
+    composeOpen,
+    identities,
+    from,
+    selectIdentity,
+    draftSaved,
+    to,
+    cc,
+    bcc,
+    ccExpanded,
+    setCcExpanded,
+    subject,
+    body,
+    setBody,
+    setBodyText,
+    attachments,
+    setAttachments,
+    composeFocus,
+    allContacts,
+    loadContactsOnce,
+    fileInputRef,
+    toInputRef,
+    draftTone,
+    setDraftTone,
+    drafting,
+    aiDraftReply,
+    prefs,
+    setUndoSend,
+    signOn,
+    encryptOn,
+    setSignOn,
+    setEncryptOn,
+    dragOverCompose,
+    setDragOverCompose,
+    addFiles,
+    send,
+    closeCompose,
+    saveDraftNow,
+    setTo,
+    setCc,
+    setBcc,
+    setSubject,
+    contactsOpen,
+    settingsOpen,
+    paletteOpen,
+    setPaletteOpen,
+    paletteActions,
+    shortcutsOpen,
+    setShortcutsOpen,
+    sieveOpen,
+    ctxMenu,
+    setCtxMenu,
+    quoteText,
+    replyAllFrom,
+    toggleRead,
+    spamMessage,
+    toast,
+    setToast,
+  };
+  return <MailStoreContext.Provider value={value}>{children}</MailStoreContext.Provider>;
+}

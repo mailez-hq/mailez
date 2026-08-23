@@ -19,6 +19,8 @@
     "password": "密码",
     "submit": "登录",
     "submitting": "登录中...",
+    "totp": "验证码",
+    "verify": "验证",
     "signupLink": "注册账号",
     "alreadyAccount": "已有账号？"
   },

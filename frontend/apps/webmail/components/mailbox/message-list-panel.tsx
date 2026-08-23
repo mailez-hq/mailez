@@ -1,14 +1,14 @@
 "use client";
 
-import { Archive, Inbox, Menu, Search, SearchX, Sparkles, Trash2 } from "lucide-react";
+import { Archive, Bookmark, FolderSearch, Inbox, Menu, RefreshCw, Search, SearchX, Sparkles, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePreferences } from "@/components/preferences-provider";
 import type { MailMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { MessageRow, ROW_HEIGHTS } from "@/components/mail/message-row";
-import { VirtualList } from "@/components/mail/virtual-list";
+import { MessageRow, ROW_HEIGHTS } from "@/components/mailbox/message-row";
+import { VirtualList } from "@/components/mailbox/virtual-list";
 
 const SKELETON_ROWS = 8;
 
@@ -29,7 +29,7 @@ export function MessageListPanel({
   onDelete,
   onStar,
   onArchive,
-  openUid,
+  openId,
   onBulkDelete,
   onBulkArchive,
   onBulkSpam,
@@ -39,12 +39,25 @@ export function MessageListPanel({
   onMenu,
   error,
   className,
-  aiEnabled,
+  folders,
+  onMoveToFolder,
+  onSaveSearch,
+  searchAll,
+  onToggleSearchAll,
+  activeView,
+  onSelectView,
+  aiSearchEnabled,
+  aiPriorityEnabled,
   prioritizing,
   priorityOn,
+  categories,
   onTogglePriority,
   aiSearching,
   onAiSearch,
+  refreshing,
+  onRefresh,
+  highlightTerms,
+  onContextMenu,
 }: {
   folder: string;
   messages: MailMessage[];
@@ -62,7 +75,7 @@ export function MessageListPanel({
   onDelete: (m: MailMessage) => void;
   onStar: (m: MailMessage) => void;
   onArchive: (m: MailMessage) => void;
-  openUid?: number;
+  openId?: string;
   onBulkDelete: () => void;
   onBulkArchive: () => void;
   onBulkSpam: () => void;
@@ -72,12 +85,25 @@ export function MessageListPanel({
   onMenu: () => void;
   error: string;
   className?: string;
-  aiEnabled: boolean;
+  folders: string[];
+  onMoveToFolder: (destination: string) => void;
+  onSaveSearch: () => void;
+  searchAll: boolean;
+  onToggleSearchAll: () => void;
+  activeView: string;
+  onSelectView: (view: string) => void;
+  aiSearchEnabled: boolean;
+  aiPriorityEnabled: boolean;
   prioritizing: boolean;
   priorityOn: boolean;
+  categories?: Record<string, string>;
   onTogglePriority: () => void;
   aiSearching: boolean;
   onAiSearch: () => void;
+  refreshing: boolean;
+  onRefresh: () => void;
+  highlightTerms?: string[];
+  onContextMenu?: (e: React.MouseEvent, message: MailMessage) => void;
 }) {
   const t = useTranslations("mail");
   const { density } = usePreferences();
@@ -93,7 +119,7 @@ export function MessageListPanel({
         <div className="flex items-center gap-1.5">
           <Button variant="ghost" size="icon-sm" className="shrink-0 md:hidden" onClick={onMenu}>
             <Menu className="size-4" />
-            <span className="sr-only">Menu</span>
+            <span className="sr-only">{t("menu")}</span>
           </Button>
           <form
             onSubmit={(e) => {
@@ -116,15 +142,46 @@ export function MessageListPanel({
               placeholder={t("searchPlaceholder", { folder: folderLabel(folder) })}
               className="h-8 pl-8 pr-12"
             />
-            <kbd className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded border border-border px-1.5 py-0.5 font-sans text-[10px] text-muted-foreground">
-              /
-            </kbd>
+            {query.trim() !== "" ? (
+              <button
+                type="button"
+                onClick={onClearSearch}
+                title={t("clearSearch")}
+                className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <X className="size-3.5" />
+              </button>
+            ) : (
+              <kbd className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded border border-border px-1.5 py-0.5 font-sans text-[10px] text-muted-foreground">
+                /
+              </kbd>
+            )}
           </form>
-          {aiEnabled && (
+          {searching && query.trim() !== "" && (
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={onAiSearch}
+              onClick={onSaveSearch}
+              title={t("saveSearch")}
+              className="shrink-0"
+            >
+              <Bookmark className="size-4" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={onToggleSearchAll}
+            title={t("searchAll")}
+            className={cn("shrink-0", searchAll && "text-primary")}
+          >
+            <FolderSearch className="size-4" />
+          </Button>
+          {aiSearchEnabled && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => onAiSearch()}
               disabled={aiSearching}
               title={t("aiSearch")}
               className="shrink-0"
@@ -132,9 +189,36 @@ export function MessageListPanel({
               <Sparkles className={cn("size-4", aiSearching && "animate-pulse")} />
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={onRefresh}
+            disabled={refreshing}
+            title={t("refresh")}
+            className="shrink-0"
+          >
+            <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
+          </Button>
+        </div>
+        <div className="mt-1.5 flex items-center gap-1">
+          {["all", "unread", "flagged", "attachment"].map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => onSelectView(v)}
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[11px] transition-colors",
+                activeView === v
+                  ? "bg-accent font-medium text-accent-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              {t(`view${v.charAt(0).toUpperCase()}${v.slice(1)}`)}
+            </button>
+          ))}
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          <span className="text-[10px] text-muted-foreground">{t("syntaxHint")}</span>
+          <span className="hidden text-[10px] text-muted-foreground sm:inline">{t("syntaxHint")}</span>
           <div className="flex flex-wrap items-center gap-1">
             {["from:", "to:", "subject:", "has:attachment", "before:", "after:"].map((s) => (
               <button
@@ -147,7 +231,7 @@ export function MessageListPanel({
               </button>
             ))}
           </div>
-          {aiEnabled && (
+          {aiPriorityEnabled && (
             <Button
               size="xs"
               variant={priorityOn ? "default" : "outline"}
@@ -191,6 +275,23 @@ export function MessageListPanel({
           <Button size="xs" variant="outline" onClick={() => onBulkFlag("\\Seen", false)}>
             {t("unread")}
           </Button>
+          <select
+            value=""
+            onChange={(e) => {
+              if (e.target.value) onMoveToFolder(e.target.value);
+            }}
+            title={t("moveTo")}
+            className="h-6 rounded-md border border-border bg-transparent px-1 text-xs text-muted-foreground outline-none focus-visible:border-ring"
+          >
+            <option value="">{t("moveTo")}…</option>
+            {folders
+              .filter((f) => f !== folder && !/^(trash|drafts)$/i.test(f))
+              .map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+          </select>
         </div>
       )}
 
@@ -216,6 +317,7 @@ export function MessageListPanel({
           rowHeight={rowHeight}
           scrollKey={`${folder}-${searching}`}
           onEndReached={onLoadMore}
+          onPullRefresh={onRefresh}
           getKey={(m) => m.uid}
           className="flex-1"
           renderRow={(m, i) => (
@@ -223,7 +325,8 @@ export function MessageListPanel({
               message={m}
               index={i}
               density={density}
-              selected={m.uid === openUid}
+              category={categories?.[String(m.uid)]}
+              selected={m.id === openId && !!openId}
               selectedInBulk={selectedUids.has(m.uid)}
               cursorActive={i === cursor && !searching}
               onOpen={() => onOpen(m)}
@@ -231,6 +334,8 @@ export function MessageListPanel({
               onDelete={() => onDelete(m)}
               onArchive={() => onArchive(m)}
               onStar={() => onStar(m)}
+              highlightTerms={highlightTerms}
+              onContextMenu={onContextMenu}
             />
           )}
         />

@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans), "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-ai: var(--ai);
@@ -57,18 +57,18 @@
   --card-foreground: #1c1917;
   --popover: #ffffff;
   --popover-foreground: #1c1917;
-  --primary: #2f8e6c;
+  --primary: #2e6e8e;
   --primary-foreground: #ffffff;
   --secondary: #f2f0ea;
   --secondary-foreground: #1c1917;
   --muted: #f2f0ea;
   --muted-foreground: #79716b;
-  --accent: #e5f2ec;
-  --accent-foreground: #175a44;
+  --accent: #e2edf2;
+  --accent-foreground: #1d4a63;
   --destructive: #c94b4b;
   --border: #e7e4dd;
   --input: #e7e4dd;
-  --ring: #2f8e6c;
+  --ring: #2e6e8e;
   --ai: #2e6e8e;
   --ai-foreground: #ffffff;
   --chart-1: #2f8e6c;
@@ -81,10 +81,10 @@
   --sidebar-foreground: #44403c;
   --sidebar-primary: #2f8e6c;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e5f2ec;
-  --sidebar-accent-foreground: #175a44;
+  --sidebar-accent: #e2edf2;
+  --sidebar-accent-foreground: #1d4a63;
   --sidebar-border: #e7e4dd;
-  --sidebar-ring: #2f8e6c;
+  --sidebar-ring: #2e6e8e;
 }
 
 .dark {
@@ -94,18 +94,18 @@
   --card-foreground: #edeae4;
   --popover: #1c1e1b;
   --popover-foreground: #edeae4;
-  --primary: #3ba77f;
+  --primary: #4d8fac;
   --primary-foreground: #0b231b;
   --secondary: #262823;
   --secondary-foreground: #edeae4;
   --muted: #262823;
   --muted-foreground: #a3a09a;
-  --accent: #1f3d33;
-  --accent-foreground: #8fd9be;
+  --accent: #1f3d4d;
+  --accent-foreground: #8fc7e0;
   --destructive: #e56b6b;
   --border: rgba(255, 255, 255, 0.08);
   --input: rgba(255, 255, 255, 0.12);
-  --ring: #3ba77f;
+  --ring: #4d8fac;
   --ai: #4d8fac;
   --ai-foreground: #0e1d26;
   --chart-1: #3ba77f;
@@ -117,10 +117,10 @@
   --sidebar-foreground: #a3a09a;
   --sidebar-primary: #3ba77f;
   --sidebar-primary-foreground: #0b231b;
-  --sidebar-accent: #1f3d33;
-  --sidebar-accent-foreground: #8fd9be;
+  --sidebar-accent: #1f3d4d;
+  --sidebar-accent-foreground: #8fc7e0;
   --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: #3ba77f;
+  --sidebar-ring: #4d8fac;
 }
 
 @layer base {
@@ -133,6 +133,89 @@
   html {
     @apply font-sans;
   }
+  /* Tailwind v4 preflight uses `cursor: default` on buttons; restore the
+     pointer so every interactive element (native buttons and Base UI roles
+     such as menu items / options / tabs / switches) signals clickability. */
+  button:not(:disabled):not([data-disabled]),
+  [role="button"]:not([data-disabled]),
+  [role="menuitem"]:not([data-disabled]),
+  [role="option"]:not([data-disabled]),
+  [role="tab"]:not([data-disabled]),
+  [role="switch"]:not([data-disabled]),
+  [role="checkbox"]:not([data-disabled]),
+  [role="radio"]:not([data-disabled]),
+  [role="link"]:not([data-disabled]),
+  summary:not([data-disabled]) {
+    cursor: pointer;
+  }
+}
+
+/* Accent families: data-accent on <html> overrides the brand color. The
+   default "blue" (stone cyan) is the default theme and needs no override;
+   "green" (mailez brand teal) is the legacy default. */
+[data-accent="green"] {
+  --primary: #2f8e6c;
+  --ring: #2f8e6c;
+  --accent: #e5f2ec;
+  --accent-foreground: #175a44;
+  --sidebar-accent: #e5f2ec;
+  --sidebar-accent-foreground: #175a44;
+}
+[data-accent="green"].dark {
+  --primary: #3ba77f;
+  --ring: #3ba77f;
+  --accent: #1f3d33;
+  --accent-foreground: #8fd9be;
+  --sidebar-accent: #1f3d33;
+  --sidebar-accent-foreground: #8fd9be;
+}
+[data-accent="purple"] {
+  --primary: #6b4fa0;
+  --ring: #6b4fa0;
+  --accent: #ede7f6;
+  --accent-foreground: #4a3578;
+  --sidebar-accent: #ede7f6;
+  --sidebar-accent-foreground: #4a3578;
+}
+[data-accent="purple"].dark {
+  --primary: #8f6fd1;
+  --ring: #8f6fd1;
+  --accent: #352b4d;
+  --accent-foreground: #c9b8ef;
+  --sidebar-accent: #352b4d;
+  --sidebar-accent-foreground: #c9b8ef;
+}
+[data-accent="orange"] {
+  --primary: #c4712a;
+  --ring: #c4712a;
+  --accent: #f7ece0;
+  --accent-foreground: #8a4d16;
+  --sidebar-accent: #f7ece0;
+  --sidebar-accent-foreground: #8a4d16;
+}
+[data-accent="orange"].dark {
+  --primary: #e08a4a;
+  --ring: #e08a4a;
+  --accent: #4a3827;
+  --accent-foreground: #f0c9a0;
+  --sidebar-accent: #4a3827;
+  --sidebar-accent-foreground: #f0c9a0;
+}
+[data-accent="rose"] {
+  --primary: #b0555b;
+  --ring: #b0555b;
+  --accent: #f8e7e8;
+  --accent-foreground: #7e3a3f;
+  --sidebar-accent: #f8e7e8;
+  --sidebar-accent-foreground: #7e3a3f;
+}
+[data-accent="rose"].dark {
+  --primary: #d97a80;
+  --ring: #d97a80;
+  --accent: #4d2e30;
+  --accent-foreground: #f2b8bc;
+  --sidebar-accent: #4d2e30;
+  --sidebar-accent-foreground: #f2b8bc;
 }
 
 /* Rich-text compose editor typography */
@@ -262,4 +345,23 @@
 .mail-scroll {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
+}
+
+/* Print: keep only the message body, hide the app chrome around it. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .mail-body,
+  .mail-body * {
+    visibility: visible;
+  }
+  .mail-body {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    margin: 0;
+    padding: 24px;
+    font-size: 12pt;
+  }
 }

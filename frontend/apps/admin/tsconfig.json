@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@mailez/types": ["../../packages/types/src"]
     }
   },
   "include": [

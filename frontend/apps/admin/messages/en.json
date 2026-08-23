@@ -19,6 +19,8 @@
     "password": "Password",
     "submit": "Sign in",
     "submitting": "Signing in...",
+    "totp": "Verification code",
+    "verify": "Verify",
     "signupLink": "Create an account",
     "alreadyAccount": "Already have an account?"
   },

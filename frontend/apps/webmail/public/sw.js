@@ -15,6 +15,43 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Incoming push (new mail notifications). The payload is JSON:
+// { title, body, url, tag }.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    // non-JSON payload; show a generic notification
+  }
+  const d = data as { title?: string; body?: string; url?: string; tag?: string };
+  event.waitUntil(
+    self.registration.showNotification(d.title || "mailez", {
+      body: d.body || "",
+      icon: "/mailez-icon.svg",
+      badge: "/mailez-icon.svg",
+      tag: d.tag || "mail",
+      data: { url: d.url || "/" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ("focus" in client) {
+          client.navigate?.(url);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
