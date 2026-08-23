@@ -21,7 +21,7 @@ import (
 )
 
 // Fetcher polls remote POP/IMAP accounts and delivers new mail to the local
-// user through the internal SMTP stack, mirroring the reference implementation's fetchmail service.
+// user through the internal SMTP stack, mirroring the the mail stack's fetchmail service.
 type Fetcher struct {
 	DB       *gorm.DB
 	SmtpAddr string // local smtp host:port for delivery
@@ -277,3 +277,4 @@ func (f *Fetcher) deliver(recipient, raw string) error {
 	}
 	return smtp.SendMail(f.SmtpAddr, nil, recipient, []string{recipient}, msg)
 }
+

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile-upstream:1.4.3
 
-# oletools image: static Go olefy-compatible scanner (no Python runtime).
+# oletools image: static Go OLEFY/1.0-compatible scanner.
 FROM golang:1.26-alpine AS build
 ENV GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0
 WORKDIR /src

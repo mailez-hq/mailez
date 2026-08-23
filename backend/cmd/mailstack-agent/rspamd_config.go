@@ -7,7 +7,7 @@ import (
 )
 
 // RspamdConfig is the typed view of the environment consumed by the rspamd
-// templates (the vendored start.py rendered every /conf file through Jinja).
+// templates (the legacy launcher rendered every /conf file through Jinja).
 type RspamdConfig struct {
 	Subnet              string
 	Subnet6             string
@@ -53,3 +53,4 @@ func loadRspamdConfig() (RspamdConfig, error) {
 	}
 	return cfg, nil
 }
+

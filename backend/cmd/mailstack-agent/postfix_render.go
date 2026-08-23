@@ -15,7 +15,7 @@ var postfixTemplates embed.FS
 
 // renderPostfixAll renders the postfix config files into a destination ->
 // content map. sasl_passwd and logrotate.conf are only produced when the
-// corresponding env is set (matching start.py).
+// corresponding env is set (matching the legacy launcher).
 func renderPostfixAll(cfg PostfixConfig) (map[string][]byte, error) {
 	files := map[string]string{
 		"/etc/postfix/main.cf":                   "templates/postfix/main.cf.tmpl",
@@ -56,3 +56,4 @@ func writeRenderedPostfix(files map[string][]byte) error {
 	}
 	return nil
 }
+

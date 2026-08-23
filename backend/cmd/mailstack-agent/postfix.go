@@ -44,10 +44,10 @@ func runPostfix() error {
 		}
 	}
 
-	// Stale master.pid cleanup (start.py: flock -n ... rm ...).
+	// Stale master.pid cleanup (legacy launcher: flock -n ... rm ...).
 	flockRemoveStaleMasterPID()
 
-	// Overrides are applied exactly like start.py: postconf lines, extra
+	// Overrides are applied exactly like the legacy launcher: postconf lines, extra
 	// maps, and a full mta-sts-daemon.yml replacement.
 	if err := applyPostfixOverrides(cfg); err != nil {
 		return err
@@ -112,7 +112,7 @@ func runPostfix() error {
 	return agent.RunChild(ctx, []string{"postfix", "start-fg"})
 }
 
-// applyPostfixOverrides replicates start.py's /overrides handling: postfix.cf
+// applyPostfixOverrides replicates the legacy launcher's /overrides handling: postfix.cf
 // and postfix.master lines are fed to postconf, *.map files are compiled with
 // postmap, and an mta-sts-daemon.yml overrides the rendered one.
 func applyPostfixOverrides(cfg PostfixConfig) error {
@@ -203,3 +203,4 @@ func escapePath(p string) string {
 	e := url.PathEscape(p)
 	return strings.ReplaceAll(e, "%2F", "/")
 }
+

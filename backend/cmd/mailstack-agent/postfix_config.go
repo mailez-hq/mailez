@@ -29,8 +29,8 @@ type PostfixConfig struct {
 	PostfixLogFile          string
 }
 
-// loadPostfixConfig reads the environment like the vendored start.py +
-// socrate clean_env() did.
+// loadPostfixConfig reads the environment like the legacy launcher +
+// the legacy launcher's env cleanup did.
 func loadPostfixConfig() (PostfixConfig, error) {
 	cfg := PostfixConfig{
 		Domain:                  agent.Getenv("DOMAIN", "example.com"),
@@ -60,7 +60,7 @@ func loadPostfixConfig() (PostfixConfig, error) {
 	subnet6 := os.Getenv("SUBNET6")
 
 	// Postfix requires IPv6 addresses to be wrapped in square brackets
-	// (start.py did the same re.sub on RELAYNETS and the template brackets
+	// (the legacy launcher did the same re.sub on RELAYNETS and the template brackets
 	// SUBNET6).
 	parts := []string{"127.0.0.1/32", subnet}
 	if subnet6 != "" {
@@ -95,7 +95,7 @@ func bracketCIDR(cidr string) string {
 }
 
 // bracketIPv6Prefix wraps bare IPv6 prefixes from RELAYNETS in brackets,
-// replicating start.py's re.sub(r'([0-9a-fA-F]+:[0-9a-fA-F:]+)/', '[\\1]/').
+// replicating the legacy launcher's re.sub(r'([0-9a-fA-F]+:[0-9a-fA-F:]+)/', '[\\1]/').
 func bracketIPv6Prefix(net string) string {
 	if strings.Contains(net, ":") && !strings.HasPrefix(net, "[") {
 		if host, rest, ok := strings.Cut(net, "/"); ok {
@@ -114,3 +114,5 @@ func envTrue(key string, def bool) bool {
 	}
 	return def
 }
+
+

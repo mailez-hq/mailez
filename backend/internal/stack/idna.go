@@ -7,7 +7,7 @@ import (
 )
 
 // asciiDomain lowercases and IDNA-encodes a domain for the wire contract.
-// the reference implementation stores and emits punycode, so the mail stack (postfix/rspamd) only
+// the the mail stack stores and emits punycode, so the mail stack (postfix/rspamd) only
 // sees ASCII even for Unicode domains.
 func asciiDomain(domain string) string {
 	ascii, err := idna.Lookup.ToASCII(domain)
@@ -44,3 +44,4 @@ func asciiEmail(email string) string {
 	}
 	return email[:at] + "@" + asciiDomain(email[at+1:])
 }
+

@@ -32,7 +32,7 @@ func runDovecot() error {
 		}
 	}
 
-	// Ownership fixes (start.py did the same).
+	// Ownership fixes (the legacy launcher did the same).
 	for _, cmd := range [][]string{
 		{"chown", "mail:mail", "/mail"},
 		{"chown", "-R", "mail:mail", "/var/lib/dovecot", "/conf"},
@@ -61,3 +61,4 @@ func runDovecot() error {
 
 	return agent.RunChild(ctx, []string{"/usr/sbin/dovecot", "-c", "/etc/dovecot/dovecot.conf", "-F"})
 }
+

@@ -1,7 +1,6 @@
 # syntax=docker/dockerfile-upstream:1.4.3
 
-# Build the static mailstack-agent (M3 dovecot agent, replaces start.py +
-# podop).
+# Build the static mailstack-agent (dovecot agent).
 FROM golang:1.26-alpine AS build
 ENV GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0
 WORKDIR /src
@@ -12,7 +11,7 @@ COPY backend/internal/oletools ./internal/oletools
 COPY backend/cmd/mailstack-agent ./cmd/mailstack-agent
 RUN go build -trimpath -ldflags="-s -w" -o /out/mailstack-agent ./cmd/mailstack-agent
 
-# dovecot image (no Python runtime)
+# dovecot image (single static agent binary)
 FROM alpine:3.21
 
 ARG VERSION
@@ -25,7 +24,7 @@ RUN set -euxo pipefail \
   ; mkdir -p /var/lib/dovecot /etc/dovecot /conf/bin
 
 COPY --from=build /out/mailstack-agent /mailstack-agent
-# This Dockerfile is built with the repo root as context (see build-images.ps1).
+# This Dockerfile is built with the repo root as context.
 COPY deploy/vendor/mailstack/dovecot/conf/ /conf/
 
 RUN echo $VERSION >/version

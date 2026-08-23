@@ -11,7 +11,7 @@ import (
 
 // Handler implements the internal API consumed by nginx (auth_request) and the
 // mail stack (nginx mail proxy auth). Its response contract must stay
-// byte-compatible with the reference implementation's internal API.
+// byte-compatible with the the mail stack's internal API.
 type Handler struct {
 	DB    *gorm.DB
 	Auth  *auth.Manager
@@ -44,3 +44,4 @@ func (h *Handler) Register(r fiber.Router) {
 	h.registerFetch(r)
 	h.registerAutoconfig(r)
 }
+

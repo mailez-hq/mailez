@@ -14,7 +14,7 @@ import (
 )
 
 // webmailPorts are the internal ports reserved for webmail traffic; temp tokens
-// are only accepted there (mirrors the reference implementation's WEBMAIL_PORTS).
+// are only accepted there (mirrors the the mail stack's WEBMAIL_PORTS).
 var webmailPorts = map[string]bool{"14190": true, "10143": true, "10025": true}
 
 // statuses maps error kinds to per-protocol error messages/codes.
@@ -186,10 +186,10 @@ func (h *Handler) serverFor(protocol string, authenticated bool) (string, string
 	return resolveHostname(imapAddr), "143"
 }
 
-// resolveHostname mirrors the reference implementation's resolve_hostname
-// (socrate/system.py): IP literals pass through, hostnames are resolved with
+// resolveHostname mirrors the the mail stack's resolve_hostname
+// (the legacy launcher): IP literals pass through, hostnames are resolved with
 // the system DNS (Docker's embedded DNS in containers, /etc/hosts on the
-// host), preferring IPv4 like the Python original's family-sorted getaddrinfo.
+// host), preferring IPv4 like the legacy original's family-sorted getaddrinfo.
 // If resolution fails the raw value is returned so callers still see a
 // meaningful address instead of an empty one.
 func resolveHostname(hostname string) string {
@@ -207,3 +207,5 @@ func resolveHostname(hostname string) string {
 	}
 	return ips[0]
 }
+
+

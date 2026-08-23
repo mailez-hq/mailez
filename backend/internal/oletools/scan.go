@@ -48,7 +48,7 @@ type metaInfo struct {
 
 // Scan analyses an attachment and returns the olevba-compatible JSON array
 // (MetaInformation first, then the per-file result when the file carries a
-// VBA project). Non-office input returns an olefy-style error object.
+// VBA project). Non-office input returns an protocol-style error object.
 func Scan(name string, data []byte) []byte {
 	ok, macros, analysis := scanBytes(name, data)
 	if !ok {
@@ -243,17 +243,18 @@ func analyzeCode(code string) []analysis {
 	return out
 }
 
-// ErrorTooSmall is the olefy error for files below the scan threshold.
+// ErrorTooSmall is the protocol error for files below the scan threshold.
 func ErrorTooSmall() []byte {
 	return mustJSON([]any{map[string]any{"error": "File too small"}})
 }
 
-// ErrorProtocol mirrors olefy's protocol error response.
+// ErrorProtocol mirrors the OLEFY/1.0 protocol error response.
 func ErrorProtocol() []byte {
 	return mustJSON([]any{map[string]any{"error": "Protocol error"}})
 }
 
-// ErrorMethod mirrors olefy's missing-method response.
+// ErrorMethod mirrors the OLEFY/1.0 missing-method response.
 func ErrorMethod() []byte {
 	return mustJSON([]any{map[string]any{"error": "Protocol error: Method header not found"}})
 }
+

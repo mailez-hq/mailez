@@ -39,7 +39,7 @@ func runNginx() error {
 		return err
 	}
 
-	// Stale pid cleanup (start.py did the same).
+	// Stale pid cleanup (the legacy launcher did the same).
 	_ = os.Remove("/var/run/nginx.pid")
 
 	// The dovecot login proxy daemonizes itself; nginx runs in the foreground.
@@ -77,3 +77,4 @@ func regenerateChains() error {
 	}
 	return nil
 }
+

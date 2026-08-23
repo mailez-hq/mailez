@@ -144,8 +144,7 @@ func (h *Handler) mailFolders(c *fiber.Ctx) error {
 	return c.JSON(folders)
 }
 
-// mailUnseen returns the unseen count per mailbox for the sidebar badges.
-// mailUnseen returns the unseen count per folder.
+// mailUnseen returns the unseen count per folder for the sidebar badges.
 // @Summary Unseen counts
 // @Tags mail
 // @Produce json

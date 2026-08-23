@@ -9,15 +9,15 @@ import (
 	"time"
 )
 
-// Server is the olefy-compatible TCP scanner service.
+// Server is the OLEFY/1.0-compatible TCP scanner service.
 type Server struct {
-	// MinLength is the minimum attachment size to scan (olefy OLEFY_MINLENGTH).
+	// MinLength is the minimum attachment size to scan.
 	MinLength int
 }
 
 // Serve listens on addr (e.g. ":11343") and handles OLEFY/1.0 requests until
 // ctx is done. PING is answered with PONG; Method: oletools payloads are
-// scanned and answered with the olevba JSON array followed by the olefy
+// scanned and answered with the olevba JSON array followed by the protocol
 // stop word "\t\n\n\t".
 func (s *Server) Serve(ctx context.Context, addr string) error {
 	ln, err := net.Listen("tcp", addr)
@@ -52,7 +52,7 @@ func (s *Server) handle(conn net.Conn) {
 	}
 
 	// Header block ends at the first blank line; cap the header scan at 2000
-	// bytes like olefy.
+	// bytes, mirroring the reference scanner.
 	probe := data
 	if len(probe) > 2000 {
 		probe = probe[:2000]
@@ -87,7 +87,7 @@ func (s *Server) handle(conn net.Conn) {
 }
 
 // parseOlefyHeaders parses "Key: Value" header lines (last value wins, like
-// olefy's dict overwrite).
+// scanner dict overwrite).
 func parseOlefyHeaders(head string) map[string]string {
 	out := map[string]string{}
 	for _, line := range strings.Split(head, "\n") {
@@ -102,7 +102,7 @@ func parseOlefyHeaders(head string) map[string]string {
 	return out
 }
 
-// writeOlefy sends the response followed by olefy's stop word.
+// writeOlefy sends the response followed by the protocol's stop word.
 func writeOlefy(w io.Writer, resp []byte) {
 	w.Write(resp)
 	w.Write([]byte("\t\n\n\t"))

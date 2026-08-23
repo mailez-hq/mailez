@@ -3,7 +3,7 @@ package models
 import "time"
 
 // AuditLog is one administrative action recorded for accountability,
-// mirroring the reference implementation's audit facility.
+// mirroring the the mail stack's audit facility.
 type AuditLog struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	CreatedAt time.Time `json:"created_at"`
@@ -13,3 +13,4 @@ type AuditLog struct {
 	Path      string    `gorm:"size:255;not null" json:"path"`
 	Status    int       `gorm:"not null" json:"status"`
 }
+

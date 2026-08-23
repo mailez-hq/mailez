@@ -142,7 +142,7 @@ func loadNginxConfig() (NginxConfig, error) {
 }
 
 // applyProxyProtocol reproduces the PROXY_PROTOCOL handling from
-// socrate/system.py clean_env().
+// the legacy launcher's env cleanup.
 func applyProxyProtocol(cfg *NginxConfig) {
 	set := func(port string, v bool) {
 		switch port {
@@ -323,3 +323,4 @@ func contains(list []string, s string) bool {
 	}
 	return false
 }
+

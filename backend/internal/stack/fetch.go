@@ -17,7 +17,7 @@ func (h *Handler) registerFetch(r fiber.Router) {
 	r.Post("/fetch/:id", h.fetchDone)
 }
 
-// fetchList mirrors the reference implementation's /internal/fetch: the fetchmail poller reads the
+// fetchList mirrors the the mail stack's /internal/fetch: the fetchmail poller reads the
 // full account list here, with passwords decrypted for runtime use.
 func (h *Handler) fetchList(c *fiber.Ctx) error {
 	var fetches []models.Fetch
@@ -56,7 +56,7 @@ func decryptFetchPassword(secret, stored string) string {
 	return stored
 }
 
-// fetchDone mirrors the reference implementation's POST /internal/fetch/<id>: the poller reports the
+// fetchDone mirrors the the mail stack's POST /internal/fetch/<id>: the poller reports the
 // run outcome; the JSON body is persisted as the error message together with
 // the check timestamp.
 func (h *Handler) fetchDone(c *fiber.Ctx) error {
@@ -84,3 +84,4 @@ func (h *Handler) fetchDone(c *fiber.Ctx) error {
 	}
 	return c.SendStatus(fiber.StatusOK)
 }
+

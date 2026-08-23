@@ -1,4 +1,4 @@
-// mailstack-agent replaces the Python start.py scripts in the mailez
+// mailstack-agent drives each mail-stack container in the mailez
 // mail-stack containers with a single static Go binary.
 package main
 
@@ -43,3 +43,4 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "usage: mailstack-agent <component>")
 	fmt.Fprintln(os.Stderr, "components: unbound nginx dovecot postfix rspamd oletools")
 }
+

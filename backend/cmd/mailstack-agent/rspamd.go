@@ -26,7 +26,7 @@ func runRspamd() error {
 	}
 
 	// /overrides/* that do not collide with rendered configs are copied into
-	// local.d (start.py did the same with shutil.copyfile).
+	// local.d (the legacy launcher did the same with shutil.copyfile).
 	configNames := map[string]bool{}
 	for dest := range files {
 		configNames[filepath.Base(dest)] = true
@@ -99,7 +99,7 @@ func runRspamd() error {
 }
 
 // installDmarcCron writes the daily DMARC report job and starts crond
-// (start.py's DMARC_SEND_REPORTS branch).
+// (the legacy launcher's DMARC_SEND_REPORTS branch).
 func installDmarcCron() error {
 	script := "#!/bin/sh\n# Send DMARC reports for yesterday\nsu rspamd -s /bin/sh -c \"/usr/bin/rspamadm dmarc_report $(date -d @$(($(date +%s)-86400)) +%Y%m%d)\" >>/proc/1/fd/1 2>&1\n"
 	if err := agent.AtomicWrite("/etc/periodic/daily/dmarc-reports", []byte(script), 0o755); err != nil {
@@ -135,3 +135,4 @@ func lookupIDs(u *user.User) (int, int) {
 	fmt.Sscanf(u.Gid, "%d", &gid)
 	return uid, gid
 }
+

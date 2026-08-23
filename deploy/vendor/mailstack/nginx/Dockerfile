@@ -1,7 +1,6 @@
 # syntax=docker/dockerfile-upstream:1.4.3
 
-# Build the static mailstack-agent (M2 nginx agent, replaces start.py +
-# config.py + letsencrypt.py).
+# Build the static mailstack-agent (nginx gateway agent).
 FROM golang:1.26-alpine AS build
 ENV GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0
 WORKDIR /src
@@ -12,7 +11,7 @@ COPY backend/internal/oletools ./internal/oletools
 COPY backend/cmd/mailstack-agent ./cmd/mailstack-agent
 RUN go build -trimpath -ldflags="-s -w" -o /out/mailstack-agent ./cmd/mailstack-agent
 
-# nginx image: ACME is handled by the embedded lego client (no Python).
+# nginx image: ACME is handled by the embedded lego client.
 FROM alpine:3.21
 
 ARG VERSION
@@ -26,7 +25,7 @@ RUN set -euxo pipefail \
 
 COPY --from=build /out/mailstack-agent /mailstack-agent
 # This Dockerfile is built with the repo root as context (see
-# build-images.ps1), hence the vendored paths below.
+# build script), hence the vendored paths below.
 COPY deploy/vendor/mailstack/nginx/conf/dhparam.pem /conf/dhparam.pem
 COPY deploy/vendor/mailstack/nginx/static/ /static/
 
