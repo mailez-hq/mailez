@@ -18,12 +18,12 @@ import (
 )
 
 func TestDovecotRender(t *testing.T) {
-	t.Setenv("HOSTNAMES", "mail.example.com")
-	t.Setenv("DOMAIN", "example.com")
-	t.Setenv("POSTMASTER", "postmaster")
-	t.Setenv("SUBNET", "192.168.206.0/24")
-	t.Setenv("FULL_TEXT_SEARCH", "en,fr")
-	t.Setenv("COMPRESSION", "zstd")
+	t.Setenv("MAILEZ_HOSTNAMES", "mail.example.com")
+	t.Setenv("MAILEZ_DOMAIN", "example.com")
+	t.Setenv("MAILEZ_POSTMASTER", "postmaster")
+	t.Setenv("MAILEZ_SUBNET", "192.168.206.0/24")
+	t.Setenv("MAILEZ_FTS", "en,fr")
+	t.Setenv("MAILEZ_COMPRESSION", "zstd")
 
 	cfg, err := loadDovecotConfig()
 	if err != nil {
@@ -80,7 +80,7 @@ func TestDictProtocol(t *testing.T) {
 	defer srv.Close()
 
 	handler := agent.NewDictHandler(map[string]string{
-		"auth": srv.URL + "/internal/dovecot/{}",
+		"auth": srv.URL + "/stack/dovecot/{}",
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -111,7 +111,7 @@ func TestDictProtocol(t *testing.T) {
 	if line != "O{\"value\":\"ok\"}\n" {
 		t.Fatalf("lookup reply wrong: %q (path=%s)", line, gotPath)
 	}
-	if gotPath != "/internal/dovecot/quota/user@example.com/user@example.com" {
+	if gotPath != "/stack/dovecot/quota/user@example.com/user@example.com" {
 		t.Fatalf("priv lookup path wrong: %s", gotPath)
 	}
 
@@ -120,7 +120,7 @@ func TestDictProtocol(t *testing.T) {
 	if line != "O{\"value\":\"ok\"}\n" {
 		t.Fatalf("passdb lookup reply wrong: %q", line)
 	}
-	if gotPath != "/internal/dovecot/passdb/e2e@example.com" {
+	if gotPath != "/stack/dovecot/passdb/e2e@example.com" {
 		t.Fatalf("passdb lookup path wrong: %s", gotPath)
 	}
 
@@ -129,7 +129,7 @@ func TestDictProtocol(t *testing.T) {
 	if line != "O{\"value\":\"ok\"}\n" {
 		t.Fatalf("userdb lookup reply wrong: %q", line)
 	}
-	if gotPath != "/internal/dovecot/userdb/e2e@example.com" {
+	if gotPath != "/stack/dovecot/userdb/e2e@example.com" {
 		t.Fatalf("userdb lookup path wrong: %s", gotPath)
 	}
 
@@ -138,7 +138,7 @@ func TestDictProtocol(t *testing.T) {
 	if line != "O{\"value\":\"ok\"}\n" {
 		t.Fatalf("sieve name lookup reply wrong: %q", line)
 	}
-	if gotPath != "/internal/dovecot/sieve/name/default/e2e@example.com" {
+	if gotPath != "/stack/dovecot/sieve/name/default/e2e@example.com" {
 		t.Fatalf("sieve name path wrong: %s", gotPath)
 	}
 
@@ -149,7 +149,7 @@ func TestDictProtocol(t *testing.T) {
 	if line != "O{\"value\":\"ok\"}\n" {
 		t.Fatalf("sieve data lookup reply wrong: %q", line)
 	}
-	if gotPath != "/internal/dovecot/sieve/data/default/e2e@example.com" {
+	if gotPath != "/stack/dovecot/sieve/data/default/e2e@example.com" {
 		t.Fatalf("sieve data path wrong: %s", gotPath)
 	}
 

@@ -17,15 +17,15 @@ import (
 )
 
 func TestPostfixRender(t *testing.T) {
-	t.Setenv("HOSTNAMES", "mail.example.com")
-	t.Setenv("DOMAIN", "example.com")
-	t.Setenv("SUBNET", "192.168.206.0/24")
-	t.Setenv("SUBNET6", "fdc4:f303:9324::254/64")
-	t.Setenv("RELAYNETS", "10.0.0.0/8,fd00::/8")
-	t.Setenv("RELAYHOST", "relay.example.net")
-	t.Setenv("RELAYUSER", "relayuser")
-	t.Setenv("DEFER_ON_TLS_ERROR", "true")
-	t.Setenv("REJECT_UNLISTED_RECIPIENT", "yes")
+	t.Setenv("MAILEZ_HOSTNAMES", "mail.example.com")
+	t.Setenv("MAILEZ_DOMAIN", "example.com")
+	t.Setenv("MAILEZ_SUBNET", "192.168.206.0/24")
+	t.Setenv("MAILEZ_SUBNET6", "fdc4:f303:9324::254/64")
+	t.Setenv("MAILEZ_RELAYNETS", "10.0.0.0/8,fd00::/8")
+	t.Setenv("MAILEZ_RELAYHOST", "relay.example.net")
+	t.Setenv("MAILEZ_RELAYUSER", "relayuser")
+	t.Setenv("MAILEZ_DEFER_ON_TLS_ERROR", "true")
+	t.Setenv("MAILEZ_REJECT_UNLISTED_RECIPIENT", "yes")
 
 	cfg, err := loadPostfixConfig()
 	if err != nil {
@@ -75,9 +75,9 @@ func TestPostfixRender(t *testing.T) {
 }
 
 func TestPostfixRenderNotlsDefaults(t *testing.T) {
-	t.Setenv("HOSTNAMES", "mail.example.com")
-	t.Setenv("SUBNET", "192.168.206.0/24")
-	t.Setenv("DEFER_ON_TLS_ERROR", "false")
+	t.Setenv("MAILEZ_HOSTNAMES", "mail.example.com")
+	t.Setenv("MAILEZ_SUBNET", "192.168.206.0/24")
+	t.Setenv("MAILEZ_DEFER_ON_TLS_ERROR", "false")
 	cfg, err := loadPostfixConfig()
 	if err != nil {
 		t.Fatalf("load: %v", err)
@@ -118,7 +118,7 @@ func TestPostfixSocketmapProtocol(t *testing.T) {
 	sock := filepath.Join(t.TempDir(), "mailez.socket")
 	urlFor := func(table, key string) string {
 		if suffix, ok := postfixTables[table]; ok {
-			return srv.URL + "/internal/postfix/" + suffix + key
+			return srv.URL + "/stack/postfix/" + suffix + key
 		}
 		return ""
 	}
@@ -156,7 +156,7 @@ func TestPostfixSocketmapProtocol(t *testing.T) {
 	if got := send("alias team@example.com"); got != "OK team@example.com" {
 		t.Fatalf("alias reply wrong: %q (path=%s)", got, gotPath)
 	}
-	if gotPath != "/internal/postfix/alias/team@example.com" {
+	if gotPath != "/stack/postfix/alias/team@example.com" {
 		t.Fatalf("alias path wrong: %s", gotPath)
 	}
 	if got := send("recipientmap SRS0+xxx=xx=example.com=alice@example.com"); got != "OK ok" {

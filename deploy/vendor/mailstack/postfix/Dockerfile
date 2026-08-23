@@ -25,7 +25,7 @@ COPY --from=build /out/mailstack-agent /mailstack-agent
 
 RUN echo $VERSION >/version
 
-#EXPOSE 25/tcp 10025/tcp
+#EXPOSE 25/tcp 1587/tcp
 HEALTHCHECK --start-period=30s CMD ! /usr/libexec/postfix/master -t
 
 VOLUME ["/queue"]

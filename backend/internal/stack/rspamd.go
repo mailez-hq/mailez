@@ -15,7 +15,7 @@ func (h *Handler) registerRspamd(r fiber.Router) {
 }
 
 // rspamdDkimKey serves the rspamd vault DKIM lookup
-// (/internal/rspamd/vault/v1/dkim/<domain>).
+// (/stack/rspamd/vault/v1/dkim/<domain>).
 // Always 200: selectors stay empty unless the queried domain (or an
 // alternative's canonical domain) carries a DKIM key. Alternatives inherit the
 // key and advertise the queried (alternative) name.

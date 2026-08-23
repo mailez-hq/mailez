@@ -17,17 +17,15 @@ func runNginx() error {
 		return err
 	}
 
-	// Rebuild nginx/DANE chains from the ACME fullchains (letsencrypt only).
-	if cfg.TLSFlavor == "letsencrypt" || cfg.TLSFlavor == "mail-letsencrypt" {
+	// Rebuild the nginx chains from the ACME fullchains (letsencrypt only).
+	if cfg.TLSFlavor == "letsencrypt" {
 		type chainFile struct {
 			src, dst string
 			strip    bool
 		}
 		for _, f := range []chainFile{
 			{"/certs/letsencrypt/live/mailez/fullchain.pem", "/certs/letsencrypt/live/mailez/nginx-chain.pem", true},
-			{"/certs/letsencrypt/live/mailez/fullchain.pem", "/certs/letsencrypt/live/mailez/DANE-chain.pem", false},
 			{"/certs/letsencrypt/live/mailez-ecdsa/fullchain.pem", "/certs/letsencrypt/live/mailez-ecdsa/nginx-chain.pem", true},
-			{"/certs/letsencrypt/live/mailez-ecdsa/fullchain.pem", "/certs/letsencrypt/live/mailez-ecdsa/DANE-chain.pem", false},
 		} {
 			if err := formatForNginx(f.src, f.dst, f.strip); err != nil {
 				return err
@@ -47,7 +45,7 @@ func runNginx() error {
 		fmt.Fprintf(os.Stderr, "nginx: dovecot proxy failed to start: %v\n", err)
 	}
 
-	if cfg.TLSFlavor == "letsencrypt" || cfg.TLSFlavor == "mail-letsencrypt" {
+	if cfg.TLSFlavor == "letsencrypt" {
 		go acmeLoop(cfg)
 	}
 
@@ -58,7 +56,7 @@ func runNginx() error {
 }
 
 func cfgHostnames() string {
-	return agent.Getenv("HOSTNAMES", "")
+	return agent.Getenv("MAILEZ_HOSTNAMES", "")
 }
 
 func regenerateChains() error {
@@ -67,9 +65,7 @@ func regenerateChains() error {
 		strip    bool
 	}{
 		{"/certs/letsencrypt/live/mailez/fullchain.pem", "/certs/letsencrypt/live/mailez/nginx-chain.pem", true},
-		{"/certs/letsencrypt/live/mailez/fullchain.pem", "/certs/letsencrypt/live/mailez/DANE-chain.pem", false},
 		{"/certs/letsencrypt/live/mailez-ecdsa/fullchain.pem", "/certs/letsencrypt/live/mailez-ecdsa/nginx-chain.pem", true},
-		{"/certs/letsencrypt/live/mailez-ecdsa/fullchain.pem", "/certs/letsencrypt/live/mailez-ecdsa/DANE-chain.pem", false},
 	} {
 		if err := formatForNginx(f.src, f.dst, f.strip); err != nil {
 			return err

@@ -1,6 +1,6 @@
 package stack
 
-// Contract tests for the /internal API consumed by the mail stack (postfix /
+// Contract tests for the /stack API consumed by the mail stack (postfix /
 // dovecot / nginx). The response formats below must stay byte-compatible with
 // the internal API contract, so these tests pin the exact wire contract
 // (status codes, JSON quoting, list formatting).
@@ -71,7 +71,7 @@ func newContractHarness(t *testing.T) (*Handler, *fiber.App) {
 	mgr := auth.NewManager(db, auth.NewMemoryStore(), "mailez_session", time.Hour)
 	h := New(db, mgr, cfg, nil)
 	app := fiber.New()
-	h.Register(app.Group("/internal"))
+	h.Register(app.Group("/stack"))
 	return h, app
 }
 
@@ -195,14 +195,14 @@ func TestAuthContract(t *testing.T) {
 	ctx := context.Background()
 
 	// --- /internal/auth/user (SSO gate for webmail) ---
-	if code, _, _ := doAuthReq(t, app, "/internal/auth/user", nil); code != 403 {
+	if code, _, _ := doAuthReq(t, app, "/stack/auth/user", nil); code != 403 {
 		t.Fatalf("auth/user no session: got %d", code)
 	}
 	sid, err := h.Auth.CreateSession(ctx, "alice@example.com")
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
-	code, headers, _ := doAuthReq(t, app, "/internal/auth/user", map[string]string{
+	code, headers, _ := doAuthReq(t, app, "/stack/auth/user", map[string]string{
 		"Cookie": h.Auth.SessionName + "=" + sid,
 	})
 	if code != 200 || headers.Get("X-User") != "alice@example.com" {
@@ -215,14 +215,14 @@ func TestAuthContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create disabled session: %v", err)
 	}
-	if code, _, _ := doAuthReq(t, app, "/internal/auth/user", map[string]string{
+	if code, _, _ := doAuthReq(t, app, "/stack/auth/user", map[string]string{
 		"Cookie": h.Auth.SessionName + "=" + deadSid,
 	}); code != 403 {
 		t.Fatalf("auth/user disabled: got %d", code)
 	}
 
 	// --- /internal/auth/admin ---
-	if code, _, _ := doAuthReq(t, app, "/internal/auth/admin", map[string]string{
+	if code, _, _ := doAuthReq(t, app, "/stack/auth/admin", map[string]string{
 		"Cookie": h.Auth.SessionName + "=" + sid,
 	}); code != 200 {
 		t.Fatalf("auth/admin admin session: got %d", code)
@@ -231,7 +231,7 @@ func TestAuthContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create bob session: %v", err)
 	}
-	if code, _, _ := doAuthReq(t, app, "/internal/auth/admin", map[string]string{
+	if code, _, _ := doAuthReq(t, app, "/stack/auth/admin", map[string]string{
 		"Cookie": h.Auth.SessionName + "=" + bobSid,
 	}); code != 403 {
 		t.Fatalf("auth/admin non-admin: got %d", code)
@@ -241,20 +241,20 @@ func TestAuthContract(t *testing.T) {
 	basic := func(user, pw string) string {
 		return "Basic " + base64.StdEncoding.EncodeToString([]byte(user+":"+pw))
 	}
-	if code, headers, _ := doAuthReq(t, app, "/internal/auth/basic", map[string]string{
+	if code, headers, _ := doAuthReq(t, app, "/stack/auth/basic", map[string]string{
 		"Authorization": basic("alice@example.com", "secret123"),
 	}); code != 200 || headers.Get("X-User") != "alice@example.com" {
 		t.Fatalf("auth/basic ok: got %d X-User=%q", code, headers.Get("X-User"))
 	}
-	if code, _, _ := doAuthReq(t, app, "/internal/auth/basic", map[string]string{
+	if code, _, _ := doAuthReq(t, app, "/stack/auth/basic", map[string]string{
 		"Authorization": basic("alice@example.com", "wrong"),
 	}); code != 401 {
 		t.Fatalf("auth/basic wrong pw: got %d", code)
 	}
-	if code, headers, _ := doAuthReq(t, app, "/internal/auth/basic", nil); code != 401 || headers.Get("WWW-Authenticate") == "" {
+	if code, headers, _ := doAuthReq(t, app, "/stack/auth/basic", nil); code != 401 || headers.Get("WWW-Authenticate") == "" {
 		t.Fatalf("auth/basic missing header: got %d", code)
 	}
-	if code, _, _ := doAuthReq(t, app, "/internal/auth/basic", map[string]string{
+	if code, _, _ := doAuthReq(t, app, "/stack/auth/basic", map[string]string{
 		"Authorization": basic("deactivated@example.com", "secret123"),
 	}); code != 401 {
 		t.Fatalf("auth/basic disabled: got %d", code)
@@ -270,7 +270,7 @@ func TestAuthContract(t *testing.T) {
 	}
 
 	// Incoming (unauthenticated) SMTP is routed, not rejected.
-	code, headers, _ = doAuthReq(t, app, "/internal/auth/email", map[string]string{
+	code, headers, _ = doAuthReq(t, app, "/stack/auth/email", map[string]string{
 		"Auth-Method": "none", "Auth-Protocol": "smtp",
 	})
 	if code != 200 || headers.Get("Auth-Status") != "OK" || headers.Get("Auth-Port") != "25" {
@@ -278,17 +278,17 @@ func TestAuthContract(t *testing.T) {
 	}
 
 	// Plain submission with the mailbox password.
-	code, headers, _ = doAuthReq(t, app, "/internal/auth/email", mailHeaders(map[string]string{
+	code, headers, _ = doAuthReq(t, app, "/stack/auth/email", mailHeaders(map[string]string{
 		"Auth-User": "alice@example.com", "Auth-Pass": "secret123",
 	}))
 	if code != 200 || headers.Get("Auth-Status") != "OK" ||
-		headers.Get("Auth-Server") != "127.0.0.1" || headers.Get("Auth-Port") != "10025" {
+		headers.Get("Auth-Server") != "127.0.0.1" || headers.Get("Auth-Port") != "1587" {
 		t.Fatalf("auth/email ok: got %d %q server=%q port=%q", code,
 			headers.Get("Auth-Status"), headers.Get("Auth-Server"), headers.Get("Auth-Port"))
 	}
 
 	// Bad password keeps the 200 envelope but reports the SMTP error code.
-	code, headers, _ = doAuthReq(t, app, "/internal/auth/email", mailHeaders(map[string]string{
+	code, headers, _ = doAuthReq(t, app, "/stack/auth/email", mailHeaders(map[string]string{
 		"Auth-User": "alice@example.com", "Auth-Pass": "wrong",
 	}))
 	if code != 200 || headers.Get("Auth-Status") != "Authentication credentials invalid" ||
@@ -299,7 +299,7 @@ func TestAuthContract(t *testing.T) {
 	}
 
 	// Unknown users are flagged for postfix.
-	code, headers, _ = doAuthReq(t, app, "/internal/auth/email", mailHeaders(map[string]string{
+	code, headers, _ = doAuthReq(t, app, "/stack/auth/email", mailHeaders(map[string]string{
 		"Auth-User": "nobody@example.com", "Auth-Pass": "secret123",
 	}))
 	if code != 200 || headers.Get("Auth-User-Exists") != "False" {
@@ -307,7 +307,7 @@ func TestAuthContract(t *testing.T) {
 	}
 
 	// Disabled accounts are rejected even with the right password.
-	code, headers, _ = doAuthReq(t, app, "/internal/auth/email", mailHeaders(map[string]string{
+	code, headers, _ = doAuthReq(t, app, "/stack/auth/email", mailHeaders(map[string]string{
 		"Auth-User": "deactivated@example.com", "Auth-Pass": "secret123",
 	}))
 	if code != 200 || headers.Get("Auth-Status") != "Authentication credentials invalid" {
@@ -319,8 +319,8 @@ func TestAuthContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create temp token: %v", err)
 	}
-	code, headers, _ = doAuthReq(t, app, "/internal/auth/email", map[string]string{
-		"Auth-Method": "plain", "Auth-Protocol": "imap", "Auth-Port": "10143",
+	code, headers, _ = doAuthReq(t, app, "/stack/auth/email", map[string]string{
+		"Auth-Method": "plain", "Auth-Protocol": "imap", "Auth-Port": "1143",
 		"Auth-User": "alice@example.com", "Auth-Pass": tok,
 	})
 	if code != 200 || headers.Get("Auth-Status") != "OK" {
@@ -336,7 +336,7 @@ func TestAuthContract(t *testing.T) {
 	if err := db.Create(&models.Token{UserEmail: "alice@example.com", Password: appHash}).Error; err != nil {
 		t.Fatalf("seed app token: %v", err)
 	}
-	code, headers, _ = doAuthReq(t, app, "/internal/auth/email", mailHeaders(map[string]string{
+	code, headers, _ = doAuthReq(t, app, "/stack/auth/email", mailHeaders(map[string]string{
 		"Auth-User": "alice@example.com", "Auth-Pass": appToken,
 	}))
 	if code != 200 || headers.Get("Auth-Status") != "OK" {
@@ -344,7 +344,7 @@ func TestAuthContract(t *testing.T) {
 	}
 
 	// POP3 is denied when the user has it disabled.
-	code, headers, _ = doAuthReq(t, app, "/internal/auth/email", map[string]string{
+	code, headers, _ = doAuthReq(t, app, "/stack/auth/email", map[string]string{
 		"Auth-Method": "plain", "Auth-Protocol": "pop3",
 		"Auth-User": "bob@example.com", "Auth-Pass": "secret123",
 	})
@@ -353,7 +353,7 @@ func TestAuthContract(t *testing.T) {
 	}
 
 	// Unsupported auth methods are a hard failure.
-	if code, _, _ := doAuthReq(t, app, "/internal/auth/email", map[string]string{
+	if code, _, _ := doAuthReq(t, app, "/stack/auth/email", map[string]string{
 		"Auth-Method": "garbage", "Auth-Protocol": "imap",
 		"Auth-User": "alice@example.com", "Auth-Pass": "secret123",
 	}); code != 500 {
@@ -365,16 +365,16 @@ func TestPostfixDomainContract(t *testing.T) {
 	h, app := newContractHarness(t)
 	seedContractData(t, h)
 
-	if code, body := doGet(t, app, "/internal/postfix/domain/example.com"); code != 200 || body != `"example.com"` {
+	if code, body := doGet(t, app, "/stack/postfix/domain/example.com"); code != 200 || body != `"example.com"` {
 		t.Fatalf("domain: got %d %q", code, body)
 	}
-	if code, body := doGet(t, app, "/internal/postfix/domain/alt.example.com"); code != 200 || body != `"example.com"` {
+	if code, body := doGet(t, app, "/stack/postfix/domain/alt.example.com"); code != 200 || body != `"example.com"` {
 		t.Fatalf("alternative: got %d %q", code, body)
 	}
-	if code, _ := doGet(t, app, "/internal/postfix/domain/%5B1.2.3.4%5D"); code != 404 {
+	if code, _ := doGet(t, app, "/stack/postfix/domain/%5B1.2.3.4%5D"); code != 404 {
 		t.Fatalf("bracketed domain: got %d", code)
 	}
-	if code, _ := doGet(t, app, "/internal/postfix/domain/unknown.example.com"); code != 404 {
+	if code, _ := doGet(t, app, "/stack/postfix/domain/unknown.example.com"); code != 404 {
 		t.Fatalf("unknown domain: got %d", code)
 	}
 }
@@ -383,10 +383,10 @@ func TestPostfixMailboxContract(t *testing.T) {
 	h, app := newContractHarness(t)
 	seedContractData(t, h)
 
-	if code, body := doGet(t, app, "/internal/postfix/mailbox/alice@example.com"); code != 200 || body != `"alice@example.com"` {
+	if code, body := doGet(t, app, "/stack/postfix/mailbox/alice@example.com"); code != 200 || body != `"alice@example.com"` {
 		t.Fatalf("mailbox: got %d %q", code, body)
 	}
-	if code, _ := doGet(t, app, "/internal/postfix/mailbox/nobody@example.com"); code != 404 {
+	if code, _ := doGet(t, app, "/stack/postfix/mailbox/nobody@example.com"); code != 404 {
 		t.Fatalf("missing mailbox: got %d", code)
 	}
 }
@@ -399,12 +399,12 @@ func TestPostfixAliasContract(t *testing.T) {
 		path string
 		want string
 	}{
-		{"/internal/postfix/alias/team@example.com", `"alice@example.com,bob@example.com"`},
-		{"/internal/postfix/alias/team+detail@example.com", `"alice+detail@example.com,bob+detail@example.com"`},
-		{"/internal/postfix/alias/team%2Bdetail@example.com", `"alice+detail@example.com,bob+detail@example.com"`},
-		{"/internal/postfix/alias/alice@example.com", `"alice@example.com"`},
-		{"/internal/postfix/alias/example.com", `"example.com"`},
-		{"/internal/postfix/alias/wildcard@example.com", `"alice@example.com"`},
+		{"/stack/postfix/alias/team@example.com", `"alice@example.com,bob@example.com"`},
+		{"/stack/postfix/alias/team+detail@example.com", `"alice+detail@example.com,bob+detail@example.com"`},
+		{"/stack/postfix/alias/team%2Bdetail@example.com", `"alice+detail@example.com,bob+detail@example.com"`},
+		{"/stack/postfix/alias/alice@example.com", `"alice@example.com"`},
+		{"/stack/postfix/alias/example.com", `"example.com"`},
+		{"/stack/postfix/alias/wildcard@example.com", `"alice@example.com"`},
 	}
 	for _, c := range cases {
 		if code, body := doGet(t, app, c.path); code != 200 || body != c.want {
@@ -413,9 +413,9 @@ func TestPostfixAliasContract(t *testing.T) {
 	}
 
 	for _, path := range []string{
-		"/internal/postfix/alias/nobody@unknown.example.com",
-		"/internal/postfix/alias/%22quoted%22@example.com",
-		"/internal/postfix/alias/a%40b@example.com",
+		"/stack/postfix/alias/nobody@unknown.example.com",
+		"/stack/postfix/alias/%22quoted%22@example.com",
+		"/stack/postfix/alias/a%40b@example.com",
 	} {
 		if code, _ := doGet(t, app, path); code != 404 {
 			t.Errorf("%s: got %d, want 404", path, code)
@@ -431,9 +431,9 @@ func TestPostfixTransportContract(t *testing.T) {
 		path string
 		want string
 	}{
-		{"/internal/postfix/transport/alice@relay.example.com", `"smtp:[relay.example.com]:2525"`},
-		{"/internal/postfix/transport/alice@mxrelay.example.com", `"smtp:mxrelay.example.com"`},
-		{"/internal/postfix/transport/alice@lmtprelay.example.com", `"lmtp:imap.example.com:2525"`},
+		{"/stack/postfix/transport/alice@relay.example.com", `"smtp:[relay.example.com]:2525"`},
+		{"/stack/postfix/transport/alice@mxrelay.example.com", `"smtp:mxrelay.example.com"`},
+		{"/stack/postfix/transport/alice@lmtprelay.example.com", `"lmtp:imap.example.com:2525"`},
 	}
 	for _, c := range cases {
 		if code, body := doGet(t, app, c.path); code != 200 || body != c.want {
@@ -442,8 +442,8 @@ func TestPostfixTransportContract(t *testing.T) {
 	}
 
 	for _, path := range []string{
-		"/internal/postfix/transport/alice@unknown.example.com",
-		"/internal/postfix/transport/*",
+		"/stack/postfix/transport/alice@unknown.example.com",
+		"/stack/postfix/transport/*",
 	} {
 		if code, _ := doGet(t, app, path); code != 404 {
 			t.Errorf("%s: got %d, want 404", path, code)
@@ -455,7 +455,7 @@ func TestPostfixSenderLoginContract(t *testing.T) {
 	h, app := newContractHarness(t)
 	seedContractData(t, h)
 
-	code, body := doGet(t, app, "/internal/postfix/sender/login/alice@example.com")
+	code, body := doGet(t, app, "/stack/postfix/sender/login/alice@example.com")
 	if code != 200 {
 		t.Fatalf("sender login: got %d", code)
 	}
@@ -467,7 +467,7 @@ func TestPostfixSenderLoginContract(t *testing.T) {
 
 	// A localpart nobody owns still lists the spoofers of the domain
 	// (isolated on a domain without wildcard aliases).
-	code, body = doGet(t, app, "/internal/postfix/sender/login/anyone@spoof.example.com")
+	code, body = doGet(t, app, "/stack/postfix/sender/login/anyone@spoof.example.com")
 	if code != 200 {
 		t.Fatalf("sender login (spoof): got %d", code)
 	}
@@ -476,7 +476,7 @@ func TestPostfixSenderLoginContract(t *testing.T) {
 		t.Fatalf("sender login (spoof): got %v, want [carol@spoof.example.com]", got)
 	}
 
-	if code, _ := doGet(t, app, "/internal/postfix/sender/login/nobody@unknown.example.com"); code != 404 {
+	if code, _ := doGet(t, app, "/stack/postfix/sender/login/nobody@unknown.example.com"); code != 404 {
 		t.Fatalf("sender login unknown: got %d", code)
 	}
 }
@@ -498,15 +498,15 @@ func TestPostfixSRSAndRateContract(t *testing.T) {
 	seedContractData(t, h)
 
 	// Non-SRS recipients and served-domain senders are not rewritten.
-	if code, _ := doGet(t, app, "/internal/postfix/recipient/map/alice@example.com"); code != 404 {
+	if code, _ := doGet(t, app, "/stack/postfix/recipient/map/alice@example.com"); code != 404 {
 		t.Errorf("recipient/map plain: got %d, want 404", code)
 	}
-	if code, _ := doGet(t, app, "/internal/postfix/sender/map/alice@example.com"); code != 404 {
+	if code, _ := doGet(t, app, "/stack/postfix/sender/map/alice@example.com"); code != 404 {
 		t.Errorf("sender/map served domain: got %d, want 404", code)
 	}
 
 	// External sender is SRS-rewritten, then the recipient map restores it.
-	code, body := doGet(t, app, "/internal/postfix/sender/map/john@example.org")
+	code, body := doGet(t, app, "/stack/postfix/sender/map/john@example.org")
 	if code != 200 || !strings.Contains(body, "SRS0=") {
 		t.Fatalf("sender/map external: got %d %q", code, body)
 	}
@@ -514,17 +514,17 @@ func TestPostfixSRSAndRateContract(t *testing.T) {
 	if err := json.Unmarshal([]byte(body), &srs); err != nil {
 		t.Fatalf("sender/map unmarshal: %v", err)
 	}
-	code, body = doGet(t, app, "/internal/postfix/recipient/map/"+srs)
+	code, body = doGet(t, app, "/stack/postfix/recipient/map/"+srs)
 	if code != 200 || body != `"john@example.org"` {
 		t.Fatalf("recipient/map SRS: got %d %q", code, body)
 	}
 
 	// Rate endpoint answers 404 while under the limit (postfix treats a hit
 	// as a temporary failure only when the JSON smtp code is returned).
-	if code, _ := doGet(t, app, "/internal/postfix/sender/rate/alice@example.com"); code != 404 {
+	if code, _ := doGet(t, app, "/stack/postfix/sender/rate/alice@example.com"); code != 404 {
 		t.Errorf("sender/rate under limit: got %d, want 404", code)
 	}
-	if code, _ := doGet(t, app, "/internal/postfix/sender/rate/nobody@example.com"); code != 404 {
+	if code, _ := doGet(t, app, "/stack/postfix/sender/rate/nobody@example.com"); code != 404 {
 		t.Errorf("sender/rate unknown: got %d, want 404", code)
 	}
 }
@@ -533,20 +533,20 @@ func TestDovecotContract(t *testing.T) {
 	h, app := newContractHarness(t)
 	seedContractData(t, h)
 
-	if code, body := doGet(t, app, "/internal/dovecot/passdb/alice@example.com"); code != 200 ||
+	if code, body := doGet(t, app, "/stack/dovecot/passdb/alice@example.com"); code != 200 ||
 		body != `{"allow_real_nets":"192.168.206.0/24","nopassword":"Y","password":null}` {
 		t.Fatalf("passdb: got %d %q", code, body)
 	}
-	if code, body := doGet(t, app, "/internal/dovecot/userdb/alice@example.com"); code != 200 ||
+	if code, body := doGet(t, app, "/stack/dovecot/userdb/alice@example.com"); code != 200 ||
 		body != `{"quota_rule":"*:bytes=1000000000"}` {
 		t.Fatalf("userdb: got %d %q", code, body)
 	}
-	if code, _ := doGet(t, app, "/internal/dovecot/passdb/nobody@example.com"); code != 404 {
+	if code, _ := doGet(t, app, "/stack/dovecot/passdb/nobody@example.com"); code != 404 {
 		t.Fatalf("passdb missing: got %d", code)
 	}
 
 	// userdb iteration: set equality (SQL order is not guaranteed).
-	code, body := doGet(t, app, "/internal/dovecot/userdb/")
+	code, body := doGet(t, app, "/stack/dovecot/userdb/")
 	if code != 200 {
 		t.Fatalf("userdb list: got %d", code)
 	}
@@ -560,7 +560,7 @@ func TestDovecotContract(t *testing.T) {
 	}
 
 	// quota report is persisted.
-	if code, body := doPost(t, app, "/internal/dovecot/quota/bytes/alice@example.com", "2048"); code != 200 {
+	if code, body := doPost(t, app, "/stack/dovecot/quota/bytes/alice@example.com", "2048"); code != 200 {
 		t.Fatalf("quota report: got %d %q", code, body)
 	}
 	var u models.User
@@ -571,10 +571,10 @@ func TestDovecotContract(t *testing.T) {
 		t.Fatalf("quota persisted: got %d", u.QuotaBytesUsed)
 	}
 
-	if code, body := doGet(t, app, "/internal/dovecot/sieve/name/default/alice@example.com"); code != 200 || body != `"default"` {
+	if code, body := doGet(t, app, "/stack/dovecot/sieve/name/default/alice@example.com"); code != 200 || body != `"default"` {
 		t.Fatalf("sieve name: got %d %q", code, body)
 	}
-	code, body = doGet(t, app, "/internal/dovecot/sieve/data/default/alice@example.com")
+	code, body = doGet(t, app, "/stack/dovecot/sieve/data/default/alice@example.com")
 	if code != 200 {
 		t.Fatalf("sieve data: got %d", code)
 	}
@@ -584,6 +584,44 @@ func TestDovecotContract(t *testing.T) {
 	}
 	if !strings.Contains(script, `require "vacation";`) || !strings.Contains(script, `fileinto :create "Junk";`) {
 		t.Fatalf("sieve data missing expected rules:\n%s", script)
+	}
+}
+
+// TestDovecotSieveWhitelistBlacklist pins the generated sieve rules for a
+// user with whitelist/blacklist entries (mixed domains and full addresses).
+func TestDovecotSieveWhitelistBlacklist(t *testing.T) {
+	h, app := newContractHarness(t)
+	seedContractData(t, h)
+
+	var u models.User
+	if err := h.DB.First(&u, "email = ?", "alice@example.com").Error; err != nil {
+		t.Fatalf("load user: %v", err)
+	}
+	if err := h.DB.Model(&u).Updates(map[string]any{
+		"whitelist": "trusted.example.com, friend@example.net",
+		"blacklist": "spam.example.com, bad@example.net",
+	}).Error; err != nil {
+		t.Fatalf("set lists: %v", err)
+	}
+
+	_, body := doGet(t, app, "/stack/dovecot/sieve/data/default/alice@example.com")
+	var script string
+	if err := json.Unmarshal([]byte(body), &script); err != nil {
+		t.Fatalf("sieve data unmarshal: %v", err)
+	}
+	for _, want := range []string{
+		`address :domain :is "From" "trusted.example.com"`,
+		`address :is "From" "friend@example.net"`,
+		`address :domain :is "From" "spam.example.com"`,
+		`address :is "From" "bad@example.net"`,
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("sieve data missing %q:\n%s", want, script)
+		}
+	}
+	// whitelist must precede the spam filter so it bypasses Junk filing.
+	if idxW, idxS := strings.Index(script, "address :domain :is \"From\" \"trusted.example.com\""), strings.Index(script, "if spamtest"); idxW < 0 || idxS < 0 || idxW > idxS {
+		t.Fatalf("whitelist rule must appear before spamtest:\n%s", script)
 	}
 }
 
@@ -603,7 +641,7 @@ func TestRspamdContract(t *testing.T) {
 	}
 
 	// A domain with a DKIM key exposes exactly one selector.
-	code, body := doGet(t, app, "/internal/rspamd/vault/v1/dkim/example.com")
+	code, body := doGet(t, app, "/stack/rspamd/vault/v1/dkim/example.com")
 	if code != 200 || json.Unmarshal([]byte(body), &vault) != nil {
 		t.Fatalf("dkim vault: got %d %q", code, body)
 	}
@@ -616,7 +654,7 @@ func TestRspamdContract(t *testing.T) {
 	}
 
 	// An alternative inherits the canonical key but advertises its own name.
-	code, body = doGet(t, app, "/internal/rspamd/vault/v1/dkim/alt.example.com")
+	code, body = doGet(t, app, "/stack/rspamd/vault/v1/dkim/alt.example.com")
 	if code != 200 || json.Unmarshal([]byte(body), &vault) != nil {
 		t.Fatalf("dkim vault alternative: got %d %q", code, body)
 	}
@@ -629,13 +667,13 @@ func TestRspamdContract(t *testing.T) {
 	}
 
 	// Unknown domains still answer 200 with an empty selector list.
-	code, body = doGet(t, app, "/internal/rspamd/vault/v1/dkim/unknown.example.com")
+	code, body = doGet(t, app, "/stack/rspamd/vault/v1/dkim/unknown.example.com")
 	if code != 200 || json.Unmarshal([]byte(body), &vault) != nil || len(vault.Data.Selectors) != 0 {
 		t.Fatalf("dkim vault unknown: got %d %q", code, body)
 	}
 
 	// local_domains is plain text, one name per line (domains + alternatives).
-	code, body = doGet(t, app, "/internal/rspamd/local_domains")
+	code, body = doGet(t, app, "/stack/rspamd/local_domains")
 	if code != 200 {
 		t.Fatalf("local_domains: got %d", code)
 	}
@@ -667,16 +705,16 @@ func TestIDNAContract(t *testing.T) {
 
 	// Domain map answers punycode regardless of how the domain was stored or
 	// queried.
-	if code, body := doGet(t, app, "/internal/postfix/domain/"+punycode); code != 200 || body != `"`+punycode+`"` {
+	if code, body := doGet(t, app, "/stack/postfix/domain/"+punycode); code != 200 || body != `"`+punycode+`"` {
 		t.Fatalf("domain punycode: got %d %q", code, body)
 	}
-	if code, body := doGet(t, app, "/internal/postfix/domain/"+unicode); code != 200 || body != `"`+punycode+`"` {
+	if code, body := doGet(t, app, "/stack/postfix/domain/"+unicode); code != 200 || body != `"`+punycode+`"` {
 		t.Fatalf("domain unicode: got %d %q", code, body)
 	}
 
 	// rspamd vault advertises the punycode selector domain (mail-stack parity).
 	for _, q := range []string{punycode, unicode} {
-		code, body := doGet(t, app, "/internal/rspamd/vault/v1/dkim/"+q)
+		code, body := doGet(t, app, "/stack/rspamd/vault/v1/dkim/"+q)
 		if code != 200 {
 			t.Fatalf("dkim vault %s: got %d", q, code)
 		}
@@ -696,13 +734,13 @@ func TestIDNAContract(t *testing.T) {
 	}
 
 	// Alias destinations are IDNA-encoded on the wire.
-	if code, body := doGet(t, app, "/internal/postfix/alias/team@example.com"); code != 200 ||
+	if code, body := doGet(t, app, "/stack/postfix/alias/team@example.com"); code != 200 ||
 		body != `"x@`+punycode+`"` {
 		t.Fatalf("alias destination: got %d %q", code, body)
 	}
 
 	// local_domains passes through the stored names (mail-stack behaviour).
-	code, body := doGet(t, app, "/internal/rspamd/local_domains")
+	code, body := doGet(t, app, "/stack/rspamd/local_domains")
 	if code != 200 || !strings.Contains(body, "bücher.example") {
 		t.Fatalf("local_domains: got %d %q", code, body)
 	}
@@ -727,7 +765,7 @@ func TestFetchContract(t *testing.T) {
 		Password  string `json:"password"`
 	}
 
-	code, body := doGet(t, app, "/internal/fetch")
+	code, body := doGet(t, app, "/stack/fetch")
 	if code != 200 {
 		t.Fatalf("fetch list: got %d", code)
 	}
@@ -747,7 +785,7 @@ func TestFetchContract(t *testing.T) {
 	}
 
 	// The poller reports its run result back to /internal/fetch/<id>.
-	code, body = doPost(t, app, "/internal/fetch/1", `"connection refused"`)
+	code, body = doPost(t, app, "/stack/fetch/1", `"connection refused"`)
 	if code != 200 {
 		t.Fatalf("fetch done: got %d %q", code, body)
 	}
@@ -759,7 +797,7 @@ func TestFetchContract(t *testing.T) {
 		t.Fatalf("fetch done persisted: error=%q last_check=%v", reloaded.Error, reloaded.LastCheck)
 	}
 
-	if code, _ := doPost(t, app, "/internal/fetch/999", `"x"`); code != 404 {
+	if code, _ := doPost(t, app, "/stack/fetch/999", `"x"`); code != 404 {
 		t.Fatalf("fetch done unknown id: got %d", code)
 	}
 }
@@ -768,20 +806,20 @@ func TestAutoconfigContract(t *testing.T) {
 	h, app := newContractHarness(t)
 	seedContractData(t, h)
 
-	code, body := doGet(t, app, "/internal/autoconfig/mozilla")
+	code, body := doGet(t, app, "/stack/autoconfig/mozilla")
 	if code != 200 || !strings.Contains(body, "mail.example.com") || !strings.Contains(body, "%EMAILDOMAIN%") {
 		t.Fatalf("mozilla: got %d %q", code, body)
 	}
 
-	code, body = doGet(t, app, "/internal/autoconfig/microsoft.json?Protocol=Autodiscoverv1")
+	code, body = doGet(t, app, "/stack/autoconfig/microsoft.json?Protocol=Autodiscoverv1")
 	if code != 200 || !strings.Contains(body, `"Protocol":"Autodiscoverv1"`) {
 		t.Fatalf("microsoft.json: got %d %q", code, body)
 	}
-	if code, _ := doGet(t, app, "/internal/autoconfig/microsoft.json?Protocol=Other"); code != 404 {
+	if code, _ := doGet(t, app, "/stack/autoconfig/microsoft.json?Protocol=Other"); code != 404 {
 		t.Fatalf("microsoft.json other protocol: got %d", code)
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/internal/autoconfig/microsoft",
+	req := httptest.NewRequest(http.MethodPost, "/stack/autoconfig/microsoft",
 		strings.NewReader(`<?xml version="1.0"?><Autodiscover><Request><EMailAddress>alice@example.com</EMailAddress></Request></Autodiscover>`))
 	req.Header.Set("Content-Type", "application/xml")
 	resp, err := app.Test(req)
@@ -794,7 +832,7 @@ func TestAutoconfigContract(t *testing.T) {
 		t.Fatalf("microsoft POST: got %d %q", resp.StatusCode, string(b))
 	}
 
-	code, body = doGet(t, app, "/internal/autoconfig/apple")
+	code, body = doGet(t, app, "/stack/autoconfig/apple")
 	if code != 200 || !strings.Contains(body, "EmailTypeIMAP") {
 		t.Fatalf("apple: got %d %q", code, body)
 	}

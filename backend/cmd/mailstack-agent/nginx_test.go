@@ -15,23 +15,22 @@ import (
 )
 
 func TestNginxRenderNotls(t *testing.T) {
-	t.Setenv("HOSTNAMES", "mail.example.com")
-	t.Setenv("DOMAIN", "example.com")
-	t.Setenv("POSTMASTER", "postmaster")
-	t.Setenv("TLS_FLAVOR", "notls")
-	t.Setenv("BACKEND_ADDRESS", "backend")
+	t.Setenv("MAILEZ_HOSTNAMES", "mail.example.com")
+	t.Setenv("MAILEZ_DOMAIN", "example.com")
+	t.Setenv("MAILEZ_POSTMASTER", "postmaster")
+	t.Setenv("MAILEZ_TLS", "off")
+	t.Setenv("MAILEZ_BACKEND_ADDRESS", "backend")
 	t.Setenv("MAIL_FILTER_ADDRESS", "mail-filter")
-	t.Setenv("SUBNET", "192.168.206.0/24")
-	t.Setenv("RESOLVER_ADDRESS", "192.168.206.254")
-	t.Setenv("API", "true")
-	t.Setenv("WEBMAIL", "none")
+	t.Setenv("MAILEZ_SUBNET", "192.168.206.0/24")
+	t.Setenv("MAILEZ_RESOLVER_ADDRESS", "192.168.206.254")
+	t.Setenv("MAILEZ_API", "true")
 
 	cfg, err := loadNginxConfig()
 	if err != nil {
 		t.Fatalf("loadNginxConfig: %v", err)
 	}
 	if cfg.TLS != nil {
-		t.Fatalf("notls flavor must yield nil TLS, got %+v", cfg.TLS)
+		t.Fatalf("off flavor must yield nil TLS, got %+v", cfg.TLS)
 	}
 
 	files, err := renderNginxAll(cfg)
@@ -41,7 +40,7 @@ func TestNginxRenderNotls(t *testing.T) {
 	nginx := string(files["/etc/nginx/nginx.conf"])
 	for _, want := range []string{
 		"resolver ", "listen 25", "listen 80",
-		"location /internal {", "auth_http http://127.0.0.1:8000/auth/email",
+		"location /stack {", "auth_http http://127.0.0.1:8000/auth/email",
 	} {
 		if !strings.Contains(nginx, want) {
 			t.Errorf("nginx.conf missing %q", want)
@@ -49,36 +48,36 @@ func TestNginxRenderNotls(t *testing.T) {
 	}
 	for _, banned := range []string{"listen 443", "include /etc/nginx/tls.conf", "ssl_certificate"} {
 		if strings.Contains(nginx, banned) {
-			t.Errorf("nginx.conf should not contain %q in notls mode", banned)
+			t.Errorf("nginx.conf should not contain %q in off mode", banned)
 		}
 	}
 	if _, ok := files["/etc/nginx/tls.conf"]; ok {
-		t.Errorf("tls.conf must not be rendered in notls mode")
+		t.Errorf("tls.conf must not be rendered in off mode")
 	}
 
 	dovecot := string(files["/etc/dovecot/proxy.conf"])
 	if !strings.Contains(dovecot, "ssl = no") || strings.Contains(dovecot, "ssl = required") {
-		t.Errorf("dovecot proxy TLS wrong in notls mode:\n%s", dovecot)
+		t.Errorf("dovecot proxy TLS wrong in off mode:\n%s", dovecot)
 	}
 	if !strings.Contains(dovecot, "listen = *") {
-		t.Errorf("dovecot proxy should listen on IPv4 only without SUBNET6:\n%s", dovecot)
+		t.Errorf("dovecot proxy should listen on IPv4 only without MAILEZ_SUBNET6:\n%s", dovecot)
 	}
 	if !strings.Contains(dovecot, "port = 4190") {
 		t.Errorf("managesieve 4190 missing in dovecot proxy:\n%s", dovecot)
 	}
 
 	lua := string(files["/etc/dovecot/login.lua"])
-	if !strings.Contains(lua, `url = "http://backend:8080/internal/auth/email"`) {
+	if !strings.Contains(lua, `url = "http://backend:8080/stack/auth/email"`) {
 		t.Errorf("login.lua admin address wrong:\n%s", lua)
 	}
 }
 
 func TestNginxPortsDerivation(t *testing.T) {
-	t.Setenv("HOSTNAMES", "mail.example.com")
-	t.Setenv("DOMAIN", "example.com")
-	t.Setenv("TLS_FLAVOR", "notls")
-	t.Setenv("PORTS", "25,143,110,587,4190,80")
-	t.Setenv("RESOLVER_ADDRESS", "192.168.206.254")
+	t.Setenv("MAILEZ_HOSTNAMES", "mail.example.com")
+	t.Setenv("MAILEZ_DOMAIN", "example.com")
+	t.Setenv("MAILEZ_TLS", "off")
+	t.Setenv("MAILEZ_PORTS", "25,143,110,587,4190,80")
+	t.Setenv("MAILEZ_RESOLVER_ADDRESS", "192.168.206.254")
 
 	cfg, err := loadNginxConfig()
 	if err != nil {
@@ -88,11 +87,11 @@ func TestNginxPortsDerivation(t *testing.T) {
 		t.Errorf("expected plain ports on, got %+v", cfg)
 	}
 	if cfg.Port995 {
-		t.Errorf("995 requires TLS and must be off in notls mode")
+		t.Errorf("995 requires TLS and must be off in off mode")
 	}
 
-	t.Setenv("TLS_FLAVOR", "letsencrypt")
-	t.Setenv("PORTS", "25,80,443,465,993,995,4190")
+	t.Setenv("MAILEZ_TLS", "letsencrypt")
+	t.Setenv("MAILEZ_PORTS", "25,80,443,465,993,995,4190")
 	cfg, err = loadNginxConfig()
 	if err != nil {
 		t.Fatalf("loadNginxConfig: %v", err)

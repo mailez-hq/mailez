@@ -22,14 +22,14 @@ type unboundConfig struct {
 }
 
 func loadUnboundConfig() (unboundConfig, error) {
-	subnet, err := agent.CIDR("SUBNET")
+	subnet, err := agent.CIDR("MAILEZ_SUBNET")
 	if err != nil {
 		return unboundConfig{}, err
 	}
 	cfg := unboundConfig{subnet: subnet}
-	if v := os.Getenv("SUBNET6"); v != "" {
+	if v := os.Getenv("MAILEZ_SUBNET6"); v != "" {
 		if _, _, err := net.ParseCIDR(v); err != nil {
-			return unboundConfig{}, fmt.Errorf("SUBNET6=%q is not a valid CIDR: %w", v, err)
+			return unboundConfig{}, fmt.Errorf("MAILEZ_SUBNET6=%q is not a valid CIDR: %w", v, err)
 		}
 		cfg.subnet6 = v
 		cfg.ipv6 = true

@@ -1,6 +1,6 @@
 {
-    "name": "",
-    "short_name": "",
+    "name": "mailez",
+    "short_name": "mailez",
     "icons": [
         {
             "src": "/android-chrome-192x192.png",
@@ -13,7 +13,7 @@
             "type": "image/png"
         }
     ],
-    "theme_color": "#ffffff",
-    "background_color": "#ffffff",
+    "theme_color": "#2E6E8E",
+    "background_color": "#FCF9EF",
     "display": "standalone"
 }

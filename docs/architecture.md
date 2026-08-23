@@ -50,7 +50,7 @@ it. This keeps the graph acyclic and lets handler tests inject a fake
 - Every webmail request exchanges the session for a short-lived `token-*`
   temporary credential used as the IMAP/SMTP password — the user's real
   password never reaches the browser.
-- The mail stack authenticates through `/internal/*`: nginx's mail proxy and
+- The mail stack authenticates through `/stack/*`: nginx's mail proxy and
   Dovecot's passdb call the backend, which validates credentials, 2FA state,
   protocol permissions and rate limits.
 

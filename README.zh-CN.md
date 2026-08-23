@@ -53,7 +53,7 @@
 
 ```sh
 cd deploy
-cp mailez.env.example mailez.env   # 设置 SECRET_KEY、DOMAIN、HOSTNAMES
+cp mailez.env.example mailez.env   # 设置 MAILEZ_SECRET_KEY、MAILEZ_DOMAIN、MAILEZ_HOSTNAMES
 docker compose up -d --build
 ```
 

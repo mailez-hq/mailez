@@ -80,7 +80,7 @@ func runPostfix() error {
 	defer stop()
 
 	backend := cfg.BackendAddress
-	base := "http://" + backend + ":8080/internal/postfix/"
+	base := "http://" + backend + ":8080/stack/postfix/"
 	urlFor := func(table, key string) string {
 		suffix, ok := postfixTables[table]
 		if !ok {
@@ -178,11 +178,12 @@ func copyFile(src, dst string) error {
 	return os.WriteFile(dst, data, 0o644)
 }
 
-// renderPostfixSASLPasswd writes /etc/postfix/sasl_passwd from RELAYHOST /
-// RELAYUSER / RELAYPASSWORD (template: "{{ RELAYHOST }} {{ RELAYUSER }}:{{ RELAYPASSWORD }}").
+// renderPostfixSASLPasswd writes /etc/postfix/sasl_passwd from MAILEZ_RELAYHOST
+// / MAILEZ_RELAYUSER / MAILEZ_RELAYPASSWORD
+// (template: "{{ MAILEZ_RELAYHOST }} {{ MAILEZ_RELAYUSER }}:{{ MAILEZ_RELAYPASSWORD }}").
 func renderPostfixSASLPasswd(cfg PostfixConfig) error {
-	user := os.Getenv("RELAYUSER")
-	pw := os.Getenv("RELAYPASSWORD")
+	user := os.Getenv("MAILEZ_RELAYUSER")
+	pw := os.Getenv("MAILEZ_RELAYPASSWORD")
 	data := fmt.Sprintf("%s %s:%s\n", cfg.RelayHost, user, pw)
 	return agent.AtomicWrite("/etc/postfix/sasl_passwd", []byte(data), 0o600)
 }

@@ -6,16 +6,16 @@ import (
 )
 
 func TestRspamdRender(t *testing.T) {
-	t.Setenv("SUBNET", "192.168.206.0/24")
-	t.Setenv("SUBNET6", "fdc4:f303:9324::254/64")
-	t.Setenv("RELAYNETS", "10.0.0.0/8")
-	t.Setenv("BACKEND_ADDRESS", "backend")
-	t.Setenv("REDIS_ADDRESS", "redis")
-	t.Setenv("DOMAIN", "example.com")
-	t.Setenv("POSTMASTER", "postmaster")
-	t.Setenv("SCAN_MACROS", "true")
-	t.Setenv("ANTIVIRUS", "none")
-	t.Setenv("DMARC_SEND_REPORTS", "false")
+	t.Setenv("MAILEZ_SUBNET", "192.168.206.0/24")
+	t.Setenv("MAILEZ_SUBNET6", "fdc4:f303:9324::254/64")
+	t.Setenv("MAILEZ_RELAYNETS", "10.0.0.0/8")
+	t.Setenv("MAILEZ_BACKEND_ADDRESS", "backend")
+	t.Setenv("MAILEZ_REDIS_ADDRESS", "redis")
+	t.Setenv("MAILEZ_DOMAIN", "example.com")
+	t.Setenv("MAILEZ_POSTMASTER", "postmaster")
+	t.Setenv("MAILEZ_SCAN_MACROS", "true")
+	t.Setenv("MAILEZ_ANTIVIRUS", "none")
+	t.Setenv("MAILEZ_DMARC_SEND_REPORTS", "false")
 
 	cfg, err := loadRspamdConfig()
 	if err != nil {
@@ -36,9 +36,9 @@ func TestRspamdRender(t *testing.T) {
 			"secure_ip = \"192.168.206.0/24\";",
 			"secure_ip = \"fdc4:f303:9324::254/64\";",
 		},
-		"/etc/rspamd/local.d/arc.conf":               {`vault_url = "http://backend:8080/internal/rspamd/vault";`},
-		"/etc/rspamd/local.d/dkim_signing.conf":      {`vault_url = "http://backend:8080/internal/rspamd/vault";`},
-		"/etc/rspamd/local.d/multimap.conf":          {`map = "http://backend:8080/internal/rspamd/local_domains";`},
+		"/etc/rspamd/local.d/arc.conf":               {`vault_url = "http://backend:8080/stack/rspamd/vault";`},
+		"/etc/rspamd/local.d/dkim_signing.conf":      {`vault_url = "http://backend:8080/stack/rspamd/vault";`},
+		"/etc/rspamd/local.d/multimap.conf":          {`map = "http://backend:8080/stack/rspamd/local_domains";`},
 		"/etc/rspamd/local.d/redis.conf":             {`servers = "redis";`},
 		"/etc/rspamd/local.d/external_services.conf": {`servers = "macro-scanner:11343";`},
 		"/etc/rspamd/local.d/dmarc.conf":             {"enabled = false;"},
@@ -56,15 +56,15 @@ func TestRspamdRender(t *testing.T) {
 		}
 	}
 
-	// SCAN_MACROS=false drops the oletools blocks but keeps the includes.
-	t.Setenv("SCAN_MACROS", "false")
+	// MAILEZ_SCAN_MACROS=false drops the oletools blocks but keeps the includes.
+	t.Setenv("MAILEZ_SCAN_MACROS", "false")
 	cfg2, _ := loadRspamdConfig()
 	files2, err := renderRspamdAll(cfg2)
 	if err != nil {
 		t.Fatalf("render 2: %v", err)
 	}
 	if strings.Contains(string(files2["/etc/rspamd/local.d/external_services.conf"]), "oletools {") {
-		t.Errorf("oletools block should be absent when SCAN_MACROS=false")
+		t.Errorf("oletools block should be absent when MAILEZ_SCAN_MACROS=false")
 	}
 	if !strings.Contains(string(files2["/etc/rspamd/local.d/composites.conf"]), ".include(try=true; priority=1; duplicate=merge)") {
 		t.Errorf("composites include missing")
@@ -72,9 +72,9 @@ func TestRspamdRender(t *testing.T) {
 }
 
 func TestRspamdRenderClamav(t *testing.T) {
-	t.Setenv("SUBNET", "192.168.206.0/24")
-	t.Setenv("ANTIVIRUS", "clamav")
-	t.Setenv("ANTIVIRUS_ACTION", "reject")
+	t.Setenv("MAILEZ_SUBNET", "192.168.206.0/24")
+	t.Setenv("MAILEZ_ANTIVIRUS", "clamav")
+	t.Setenv("MAILEZ_ANTIVIRUS_ACTION", "reject")
 	cfg, err := loadRspamdConfig()
 	if err != nil {
 		t.Fatalf("load: %v", err)

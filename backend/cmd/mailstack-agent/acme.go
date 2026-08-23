@@ -151,7 +151,7 @@ func acmeLoop(cfg NginxConfig) {
 	if len(hostnames) == 0 {
 		return
 	}
-	email := fmt.Sprintf("%s@%s", agent.Getenv("POSTMASTER", "postmaster"), agent.Getenv("DOMAIN", "example.com"))
+	email := fmt.Sprintf("%s@%s", agent.Getenv("MAILEZ_POSTMASTER", "postmaster"), agent.Getenv("MAILEZ_DOMAIN", "example.com"))
 	renew := func(ecdsa bool) {
 		certName := "mailez"
 		if ecdsa {

@@ -31,31 +31,31 @@ type PostfixConfig struct {
 // loadPostfixConfig reads and normalizes the environment.
 func loadPostfixConfig() (PostfixConfig, error) {
 	cfg := PostfixConfig{
-		Domain:                  agent.Getenv("DOMAIN", "example.com"),
-		MessageSizeLimit:        agent.Getenv("MESSAGE_SIZE_LIMIT", "50000000"),
-		RelayHost:               agent.Getenv("RELAYHOST", ""),
-		RelayUser:               os.Getenv("RELAYUSER") != "",
-		RecipientDelimiter:      agent.Getenv("RECIPIENT_DELIMITER", ""),
-		OutboundTLSLevel:        agent.Getenv("OUTBOUND_TLS_LEVEL", "dane"),
-		DefersOnTLSError:        envTrue("DEFER_ON_TLS_ERROR", true),
-		RejectUnlistedRecipient: agent.Getenv("REJECT_UNLISTED_RECIPIENT", "no"),
-		GatewayAddress:          agent.Getenv("GATEWAY_ADDRESS", "gateway"),
+		Domain:                  agent.Getenv("MAILEZ_DOMAIN", "example.com"),
+		MessageSizeLimit:        agent.Getenv("MAILEZ_MESSAGE_SIZE_LIMIT", "50000000"),
+		RelayHost:               agent.Getenv("MAILEZ_RELAYHOST", ""),
+		RelayUser:               os.Getenv("MAILEZ_RELAYUSER") != "",
+		RecipientDelimiter:      agent.Getenv("MAILEZ_RECIPIENT_DELIMITER", ""),
+		OutboundTLSLevel:        agent.Getenv("MAILEZ_OUTBOUND_TLS_LEVEL", "dane"),
+		DefersOnTLSError:        envTrue("MAILEZ_DEFER_ON_TLS_ERROR", true),
+		RejectUnlistedRecipient: agent.Getenv("MAILEZ_REJECT_UNLISTED_RECIPIENT", "no"),
+		GatewayAddress:          agent.Getenv("MAILEZ_GATEWAY_ADDRESS", "gateway"),
 		MailFilterAddress:       agent.Getenv("MAIL_FILTER_ADDRESS", "mail-filter"),
-		BackendAddress:          agent.Getenv("BACKEND_ADDRESS", "backend"),
+		BackendAddress:          agent.Getenv("MAILEZ_BACKEND_ADDRESS", "backend"),
 		PostfixLogFile:          os.Getenv("POSTFIX_LOG_FILE"),
 	}
 
-	hostnames := agent.Getenv("HOSTNAMES", "")
+	hostnames := agent.Getenv("MAILEZ_HOSTNAMES", "")
 	if hostnames == "" {
-		return cfg, fmt.Errorf("HOSTNAMES is required")
+		return cfg, fmt.Errorf("MAILEZ_HOSTNAMES is required")
 	}
 	cfg.Hostname = strings.TrimSpace(strings.Split(hostnames, ",")[0])
 
-	subnet, err := agent.CIDR("SUBNET")
+	subnet, err := agent.CIDR("MAILEZ_SUBNET")
 	if err != nil {
 		return cfg, err
 	}
-	subnet6 := os.Getenv("SUBNET6")
+	subnet6 := os.Getenv("MAILEZ_SUBNET6")
 
 	// Postfix requires IPv6 addresses to be wrapped in square brackets
 	// (RELAYNETS entries and SUBNET6 are bracketed the same way).
@@ -63,7 +63,7 @@ func loadPostfixConfig() (PostfixConfig, error) {
 	if subnet6 != "" {
 		parts = append(parts, "[::1]/128", bracketCIDR(subnet6))
 	}
-	if relnets := os.Getenv("RELAYNETS"); relnets != "" {
+	if relnets := os.Getenv("MAILEZ_RELAYNETS"); relnets != "" {
 		for _, n := range strings.Split(relnets, ",") {
 			if n = strings.TrimSpace(n); n != "" {
 				parts = append(parts, bracketIPv6Prefix(n))
@@ -82,7 +82,7 @@ func loadPostfixConfig() (PostfixConfig, error) {
 }
 
 // bracketCIDR formats "fdc4:.../64" as "[fdc4:...]/64" (brackets stripped
-// from the address part, matching the template's SUBNET6.translate()).
+// from the address part, matching the bracket form the templates expect).
 func bracketCIDR(cidr string) string {
 	host, rest, ok := strings.Cut(strings.TrimPrefix(strings.TrimSuffix(cidr, "]"), "["), "/")
 	if !ok {
