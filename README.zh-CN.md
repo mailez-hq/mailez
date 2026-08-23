@@ -49,13 +49,20 @@
 
 ## 快速开始
 
-需要 Docker（Compose v2）。
+需要 Docker（Compose v2）和 Go 工具链（1.22+，用于一次性构建镜像）。
 
 ```sh
-cd deploy
+cd backend
+go run ./cmd/build-images
+
+cd ../deploy
 cp mailez.env.example mailez.env   # 设置 MAILEZ_SECRET_KEY、MAILEZ_DOMAIN、MAILEZ_HOSTNAMES
 docker compose up -d --build
 ```
+
+镜像统一打标为 `mailez/*:local` 并被 compose 引用，不依赖公共镜像仓库。
+`build-images` 按目录自动发现组件（`deploy/images` 放共享服务，
+`deploy/engines/<engine>` 放引擎专属组件），以后新增引擎无需改脚本。
 
 | 端口 | 是什么 |
 |---|---|
@@ -79,7 +86,9 @@ go run ./cmd/e2e    # 发一封测试邮件，检查投递、DKIM 签名与防�
 
 - 后端：Go + Fiber，GORM，Redis
 - 前端：Next.js（React）——管理后台与 Webmail 两个独立应用
-- 邮件投递与过滤：nginx、Postfix、Dovecot、Rspamd、Unbound
+- 邮件引擎（可插拔，默认 `postdove`）：Postfix + Dovecot，前置 nginx 网关，
+  Rspamd 过滤、Unbound DNS；控制面通过引擎无关的目录契约
+  （`/stack/directory/*`）与引擎通信，后续可接入第二引擎（如 Stalwart）
 - 更多细节：[`docs/dev-setup.md`](docs/dev-setup.md)、
   [`docs/webmail-ui-spec.md`](docs/webmail-ui-spec.md)
 

@@ -60,13 +60,23 @@ mail delivery, spam filtering, authentication, admin console and webmail.
 
 ## Quick start
 
-Requires Docker (Compose v2).
+Requires Docker (Compose v2) and a Go toolchain (1.22+) for the one-time
+image build.
 
 ```sh
-cd deploy
+cd backend
+go run ./cmd/build-images
+
+cd ../deploy
 cp mailez.env.example mailez.env   # set MAILEZ_SECRET_KEY, MAILEZ_DOMAIN, MAILEZ_HOSTNAMES
 docker compose up -d --build
 ```
+
+The images are tagged `mailez/*:local` and referenced by the compose files,
+so nothing is pulled from a public registry. `build-images` discovers
+components from the directory layout (`deploy/images` for shared services,
+`deploy/engines/<engine>` for engine-specific ones), so adding a new engine
+needs no script changes.
 
 | Port | What's there |
 |---|---|
@@ -91,7 +101,11 @@ go run ./cmd/e2e    # sends a test mail, checks delivery, DKIM and spam filterin
 
 - Backend: Go + Fiber, GORM, Redis
 - Frontend: Next.js (React) — separate admin and webmail apps
-- Mail delivery & filtering: nginx, Postfix, Dovecot, Rspamd, Unbound
+- Mail engine (pluggable, default `postdove`): Postfix + Dovecot behind an
+  nginx gateway, with Rspamd filtering and Unbound DNS; the control plane
+  talks to the engine through an engine-agnostic directory contract
+  (`/stack/directory/*`), so a second engine (e.g. Stalwart) can slot in
+  behind the same API
 - More details: [`docs/dev-setup.md`](docs/dev-setup.md),
   [`docs/webmail-ui-spec.md`](docs/webmail-ui-spec.md)
 
