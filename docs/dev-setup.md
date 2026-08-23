@@ -8,9 +8,8 @@
 
 邮件栈镜像构建和依赖下载在国内可能很慢，已按下面的方式处理：
 
-- **apk / pip（Docker 镜像构建内）**：`deploy/vendor/mailstack/base/Dockerfile`
-  已内置阿里云镜像源（`APK_MIRROR`、`PIP_INDEX_URL` 两个 `ARG`，构建时可用
-  `--build-arg` 覆盖），组件镜像 `FROM base` 自动继承。
+- **apk（Docker 镜像构建内）**：各组件 Dockerfile 已内置阿里云镜像源
+  （`APK_MIRROR` ARG，构建时可用 `--build-arg` 覆盖）。
 - **npm（前端）**：`frontend/.npmrc` 已指向 npmmirror。
 - **Go modules（后端）**：本机执行一次，写入全局 Go 配置：
   ```
@@ -128,17 +127,17 @@ dovecot passdb、postfix 查询都走它）。开发模式下 `BACKEND_ADDRESS` 
 ## 自建镜像（完全本地构建，无外部镜像仓库依赖）
 
 邮件栈组件（nginx / dovecot / postfix / rspamd / oletools / unbound）的
-Dockerfile 与配置已 vendor 到 `deploy/vendor/mailstack/`。`base` 镜像基于
-官方 `alpine:3.21`（无第三方基础镜像）。两个 compose 文件默认就引用本地
-构建的 `mailez/*:local`：
+Dockerfile 与静态配置在 `deploy/vendor/mailstack/`，全部为多阶段自建镜像
+（Go 编译 agent + 官方 `alpine:3.21`，无任何第三方邮件栈镜像依赖）。两个
+compose 文件默认就引用本地构建的 `mailez/*:local`：
 
 ```
-# 1. 本地构建（先 base，再各组件，首次较慢）
+# 1. 本地构建全部组件（首次较慢）
 powershell -ExecutionPolicy Bypass -File deploy/scripts/build-images.ps1
 # 2. 直接启动（compose 已默认 mailez/*:local）
 docker compose -f docker-compose.dev.yml up -d
 ```
 
-镜像内部的邮件协议配置逻辑是 fork/内化自 参考实现 开源方案（MIT 协议，已
-vendor 进项目，属于项目自有代码，不再是外部依赖）。`pull_policy: missing`
-保证本地已有镜像时**不联网**。
+镜像内的配置生成与协议代理全部由自研 Go agent 实现（模板内嵌进二进制），
+不依赖任何第三方邮件栈代码。`pull_policy: missing` 保证本地已有镜像时
+**不联网**。
