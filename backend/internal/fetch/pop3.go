@@ -132,7 +132,7 @@ func (p *pop3Conn) uidl() ([]uidlEntry, error) {
 
 // uidlEntry pairs a POP3 message number with its stable unique id.
 type uidlEntry struct {
-	Num int
+	Num  int
 	UIDL string
 }
 
