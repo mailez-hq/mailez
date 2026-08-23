@@ -64,7 +64,7 @@ func (c *Client) Send(email, token, from string, to, cc, bcc []string, subject, 
 	if err != nil {
 		return fmt.Errorf("smtp data: %w", err)
 	}
-	msg := buildMessage(from, to, cc, subject, text, html, attachments)
+	msg := BuildMessage(from, to, cc, subject, text, html, attachments)
 	if _, err := wc.Write([]byte(msg)); err != nil {
 		return fmt.Errorf("smtp write: %w", err)
 	}
@@ -84,10 +84,12 @@ func headerValue(s string) string {
 	return s
 }
 
-// buildMessage renders an RFC 5322 message with Date and Message-ID headers.
+// BuildMessage renders an RFC 5322 message with Date and Message-ID headers.
 // Attachments (base64 data on the wire) are embedded as multipart/mixed parts;
 // the text/html body, when present, is a nested multipart/alternative part.
-func buildMessage(from string, to, cc []string, subject, text, html string, attachments []Attachment) string {
+// Exported so the outbox (send-undo queue) can park the exact bytes that will
+// later be submitted, without keeping compose state around.
+func BuildMessage(from string, to, cc []string, subject, text, html string, attachments []Attachment) string {
 	var b strings.Builder
 	b.WriteString("From: " + headerValue(from) + "\r\n")
 	if len(to) > 0 {

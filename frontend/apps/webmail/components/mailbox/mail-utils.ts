@@ -4,6 +4,26 @@ import type { OutboundAttachment } from "@/lib/api";
 // are any other flag names.
 export const SYSTEM_FLAGS = new Set(["\\Seen", "\\Answered", "\\Flagged", "\\Deleted", "\\Draft", "\\Recent"]);
 
+// Label palette used when a label has no explicit color yet; assignment is
+// deterministic per name so the same label keeps its color across sessions.
+export const LABEL_PALETTE = [
+  "#2E6E8E",
+  "#2F8E6C",
+  "#B4762A",
+  "#A04F7A",
+  "#6B4FA0",
+  "#8E4A2E",
+  "#4F7AA0",
+  "#5A8E3E",
+];
+
+export function labelColor(name: string, assigned?: string) {
+  if (assigned) return assigned;
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return LABEL_PALETTE[h % LABEL_PALETTE.length];
+}
+
 // Saved searches live in localStorage and show up as virtual folders in the
 // sidebar, FastMail-style.
 export const SAVED_SEARCH_KEY = "mailez.savedSearches";

@@ -103,6 +103,8 @@ func New(cfg core.Config) *Server {
 	// External mailbox poller (fetchmail equivalent).
 	fetcher := fetch.New(db, cfg.MtaAddress+":25", cfg.SecretKey, cfg.FetchInsecure, time.Duration(cfg.FetchInterval)*time.Second)
 	go fetcher.Run(bgCtx)
+	// Send-undo queue: delivers parked messages once their window elapses.
+	go compose.NewOutboxWorker(db, cfg.MtaAddress+":25").Run(bgCtx)
 	// Push notifier (new-mail notifications for subscribed clients).
 	if cfg.PushInterval > 0 {
 		notifier := push.NewNotifier(db, cfg)

@@ -34,9 +34,22 @@ export type MailMessage = {
   text_body?: string;
   html_body?: string;
   attachments?: MailAttachment[];
+  // List-Unsubscribe (RFC 2369): an https URL (backend proxies the request)
+  // or a mailto: (client opens a pre-filled compose). unsubscribe_post marks
+  // an RFC 8058 one-click entry.
+  unsubscribe_url?: string;
+  unsubscribe_post?: boolean;
 };
 
 export type MailPage = { messages: MailMessage[]; total: number };
+
+// MailLabel is a user-defined tag: messages carry the name as an IMAP
+// keyword while the definition row only stores presentation data (color).
+export type MailLabel = {
+  id: number;
+  name: string;
+  color: string;
+};
 
 export type MailThread = {
   thread_id: string;
