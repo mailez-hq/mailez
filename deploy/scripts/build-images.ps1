@@ -33,7 +33,7 @@ if ($LASTEXITCODE -ne 0) { throw 'docker daemon is not running' }
 
 function Build-Image([string]$name, [string]$dir) {
   Write-Host "==> building mailez/$name :local from $dir"
-  if ($name -in @('unbound', 'nginx')) {
+  if ($name -in @('unbound', 'nginx', 'dovecot')) {
     # Go-agent components are multi-stage builds; the repo root is the build
     # context so the Dockerfile can COPY the backend source (see .dockerignore).
     & $docker build -f (Join-Path $dir 'Dockerfile') --build-arg VERSION=local -t "mailez/$name`:local" $root
