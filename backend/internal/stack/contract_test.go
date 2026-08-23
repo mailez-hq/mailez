@@ -837,3 +837,94 @@ func TestAutoconfigContract(t *testing.T) {
 		t.Fatalf("apple: got %d %q", code, body)
 	}
 }
+
+func TestDirectoryContract(t *testing.T) {
+	h, app := newContractHarness(t)
+	seedContractData(t, h)
+
+	// --- users ---
+	code, body := doGet(t, app, "/stack/directory/users/alice@example.com")
+	if code != 200 || !strings.Contains(body, `"email":"alice@example.com"`) || !strings.Contains(body, `"quotaBytes":1000000000`) {
+		t.Fatalf("directory users: got %d %q", code, body)
+	}
+	if code, _ := doGet(t, app, "/stack/directory/users/nobody@example.com"); code != 404 {
+		t.Fatalf("directory users missing: got %d", code)
+	}
+
+	// --- domains (canonical + alternative) ---
+	if code, body := doGet(t, app, "/stack/directory/domains/example.com"); code != 200 || !strings.Contains(body, `"isLocal":true`) {
+		t.Fatalf("directory domains: got %d %q", code, body)
+	}
+	if code, body := doGet(t, app, "/stack/directory/domains/alt.example.com"); code != 200 || !strings.Contains(body, `"name":"example.com"`) {
+		t.Fatalf("directory domains alternative: got %d %q", code, body)
+	}
+	if code, _ := doGet(t, app, "/stack/directory/domains/unknown.org"); code != 404 {
+		t.Fatalf("directory domains missing: got %d", code)
+	}
+
+	// --- aliases (exact + wildcard) ---
+	code, body = doGet(t, app, "/stack/directory/aliases/team@example.com")
+	if code != 200 || !strings.Contains(body, "alice@example.com") || !strings.Contains(body, "bob@example.com") {
+		t.Fatalf("directory aliases exact: got %d %q", code, body)
+	}
+	code, body = doGet(t, app, "/stack/directory/aliases/random@example.com")
+	if code != 200 || !strings.Contains(body, `"targets":["alice@example.com"]`) {
+		t.Fatalf("directory aliases wildcard: got %d %q", code, body)
+	}
+	if code, _ := doGet(t, app, "/stack/directory/aliases/nobody@unknown.org"); code != 404 {
+		t.Fatalf("directory aliases missing: got %d", code)
+	}
+
+	// --- relays ---
+	code, body = doGet(t, app, "/stack/directory/relays/foo@relay.example.com")
+	if code != 200 || !strings.Contains(body, `"transport":"smtp:[relay.example.com]:2525"`) {
+		t.Fatalf("directory relays: got %d %q", code, body)
+	}
+	if code, _ := doGet(t, app, "/stack/directory/relays/foo@example.com"); code != 404 {
+		t.Fatalf("directory relays missing: got %d", code)
+	}
+
+	// --- senders (user + spoofing) ---
+	if code, body := doGet(t, app, "/stack/directory/senders/alice@example.com"); code != 200 || !strings.Contains(body, `"allowed":true`) {
+		t.Fatalf("directory senders user: got %d %q", code, body)
+	}
+	if code, _ := doGet(t, app, "/stack/directory/senders/nobody@unknown.org"); code != 404 {
+		t.Fatalf("directory senders missing: got %d", code)
+	}
+	if code, body := doGet(t, app, "/stack/directory/senders/alice@example.com/rate"); code != 200 || !strings.Contains(body, `"allowed":true`) {
+		t.Fatalf("directory sender rate: got %d %q", code, body)
+	}
+
+	// --- quota read + update ---
+	if code, body := doGet(t, app, "/stack/directory/quota/alice@example.com"); code != 200 || !strings.Contains(body, `"limit":1000000000`) {
+		t.Fatalf("directory quota: got %d %q", code, body)
+	}
+	if code, _ := doPost(t, app, "/stack/directory/quota/alice@example.com", `12345`); code != 200 {
+		t.Fatalf("directory quota update: got %d", code)
+	}
+	if code, body := doGet(t, app, "/stack/directory/quota/alice@example.com"); code != 200 || !strings.Contains(body, `"used":12345`) {
+		t.Fatalf("directory quota after update: got %d %q", code, body)
+	}
+
+	// --- sieve ---
+	if code, body := doGet(t, app, "/stack/directory/sieve/alice@example.com"); code != 200 || !strings.Contains(body, `"name":"default"`) || !strings.Contains(body, "require") {
+		t.Fatalf("directory sieve: got %d %q", code, body)
+	}
+
+	// --- SRS forward + restore round-trip ---
+	code, body = doGet(t, app, "/stack/directory/srs/external@other.org")
+	if code != 200 {
+		t.Fatalf("directory srs forward: got %d", code)
+	}
+	var fwd map[string]string
+	if err := json.Unmarshal([]byte(body), &fwd); err != nil || !strings.Contains(fwd["rewritten"], ".SRS0=") {
+		t.Fatalf("directory srs forward: got %q err=%v", body, err)
+	}
+	code, body = doGet(t, app, "/stack/directory/srs/restore/"+url.PathEscape(fwd["rewritten"]))
+	if code != 200 || !strings.Contains(body, `"original":"external@other.org"`) {
+		t.Fatalf("directory srs restore: got %d %q", code, body)
+	}
+	if code, _ := doGet(t, app, "/stack/directory/srs/restore/alice@example.com"); code != 404 {
+		t.Fatalf("directory srs restore non-srs: got %d", code)
+	}
+}

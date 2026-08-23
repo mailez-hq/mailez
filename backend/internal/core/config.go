@@ -20,6 +20,7 @@ type Config struct {
 	SessionLifetime    int // seconds
 	MailKeeperAddress  string
 	MtaAddress         string
+	MailEngine         string
 	RecipientDelimiter string
 	Subnet             string
 	Domain             string
@@ -42,6 +43,11 @@ type Config struct {
 	DkimSelector       string
 }
 
+// SupportedMailEngines are the mail engines the control plane can drive.
+// The engine selects which adapter consumes the directory contract; the
+// postdove engine is the only implementation today.
+var SupportedMailEngines = []string{"postdove"}
+
 // Load reads configuration from the environment.
 func Load() Config {
 	return Config{
@@ -56,6 +62,7 @@ func Load() Config {
 		SessionLifetime:    envInt("SESSION_LIFETIME", 3600),
 		MailKeeperAddress:  env("MAIL_KEEPER_ADDRESS", "mail-keeper"),
 		MtaAddress:         env("MTA_ADDRESS", "mta"),
+		MailEngine:         env("MAILEZ_MAIL_ENGINE", "postdove"),
 		RecipientDelimiter: env("MAILEZ_RECIPIENT_DELIMITER", ""),
 		Subnet:             env("MAILEZ_SUBNET", "192.168.206.0/24"),
 		Domain:             env("MAILEZ_DOMAIN", "example.com"),
