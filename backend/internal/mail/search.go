@@ -17,16 +17,16 @@ import (
 // output of the AI query interpreter. is:unread / is:flagged / label:NAME power
 // the FastMail-style virtual views and labels.
 type SearchQuery struct {
-	Text          []string
-	From          []string
-	To            []string
-	Subject       []string
-	HasAttachment bool
-	Unseen        bool
-	Flagged       bool
-	Labels        []string
-	Before        *time.Time
-	After         *time.Time
+	Text          []string   `json:"text"`
+	From          []string   `json:"from"`
+	To            []string   `json:"to"`
+	Subject       []string   `json:"subject"`
+	HasAttachment bool       `json:"hasAttachment"`
+	Unseen        bool       `json:"unseen"`
+	Flagged       bool       `json:"flagged"`
+	Labels        []string   `json:"labels"`
+	Before        *time.Time `json:"before,omitempty"`
+	After         *time.Time `json:"after,omitempty"`
 }
 
 var searchTokenRe = regexp.MustCompile(`(?i)([a-z]+):"([^"]*)"|([a-z]+):(\S+)|(\S+)`)
