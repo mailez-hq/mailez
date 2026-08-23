@@ -23,8 +23,10 @@ RUN set -euxo pipefail \
   ; mkdir -p /etc/dovecot
 
 COPY --from=build /out/mailstack-agent /mailstack-agent
-COPY conf/dhparam.pem /conf/dhparam.pem
-COPY static/ /static/
+# This Dockerfile is built with the repo root as context (see
+# build-images.ps1), hence the vendored paths below.
+COPY deploy/vendor/mailstack/nginx/conf/dhparam.pem /conf/dhparam.pem
+COPY deploy/vendor/mailstack/nginx/static/ /static/
 
 RUN set -euxo pipefail \
   ; gzip -k9 /static/*.ico /static/*.txt \
