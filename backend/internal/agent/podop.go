@@ -5,11 +5,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -103,6 +105,7 @@ func (h *DictHandler) handle(conn net.Conn) {
 			return
 		}
 		line = bytes.TrimRight(line, "\r\n")
+		fmt.Fprintf(os.Stderr, "podop: recv %q\n", line)
 		if len(line) < 2 {
 			continue
 		}
@@ -121,8 +124,13 @@ func (h *DictHandler) handle(conn net.Conn) {
 					lu = string(parts[1])
 				}
 				if val, ok := h.lookup(tableURL, string(parts[0]), lu, valueType); ok {
-					write([]byte("O\t"), TabEscape(val), []byte("\n"))
+					fmt.Fprintf(os.Stderr, "podop: lookup %s -> %s\n", parts[0], val)
+					// Dovecot's dict protocol replies "O<value>\n" (no tab);
+					// the vendored podop's "O\t<value>" is tolerated by some
+					// dovecot builds but parsed as an empty value by others.
+					write([]byte("O"), TabEscape(val), []byte("\n"))
 				} else {
+					fmt.Fprintf(os.Stderr, "podop: lookup %s -> not found\n", parts[0])
 					write([]byte("N\n"))
 				}
 			}
@@ -148,15 +156,41 @@ func (h *DictHandler) handle(conn net.Conn) {
 	}
 }
 
-// dictKey converts a dict-protocol key into an API path segment. The mailez
-// control-plane contract keeps the type prefix in the path (passdb/<email>,
-// userdb/<email>, quota/<ns>/<email>, sieve/...); only "priv/*" keys append
-// the user namespace.
+// dictKey converts a dict-protocol key into an API path segment, replicating
+// podop's namespace handling: "priv/*" appends the user namespace, "shared/*"
+// is stripped, and the remaining type prefix (passdb/userdb/quota/sieve) is
+// kept in the path per the mailez control-plane contract.
 func dictKey(key, user string) string {
-	if strings.HasPrefix(key, "priv/") {
-		return key[len("priv/"):] + "/" + user
+	if i := strings.IndexByte(key, '/'); i >= 0 {
+		typ, rest := key[:i], key[i+1:]
+		switch typ {
+		case "priv":
+			return normalizeDictKey(rest) + "/" + user
+		case "shared":
+			return normalizeDictKey(rest)
+		}
 	}
-	return key
+	return normalizeDictKey(key)
+}
+
+// normalizeDictKey makes pigeonhole's sieve dict keys match the control-plane
+// routes. The dict storage deliberately uses the JSON-encoded script name as
+// the data id (e.g. sieve/data/"default" with literal quotes); the backend
+// route is sieve/data/default/<user>, so the quotes are decoded here. Other
+// keys pass through unchanged.
+func normalizeDictKey(k string) string {
+	const prefix = "sieve/data/"
+	if !strings.HasPrefix(k, prefix) {
+		return k
+	}
+	name := k[len(prefix):]
+	if len(name) < 2 || name[0] != '"' || name[len(name)-1] != '"' {
+		return k
+	}
+	if unquoted, err := strconv.Unquote(name); err == nil {
+		return prefix + unquoted
+	}
+	return k
 }
 
 func escapePath(p string) string {

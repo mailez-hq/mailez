@@ -64,12 +64,20 @@ docker compose -f docker-compose.dev.yml up -d
 ```
 cd backend
 $env:MAILEZ_PORT='8080'
+$env:IMAP_ADDRESS='192.168.206.5'      # 固定 IP：nginx auth 只认 IP（Auth-Server）
+$env:SMTP_ADDRESS='192.168.206.4'      # 与 docker-compose.dev.yml 的静态 IP 对应
 $env:MAIL_IMAP_ADDR='127.0.0.1:10143'
 $env:MAIL_SMTP_ADDR='127.0.0.1:10025'
 $env:MAIL_SIEVE_ADDR='127.0.0.1:4190'
 $env:DB_DSN='D:\code\mailess\backend\mailez.db'   # 建议绝对路径，避免工作目录歧义
 go run ./cmd/server
 ```
+
+`IMAP_ADDRESS` / `SMTP_ADDRESS` 会被内部 API 以 `Auth-Server` 头返回给
+nginx/dovecot 代理；nginx 1.26+ 的 mail auth 模块只接受 IP 字面量，所以
+必须是固定容器 IP（compose 里 imap/smtp 已配静态地址，见
+`docker-compose.dev.yml`）。`MAIL_IMAP_ADDR` 等则是后端自己连邮件栈用的
+宿主机映射端口，两者别混。
 
 初始化用户（首次）：
 ```
@@ -91,8 +99,12 @@ npm run dev -- -p 3000
 发一封测试邮件验证端到端（终端 4）：
 ```
 cd backend
-go run ./cmd/e2e --domain e2e.example.com --alias team
+go run ./cmd/e2e -api-port 8080 -smtp-port 25 -imap-port 10143 --domain e2e.example.com --alias team
 ```
+
+`-smtp-port 25`：开发栈 TLS_FLAVOR=notls，587 未监听，25 走
+`smtp_auth none` 入站路径；`-imap-port 10143`：143 默认关闭，10143 是
+front 容器里的 imap-webmail 代理端口。
 
 登录：`admin@example.com` / `MailezDemo2026!`（webmail 与 admin 共用 SSO）。
 

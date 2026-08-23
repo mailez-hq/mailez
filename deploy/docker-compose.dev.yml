@@ -70,6 +70,11 @@ services:
     volumes:
       - "./data/mail:/mail"
       - "./overrides:/overrides"
+    networks:
+      default:
+        # Fixed IP: the host-run backend returns it as Auth-Server (nginx's
+        # mail auth module only accepts IP literals), so it must be stable.
+        ipv4_address: 192.168.206.5
     depends_on:
       - front
 
@@ -84,6 +89,10 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - "./overrides:/overrides"
+    networks:
+      default:
+        # Fixed IP: same reason as imap (Auth-Server from the host backend).
+        ipv4_address: 192.168.206.4
     depends_on:
       - front
 

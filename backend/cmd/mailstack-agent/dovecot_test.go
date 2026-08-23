@@ -108,29 +108,49 @@ func TestPodopDictProtocol(t *testing.T) {
 	fmt.Fprintf(conn, "H1\t2\t0\tuser@example.com\tauth\n")
 	fmt.Fprintf(conn, "Lpriv/quota/user@example.com\tuser@example.com\n")
 	line, _ := r.ReadString('\n')
-	if line != "O\t{\"value\":\"ok\"}\n" {
+	if line != "O{\"value\":\"ok\"}\n" {
 		t.Fatalf("lookup reply wrong: %q (path=%s)", line, gotPath)
 	}
 	if gotPath != "/internal/dovecot/quota/user@example.com/user@example.com" {
 		t.Fatalf("priv lookup path wrong: %s", gotPath)
 	}
 
-	fmt.Fprintf(conn, "Lpassdb/e2e@example.com\n")
+	fmt.Fprintf(conn, "Lshared/passdb/e2e@example.com\te2e@example.com\n")
 	line, _ = r.ReadString('\n')
-	if line != "O\t{\"value\":\"ok\"}\n" {
+	if line != "O{\"value\":\"ok\"}\n" {
 		t.Fatalf("passdb lookup reply wrong: %q", line)
 	}
 	if gotPath != "/internal/dovecot/passdb/e2e@example.com" {
 		t.Fatalf("passdb lookup path wrong: %s", gotPath)
 	}
 
-	fmt.Fprintf(conn, "Luserdb/e2e@example.com\n")
+	fmt.Fprintf(conn, "Lshared/userdb/e2e@example.com\te2e@example.com\n")
 	line, _ = r.ReadString('\n')
-	if line != "O\t{\"value\":\"ok\"}\n" {
+	if line != "O{\"value\":\"ok\"}\n" {
 		t.Fatalf("userdb lookup reply wrong: %q", line)
 	}
 	if gotPath != "/internal/dovecot/userdb/e2e@example.com" {
 		t.Fatalf("userdb lookup path wrong: %s", gotPath)
+	}
+
+	fmt.Fprintf(conn, "Lpriv/sieve/name/default\te2e@example.com\n")
+	line, _ = r.ReadString('\n')
+	if line != "O{\"value\":\"ok\"}\n" {
+		t.Fatalf("sieve name lookup reply wrong: %q", line)
+	}
+	if gotPath != "/internal/dovecot/sieve/name/default/e2e@example.com" {
+		t.Fatalf("sieve name path wrong: %s", gotPath)
+	}
+
+	// Pigeonhole quotes the JSON-encoded script name in the data key; the
+	// control plane route is sieve/data/default/<user>.
+	fmt.Fprintf(conn, "Lpriv/sieve/data/\"default\"\te2e@example.com\n")
+	line, _ = r.ReadString('\n')
+	if line != "O{\"value\":\"ok\"}\n" {
+		t.Fatalf("sieve data lookup reply wrong: %q", line)
+	}
+	if gotPath != "/internal/dovecot/sieve/data/default/e2e@example.com" {
+		t.Fatalf("sieve data path wrong: %s", gotPath)
 	}
 
 	fmt.Fprintf(conn, "Lpriv/missing/user@example.com\tuser@example.com\n")
