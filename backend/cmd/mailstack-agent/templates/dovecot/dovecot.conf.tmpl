@@ -189,10 +189,9 @@ plugin {
   # Sieve execute
   sieve_execute_bin_dir = /conf/bin
 
-  # Send vacation replies even for aliases
-  # See the Pigeonhole documentation about warnings: http://wiki2.dovecot.org/Pigeonhole/Sieve/Extensions/Vacation
-  # It appears that our implementation of mail delivery meets criteria of section 4.5
-  # from RFC 5230 and that disabling the recipient checks is not an issue here.
+  # Send vacation replies even for aliases: delivery has already resolved the
+  # recipients before Sieve runs, so the RFC 5230 recipient checks are not
+  # needed here.
   sieve_vacation_dont_check_recipient = yes
 
   # Include the recipient in vacation replies so that DKIM applies

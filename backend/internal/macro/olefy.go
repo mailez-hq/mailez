@@ -52,7 +52,7 @@ func (s *Server) handle(conn net.Conn) {
 	}
 
 	// Header block ends at the first blank line; cap the header scan at 2000
-	// bytes, mirroring the reference scanner.
+	// bytes, mirroring the OLEFY scanner.
 	probe := data
 	if len(probe) > 2000 {
 		probe = probe[:2000]

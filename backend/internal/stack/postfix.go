@@ -229,7 +229,7 @@ func relayTransport(relay models.Relay) (string, error) {
 	return out, nil
 }
 
-// unsupportedAddress guards against lookups the the mail stack cannot resolve.
+// unsupportedAddress guards against lookups the control plane cannot resolve.
 func unsupportedAddress(address string) bool {
 	return strings.Count(address, "@") > 1 || strings.HasPrefix(address, `"`)
 }

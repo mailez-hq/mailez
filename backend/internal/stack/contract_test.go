@@ -1,9 +1,9 @@
 package stack
 
 // Contract tests for the /internal API consumed by the mail stack (postfix /
-// dovecot / nginx) through the mail stack's internal bridge. The response formats below
-// must stay byte-compatible with the the mail stack's internal API, so these tests pin the
-// exact wire contract (status codes, JSON quoting, list formatting).
+// dovecot / nginx). The response formats below must stay byte-compatible with
+// the internal API contract, so these tests pin the exact wire contract
+// (status codes, JSON quoting, list formatting).
 
 import (
 	"context"
@@ -674,7 +674,7 @@ func TestIDNAContract(t *testing.T) {
 		t.Fatalf("domain unicode: got %d %q", code, body)
 	}
 
-	// rspamd vault advertises the punycode selector domain (the the mail stack parity).
+	// rspamd vault advertises the punycode selector domain (mail-stack parity).
 	for _, q := range []string{punycode, unicode} {
 		code, body := doGet(t, app, "/internal/rspamd/vault/v1/dkim/"+q)
 		if code != 200 {
@@ -701,7 +701,7 @@ func TestIDNAContract(t *testing.T) {
 		t.Fatalf("alias destination: got %d %q", code, body)
 	}
 
-	// local_domains passes through the stored names (the the mail stack behaviour).
+	// local_domains passes through the stored names (mail-stack behaviour).
 	code, body := doGet(t, app, "/internal/rspamd/local_domains")
 	if code != 200 || !strings.Contains(body, "bücher.example") {
 		t.Fatalf("local_domains: got %d %q", code, body)

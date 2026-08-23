@@ -125,9 +125,9 @@ func (h *DictHandler) handle(conn net.Conn) {
 				}
 				if val, ok := h.lookup(tableURL, string(parts[0]), lu, valueType); ok {
 					fmt.Fprintf(os.Stderr, "mailez-dict: lookup %s -> %s\n", parts[0], val)
-					// Dovecot's dict protocol replies "O<value>\n" (no tab);
-					// the vendored reference's "O\t<value>" is tolerated by some
-					// dovecot builds but parsed as an empty value by others.
+					// Dovecot's dict protocol replies "O<value>\n" (no tab); the
+					// "O\t<value>" form is tolerated by some dovecot builds but
+					// parsed as an empty value by others.
 					write([]byte("O"), TabEscape(val), []byte("\n"))
 				} else {
 					fmt.Fprintf(os.Stderr, "mailez-dict: lookup %s -> not found\n", parts[0])
@@ -156,9 +156,9 @@ func (h *DictHandler) handle(conn net.Conn) {
 	}
 }
 
-// dictKey converts a dict-protocol key into an API path segment, replicating
-// the reference namespace handling: "priv/*" appends the user namespace, "shared/*"
-// is stripped, and the remaining type prefix (passdb/userdb/quota/sieve) is
+// dictKey converts a dict-protocol key into an API path segment: "priv/*"
+// appends the user namespace, "shared/*" is stripped, and the remaining type
+// prefix (passdb/userdb/quota/sieve) is
 // kept in the path per the mailez control-plane contract.
 func dictKey(key, user string) string {
 	if i := strings.IndexByte(key, '/'); i >= 0 {
@@ -221,7 +221,7 @@ func (h *DictHandler) lookup(baseURL, key, user, valueType string) ([]byte, bool
 	if valueType == "int" {
 		return body, true
 	}
-	// Normalize: the reference json.dumps()'d dict values; if backend already sent
+	// Normalize: dict values are JSON-serialized; if the backend already sent
 	// JSON, pass through unchanged.
 	return body, true
 }
@@ -290,7 +290,7 @@ func handleSocketmap(conn net.Conn, urlFunc func(table, key string) string, clie
 		if err != nil {
 			return
 		}
-		// Payload is "<table> <key>" (the reference SocketmapProtocol.string_received).
+		// Payload is "<table> <key>".
 		table, key, ok := strings.Cut(string(req), " ")
 		if !ok {
 			WriteNetstring(conn, []byte("TEMP malformed request"))
@@ -367,8 +367,8 @@ func WriteNetstring(w io.Writer, payload []byte) error {
 }
 
 // socketmapValue converts a control-plane JSON response into the plain-text
-// value postfix expects, mirroring the reference str(json.loads(body)) behavior for
-// the string results the internal API returns.
+// value postfix expects: JSON responses are stringified for the string results
+// the internal API returns.
 func socketmapValue(body []byte) []byte {
 	var v any
 	if err := json.Unmarshal(body, &v); err != nil {

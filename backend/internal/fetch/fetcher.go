@@ -21,7 +21,7 @@ import (
 )
 
 // Fetcher polls remote POP/IMAP accounts and delivers new mail to the local
-// user through the internal SMTP stack, mirroring the the mail stack's fetchmail service.
+// user through the internal SMTP stack (fetchmail-style polling).
 type Fetcher struct {
 	DB       *gorm.DB
 	SmtpAddr string // local smtp host:port for delivery

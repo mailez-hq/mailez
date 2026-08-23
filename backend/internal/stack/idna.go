@@ -6,9 +6,9 @@ import (
 	"golang.org/x/net/idna"
 )
 
-// asciiDomain lowercases and IDNA-encodes a domain for the wire contract.
-// the the mail stack stores and emits punycode, so the mail stack (postfix/rspamd) only
-// sees ASCII even for Unicode domains.
+// asciiDomain lowercases and IDNA-encodes a domain for the wire contract. The
+// control plane stores and emits punycode, so postfix/rspamd only see ASCII
+// even for Unicode domains.
 func asciiDomain(domain string) string {
 	ascii, err := idna.Lookup.ToASCII(domain)
 	if err != nil || ascii == "" {

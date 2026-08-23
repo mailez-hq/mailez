@@ -13,8 +13,8 @@ import (
 	"mailez/backend/internal/password"
 )
 
-// webmailPorts are the internal ports reserved for webmail traffic; temp tokens
-// are only accepted there (mirrors the the mail stack's WEBMAIL_PORTS).
+// webmailPorts are the internal ports reserved for webmail traffic; temp
+// tokens are only accepted on these ports.
 var webmailPorts = map[string]bool{"14190": true, "10143": true, "10025": true}
 
 // statuses maps error kinds to per-protocol error messages/codes.
@@ -151,8 +151,8 @@ func (h *Handler) checkCredentials(u *models.User, pw, ip, protocol, authPort st
 	return password.Verify(u.Password, pw)
 }
 
-// serverFor resolves the backend host:port for a protocol (mirrors the reference
-// implementation's get_server). Hosts come from env, defaulting to the compose
+// serverFor resolves the backend host:port for a protocol. Hosts come from
+// env, defaulting to the compose
 // service names; the hostname is resolved to an IP because nginx's mail auth
 // module (ngx_parse_addr) only accepts IP literals in Auth-Server.
 func (h *Handler) serverFor(protocol string, authenticated bool) (string, string) {
@@ -186,8 +186,8 @@ func (h *Handler) serverFor(protocol string, authenticated bool) (string, string
 	return resolveHostname(imapAddr), "143"
 }
 
-// resolveHostname mirrors the the mail stack's resolve_hostname
-// (the legacy launcher): IP literals pass through, hostnames are resolved with
+// resolveHostname resolves a backend host for the mail auth module: IP
+// literals pass through, hostnames are resolved with
 // the system DNS (Docker's embedded DNS in containers, /etc/hosts on the
 // host), preferring IPv4 like the legacy original's family-sorted getaddrinfo.
 // If resolution fails the raw value is returned so callers still see a

@@ -44,11 +44,11 @@ func runPostfix() error {
 		}
 	}
 
-	// Stale master.pid cleanup (legacy launcher: flock -n ... rm ...).
+	// Stale master.pid cleanup (see flockRemoveStaleMasterPID).
 	flockRemoveStaleMasterPID()
 
-	// Overrides are applied exactly like the legacy launcher: postconf lines, extra
-	// maps, and a full mta-sts-daemon.yml replacement.
+	// Overrides are applied as: postconf lines, extra maps, and a full
+	// mta-sts-daemon.yml replacement.
 	if err := applyPostfixOverrides(cfg); err != nil {
 		return err
 	}
@@ -112,9 +112,9 @@ func runPostfix() error {
 	return agent.RunChild(ctx, []string{"postfix", "start-fg"})
 }
 
-// applyPostfixOverrides replicates the legacy launcher's /overrides handling: postfix.cf
-// and postfix.master lines are fed to postconf, *.map files are compiled with
-// postmap, and an mta-sts-daemon.yml overrides the rendered one.
+// applyPostfixOverrides applies /overrides: postfix.cf and postfix.master
+// lines are fed to postconf, *.map files are compiled with postmap, and an
+// mta-sts-daemon.yml overrides the rendered one.
 func applyPostfixOverrides(cfg PostfixConfig) error {
 	if data, err := os.ReadFile("/overrides/postfix.cf"); err == nil {
 		for _, line := range nonCommentLines(string(data)) {
@@ -198,7 +198,7 @@ func renderPostfixLogrotate(cfg PostfixConfig) error {
 }
 
 // escapePath percent-encodes a key for a URL path while preserving slashes
-// (the reference UrlTable used quote(key) with safe="/").
+// (keys are quoted with safe="/" so path separators survive).
 func escapePath(p string) string {
 	e := url.PathEscape(p)
 	return strings.ReplaceAll(e, "%2F", "/")

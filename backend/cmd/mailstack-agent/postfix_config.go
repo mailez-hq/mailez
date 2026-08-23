@@ -9,8 +9,7 @@ import (
 )
 
 // PostfixConfig is the typed, validated view of the environment consumed by
-// the postfix templates. It mirrors the Jinja variables used by the vendored
-// main.cf/master.cf/mta-sts-daemon.yml.
+// the postfix templates (main.cf / master.cf / mta-sts-daemon.yml).
 type PostfixConfig struct {
 	Domain                  string
 	Hostname                string
@@ -29,8 +28,7 @@ type PostfixConfig struct {
 	PostfixLogFile          string
 }
 
-// loadPostfixConfig reads the environment like the legacy launcher +
-// the legacy launcher's env cleanup did.
+// loadPostfixConfig reads and normalizes the environment.
 func loadPostfixConfig() (PostfixConfig, error) {
 	cfg := PostfixConfig{
 		Domain:                  agent.Getenv("DOMAIN", "example.com"),
@@ -60,8 +58,7 @@ func loadPostfixConfig() (PostfixConfig, error) {
 	subnet6 := os.Getenv("SUBNET6")
 
 	// Postfix requires IPv6 addresses to be wrapped in square brackets
-	// (the legacy launcher did the same re.sub on RELAYNETS and the template brackets
-	// SUBNET6).
+	// (RELAYNETS entries and SUBNET6 are bracketed the same way).
 	parts := []string{"127.0.0.1/32", subnet}
 	if subnet6 != "" {
 		parts = append(parts, "[::1]/128", bracketCIDR(subnet6))
@@ -94,8 +91,8 @@ func bracketCIDR(cidr string) string {
 	return "[" + host + "]/" + rest
 }
 
-// bracketIPv6Prefix wraps bare IPv6 prefixes from RELAYNETS in brackets,
-// replicating the legacy launcher's re.sub(r'([0-9a-fA-F]+:[0-9a-fA-F:]+)/', '[\\1]/').
+// bracketIPv6Prefix wraps bare IPv6 prefixes from RELAYNETS in brackets
+// (matches the [host]/prefix form postfix expects).
 func bracketIPv6Prefix(net string) string {
 	if strings.Contains(net, ":") && !strings.HasPrefix(net, "[") {
 		if host, rest, ok := strings.Cut(net, "/"); ok {

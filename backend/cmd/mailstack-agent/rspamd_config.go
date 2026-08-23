@@ -7,7 +7,7 @@ import (
 )
 
 // RspamdConfig is the typed view of the environment consumed by the rspamd
-// templates (the legacy launcher rendered every /conf file through Jinja).
+// templates.
 type RspamdConfig struct {
 	Subnet              string
 	Subnet6             string

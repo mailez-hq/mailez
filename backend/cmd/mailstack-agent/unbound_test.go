@@ -44,6 +44,6 @@ func TestUnboundRenderIPv6(t *testing.T) {
 		}
 	}
 	if strings.Contains(got, "0.0.0.0  interface") {
-		t.Fatalf("render collapsed interface lines (legacy Jinja bug):\n%s", got)
+		t.Fatalf("render collapsed interface lines:\n%s", got)
 	}
 }

@@ -32,7 +32,7 @@ func runDovecot() error {
 		}
 	}
 
-	// Ownership fixes (the legacy launcher did the same).
+	// Ownership fixes for the mail volumes.
 	for _, cmd := range [][]string{
 		{"chown", "mail:mail", "/mail"},
 		{"chown", "-R", "mail:mail", "/var/lib/dovecot", "/conf"},
