@@ -1,5 +1,5 @@
 # mailez compose
-# The mail-stack containers (gateway/mta/mail-store/mail-filter/macro-scanner/
+# The mail-stack containers (gateway/mta/mail-keeper/mail-filter/macro-scanner/
 # resolver) are self-built images; the mailez backend is the control plane and
 # serves its internal API at http://backend:8080 (the port is hardcoded to
 # 8080 inside the images).
@@ -94,7 +94,7 @@ services:
     depends_on:
       - backend
 
-  mail-store:
+  mail-keeper:
     image: mailez/dovecot:local
     pull_policy: missing
     restart: always

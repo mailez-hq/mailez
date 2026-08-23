@@ -1,6 +1,6 @@
 # mailez 开发模式基础设施编排
 #
-# 只编排"不会去动的"邮件栈依赖（自建 gateway/mta/mail-store/mail-filter/
+# 只编排"不会去动的"邮件栈依赖（自建 gateway/mta/mail-keeper/mail-filter/
 # macro-scanner/resolver 镜像）。mailez 自研部分（backend / webmail / admin /
 # SSO）不在此
 # 容器化，而是在宿主机以开发模式运行（go run / npm run dev）。
@@ -57,7 +57,7 @@ services:
       - "./certs:/certs"
       - "./overrides/nginx-dev:/overrides"
 
-  mail-store:
+  mail-keeper:
     image: mailez/dovecot:local
     pull_policy: missing
     restart: always
@@ -92,7 +92,7 @@ services:
       - "./overrides:/overrides"
     networks:
       default:
-        # Fixed IP: same reason as mail-store (Auth-Server from the host backend).
+        # Fixed IP: same reason as mail-keeper (Auth-Server from the host backend).
         ipv4_address: 192.168.206.4
     depends_on:
       - gateway
