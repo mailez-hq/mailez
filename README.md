@@ -1,60 +1,107 @@
-# mailez
+<p align="center">
+  <img src="branding/mailez-logo.svg" alt="mailez" width="320">
+</p>
 
-Self-hosted mail server control plane, rewritten in Go + Next.js.
+# mailez — mail easy
 
-Self-hosted mail stack built on proven third-party components (nginx / Postfix
-/ Dovecot / Rspamd) with a fully self-developed control plane (admin, SSO,
-webmail) in Go + Next.js.
+Self-hosted email for teams who want their own mail server: send and receive
+mail with your own domain, keep your data in your own hands, and enjoy a
+webmail that actually feels good to use. One command deploys the whole thing —
+mail delivery, spam filtering, authentication, admin console and webmail.
 
-## Stack
+## Who is it for?
 
-- Backend: Go + Fiber, GORM (SQLite dev / MySQL prod), Redis
-- Frontend: Next.js App Router + React, shadcn/ui
-- Webmail: self-built IMAP client (go-imap) with optional AI plugin layer
-- License: Apache 2.0
+- Teams and companies that want their own domain mail without handing their
+  data to third-party mail services
+- Anyone who wants a self-hosted, privacy-first alternative that doesn't
+  require a Linux mail expert to run
 
-## Layout
+## What you get
 
+### Webmail that feels like a native app
+
+- **Three-pane layout** — folders, list and reading pane side by side; read,
+  reply and organize mail without page reloads; the list column is even
+  draggable to your preferred width
+- **Search that just works** — type naturally (`from:`, `to:`, `has:attachment`,
+  dates…), save frequent searches, and filter with one click for unread,
+  starred or messages with attachments
+- **Keyboard-first** — press `/` to search, `⌘K` for the command palette, `?`
+  for the full shortcut list; long lists scroll through 10,000+ messages
+  without a stutter
+- **Day-to-day mail tasks made easy** — conversation threads, bulk move /
+  archive / delete with an undo toast, pull-to-refresh for new mail
+- **An AI assistant (optional)** — summarize long threads, draft replies in
+  the tone you want, auto-prioritize your inbox, or search by meaning instead
+  of keywords
+- **Privacy features built in** — PGP sign and encrypt, two-factor
+  authentication, remote-image blocking, a Sieve filter editor, and a contact
+  view grouped by sender
+- **Works offline** — installs as a PWA; light/dark themes and three list
+  densities for comfort
+
+### An admin console that doesn't feel like admin work
+
+- **Manage everything in one place** — domains, mailboxes, aliases, relays,
+  external mailbox fetching and app tokens
+- **One-click DKIM** — generate signing keys with a status hint, so your mail
+  stops landing in spam
+- **See who did what** — audit log of admin actions, role-based access
+  (admin / manager / user)
+- **Backup or migrate easily** — export and import your whole configuration
+
+### Trust and security under the hood
+
+- **Spam filtering that works** — Rspamd learns from your reporting; DKIM /
+  DMARC / ARC signing and checking keep your mail deliverable
+- **Transport security** — MTA-STS and DANE protect mail in transit;
+  per-mailbox quotas and sending rate limits keep the system healthy
+- **Malware scanning** — attachments are scanned for macros and known threats
+
+## Quick start
+
+Requires Docker (Compose v2).
+
+```sh
+cd deploy
+cp mailez.env.example mailez.env   # set SECRET_KEY, DOMAIN, HOSTNAMES
+docker compose up -d --build
 ```
-backend/    Go control plane (admin API, internal API, SSO, configgen, podop, mail gateway, ai)
-frontend/   Next.js apps (apps/admin, apps/webmail)
-deploy/     Docker Compose (nginx/postfix/dovecot/rspamd + backend/frontend)
-branding/   logo assets (SVG)
+
+| Port | What's there |
+|---|---|
+| http://localhost:8082 | Admin console |
+| http://localhost:8083 | Webmail |
+| http://localhost:8081 | Backend API (for developers) |
+| 25/587/143/993/4190 … | Mail protocols (SMTP / IMAP / ManageSieve) |
+
+TLS is off by default for local testing. For production, follow
+[`deploy/certs/README.md`](deploy/certs/README.md) to enable automatic
+certificates.
+
+After the stack is up, verify the whole mail path works end to end:
+
+```sh
+cd backend
+go run ./cmd/seed   # creates the admin account once
+go run ./cmd/e2e    # sends a test mail, checks delivery, DKIM and spam filtering
 ```
 
-## Status
+## Tech stack (for developers)
 
-Active development. Implemented so far:
+- Backend: Go + Fiber, GORM, Redis
+- Frontend: Next.js (React) — separate admin and webmail apps
+- Mail delivery & filtering: nginx, Postfix, Dovecot, Rspamd, Unbound
+- More details: [`docs/dev-setup.md`](docs/dev-setup.md),
+  [`docs/webmail-ui-spec.md`](docs/webmail-ui-spec.md)
 
-- Go control plane: models, SSO sessions, REST API v1 (roles + audit), app tokens
-- Internal API consumed by the mail stack (vendored podop bridge): postfix maps,
-  dovecot passdb/userdb/quota/sieve, nginx auth, client autoconfig, SRS, rate limit
-- Admin UI (domains / users / aliases / relays / fetches / tokens / audit / config)
-- Self-built webmail: IMAP/SMTP gateway with temp-token auth, three-pane UI,
-  optional AI provider layer (summarize / draft)
+## License
 
-The internal API wire contract is pinned by contract tests in
-`backend/internal/internalapi` so upgrades of the mail-stack images cannot break
-the integration silently.
+[mailez License](LICENSE) — Apache License 2.0 with additional use conditions:
 
-Deployment: `deploy/mailez.env` + `deploy/docker-compose.yml` wire the
-self-built mail-stack images (nginx/postfix/dovecot/rspamd, built from
-`deploy/vendor/mailstack` via `deploy/scripts/build-images.ps1`) to the mailez
-backend internal API at `http://backend:8080` (the port the mail-stack images
-hardcode). The backend listens
-on 8080 in-container, published as `127.0.0.1:8081`. The admin and webmail
-Next.js apps run as their own services, proxying `/api/v1` to the backend via
-`API_TARGET=http://backend:8080`, and are published as `127.0.0.1:8082`
-(admin, basePath `/admin`) and `127.0.0.1:8083` (webmail). The front
-nginx additionally routes `http://<host>/admin` to the admin UI (via
-`deploy/overrides/nginx/admin.conf`) and `/api/v1`, `/internal` and the mail
-protocols to the backend. To run locally, copy `deploy/mailez.env.example` to
-`deploy/mailez.env` (gitignored) and adjust `SECRET_KEY`, `DOMAIN` and
-`HOSTNAMES` before `docker compose up`. TLS is off by default
-(`TLS_FLAVOR=notls`); for local testing with TLS run
-`deploy/scripts/generate-certs.ps1` (or `.sh`) and set `TLS_FLAVOR=cert` — see
-`deploy/certs/README.md` for production guidance.
-
-After the stack is up, run `go run ./cmd/e2e` from `backend/` (see
-`deploy/scripts/README.md`) to verify the full mail path: SMTP submission,
-IMAP delivery, DKIM signing and rspamd filtering.
+- **No SaaS** — may not be provided to third parties as a hosted/managed/SaaS offering
+- **Own-use only** — use is limited to operating mail services for yourself or your
+  organization, wherever it is deployed (on-premises, private cloud, or public cloud)
+- **No third-party multi-tenant service** — a single deployment may not serve multiple
+  independent organizations; running multiple domains or mailboxes for your own
+  organization is fine
