@@ -21,6 +21,12 @@ func (h *Handler) registerAnonmail(r fiber.Router) {
 
 // anonmailDomains lists domains the current user may create anonymous aliases
 // on (anonmail enabled plus an access grant).
+// anonmailDomains lists domains that allow anonymous aliases.
+// @Summary Anonymous-alias domains
+// @Tags aliases
+// @Produce json
+// @Success 200 {array} models.Domain
+// @Router /anon-aliases/domains [get]
 func (h *Handler) anonmailDomains(c *fiber.Ctx) error {
 	user := currentUser(c)
 	var domains []models.Domain
@@ -38,6 +44,12 @@ func (h *Handler) anonmailDomains(c *fiber.Ctx) error {
 
 // listAnonAliases returns the anonymous aliases owned by the current user
 // (or all of them for a global admin).
+// listAnonAliases returns the caller's anonymous aliases.
+// @Summary List anonymous aliases
+// @Tags aliases
+// @Produce json
+// @Success 200 {array} models.Alias
+// @Router /anon-aliases [get]
 func (h *Handler) listAnonAliases(c *fiber.Ctx) error {
 	user := currentUser(c)
 	q := h.DB.Order("email")
@@ -55,6 +67,14 @@ func (h *Handler) listAnonAliases(c *fiber.Ctx) error {
 // e.g. "my-shop.3fa8c2d1@example.com". Only usable on anonmail-enabled domains
 // the user has access to (their own domain, an explicit DomainAccess grant,
 // or as a global admin).
+// createAnonAlias creates a masked email address for the caller.
+// @Summary Create anonymous alias
+// @Tags aliases
+// @Accept json
+// @Produce json
+// @Success 201 {object} models.Alias
+// @Failure 400 {object} models.APIError
+// @Router /anon-aliases [post]
 func (h *Handler) createAnonAlias(c *fiber.Ctx) error {
 	user := currentUser(c)
 	var in struct {
@@ -97,6 +117,13 @@ func (h *Handler) createAnonAlias(c *fiber.Ctx) error {
 }
 
 // deleteAnonAlias removes an anonymous alias owned by the current user.
+// deleteAnonAlias removes one of the caller's anonymous aliases.
+// @Summary Delete anonymous alias
+// @Tags aliases
+// @Param email path string true "alias address"
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /anon-aliases/{email} [delete]
 func (h *Handler) deleteAnonAlias(c *fiber.Ctx) error {
 	user := currentUser(c)
 	email, _ := url.QueryUnescape(c.Params("email"))

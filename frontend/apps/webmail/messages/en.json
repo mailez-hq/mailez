@@ -8,7 +8,8 @@
     "submitting": "Signing in...",
     "totp": "Verification code",
     "verify": "Verify",
-    "error": "Login failed"
+    "error": "Login failed",
+    "rateLimited": "Too many attempts, please wait a moment before trying again."
   },
   "mail": {
     "write": "Write",

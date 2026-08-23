@@ -22,13 +22,24 @@ type loginRequest struct {
 	Password string `json:"pw"`
 }
 
+// ssoLogin authenticates with email/password and returns a session cookie.
+// @Summary Log in
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param credentials body loginRequest true "email + password"
+// @Success 200 {object} map[string]string "email"
+// @Failure 400 {object} models.APIError
+// @Failure 401 {object} models.APIError
+// @Failure 429 {object} models.APIError "rate_limited"
+// @Router /sso/login [post]
 func (m *Manager) ssoLogin(c *fiber.Ctx) error {
 	var req loginRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request"})
 	}
 	if !m.checkLoginAttempt(c.Context(), c.IP()) {
-		return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "too many login attempts, try again later"})
+		return c.Status(fiber.StatusTooManyRequests).JSON(models.APIError{Error: "too many login attempts, try again later", Code: "rate_limited"})
 	}
 	sid, user, err := m.Login(c.Context(), req.Email, req.Password)
 	if err != nil {
@@ -56,6 +67,16 @@ func (m *Manager) ssoLogin(c *fiber.Ctx) error {
 
 // ssoLoginTotp completes a login after the password step by verifying the
 // authenticator code and only then creating the real session.
+// ssoLoginTotp completes a 2FA login with the pending token and TOTP code.
+// @Summary Complete 2FA login
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param body body object true "pending_token + code"
+// @Success 200 {object} map[string]string "email"
+// @Failure 401 {object} models.APIError
+// @Failure 429 {object} models.APIError "rate_limited"
+// @Router /sso/login/totp [post]
 func (m *Manager) ssoLoginTotp(c *fiber.Ctx) error {
 	var in struct {
 		PendingToken string `json:"pending_token"`
@@ -65,7 +86,7 @@ func (m *Manager) ssoLoginTotp(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "pending_token and code are required"})
 	}
 	if !m.checkLoginAttempt(c.Context(), c.IP()) {
-		return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "too many login attempts, try again later"})
+		return c.Status(fiber.StatusTooManyRequests).JSON(models.APIError{Error: "too many login attempts, try again later", Code: "rate_limited"})
 	}
 	email, ok := m.ConsumePending2FA(c.Context(), in.PendingToken)
 	if !ok {
@@ -87,6 +108,11 @@ func (m *Manager) ssoLoginTotp(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"email": user.Email})
 }
 
+// ssoLogout invalidates the session cookie.
+// @Summary Log out
+// @Tags auth
+// @Success 204
+// @Router /sso/logout [post]
 func (m *Manager) ssoLogout(c *fiber.Ctx) error {
 	sid := c.Cookies(m.SessionName)
 	if sid != "" {
@@ -96,6 +122,22 @@ func (m *Manager) ssoLogout(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+// MeResponse is the authenticated user profile returned by /sso/me.
+type MeResponse struct {
+	Email         string `json:"email"`
+	DisplayedName string `json:"displayed_name"`
+	GlobalAdmin   bool   `json:"global_admin"`
+	Manager       bool   `json:"manager"`
+	Enabled       bool   `json:"enabled"`
+}
+
+// ssoMe returns the current session's profile.
+// @Summary Current profile
+// @Tags auth
+// @Produce json
+// @Success 200 {object} MeResponse
+// @Failure 401 {object} models.APIError
+// @Router /sso/me [get]
 func (m *Manager) ssoMe(c *fiber.Ctx) error {
 	sid := c.Cookies(m.SessionName)
 	user, err := m.UserFromSession(c.Context(), sid)
@@ -109,12 +151,12 @@ func (m *Manager) ssoMe(c *fiber.Ctx) error {
 			manager = count > 0
 		}
 	}
-	return c.JSON(fiber.Map{
-		"email":          user.Email,
-		"displayed_name": user.DisplayedName,
-		"global_admin":   user.GlobalAdmin,
-		"manager":        manager,
-		"enabled":        user.Enabled,
+	return c.JSON(MeResponse{
+		Email:         user.Email,
+		DisplayedName: user.DisplayedName,
+		GlobalAdmin:   user.GlobalAdmin,
+		Manager:       manager,
+		Enabled:       user.Enabled,
 	})
 }
 

@@ -32,6 +32,14 @@ func (h *Handler) registerFetches(r fiber.Router, mw fiber.Handler) {
 }
 
 // listFetches returns all fetch accounts, optionally filtered by ?user=email.
+// listFetches returns fetch accounts, optionally filtered by user.
+// @Summary List fetch accounts
+// @Tags fetch
+// @Produce json
+// @Param user query string false "filter by user email"
+// @Success 200 {array} models.Fetch
+// @Failure 403 {object} models.APIError
+// @Router /fetches [get]
 func (h *Handler) listFetches(c *fiber.Ctx) error {
 	q := h.DB.Order("id")
 	if user := c.Query("user"); user != "" {
@@ -58,6 +66,14 @@ type fetchIn struct {
 	Folders   string `json:"folders"`
 }
 
+// createFetch adds an external mailbox poller.
+// @Summary Create fetch account
+// @Tags fetch
+// @Accept json
+// @Produce json
+// @Success 201 {object} models.Fetch
+// @Failure 400 {object} models.APIError
+// @Router /fetches [post]
 func (h *Handler) createFetch(c *fiber.Ctx) error {
 	var in fetchIn
 	if err := c.BodyParser(&in); err != nil {
@@ -107,6 +123,13 @@ func (h *Handler) createFetch(c *fiber.Ctx) error {
 	return c.Status(201).JSON(f)
 }
 
+// updateFetch updates a fetch account.
+// @Summary Update fetch account
+// @Tags fetch
+// @Accept json
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /fetches/{id} [put]
 func (h *Handler) updateFetch(c *fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
@@ -162,6 +185,13 @@ func (h *Handler) updateFetch(c *fiber.Ctx) error {
 	return c.JSON(f)
 }
 
+// deleteFetch removes a fetch account.
+// @Summary Delete fetch account
+// @Tags fetch
+// @Param id path int true "fetch id"
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /fetches/{id} [delete]
 func (h *Handler) deleteFetch(c *fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {

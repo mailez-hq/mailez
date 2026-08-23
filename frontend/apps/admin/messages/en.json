@@ -21,6 +21,7 @@
     "submitting": "Signing in...",
     "totp": "Verification code",
     "verify": "Verify",
+    "rateLimited": "Too many attempts, please wait a moment before trying again.",
     "signupLink": "Create an account",
     "alreadyAccount": "Already have an account?"
   },

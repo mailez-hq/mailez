@@ -14,6 +14,12 @@ func (h *Handler) registerRelays(r fiber.Router, mw fiber.Handler) {
 	r.Delete("/relays/:name", mw, h.deleteRelay)
 }
 
+// listRelays returns relay hosts.
+// @Summary List relays
+// @Tags domains
+// @Produce json
+// @Success 200 {array} models.Relay
+// @Router /relays [get]
 func (h *Handler) listRelays(c *fiber.Ctx) error {
 	var relays []models.Relay
 	if err := h.DB.Order("name").Find(&relays).Error; err != nil {
@@ -22,6 +28,14 @@ func (h *Handler) listRelays(c *fiber.Ctx) error {
 	return c.JSON(relays)
 }
 
+// createRelay adds a relay host.
+// @Summary Create relay
+// @Tags domains
+// @Accept json
+// @Produce json
+// @Success 201 {object} models.Relay
+// @Failure 400 {object} models.APIError
+// @Router /relays [post]
 func (h *Handler) createRelay(c *fiber.Ctx) error {
 	var in struct {
 		Name string `json:"name"`
@@ -40,6 +54,13 @@ func (h *Handler) createRelay(c *fiber.Ctx) error {
 	return c.Status(201).JSON(r)
 }
 
+// updateRelay updates a relay host.
+// @Summary Update relay
+// @Tags domains
+// @Accept json
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /relays/{name} [put]
 func (h *Handler) updateRelay(c *fiber.Ctx) error {
 	var r models.Relay
 	if err := h.DB.First(&r, "name = ?", c.Params("name")).Error; err != nil {
@@ -58,6 +79,13 @@ func (h *Handler) updateRelay(c *fiber.Ctx) error {
 	return c.JSON(r)
 }
 
+// deleteRelay removes a relay host.
+// @Summary Delete relay
+// @Tags domains
+// @Param name path string true "relay name"
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /relays/{name} [delete]
 func (h *Handler) deleteRelay(c *fiber.Ctx) error {
 	if err := h.DB.Delete(&models.Relay{}, "name = ?", c.Params("name")).Error; err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})

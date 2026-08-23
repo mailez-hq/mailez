@@ -14,6 +14,13 @@ func (h *Handler) registerMe(r fiber.Router) {
 }
 
 // meProfile returns the current user's full profile (password hash excluded).
+// meProfile returns the full profile/settings of the current user.
+// @Summary Current user settings
+// @Tags me
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /me [get]
 func (h *Handler) meProfile(c *fiber.Ctx) error {
 	return c.JSON(currentUser(c))
 }
@@ -38,6 +45,13 @@ type meSettingsIn struct {
 }
 
 // meUpdateSettings applies self-service settings to the current user.
+// meUpdateSettings updates the current user's self-service settings.
+// @Summary Update settings
+// @Tags me
+// @Accept json
+// @Success 204
+// @Failure 400 {object} map[string]interface{}
+// @Router /me/settings [put]
 func (h *Handler) meUpdateSettings(c *fiber.Ctx) error {
 	u := currentUser(c)
 	var in meSettingsIn
@@ -97,6 +111,13 @@ func (h *Handler) meUpdateSettings(c *fiber.Ctx) error {
 
 // meChangePassword updates the current user's password after verifying the old
 // one, so a stolen session cannot silently change credentials.
+// meChangePassword changes the current user's password.
+// @Summary Change password
+// @Tags me
+// @Accept json
+// @Success 204
+// @Failure 400 {object} map[string]interface{}
+// @Router /me/password [put]
 func (h *Handler) meChangePassword(c *fiber.Ctx) error {
 	u := currentUser(c)
 	var in struct {

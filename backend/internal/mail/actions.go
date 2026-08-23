@@ -10,6 +10,7 @@ import (
 
 // SetFlag adds or removes an IMAP flag (\Seen, \Flagged, ...) by UID.
 func (c *Client) SetFlag(email, token, folder string, uid uint32, flag string, value bool) error {
+	folder = inboxName(folder)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
 		return err
@@ -38,6 +39,8 @@ func (c *Client) MoveMany(email, token, folder string, uids []uint32, destinatio
 	if len(uids) == 0 {
 		return nil
 	}
+	folder = inboxName(folder)
+	destination = inboxName(destination)
 	if err := c.EnsureMailbox(email, token, destination); err != nil {
 		return err
 	}
@@ -116,11 +119,11 @@ func (c *Client) UnseenCounts(email, token string) (map[string]int, error) {
 
 	out := make(map[string]int, len(folders))
 	for _, f := range folders {
-		st, err := cli.Status(f, []imap.StatusItem{imap.StatusUnseen})
+		st, err := cli.Status(inboxName(f), []imap.StatusItem{imap.StatusUnseen})
 		if err != nil {
 			continue
 		}
-		out[f] = int(st.Unseen)
+		out[inboxName(f)] = int(st.Unseen)
 	}
 	return out, nil
 }

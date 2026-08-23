@@ -19,6 +19,14 @@ func (h *Handler) registerUsers(r fiber.Router, mw fiber.Handler) {
 	r.Delete("/users/:email", mw, h.deleteUser)
 }
 
+// listUsers returns users, optionally filtered by domain (manager/admin).
+// @Summary List users
+// @Tags users
+// @Produce json
+// @Param domain query string false "filter by domain"
+// @Success 200 {array} models.User
+// @Failure 403 {object} models.APIError
+// @Router /users [get]
 func (h *Handler) listUsers(c *fiber.Ctx) error {
 	q := h.DB
 	if u := currentUser(c); !u.GlobalAdmin {
@@ -31,6 +39,14 @@ func (h *Handler) listUsers(c *fiber.Ctx) error {
 	return c.JSON(users)
 }
 
+// getUser returns one user (manager/admin).
+// @Summary Get user
+// @Tags users
+// @Produce json
+// @Param email path string true "user email"
+// @Success 200 {object} models.User
+// @Failure 403 {object} models.APIError
+// @Router /users/{email} [get]
 func (h *Handler) getUser(c *fiber.Ctx) error {
 	var u models.User
 	if err := h.DB.First(&u, "email = ?", c.Params("email")).Error; err != nil {
@@ -42,6 +58,14 @@ func (h *Handler) getUser(c *fiber.Ctx) error {
 	return c.JSON(u)
 }
 
+// createUser provisions a new user (manager/admin).
+// @Summary Create user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Success 201 {object} models.User
+// @Failure 400 {object} models.APIError
+// @Router /users [post]
 func (h *Handler) createUser(c *fiber.Ctx) error {
 	var in struct {
 		Email         string `json:"email"`
@@ -121,6 +145,13 @@ type updateUserIn struct {
 	SpamThreshold      *int    `json:"spam_threshold"`
 }
 
+// updateUser updates a user (manager/admin).
+// @Summary Update user
+// @Tags users
+// @Accept json
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /users/{email} [put]
 func (h *Handler) updateUser(c *fiber.Ctx) error {
 	var u models.User
 	if err := h.DB.First(&u, "email = ?", c.Params("email")).Error; err != nil {
@@ -213,6 +244,13 @@ func parseUserDate(s string) time.Time {
 	return time.Time{}
 }
 
+// deleteUser removes a user (manager/admin).
+// @Summary Delete user
+// @Tags users
+// @Param email path string true "user email"
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /users/{email} [delete]
 func (h *Handler) deleteUser(c *fiber.Ctx) error {
 	var u models.User
 	if err := h.DB.First(&u, "email = ?", c.Params("email")).Error; err != nil {

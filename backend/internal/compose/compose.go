@@ -10,6 +10,14 @@ import (
 
 // mailSaveDraft stores a working draft in Drafts; replace_uid (the UID of the
 // previous auto-save) replaces it so each compose session keeps one draft.
+// mailSaveDraft stores a working draft in Drafts.
+// @Summary Save draft
+// @Tags mail
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "uid"
+// @Failure 400 {object} map[string]interface{}
+// @Router /mail/draft [post]
 func (h *Handler) mailSaveDraft(c *fiber.Ctx) error {
 	user := currentUser(c)
 	token, err := h.mailToken(c)
@@ -37,6 +45,14 @@ func (h *Handler) mailSaveDraft(c *fiber.Ctx) error {
 
 // mailSend delivers a message on behalf of the current user, honouring the
 // spoofing policy (own address or one of their aliases).
+// mailSend delivers a message on behalf of the current user.
+// @Summary Send message
+// @Tags mail
+// @Accept json
+// @Success 204
+// @Failure 400 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{}
+// @Router /mail/send [post]
 func (h *Handler) mailSend(c *fiber.Ctx) error {
 	user := currentUser(c)
 	token, err := h.mailToken(c)

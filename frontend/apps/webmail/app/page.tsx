@@ -8,12 +8,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LocaleSwitcher } from "@/components/locale-switcher";
-import { login, loginTotp, me } from "@/lib/api";
+import { ApiError, login, loginTotp, me } from "@/lib/api";
 
 // The root route is the sign-in page. An already-authenticated visitor is
 // sent straight into the mailbox; after a successful login we route into it.
 export default function Home() {
   const t = useTranslations("login");
+  const loginError = (err: unknown) =>
+    err instanceof ApiError && err.code === "rate_limited"
+      ? t("rateLimited")
+      : err instanceof Error
+        ? err.message
+        : t("error");
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
@@ -25,7 +31,7 @@ export default function Home() {
 
   const check = useCallback(() => {
     me()
-      .then(() => router.replace("/mail/INBOX"))
+      .then(() => router.replace("/mail/Inbox"))
       .catch(() => {
         // not authenticated: stay on the sign-in form
       })
@@ -43,10 +49,10 @@ export default function Home() {
       if (res.totp_required && res.pending_token) {
         setPendingToken(res.pending_token);
       } else {
-        router.replace("/mail/INBOX");
+        router.replace("/mail/Inbox");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("error"));
+      setError(loginError(err));
     } finally {
       setBusy(false);
     }
@@ -58,9 +64,9 @@ export default function Home() {
     setBusy(true);
     try {
       await loginTotp(pendingToken, code);
-      router.replace("/mail/INBOX");
+      router.replace("/mail/Inbox");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("error"));
+      setError(loginError(err));
     } finally {
       setBusy(false);
     }

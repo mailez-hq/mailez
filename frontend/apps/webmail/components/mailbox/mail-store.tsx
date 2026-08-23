@@ -74,7 +74,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   // ---- mailbox: folder / list / selection ----
   const [folders, setFolders] = useState<string[]>([]);
   const [unseen, setUnseen] = useState<Record<string, number>>({});
-  const [folder, setFolder] = useState("INBOX");
+  const [folder, setFolder] = useState("Inbox");
   const [messages, setMessages] = useState<MailMessage[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -274,7 +274,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   // full detail).
   const pathname = usePathname();
   const segs = pathname.split("/").filter(Boolean);
-  const pathFolder = segs[1] || "INBOX";
+  const pathFolder = segs[1] || "Inbox";
   const pathId = segs.length > 2 ? segs[2] : null;
 
   useEffect(() => {
@@ -292,10 +292,22 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     let cancelled = false;
     setDetailLoading(true);
     // Optimistically show the row message (if already loaded) while the full
-    // detail is fetched by its stable id.
+    // detail is fetched. Prefer the row's UID (we already have it, no reverse
+    // lookup needed and it can't "not found"); only fall back to the stable id
+    // reverse lookup when the row isn't in the mounted list (e.g. fresh deep
+    // link where the list hasn't loaded yet).
     const row = messages.find((m) => m.id === pathId || m.uid === Number(pathId));
     if (row) setSelected(row);
-    mailMessage(pathFolder, { id: pathId })
+    // A numeric id is the degenerate uid fallback used when a message has no
+    // Message-ID header; routing it through the uid path avoids a pointless
+    // (and error-prone) reverse lookup.
+    const numericId = /^\d+$/.test(pathId);
+    const fetch = row
+      ? mailMessage(pathFolder, { uid: row.uid })
+      : numericId
+        ? mailMessage(pathFolder, { uid: Number(pathId) })
+        : mailMessage(pathFolder, { id: pathId });
+    fetch
       .then((full) => {
         if (cancelled) return;
         setSelected(full);
@@ -419,7 +431,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     const check = () => {
       mailUnseen()
         .then((counts) => {
-          const n = counts["INBOX"] ?? 0;
+          const n = counts["Inbox"] ?? 0;
           const prev = lastInboxUnseen.current;
           lastInboxUnseen.current = n;
           if (prev !== null && n > prev && !document.hasFocus()) {
@@ -493,7 +505,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
         if (!current.includes(sender)) current.push(sender);
         await updateMeSettings({ whitelist: current.join(", ") });
       }
-      await moveTo([m.uid], "INBOX", t("toastNotSpam"));
+      await moveTo([m.uid], "Inbox", t("toastNotSpam"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "not spam failed");
     }
@@ -1231,7 +1243,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       }
       if (pendingG.current) {
         pendingG.current = false;
-        if (e.key === "i") api.selectFolder("INBOX");
+        if (e.key === "i") api.selectFolder("Inbox");
         if (e.key === "s") api.selectFolder("Sent");
         return;
       }

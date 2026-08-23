@@ -19,6 +19,13 @@ func (h *Handler) registerDkim(r fiber.Router, mw fiber.Handler) {
 
 // dkimStatus reports whether the domain has a DKIM key and, if so, the DNS
 // record that must be published for signing to verify.
+// dkimStatus reports DKIM configuration for a domain.
+// @Summary DKIM status
+// @Tags domains
+// @Produce json
+// @Param name path string true "domain name"
+// @Success 200 {object} map[string]interface{}
+// @Router /domains/{name}/dkim [get]
 func (h *Handler) dkimStatus(c *fiber.Ctx) error {
 	d, err := h.findDomain(c.Params("name"))
 	if err != nil {
@@ -30,6 +37,14 @@ func (h *Handler) dkimStatus(c *fiber.Ctx) error {
 // dkimGenerate creates a fresh RSA-2048 DKIM key pair for the domain,
 // stores the private key, and returns the public DNS record. Generating again
 // rotates the key (old mail in transit may fail DKIM until DNS propagates).
+// dkimGenerate (re)generates the DKIM key pair for a domain.
+// @Summary Generate DKIM key
+// @Tags domains
+// @Produce json
+// @Param name path string true "domain name"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} models.APIError
+// @Router /domains/{name}/dkim [post]
 func (h *Handler) dkimGenerate(c *fiber.Ctx) error {
 	d, err := h.findDomain(c.Params("name"))
 	if err != nil {

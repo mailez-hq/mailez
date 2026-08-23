@@ -18,6 +18,13 @@ func (h *Handler) registerTokens(r fiber.Router, mw fiber.Handler) {
 	r.Delete("/tokens/:id", mw, h.deleteToken)
 }
 
+// listTokens returns all application tokens (admin).
+// @Summary List app tokens
+// @Tags tokens
+// @Produce json
+// @Success 200 {array} models.Token
+// @Failure 403 {object} models.APIError
+// @Router /tokens [get]
 func (h *Handler) listTokens(c *fiber.Ctx) error {
 	var tokens []models.Token
 	if err := h.DB.Order("id").Find(&tokens).Error; err != nil {
@@ -28,6 +35,14 @@ func (h *Handler) listTokens(c *fiber.Ctx) error {
 
 // createToken issues an app password. The plaintext secret is returned once;
 // only its pbkdf2-sha256 hash is stored.
+// createToken issues an app password; the plaintext secret is returned once.
+// @Summary Create app token
+// @Tags tokens
+// @Accept json
+// @Produce json
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} models.APIError
+// @Router /tokens [post]
 func (h *Handler) createToken(c *fiber.Ctx) error {
 	var in struct {
 		Email string `json:"email"`
@@ -63,6 +78,13 @@ func (h *Handler) createToken(c *fiber.Ctx) error {
 	})
 }
 
+// deleteToken revokes an application token.
+// @Summary Delete app token
+// @Tags tokens
+// @Param id path int true "token id"
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /tokens/{id} [delete]
 func (h *Handler) deleteToken(c *fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {

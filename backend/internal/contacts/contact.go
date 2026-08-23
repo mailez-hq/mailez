@@ -18,6 +18,12 @@ func (h *Handler) registerContacts(r fiber.Router) {
 	r.Delete("/contacts/:id", h.deleteContact)
 }
 
+// listContacts returns the caller's address book.
+// @Summary List contacts
+// @Tags contacts
+// @Produce json
+// @Success 200 {array} models.Contact
+// @Router /contacts [get]
 func (h *Handler) listContacts(c *fiber.Ctx) error {
 	var contacts []models.Contact
 	if err := h.DB.Where("user_email = ?", currentUser(c).Email).Order("name").Find(&contacts).Error; err != nil {
@@ -26,6 +32,14 @@ func (h *Handler) listContacts(c *fiber.Ctx) error {
 	return c.JSON(contacts)
 }
 
+// createContact adds an address book entry.
+// @Summary Create contact
+// @Tags contacts
+// @Accept json
+// @Produce json
+// @Success 201 {object} models.Contact
+// @Failure 400 {object} models.APIError
+// @Router /contacts [post]
 func (h *Handler) createContact(c *fiber.Ctx) error {
 	var in struct {
 		Name    string `json:"name"`
@@ -50,6 +64,13 @@ func (h *Handler) createContact(c *fiber.Ctx) error {
 	return c.Status(201).JSON(contact)
 }
 
+// updateContact updates an address book entry.
+// @Summary Update contact
+// @Tags contacts
+// @Accept json
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /contacts/{id} [put]
 func (h *Handler) updateContact(c *fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
@@ -82,6 +103,13 @@ func (h *Handler) updateContact(c *fiber.Ctx) error {
 	return c.JSON(contact)
 }
 
+// deleteContact removes an address book entry.
+// @Summary Delete contact
+// @Tags contacts
+// @Param id path int true "contact id"
+// @Success 204
+// @Failure 400 {object} models.APIError
+// @Router /contacts/{id} [delete]
 func (h *Handler) deleteContact(c *fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
