@@ -28,6 +28,7 @@ func (h *Handler) Register(r fiber.Router) {
 	h.registerMe(r)
 	h.registerTotp(r)
 	h.registerPGP(r)
+	h.registerSmime(r)
 	h.registerTokens(r, h.RequireGlobalAdmin)
 	h.registerUsers(r, h.RequireManager)
 }

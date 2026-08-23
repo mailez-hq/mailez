@@ -61,3 +61,29 @@ func TestSignVerify(t *testing.T) {
 		t.Errorf("tampered message should not verify (ok=%v err=%v)", ok, err)
 	}
 }
+
+func TestParsePublicKey(t *testing.T) {
+	pub, _, err := GenerateKeyPair("alice@example.com")
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	info, err := ParsePublicKey(pub)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if len(info.Fingerprint) != 40 {
+		t.Errorf("fingerprint length = %d, want 40", len(info.Fingerprint))
+	}
+	found := false
+	for _, e := range info.Emails {
+		if e == "alice@example.com" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("identity emails = %v, want alice@example.com", info.Emails)
+	}
+	if _, err := ParsePublicKey("not a key"); err == nil {
+		t.Error("invalid armor should fail to parse")
+	}
+}

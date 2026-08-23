@@ -1,6 +1,7 @@
 package mail
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -29,6 +30,44 @@ func (c *Client) SetFlag(email, token, folder string, uid uint32, flag string, v
 	// value must be []interface{} of RawString flags for go-imap.
 	if err := cli.UidStore(seqset, op, []interface{}{imap.RawString(flag)}, nil); err != nil {
 		return fmt.Errorf("imap store: %w", err)
+	}
+	return nil
+}
+
+// SetFlags adds and removes IMAP flags/keywords by UID in one round trip.
+func (c *Client) SetFlags(email, token, folder string, uid uint32, add, remove []string) error {
+	if len(add) == 0 && len(remove) == 0 {
+		return nil
+	}
+	folder = inboxName(folder)
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return err
+	}
+	defer cli.Logout()
+
+	if _, err := cli.Select(folder, false); err != nil {
+		return fmt.Errorf("imap select %q: %w", folder, err)
+	}
+	seqset := new(imap.SeqSet)
+	seqset.AddNum(uid)
+	if len(add) > 0 {
+		vals := make([]interface{}, 0, len(add))
+		for _, f := range add {
+			vals = append(vals, imap.RawString(f))
+		}
+		if err := cli.UidStore(seqset, imap.AddFlags, vals, nil); err != nil {
+			return fmt.Errorf("imap add flags: %w", err)
+		}
+	}
+	if len(remove) > 0 {
+		vals := make([]interface{}, 0, len(remove))
+		for _, f := range remove {
+			vals = append(vals, imap.RawString(f))
+		}
+		if err := cli.UidStore(seqset, imap.RemoveFlags, vals, nil); err != nil {
+			return fmt.Errorf("imap remove flags: %w", err)
+		}
 	}
 	return nil
 }
@@ -207,4 +246,84 @@ func (c *Client) SaveDraft(email, token string, to, cc []string, subject, text, 
 		return 0, nil // uid unknown; caller just saves again without replacing
 	}
 	return st.UidNext - 1, nil
+}
+
+// SystemFolders are the protocol/service mailboxes that must never be renamed,
+// deleted or cleared from the folder manager. The names are case-insensitive.
+var SystemFolders = map[string]bool{
+	"inbox": true, "sent": true, "drafts": true, "trash": true,
+	"archive": true, "junk": true, "spam": true, "all mail": true,
+}
+
+// CreateFolder creates a new mailbox, failing when it already exists so the
+// UI can surface the conflict instead of silently succeeding.
+func (c *Client) CreateFolder(email, token, name string) error {
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return err
+	}
+	defer cli.Logout()
+	if err := cli.Create(name); err != nil {
+		return fmt.Errorf("imap create %q: %w", name, err)
+	}
+	return nil
+}
+
+// RenameFolder renames a mailbox. Renaming the reserved INBOX is refused.
+func (c *Client) RenameFolder(email, token, oldName, newName string) error {
+	if strings.EqualFold(oldName, "inbox") {
+		return errors.New("cannot rename INBOX")
+	}
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return err
+	}
+	defer cli.Logout()
+	if err := cli.Rename(oldName, newName); err != nil {
+		return fmt.Errorf("imap rename %q: %w", oldName, err)
+	}
+	return nil
+}
+
+// DeleteFolder deletes a mailbox. The reserved INBOX cannot be deleted.
+func (c *Client) DeleteFolder(email, token, name string) error {
+	if strings.EqualFold(name, "inbox") {
+		return errors.New("cannot delete INBOX")
+	}
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return err
+	}
+	defer cli.Logout()
+	if err := cli.Delete(name); err != nil {
+		return fmt.Errorf("imap delete %q: %w", name, err)
+	}
+	return nil
+}
+
+// ClearFolder marks every message in a mailbox as \Deleted and expunges it.
+func (c *Client) ClearFolder(email, token, name string) error {
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return err
+	}
+	defer cli.Logout()
+
+	mbox, err := cli.Select(inboxName(name), false)
+	if err != nil {
+		return fmt.Errorf("imap select %q: %w", name, err)
+	}
+	if mbox.Messages == 0 {
+		return nil
+	}
+	seqset := new(imap.SeqSet)
+	seqset.AddRange(1, mbox.Messages)
+	if err := cli.Store(seqset, imap.AddFlags, []interface{}{imap.RawString("\\Deleted")}, nil); err != nil {
+		return fmt.Errorf("imap store %q: %w", name, err)
+	}
+	deleted := make(chan uint32, 1)
+	if err := cli.Expunge(deleted); err != nil {
+		return fmt.Errorf("imap expunge %q: %w", name, err)
+	}
+	return nil
 }

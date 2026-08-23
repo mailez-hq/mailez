@@ -33,6 +33,8 @@ type fakeGateway struct {
 	savedUID   uint32
 }
 
+func (f *fakeGateway) With(dial mail.Dial) mail.Gateway { return f }
+
 func (f *fakeGateway) Send(email, token, from string, to, cc, bcc []string, subject, text, html string, attachments []mail.Attachment) error {
 	f.sentTo = to
 	f.sentCc = cc

@@ -15,15 +15,22 @@ import { setupPushSubscription, teardownPushSubscription } from "@/lib/push";
 import {
   aiDraft, aiStatus, aiSummarize,
   aiPrioritize, aiSearch,
+  accounts, setActiveAccountId,
   contacts, mailFlag, mailMove, mailIdentities,
-  mailFolders, mailLabelDelete, mailLabelRename, mailLabelSave, mailLabels, mailMessage, mailMessages, mailSaveDraft, mailSearch, mailSend, mailThread, mailUnseen, mailUndoSend, mailUnsubscribe,
+  mailFolders, mailFolderCreate, mailFolderRename, mailFolderDelete, mailFolderClear,
+  mailLabelDelete, mailLabelRename, mailLabelSave, mailLabels, mailMessage, mailMessages, mailSaveDraft, mailSearch, mailSend, mailThread, mailUnseen, mailUndoSend, mailUnsubscribe, mailScheduled,
+  mailSnooze, mailSnoozed,
   meProfile, updateMeSettings,
   pgpEncrypt, pgpLookup, pgpSign,
-  type Contact, type DraftTone, type MailIdentity, type MailLabel, type MailMessage, type MailThread, type Me,
-  type OutboundAttachment,
+  type Contact, type DraftTone, type MailAccount, type MailIdentity, type MailLabel, type MailMessage, type MailThread, type Me,
+  type OutboundAttachment, type ScheduledSend, type SnoozedMessage,
 } from "@/lib/api";
 import {
   SYSTEM_FLAGS,
+  PIN_FLAG,
+  isPinned,
+  isSnoozed,
+  snoozeUntil,
   SAVED_SEARCH_KEY,
   MAX_ATTACHMENT_BYTES,
   escHtml,
@@ -72,12 +79,64 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
+  // ---- aggregated external accounts (full aggregation client) ----
+  const [accountList, setAccountList] = useState<MailAccount[]>([]);
+  // null = the internal gateway account; a number = an external mailbox.
+  const [activeAccount, setActiveAccount] = useState<number | null>(null);
+  const switchInFlight = useRef(false);
+
+  const refreshAccounts = useCallback(async () => {
+    try {
+      setAccountList(await accounts());
+    } catch {
+      // account listing is optional; the internal account always works
+    }
+  }, []);
+
+  // Load the account list once; keep the active account in the api module so
+  // every /mail/* request is scoped to it.
+  useEffect(() => {
+    refreshAccounts();
+  }, [refreshAccounts]);
+  useEffect(() => {
+    setActiveAccountId(activeAccount);
+  }, [activeAccount]);
+
+  // Switching accounts resets the mailbox view and re-scopes all requests.
+  async function switchAccount(id: number | null) {
+    if (id === activeAccount || switchInFlight.current) return;
+    switchInFlight.current = true;
+    setActiveAccount(id);
+    setFolder("Inbox");
+    setMessages([]);
+    setSelected(null);
+    setDetail(null);
+    setThread(null);
+    setThreadOpen(false);
+    setQuery("");
+    setSearching(false);
+    setSelectedUids(new Set());
+    setCursor(0);
+    switchInFlight.current = false;
+    router.push("/mail/Inbox");
+    loadFolders();
+  }
+
+  // openSettingsSection opens the settings dialog on a specific section.
+  function openSettingsSection(section: string) {
+    setSettingsInitialSection(section);
+    setSettingsOpen(true);
+  }
+
   // ---- stack: compose / settings / contacts / palette / sieve / sidebar ----
   const [composeOpen, setComposeOpen] = useState(false);
   // Where the initial focus should land when the compose dialog opens:
   // "to" (new message / forward) or "editor" (reply / reply all).
   const [composeFocus, setComposeFocus] = useState<"to" | "editor">("to");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // The settings section to land on when the dialog opens (e.g. "accounts"
+  // from the sidebar account manager); defaults to the first section.
+  const [settingsInitialSection, setSettingsInitialSection] = useState("appearance");
   const [contactsOpen, setContactsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -96,6 +155,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [priorityCategories, setPriorityCategories] = useState<Record<string, string>>({});
   const [activeView, setActiveView] = useState("all");
   const [activeLabel, setActiveLabel] = useState("");
+  // Deterministic auto-category filter ("" = all) applied to the loaded list.
+  const [categoryFilter, setCategoryFilter] = useState("");
   // Label definitions (name + color) persisted server-side; flagLabels are
   // keywords seen on loaded messages. The union is what the UI offers.
   const [labelDefs, setLabelDefs] = useState<MailLabel[]>([]);
@@ -111,6 +172,14 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [thread, setThread] = useState<MailThread | null>(null);
   const [threadOpen, setThreadOpen] = useState(false);
   const [threadLoading, setThreadLoading] = useState(false);
+  // Scheduled sends: the backend parks messages in the outbox until send_at;
+  // this dialog lists and cancels them.
+  const [scheduled, setScheduled] = useState<ScheduledSend[]>([]);
+  const [scheduledOpen, setScheduledOpen] = useState(false);
+  const [scheduledLoading, setScheduledLoading] = useState(false);
+  // Snoozed messages: keyword-based; the backend resurfaced due ones lazily.
+  const [snoozedMsgs, setSnoozedMsgs] = useState<SnoozedMessage[]>([]);
+  const [snoozedLoading, setSnoozedLoading] = useState(false);
 
   // ---- compose: form fields ----
   const [to, setTo] = useState<string[]>([]);
@@ -127,15 +196,25 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [signOn, setSignOn] = useState(false);
   const [encryptOn, setEncryptOn] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
+  // Optional RFC3339 timestamp (from the compose datetime input) that turns a
+  // send into a scheduled send; null means "send now".
+  const [scheduleAt, setScheduleAt] = useState<string>("");
   const [allContacts, setAllContacts] = useState<Contact[] | null>(null);
 
   const searchRef = useRef<HTMLInputElement>(null);
   const toInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const loadingMoreRef = useRef(false);
+  // Guards loadMessages responses: increments on every call so an older
+  // in-flight request can detect it has been superseded and drop its result.
+  const loadSeq = useRef(0);
   const pendingG = useRef(false);
   const draftUidRef = useRef<number | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Serializes draft saves: while a save is in flight the draft UID is not yet
+  // known, so a second overlapping save would create a duplicate draft instead
+  // of updating the first one.
+  const draftSavingRef = useRef(false);
   const lastSearchRef = useRef("");
   const resizeRef = useRef<{ x: number; w: number } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -154,17 +233,95 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     refreshUnseen();
   }, [refreshUnseen]);
 
+  // ---- folder management (create / rename / delete / clear) ----
+  async function createFolder(name: string) {
+    setError("");
+    try {
+      await mailFolderCreate(name);
+      await loadFolders();
+      showToast(t("toastFolderCreated", { name }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "create folder failed");
+    }
+  }
+
+  async function renameFolder(name: string, newName: string) {
+    setError("");
+    try {
+      await mailFolderRename(name, newName);
+      await loadFolders();
+      if (folder.toLowerCase() === name.toLowerCase()) selectFolder(newName);
+      showToast(t("toastFolderRenamed", { name }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "rename folder failed");
+    }
+  }
+
+  async function deleteFolder(name: string) {
+    setError("");
+    try {
+      await mailFolderDelete(name);
+      await loadFolders();
+      if (folder.toLowerCase() === name.toLowerCase()) selectFolder("Inbox");
+      showToast(t("toastFolderDeleted", { name }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "delete folder failed");
+    }
+  }
+
+  async function clearFolder(name: string) {
+    setError("");
+    try {
+      await mailFolderClear(name);
+      refreshUnseen();
+      await loadMessages(folder);
+      showToast(t("toastFolderCleared", { name }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "clear folder failed");
+    }
+  }
+
+  // ---- scheduled sends (list / cancel) ----
+  const loadScheduled = useCallback(async () => {
+    setScheduledLoading(true);
+    try {
+      setScheduled(await mailScheduled());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "load scheduled failed");
+    } finally {
+      setScheduledLoading(false);
+    }
+  }, []);
+
+  async function cancelScheduled(id: number) {
+    setError("");
+    try {
+      await mailUndoSend(id);
+      await loadScheduled();
+      showToast(t("toastScheduledCancelled"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "cancel scheduled failed");
+    }
+  }
+
   const loadMessages = useCallback(async (f: string, p = 0, silent = false) => {
+    // A monotonically increasing seq lets stale responses drop themselves: the
+    // mount effect loads the initial folder before the pathname effect has
+    // corrected it, so two requests race and the slower (older) one must not
+    // overwrite the current folder's list.
+    const seq = ++loadSeq.current;
     if (p === 0 && !silent) setLoading(true);
     try {
       const res = await mailMessages(f, p);
+      if (seq !== loadSeq.current) return;
       setMessages(p === 0 ? res.messages : (prev) => [...prev, ...res.messages]);
       setTotal(res.total);
       setPage(p);
     } catch (e) {
+      if (seq !== loadSeq.current) return;
       setError(e instanceof Error ? e.message : "load messages failed");
     } finally {
-      setLoading(false);
+      if (seq === loadSeq.current) setLoading(false);
     }
   }, []);
 
@@ -182,12 +339,16 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     setDraftSaved(false);
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(async () => {
+      if (draftSavingRef.current) return; // a manual save already persists this content
+      draftSavingRef.current = true;
       try {
         const res = await mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, attachments);
         draftUidRef.current = res.uid || draftUidRef.current;
         setDraftSaved(true);
       } catch {
         // silent: keep editing, the next idle window retries
+      } finally {
+        draftSavingRef.current = false;
       }
     }, 30000);
     return () => {
@@ -201,25 +362,39 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     const hasContent =
       to.length > 0 || cc.length > 0 || subject.trim() !== "" || bodyText.trim() !== "" || attachments.length > 0;
     if (!hasContent) return;
+    if (draftSavingRef.current) return; // ignore rapid repeated clicks; the first save persists
+    draftSavingRef.current = true;
     setError("");
     try {
       const res = await mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, attachments);
       draftUidRef.current = res.uid || draftUidRef.current;
       setDraftSaved(true);
+      refreshDraftsIfActive();
     } catch (e) {
       setError(e instanceof Error ? e.message : "save draft failed");
+    } finally {
+      draftSavingRef.current = false;
     }
   }
+
+  // A draft save lands in the Drafts folder; if the user is browsing Drafts,
+  // silently reload its list so the new/updated draft appears right away.
+  const refreshDraftsIfActive = useCallback(() => {
+    if (folder === "Drafts") void loadMessages("Drafts", 0, true);
+  }, [folder, loadMessages]);
 
   // closeCompose saves the draft (fire-and-forget) and dismisses the panel.
   // Without this, closing within the 30s auto-save window would lose edits.
   function closeCompose() {
     const hasContent =
       to.length > 0 || cc.length > 0 || subject.trim() !== "" || bodyText.trim() !== "" || attachments.length > 0;
-    if (hasContent) {
+    // A create (uid == null) must not race another in-flight create, otherwise
+    // two drafts appear; updating an existing draft is always safe.
+    if (hasContent && (draftUidRef.current != null || !draftSavingRef.current)) {
       mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, attachments)
         .then((res) => {
           draftUidRef.current = res.uid || draftUidRef.current;
+          refreshDraftsIfActive();
         })
         .catch(() => {});
     }
@@ -606,9 +781,16 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     }
   }
 
-  // Virtual views: unread / starred / attachments as FastMail-style filters.
+  // Virtual views: unread / starred / attachments / snoozed as FastMail-style
+  // filters. Snoozed is a dedicated fetch (keyword-driven), not a search.
   function selectView(view: string) {
     setActiveView(view);
+    if (view === "snoozed") {
+      setQuery("");
+      setSearching(false);
+      loadSnoozed();
+      return;
+    }
     const q =
       view === "unread"
         ? "is:unread"
@@ -804,6 +986,93 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       setError(e instanceof Error ? e.message : "star failed");
     }
   }
+
+  // Pinned messages stay at the top of the list via the $Pin keyword.
+  async function togglePin(m: MailMessage) {
+    const pinned = !isPinned(m);
+    try {
+      await mailFlag(folder, m.uid, PIN_FLAG, pinned);
+      setMessages((ms) =>
+        ms.map((x) =>
+          x.uid === m.uid
+            ? {
+                ...x,
+                flags: pinned
+                  ? [...new Set([...x.flags, PIN_FLAG])]
+                  : x.flags.filter((f) => f !== PIN_FLAG),
+              }
+            : x,
+        ),
+      );
+      if (detail?.uid === m.uid) {
+        setDetail((d) =>
+          d
+            ? {
+                ...d,
+                flags: pinned
+                  ? [...new Set([...d.flags, PIN_FLAG])]
+                  : d.flags.filter((f) => f !== PIN_FLAG),
+              }
+            : d,
+        );
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "pin failed");
+    }
+  }
+
+  async function loadSnoozed() {
+    setSnoozedLoading(true);
+    setError("");
+    try {
+      setSnoozedMsgs(await mailSnoozed());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "load snoozed failed");
+    } finally {
+      setSnoozedLoading(false);
+    }
+  }
+
+  // Snooze hides a message until a given time; untilMs is 0 to wake it up.
+  async function snoozeMessage(m: MailMessage, untilMs: number) {
+    const f = m.folder || folder;
+    try {
+      await mailSnooze(f, m.uid, untilMs > 0 ? Math.floor(untilMs / 1000) : null);
+      if (untilMs > 0) {
+        // Hide from the current list; it now lives under the Snoozed view.
+        setMessages((ms) => ms.filter((x) => x.uid !== m.uid));
+        showToast(t("toastSnoozed"));
+      } else {
+        setSnoozedMsgs((ms) => ms.filter((x) => x.uid !== m.uid));
+        refreshMail();
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "snooze failed");
+    }
+  }
+
+  // Wake a snoozed message back into its folder.
+  async function unsnooze(sm: SnoozedMessage) {
+    const f = sm.folder || folder;
+    try {
+      await mailSnooze(f, sm.uid, null);
+      setSnoozedMsgs((ms) => ms.filter((x) => x.uid !== sm.uid));
+      refreshMail();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "unsnooze failed");
+    }
+  }
+
+  // displayMessages drops snoozed messages from normal views and floats
+  // pinned ones to the top, without mutating the raw list state.
+  const displayMessages = useMemo(() => {
+    const visible = activeView === "snoozed" ? messages : messages.filter((m) => !isSnoozed(m));
+    if (!visible.some(isPinned)) return visible;
+    const pinned: MailMessage[] = [];
+    const rest: MailMessage[] = [];
+    for (const m of visible) (isPinned(m) ? pinned : rest).push(m);
+    return [...pinned, ...rest];
+  }, [messages, activeView]);
 
   function loadMore() {
     if (loadingMoreRef.current || searching || messages.length >= total) return;
@@ -1123,6 +1392,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       const finalHtml = html;
       const finalFrom = from;
       const delay = prefs.undoSendSeconds;
+      // datetime-local value -> RFC3339 (interpreted as local time).
+      const sendAt = scheduleAt ? new Date(scheduleAt).toISOString() : undefined;
 
       const resetCompose = () => {
         setComposeOpen(false);
@@ -1134,9 +1405,19 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
         setSubject("");
         setBody("");
         setBodyText("");
+        setScheduleAt("");
         setDraftSaved(false);
         draftUidRef.current = null;
       };
+
+      // Scheduled send: the backend parks the message until send_at. Cancel it
+      // from the Scheduled dialog, not the send/undo toast.
+      if (sendAt) {
+        await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, 0, sendAt);
+        resetCompose();
+        showToast(t("toastScheduled", { time: fmtDate(sendAt) }));
+        return;
+      }
 
       if (delay <= 0) {
         await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments);
@@ -1378,6 +1659,12 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     activeLabel,
     savedSearches,
     folder,
+    accountList,
+    activeAccount,
+    switchAccount,
+    refreshAccounts,
+    settingsInitialSection,
+    openSettingsSection,
     sidebarOpen,
     setSidebarOpen,
     selectFolder,
@@ -1394,6 +1681,9 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     detailLoading,
     listWidth,
     messages,
+    displayMessages,
+    snoozedMsgs,
+    snoozedLoading,
     total,
     searching,
     loading,
@@ -1408,12 +1698,21 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     searchAll,
     activeView,
     selectView,
+    categoryFilter,
+    setCategoryFilter,
     doAiSearch,
     loadMessages,
+    createFolder,
+    renameFolder,
+    deleteFolder,
+    clearFolder,
     openMessage,
     toggleSelect,
     removeMessage,
     toggleStar,
+    togglePin,
+    snoozeMessage,
+    unsnooze,
     archiveMessage,
     bulkDelete,
     bulkArchive,
@@ -1451,6 +1750,12 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     threadLoading,
     toggleThread,
     selectThreadMessage,
+    scheduled,
+    scheduledOpen,
+    setScheduledOpen,
+    scheduledLoading,
+    loadScheduled,
+    cancelScheduled,
     composeOpen,
     identities,
     from,
@@ -1478,6 +1783,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     aiDraftReply,
     prefs,
     setUndoSend,
+    scheduleAt,
+    setScheduleAt,
     signOn,
     encryptOn,
     setSignOn,

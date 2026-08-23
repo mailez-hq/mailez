@@ -28,6 +28,11 @@ func (h *Handler) registerPush(r fiber.Router) {
 	r.Get("/push/vapid", h.pushVapid)
 	r.Post("/push/subscribe", h.pushSubscribe)
 	r.Delete("/push/subscribe", h.pushUnsubscribe)
+	r.Get("/webhooks", h.webhookList)
+	r.Post("/webhooks", h.webhookCreate)
+	r.Put("/webhooks/:id", h.webhookUpdate)
+	r.Delete("/webhooks/:id", h.webhookDelete)
+	r.Post("/webhooks/:id/test", h.webhookTest)
 }
 
 // pushVapid returns the application-server key the browser must pass to

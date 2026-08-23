@@ -8,6 +8,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import type { MailLabel } from "@/lib/api";
 import { useMailStore } from "@/components/mailbox/mail-store";
 import { LABEL_PALETTE, labelColor } from "@/components/mailbox/mail-utils";
 
@@ -43,7 +44,23 @@ export function LabelManager({
   onOpenChange: (open: boolean) => void;
 }) {
   const t = useTranslations("mail");
-  const { labelDefs, knownLabels, labelColors, saveLabel, renameLabel, deleteLabel } = useMailStore();
+  // The store context is untyped (any); narrow the slice this dialog uses so
+  // callbacks stay fully typed.
+  const {
+    labelDefs,
+    knownLabels,
+    labelColors,
+    saveLabel,
+    renameLabel,
+    deleteLabel,
+  } = useMailStore() as {
+    labelDefs: MailLabel[];
+    knownLabels: string[];
+    labelColors: Record<string, string>;
+    saveLabel: (name: string, color: string) => Promise<void>;
+    renameLabel: (from: string, to: string) => Promise<void>;
+    deleteLabel: (name: string) => Promise<void>;
+  };
 
   const [error, setError] = useState("");
   const [newName, setNewName] = useState("");

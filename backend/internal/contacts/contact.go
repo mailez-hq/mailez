@@ -2,6 +2,7 @@ package contacts
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -16,6 +17,8 @@ func (h *Handler) registerContacts(r fiber.Router) {
 	r.Post("/contacts", h.createContact)
 	r.Put("/contacts/:id", h.updateContact)
 	r.Delete("/contacts/:id", h.deleteContact)
+	r.Get("/contacts/export", h.exportContacts)
+	r.Post("/contacts/import", h.importContacts)
 }
 
 // listContacts returns the caller's address book.
@@ -45,6 +48,8 @@ func (h *Handler) createContact(c *fiber.Ctx) error {
 		Name    string `json:"name"`
 		Email   string `json:"email"`
 		Comment string `json:"comment"`
+		Groups  string `json:"groups"`
+		Avatar  string `json:"avatar"`
 	}
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
@@ -57,6 +62,8 @@ func (h *Handler) createContact(c *fiber.Ctx) error {
 		Name:      in.Name,
 		Email:     in.Email,
 		Comment:   in.Comment,
+		Groups:    in.Groups,
+		Avatar:    in.Avatar,
 	}
 	if err := h.DB.Create(&contact).Error; err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
@@ -84,6 +91,8 @@ func (h *Handler) updateContact(c *fiber.Ctx) error {
 		Name    *string `json:"name"`
 		Email   *string `json:"email"`
 		Comment *string `json:"comment"`
+		Groups  *string `json:"groups"`
+		Avatar  *string `json:"avatar"`
 	}
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
@@ -96,6 +105,12 @@ func (h *Handler) updateContact(c *fiber.Ctx) error {
 	}
 	if in.Comment != nil {
 		contact.Comment = *in.Comment
+	}
+	if in.Groups != nil {
+		contact.Groups = *in.Groups
+	}
+	if in.Avatar != nil {
+		contact.Avatar = *in.Avatar
 	}
 	if err := h.DB.Save(&contact).Error; err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
@@ -119,4 +134,62 @@ func (h *Handler) deleteContact(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(204)
+}
+
+// exportContacts streams the caller's address book as a vCard 3.0 file.
+func (h *Handler) exportContacts(c *fiber.Ctx) error {
+	var contacts []models.Contact
+	if err := h.DB.Where("user_email = ?", currentUser(c).Email).Order("name").Find(&contacts).Error; err != nil {
+		return core.Fail(c, 500, err, "internal error")
+	}
+	c.Set(fiber.HeaderContentType, "text/vcard; charset=utf-8")
+	c.Set(fiber.HeaderContentDisposition, `attachment; filename="contacts.vcf"`)
+	return c.SendString(EncodeVCard(contacts))
+}
+
+// importContacts parses a vCard upload and inserts any new contacts. Entries
+// matching an existing (email, user) are skipped; a count of additions is
+// returned so the client can confirm the result.
+func (h *Handler) importContacts(c *fiber.Ctx) error {
+	var in struct {
+		Data string `json:"data"`
+	}
+	if err := c.BodyParser(&in); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
+	}
+	parsed := ParseVCard(in.Data)
+	if len(parsed) == 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "no valid vCard entries found"})
+	}
+	userEmail := currentUser(c).Email
+	var existing []string
+	if err := h.DB.Model(&models.Contact{}).Where("user_email = ?", userEmail).Pluck("email", &existing).Error; err != nil {
+		return core.Fail(c, 500, err, "internal error")
+	}
+	seen := make(map[string]bool, len(existing))
+	for _, e := range existing {
+		seen[strings.ToLower(strings.TrimSpace(e))] = true
+	}
+	added := 0
+	for _, p := range parsed {
+		if strings.TrimSpace(p.Email) == "" {
+			continue
+		}
+		if seen[strings.ToLower(strings.TrimSpace(p.Email))] {
+			continue
+		}
+		if err := h.DB.Create(&models.Contact{
+			UserEmail: userEmail,
+			Name:      p.Name,
+			Email:     p.Email,
+			Comment:   p.Comment,
+			Groups:    p.Groups,
+			Avatar:    p.Avatar,
+		}).Error; err != nil {
+			continue
+		}
+		seen[strings.ToLower(strings.TrimSpace(p.Email))] = true
+		added++
+	}
+	return c.JSON(fiber.Map{"added": added, "total": len(parsed)})
 }

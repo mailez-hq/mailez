@@ -39,9 +39,14 @@ export type MailMessage = {
   // an RFC 8058 one-click entry.
   unsubscribe_url?: string;
   unsubscribe_post?: boolean;
+  // Deterministic auto-classification: work | social | newsletter | shopping |
+  // finance | other. Derived server-side from sender domain and headers.
+  category?: string;
 };
 
 export type MailPage = { messages: MailMessage[]; total: number };
+
+export type SnoozedMessage = MailMessage & { until: string };
 
 // MailLabel is a user-defined tag: messages carry the name as an IMAP
 // keyword while the definition row only stores presentation data (color).
@@ -64,6 +69,27 @@ export type MailIdentity = {
   signature?: string;
 };
 
+// MailAccount is an external IMAP/SMTP mailbox aggregated into the inbox
+// (full aggregation client). The password never leaves the backend; these
+// rows only expose configuration and health.
+export type MailAccount = {
+  id: number;
+  user_email: string;
+  name: string;
+  email: string;
+  imap_host: string;
+  imap_port: number;
+  imap_security: string; // none | starttls | tls
+  smtp_host: string;
+  smtp_port: number;
+  smtp_security: string;
+  username: string;
+  enabled: boolean;
+  last_error: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type PushSubscriptionInput = {
   endpoint: string;
   keys: { p256dh: string; auth: string };
@@ -74,6 +100,20 @@ export type SieveScript = {
   active: boolean;
 };
 
+// A user-configured HTTP callback that receives signed event deliveries.
+export type Webhook = {
+  id: number;
+  user_email: string;
+  url: string;
+  secret: string;
+  events: string; // comma-separated, e.g. "mail.received"
+  enabled: boolean;
+  last_status: number;
+  last_error: string;
+  last_sent_at: string | null;
+  created_at: string;
+};
+
 export type AIStatus = { enabled: boolean; provider: string };
 
 export type DraftTone = "formal" | "concise" | "friendly";
@@ -82,6 +122,28 @@ export type PgpStatus = {
   has_key: boolean;
   public_key?: string;
   fingerprint?: string;
+};
+
+// The user's installed S/MIME identity (own certificate + private key).
+export type SmimeStatus = {
+  has_cert: boolean;
+  email?: string;
+  fingerprint?: string;
+  subject?: string;
+  issuer?: string;
+  not_after?: string;
+};
+
+// An imported S/MIME certificate used to encrypt to an external recipient.
+export type SmimeCert = {
+  id: number;
+  user_email: string;
+  email: string;
+  cert_pem: string;
+  fingerprint: string;
+  subject: string;
+  issuer: string;
+  not_after: string;
 };
 
 export type TotpStatus = {
@@ -113,4 +175,6 @@ export type Contact = {
   name: string;
   email: string;
   comment: string;
+  groups: string;
+  avatar: string;
 };

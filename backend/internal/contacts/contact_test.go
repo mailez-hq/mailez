@@ -78,3 +78,86 @@ func TestContactCRUD(t *testing.T) {
 		t.Fatalf("delete status = %d, want 204", delResp.StatusCode)
 	}
 }
+
+func TestVCardRoundTrip(t *testing.T) {
+	src := "BEGIN:VCARD\r\n" +
+		"VERSION:3.0\r\n" +
+		"FN:Bob Smith\r\n" +
+		"EMAIL;TYPE=INTERNET:bob@example.com\r\n" +
+		"NOTE:Work colleague\r\n" +
+		"CATEGORIES:work,friends\r\n" +
+		"PHOTO;VALUE=URI:https://example.com/bob.png\r\n" +
+		"END:VCARD\r\n" +
+		"BEGIN:VCARD\r\n" +
+		"VERSION:3.0\r\n" +
+		"FN:Carol\r\n" +
+		"EMAIL;TYPE=INTERNET:carol@example.com\r\n" +
+		"END:VCARD\r\n"
+	parsed := ParseVCard(src)
+	if len(parsed) != 2 {
+		t.Fatalf("ParseVCard = %d entries, want 2", len(parsed))
+	}
+	if parsed[0].Name != "Bob Smith" || parsed[0].Email != "bob@example.com" ||
+		parsed[0].Comment != "Work colleague" || parsed[0].Groups != "work,friends" ||
+		parsed[0].Avatar != "https://example.com/bob.png" {
+		t.Fatalf("ParseVCard[0] = %+v", parsed[0])
+	}
+
+	// Encode/parse round-trip preserves fields.
+	encoded := EncodeVCard([]models.Contact{{
+		Name: "Bob Smith", Email: "bob@example.com",
+		Comment: "Work colleague", Groups: "work,friends", Avatar: "https://example.com/bob.png",
+	}})
+	back := ParseVCard(encoded)
+	if len(back) != 1 || back[0].Name != "Bob Smith" || back[0].Groups != "work,friends" {
+		t.Fatalf("round-trip = %+v", back)
+	}
+}
+
+func TestContactImportExport(t *testing.T) {
+	app := newTestApp(t)
+
+	// Seed one contact, then export.
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/contacts", strings.NewReader(`{"name":"Amy","email":"amy@example.com","groups":"work"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req)
+	if err != nil || resp.StatusCode != http.StatusCreated {
+		t.Fatalf("create status = %d err=%v", resp.StatusCode, err)
+	}
+	resp.Body.Close()
+
+	expResp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/contacts/export", nil))
+	if err != nil {
+		t.Fatalf("export: %v", err)
+	}
+	if ct := expResp.Header.Get("Content-Type"); ct != "text/vcard; charset=utf-8" {
+		t.Fatalf("export content-type = %q", ct)
+	}
+	b, _ := io.ReadAll(expResp.Body)
+	expResp.Body.Close()
+	body := string(b)
+	if !strings.Contains(body, "FN:Amy") || !strings.Contains(body, "amy@example.com") || !strings.Contains(body, "CATEGORIES:work") {
+		t.Fatalf("export body missing fields:\n%s", body)
+	}
+
+	// Import two new cards (one duplicate -> only one added).
+	importBody := `{"data":"BEGIN:VCARD\nVERSION:3.0\nFN:Bob\nEMAIL;TYPE=INTERNET:bob@example.com\nEND:VCARD\nBEGIN:VCARD\nVERSION:3.0\nFN:Carol\nEMAIL;TYPE=INTERNET:carol@example.com\nEND:VCARD\nBEGIN:VCARD\nVERSION:3.0\nFN:Amy\nEMAIL;TYPE=INTERNET:amy@example.com\nEND:VCARD\n"}`
+	impReq := httptest.NewRequest(http.MethodPost, "/api/v1/contacts/import", strings.NewReader(importBody))
+	impReq.Header.Set("Content-Type", "application/json")
+	impResp, err := app.Test(impReq)
+	if err != nil {
+		t.Fatalf("import: %v", err)
+	}
+	ib, _ := io.ReadAll(impResp.Body)
+	impResp.Body.Close()
+	var result struct {
+		Added int `json:"added"`
+		Total int `json:"total"`
+	}
+	if err := json.Unmarshal(ib, &result); err != nil {
+		t.Fatalf("import decode: %v (%s)", err, string(ib))
+	}
+	if result.Added != 2 || result.Total != 3 {
+		t.Fatalf("import result = %+v, want added=2 total=3", result)
+	}
+}

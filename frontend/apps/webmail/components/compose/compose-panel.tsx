@@ -1,7 +1,7 @@
 "use client";
 
 import type { RefObject } from "react";
-import { Check, Lock, Paperclip, PenLine, Undo2, X } from "lucide-react";
+import { CalendarClock, Check, Lock, Paperclip, PenLine, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +42,8 @@ export interface ComposePanelProps {
   onAiDraft: () => void;
   undoSendSeconds: number;
   onUndoSendSeconds: (seconds: number) => void;
+  scheduleAt: string;
+  onScheduleAt: (v: string) => void;
   signOn: boolean;
   encryptOn: boolean;
   onToggleSign: () => void;
@@ -95,6 +97,8 @@ export function ComposePanel(props: ComposePanelProps) {
     onAiDraft,
     undoSendSeconds,
     onUndoSendSeconds,
+    scheduleAt,
+    onScheduleAt,
     signOn,
     encryptOn,
     onToggleSign,
@@ -299,7 +303,8 @@ export function ComposePanel(props: ComposePanelProps) {
               value={undoSendSeconds}
               onChange={(e) => onUndoSendSeconds(Number(e.target.value))}
               title={t("undoSendLabel")}
-              className="bg-transparent text-[11px] outline-none"
+              disabled={!!scheduleAt}
+              className="bg-transparent text-[11px] outline-none disabled:opacity-50"
             >
               <option value={0}>{t("undoSendOff")}</option>
               <option value={5}>5s</option>
@@ -307,6 +312,27 @@ export function ComposePanel(props: ComposePanelProps) {
               <option value={20}>20s</option>
               <option value={30}>30s</option>
             </select>
+          </div>
+          <div className="flex items-center gap-1 rounded-full border border-border px-2 py-1">
+            <CalendarClock className="size-3 text-muted-foreground" />
+            {scheduleAt ? (
+              <input
+                type="datetime-local"
+                value={scheduleAt}
+                onChange={(e) => onScheduleAt(e.target.value)}
+                className="w-36 bg-transparent text-[11px] outline-none"
+                min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => onScheduleAt(new Date(Date.now() + 60000).toISOString().slice(0, 16))}
+                title={t("scheduleSend")}
+                className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {t("scheduleSend")}
+              </button>
+            )}
           </div>
           {aiDraftEnabled && hasReplyTarget && (
             <div className="flex flex-wrap items-center gap-1.5">
@@ -362,7 +388,7 @@ export function ComposePanel(props: ComposePanelProps) {
             <Button type="button" variant="outline" onClick={onSaveDraft}>
               {t("saveDraft")}
             </Button>
-            <Button type="submit">{t("send")}</Button>
+            <Button type="submit">{scheduleAt ? t("schedule") : t("send")}</Button>
           </div>
         </div>
       </form>

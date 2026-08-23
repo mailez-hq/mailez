@@ -24,6 +24,10 @@ func AutoMigrate(db *gorm.DB) error {
 		&VapidKey{},
 		&Outbox{},
 		&Label{},
+		&PGPKey{},
+		&Webhook{},
+		&SmimeCert{},
+		&Account{},
 		&SchemaMigration{},
 	)
 }

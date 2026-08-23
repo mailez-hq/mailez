@@ -1,8 +1,30 @@
 import type { OutboundAttachment } from "@/lib/api";
 
-// System IMAP flags are excluded from the label list; custom keywords (tags)
-// are any other flag names.
-export const SYSTEM_FLAGS = new Set(["\\Seen", "\\Answered", "\\Flagged", "\\Deleted", "\\Draft", "\\Recent"]);
+// System IMAP flags and reserved keywords are excluded from the label list;
+// custom keywords (tags) are any other flag names. $Pin and $Snoozed* drive
+// the pinned / snoozed features and must never surface as user labels.
+export const SYSTEM_FLAGS = new Set([
+  "\\Seen", "\\Answered", "\\Flagged", "\\Deleted", "\\Draft", "\\Recent",
+  "$Pin", "$Snoozed",
+]);
+
+export const PIN_FLAG = "$Pin";
+export const SNOOZE_FLAG = "$Snoozed";
+export const SNOOZE_UNTIL_PREFIX = "$SnoozedUntil-";
+
+export const isPinned = (m: { flags: string[] }) => m.flags.includes(PIN_FLAG);
+export const isSnoozed = (m: { flags: string[] }) => m.flags.includes(SNOOZE_FLAG);
+
+// snoozeUntil parses the $SnoozedUntil-<unix> keyword into a Date, or null.
+export function snoozeUntil(flags: string[]): Date | null {
+  for (const f of flags) {
+    if (f.startsWith(SNOOZE_UNTIL_PREFIX)) {
+      const n = Number(f.slice(SNOOZE_UNTIL_PREFIX.length));
+      if (Number.isFinite(n)) return new Date(n * 1000);
+    }
+  }
+  return null;
+}
 
 // Label palette used when a label has no explicit color yet; assignment is
 // deterministic per name so the same label keeps its color across sessions.

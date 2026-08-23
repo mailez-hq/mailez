@@ -9,7 +9,9 @@ import "time"
 type Outbox struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
 	AccountEmail string    `gorm:"index;size:255" json:"account_email"`
+	AccountID    uint      `gorm:"index;default:0" json:"-"` // 0 = internal; external aggregated account row
 	FromAddr     string    `gorm:"size:255" json:"from_addr"`
+	Subject      string    `gorm:"size:255" json:"subject"`
 	Recipients   string    `gorm:"type:text" json:"-"` // comma-separated envelope rcpt (to+cc+bcc)
 	RawMessage   string    `gorm:"type:text" json:"-"`
 	SendAfter    time.Time `gorm:"index" json:"send_after"`

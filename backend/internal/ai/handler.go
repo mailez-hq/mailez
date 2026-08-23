@@ -162,8 +162,7 @@ func (h *Handler) aiSearch(c *fiber.Ctx) error {
 		return core.Fail(c, 502, err, "mail service error")
 	}
 
-	user := currentUser(c)
-	token, err := h.mailToken(c)
+	d, err := h.MailDial(c)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "token error"})
 	}
@@ -192,7 +191,7 @@ func (h *Handler) aiSearch(c *fiber.Ctx) error {
 	}
 
 	folder := c.Query("folder", "INBOX")
-	messages, err := h.Mail.SearchMessagesSpec(user.Email, token, folder, q)
+	messages, err := h.Mail.With(d).SearchMessagesSpec(d.Email, d.Token, folder, q)
 	if err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}

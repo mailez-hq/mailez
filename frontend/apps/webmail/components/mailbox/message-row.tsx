@@ -1,10 +1,12 @@
 "use client";
 
-import { Archive, Paperclip, Star, Trash2 } from "lucide-react";
+import { Archive, Paperclip, Pin, Star, Trash2, BellRing } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { MailMessage } from "@/lib/api";
+import type { MailMessage, SnoozedMessage } from "@/lib/api";
 import type { Density } from "@/lib/preferences";
 import { Highlight } from "@/components/mailbox/highlight";
+import { labelColor } from "@/components/mailbox/mail-utils";
+import { useMailStore } from "@/components/mailbox/mail-store";
 import { cn } from "@/lib/utils";
 
 export const ROW_HEIGHTS: Record<Density, number> = {
