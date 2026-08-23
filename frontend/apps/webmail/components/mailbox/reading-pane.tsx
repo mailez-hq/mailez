@@ -798,42 +798,37 @@ export function ReadingPane({
               </div>
             )}
 
-            {/* Message body */}
+            {/* Message body: HTML preferred, plain text as fallback */}
             <div className="mail-body">
-              {segments.length === 0 && !htmlBody && detailLoading && (
+              {mounted && htmlBody ? (
+                <div dangerouslySetInnerHTML={{ __html: htmlBody }} />
+              ) : segments.length === 0 && detailLoading ? (
                 <p className="flex items-center gap-1.5 text-muted-foreground">
                   <Loader2 className="size-3.5 animate-spin" />
                   {t("loading")}
                 </p>
-              )}
-              {segments.length === 0 && !htmlBody && !detailLoading && (
+              ) : segments.length === 0 ? (
                 <p className="text-muted-foreground">{t("noTextBody")}</p>
-              )}
-              {segments.map((seg, i) =>
-                seg.type === "p" ? (
-                  <p key={i} className="text-sm leading-6">
-                    {seg.lines.map((l, j) => (
-                      <span key={j}>
-                        <Highlight text={l} terms={highlightTerms} />
-                        {j < seg.lines.length - 1 && <br />}
-                      </span>
-                    ))}
-                  </p>
-                ) : (
-                  <QuoteBlock
-                    key={i}
-                    lines={seg.lines}
-                    expanded={expandedQuotes.has(i)}
-                    onToggle={() => toggleQuote(i)}
-                  />
-                ),
-              )}
-
-          {mounted && htmlBody && (
-                <div className="mt-4 border-t border-border pt-3">
-                  <p className="mb-2 text-xs text-muted-foreground">{t("htmlVersion")}</p>
-                  <div className="mail-body" dangerouslySetInnerHTML={{ __html: htmlBody }} />
-                </div>
+              ) : (
+                segments.map((seg, i) =>
+                  seg.type === "p" ? (
+                    <p key={i} className="text-sm leading-6">
+                      {seg.lines.map((l, j) => (
+                        <span key={j}>
+                          <Highlight text={l} terms={highlightTerms} />
+                          {j < seg.lines.length - 1 && <br />}
+                        </span>
+                      ))}
+                    </p>
+                  ) : (
+                    <QuoteBlock
+                      key={i}
+                      lines={seg.lines}
+                      expanded={expandedQuotes.has(i)}
+                      onToggle={() => toggleQuote(i)}
+                    />
+                  ),
+                )
               )}
             </div>
 
