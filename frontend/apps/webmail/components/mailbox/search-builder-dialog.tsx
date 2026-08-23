@@ -101,9 +101,18 @@ export function SearchBuilderDialog({
     setDraft("");
   };
 
-  const addBoolean = (f: Field) => {
-    setConditions((cs) => [...cs, { id: nextId++, field: f, value: "" }]);
+  // Boolean conditions behave like toggles: tapping an active one removes it
+  // instead of stacking a duplicate chip.
+  const toggleBoolean = (f: Field) => {
+    setConditions((cs) => {
+      if (cs.some((c) => c.field === f)) {
+        return cs.filter((c) => c.field !== f);
+      }
+      return [...cs, { id: nextId++, field: f, value: "" }];
+    });
   };
+
+  const isActive = (f: Field) => conditions.some((c) => c.field === f);
 
   const commitInput = () => {
     if (!editing) return;
@@ -147,9 +156,9 @@ export function SearchBuilderDialog({
               key={f}
               type="button"
               size="sm"
-              variant={editing === f ? "default" : "outline"}
+              variant={editing === f ? "default" : isActive(f) ? "secondary" : "outline"}
               className="h-7 gap-1 px-2 text-xs"
-              onClick={() => (BOOLEAN_FIELDS.includes(f) ? addBoolean(f) : startEdit(f))}
+              onClick={() => (BOOLEAN_FIELDS.includes(f) ? toggleBoolean(f) : startEdit(f))}
             >
               {fieldLabel(f)}
               {editing === f && <X className="size-3" />}
