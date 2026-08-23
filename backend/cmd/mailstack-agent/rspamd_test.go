@@ -9,7 +9,7 @@ func TestRspamdRender(t *testing.T) {
 	t.Setenv("SUBNET", "192.168.206.0/24")
 	t.Setenv("SUBNET6", "fdc4:f303:9324::254/64")
 	t.Setenv("RELAYNETS", "10.0.0.0/8")
-	t.Setenv("ADMIN_ADDRESS", "admin")
+	t.Setenv("BACKEND_ADDRESS", "backend")
 	t.Setenv("REDIS_ADDRESS", "redis")
 	t.Setenv("DOMAIN", "example.com")
 	t.Setenv("POSTMASTER", "postmaster")
@@ -36,11 +36,11 @@ func TestRspamdRender(t *testing.T) {
 			"secure_ip = \"192.168.206.0/24\";",
 			"secure_ip = \"fdc4:f303:9324::254/64\";",
 		},
-		"/etc/rspamd/local.d/arc.conf":               {`vault_url = "http://admin:8080/internal/rspamd/vault";`},
-		"/etc/rspamd/local.d/dkim_signing.conf":      {`vault_url = "http://admin:8080/internal/rspamd/vault";`},
-		"/etc/rspamd/local.d/multimap.conf":          {`map = "http://admin:8080/internal/rspamd/local_domains";`},
+		"/etc/rspamd/local.d/arc.conf":               {`vault_url = "http://backend:8080/internal/rspamd/vault";`},
+		"/etc/rspamd/local.d/dkim_signing.conf":      {`vault_url = "http://backend:8080/internal/rspamd/vault";`},
+		"/etc/rspamd/local.d/multimap.conf":          {`map = "http://backend:8080/internal/rspamd/local_domains";`},
 		"/etc/rspamd/local.d/redis.conf":             {`servers = "redis";`},
-		"/etc/rspamd/local.d/external_services.conf": {`servers = "oletools:11343";`},
+		"/etc/rspamd/local.d/external_services.conf": {`servers = "macro-scanner:11343";`},
 		"/etc/rspamd/local.d/dmarc.conf":             {"enabled = false;"},
 		"/etc/rspamd/local.d/antivirus.conf":         {`.include(try=true,priority=1,duplicate=merge) "/overrides/antivirus.conf"`},
 	}

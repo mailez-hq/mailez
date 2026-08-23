@@ -1,7 +1,8 @@
 # mailez 开发模式基础设施编排
 #
-# 只编排"不会去动的"邮件栈依赖（参考实现 的 nginx/postfix/dovecot/rspamd/
-# unbound 镜像）。mailez 自研部分（backend / webmail / admin / SSO）不在此
+# 只编排"不会去动的"邮件栈依赖（自建 gateway/mta/mail-store/mail-filter/
+# macro-scanner/resolver 镜像）。mailez 自研部分（backend / webmail / admin /
+# SSO）不在此
 # 容器化，而是在宿主机以开发模式运行（go run / npm run dev）。
 #
 # 用法（需要 Docker Desktop）：
@@ -9,8 +10,8 @@
 #   copy mailez.env.example mailez.env   （改 SECRET_KEY / DOMAIN 等）
 #   docker compose -f docker-compose.dev.yml up -d
 #
-# 宿主机后端必须监听 8080（参考实现 镜像硬编码 ADMIN_ADDRESS:8080 访问内部
-# API），详见 docs/dev-setup.md。
+# 宿主机后端必须监听 8080（镜像通过 BACKEND_ADDRESS:8080 访问内部 API），
+# 详见 docs/dev-setup.md。
 
 services:
 
@@ -26,15 +27,15 @@ services:
     volumes:
       - "./data/redis:/data"
 
-  front:
+  gateway:
     image: mailez/nginx:local
     pull_policy: missing
     restart: always
     env_file: mailez.env
     environment:
-      # 覆盖 mailez.env 里的 ADMIN_ADDRESS=backend：开发模式下后端在宿主机，
-      # 参考实现 镜像通过 host.docker.internal 访问它（端口固定 8080）。
-      - ADMIN_ADDRESS=host.docker.internal
+      # 覆盖 mailez.env 里的 BACKEND_ADDRESS=backend：开发模式下后端在宿主机，
+      # 镜像通过 host.docker.internal 访问它（端口固定 8080）。
+      - BACKEND_ADDRESS=host.docker.internal
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -56,15 +57,15 @@ services:
       - "./certs:/certs"
       - "./overrides/nginx-dev:/overrides"
 
-  imap:
+  mail-store:
     image: mailez/dovecot:local
     pull_policy: missing
     restart: always
     env_file: mailez.env
     environment:
-      # 参考实现 images reach the control plane at ADMIN_ADDRESS:8080; in dev the
+      # Images reach the control plane at BACKEND_ADDRESS:8080; in dev the
       # backend runs on the host.
-      - ADMIN_ADDRESS=host.docker.internal
+      - BACKEND_ADDRESS=host.docker.internal
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -72,45 +73,45 @@ services:
       - "./overrides:/overrides"
     networks:
       default:
-        # Fixed IP: the host-run backend returns it as Auth-Server (nginx's
-        # mail auth module only accepts IP literals), so it must be stable.
+        # Fixed IP: the host-run backend returns it as Auth-Server (the mail
+        # auth module only accepts IP literals), so it must be stable.
         ipv4_address: 192.168.206.5
     depends_on:
-      - front
+      - gateway
 
-  smtp:
+  mta:
     image: mailez/postfix:local
     pull_policy: missing
     restart: always
     env_file: mailez.env
     environment:
-      - ADMIN_ADDRESS=host.docker.internal
+      - BACKEND_ADDRESS=host.docker.internal
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - "./overrides:/overrides"
     networks:
       default:
-        # Fixed IP: same reason as imap (Auth-Server from the host backend).
+        # Fixed IP: same reason as mail-store (Auth-Server from the host backend).
         ipv4_address: 192.168.206.4
     depends_on:
-      - front
+      - gateway
 
-  oletools:
+  macro-scanner:
     image: mailez/oletools:local
     pull_policy: missing
-    hostname: oletools
+    hostname: macro-scanner
     restart: always
     networks:
       - noinet
 
-  antispam:
+  mail-filter:
     image: mailez/rspamd:local
     pull_policy: missing
     restart: always
     env_file: mailez.env
     environment:
-      - ADMIN_ADDRESS=host.docker.internal
+      - BACKEND_ADDRESS=host.docker.internal
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -121,7 +122,7 @@ services:
       - "./data/dkim:/dkim"
       - "./overrides/rspamd:/etc/rspamd/override.d"
     depends_on:
-      - front
+      - gateway
 
   resolver:
     image: mailez/unbound:local

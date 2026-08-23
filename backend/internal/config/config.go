@@ -14,8 +14,8 @@ type Config struct {
 	RedisAddr          string
 	SecretKey          string
 	SessionLifetime    int // seconds
-	ImapAddress        string
-	SmtpAddress        string
+	MailStoreAddress   string
+	MtaAddress         string
 	RecipientDelimiter string
 	Subnet             string
 	Domain             string
@@ -41,8 +41,8 @@ func Load() Config {
 		RedisAddr:          env("REDIS_ADDR", "localhost:6379"),
 		SecretKey:          env("SECRET_KEY", "dev-secret-change-me"),
 		SessionLifetime:    envInt("SESSION_LIFETIME", 3600),
-		ImapAddress:        env("IMAP_ADDRESS", "imap"),
-		SmtpAddress:        env("SMTP_ADDRESS", "smtp"),
+		MailStoreAddress:   env("MAIL_STORE_ADDRESS", "mail-store"),
+		MtaAddress:         env("MTA_ADDRESS", "mta"),
 		RecipientDelimiter: env("RECIPIENT_DELIMITER", ""),
 		Subnet:             env("SUBNET", "192.168.206.0/24"),
 		Domain:             env("DOMAIN", "example.com"),

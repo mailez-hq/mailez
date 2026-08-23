@@ -1,8 +1,8 @@
 # mailez compose
-# Third-party components (nginx/postfix/dovecot/rspamd) are reused from the mail-stack reference
-# images. The mailez backend replaces the the mail-stack reference admin container; the the mail-stack reference
-# images reach its internal API at http://backend:8080 (the port is hardcoded
-# to 8080 inside the the mail-stack reference images). Frontend services arrive with phase 2.
+# The mail-stack containers (gateway/mta/mail-store/mail-filter/macro-scanner/
+# resolver) are self-built images; the mailez backend is the control plane and
+# serves its internal API at http://backend:8080 (the port is hardcoded to
+# 8080 inside the images).
 
 services:
 
@@ -17,7 +17,7 @@ services:
     volumes:
       - "./data/redis:/data"
 
-  front:
+  gateway:
     image: mailez/nginx:local
     pull_policy: missing
     restart: always
@@ -53,9 +53,9 @@ services:
       - RECIPIENT_DELIMITER=+
       - MESSAGE_RATELIMIT=200
       - DKIM_SELECTOR=dkim
-      - MAIL_IMAP_ADDR=front:10143
-      - MAIL_SMTP_ADDR=front:10025
-      - MAIL_SIEVE_ADDR=front:4190
+      - MAIL_IMAP_ADDR=gateway:10143
+      - MAIL_SMTP_ADDR=gateway:10025
+      - MAIL_SIEVE_ADDR=gateway:4190
       - FETCH_INTERVAL=300
       - AI_PROVIDER=none
     healthcheck:
@@ -94,7 +94,7 @@ services:
     depends_on:
       - backend
 
-  imap:
+  mail-store:
     image: mailez/dovecot:local
     pull_policy: missing
     restart: always
@@ -103,9 +103,9 @@ services:
       - "./data/mail:/mail"
       - "./overrides:/overrides"
     depends_on:
-      - front
+      - gateway
 
-  smtp:
+  mta:
     image: mailez/postfix:local
     pull_policy: missing
     restart: always
@@ -113,17 +113,17 @@ services:
     volumes:
       - "./overrides:/overrides"
     depends_on:
-      - front
+      - gateway
 
-  oletools:
+  macro-scanner:
     image: mailez/oletools:local
     pull_policy: missing
-    hostname: oletools
+    hostname: macro-scanner
     restart: always
     networks:
       - noinet
 
-  antispam:
+  mail-filter:
     image: mailez/rspamd:local
     pull_policy: missing
     restart: always
@@ -136,7 +136,7 @@ services:
       - "./data/dkim:/dkim"
       - "./overrides/rspamd:/etc/rspamd/override.d"
     depends_on:
-      - front
+      - gateway
       - backend
 
   resolver:

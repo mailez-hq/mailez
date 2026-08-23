@@ -15,8 +15,7 @@ import (
 	"mailez/backend/internal/agent"
 )
 
-// postfixTables maps socketmap table names to the control-plane URL suffix,
-// mirroring the vendored start.py's podop table list.
+// postfixTables maps socketmap table names to the control-plane URL suffix.
 var postfixTables = map[string]string{
 	"transport":    "transport/",
 	"alias":        "alias/",
@@ -80,8 +79,8 @@ func runPostfix() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	admin := cfg.AdminAddress
-	base := "http://" + admin + ":8080/internal/postfix/"
+	backend := cfg.BackendAddress
+	base := "http://" + backend + ":8080/internal/postfix/"
 	urlFor := func(table, key string) string {
 		suffix, ok := postfixTables[table]
 		if !ok {
@@ -91,8 +90,8 @@ func runPostfix() error {
 	}
 	client := &http.Client{Timeout: 10 * time.Second}
 	go func() {
-		if err := agent.PostfixSocketmapServe(ctx, "/tmp/podop.socket", urlFor, client); err != nil {
-			fmt.Fprintf(os.Stderr, "postfix: podop: %v\n", err)
+		if err := agent.PostfixSocketmapServe(ctx, "/tmp/mailez.socket", urlFor, client); err != nil {
+			fmt.Fprintf(os.Stderr, "postfix: mailez socketmap: %v\n", err)
 		}
 	}()
 	go func() {
@@ -199,7 +198,7 @@ func renderPostfixLogrotate(cfg PostfixConfig) error {
 }
 
 // escapePath percent-encodes a key for a URL path while preserving slashes
-// (podop's UrlTable used quote(key) with safe="/").
+// (the reference UrlTable used quote(key) with safe="/").
 func escapePath(p string) string {
 	e := url.PathEscape(p)
 	return strings.ReplaceAll(e, "%2F", "/")

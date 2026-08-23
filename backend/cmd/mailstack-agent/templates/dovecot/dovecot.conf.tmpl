@@ -8,7 +8,7 @@ hostname = {{ .Hostname }}
 {{- if .ProxyProtocol25 }}
 submission_host = {{ .Hostname }}
 {{- else }}
-submission_host = {{ .FrontAddress }}
+submission_host = {{ .GatewayAddress }}
 {{- end }}
 {{- if .Subnet6 }}
 listen = *,::
@@ -51,7 +51,7 @@ namespace inbox {
 plugin {
   quota = count:User quota
   quota_vsizes = yes
-  quota_clone_dict = proxy:/tmp/podop.socket:quota
+  quota_clone_dict = proxy:/tmp/mailez.socket:quota
 
   {{ if .FTSEnabled }}  fts = flatcurve
   fts_index_timeout = 50s
@@ -181,7 +181,7 @@ service managesieve {
 
 plugin {
   sieve = file:~/sieve;active=~/.dovecot.sieve
-  sieve_before = dict:proxy:/tmp/podop.socket:sieve
+  sieve_before = dict:proxy:/tmp/mailez.socket:sieve
   sieve_plugins = sieve_imapsieve sieve_extprograms
   sieve_extensions = +spamtest +spamtestplus +editheader
   sieve_global_extensions = +vnd.dovecot.execute

@@ -40,8 +40,8 @@ func renderDovecotAll(cfg DovecotConfig) (map[string][]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("read %s: %w", src, err)
 		}
-		// These scripts contain only {{ ANTISPAM_ADDRESS }}; render inline.
-		rendered := strings.ReplaceAll(string(body), "{{ ANTISPAM_ADDRESS }}", agent.Getenv("ANTISPAM_ADDRESS", "antispam"))
+		// These scripts contain only {{ MAIL_FILTER_ADDRESS }}; render inline.
+		rendered := strings.ReplaceAll(string(body), "{{ MAIL_FILTER_ADDRESS }}", agent.Getenv("MAIL_FILTER_ADDRESS", "mail-filter"))
 		out[filepath.Join("/conf/bin", name)] = []byte(rendered)
 	}
 	return out, nil

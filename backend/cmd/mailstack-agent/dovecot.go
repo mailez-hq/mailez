@@ -45,17 +45,17 @@ func runDovecot() error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	// podop: dovecot dict proxy -> control plane internal API.
-	admin := agent.Getenv("ADMIN_ADDRESS", "admin")
-	base := "http://" + admin + ":8080/internal/dovecot/"
+	// mailez: dovecot dict proxy -> control plane internal API.
+	backend := agent.Getenv("BACKEND_ADDRESS", "backend")
+	base := "http://" + backend + ":8080/internal/dovecot/"
 	handler := agent.NewDictHandler(map[string]string{
 		"quota": base + "{}",
 		"auth":  base + "{}",
 		"sieve": base + "{}",
 	})
 	go func() {
-		if err := handler.Serve(ctx, "/tmp/podop.socket"); err != nil {
-			fmt.Fprintf(os.Stderr, "dovecot: podop: %v\n", err)
+		if err := handler.Serve(ctx, "/tmp/mailez.socket"); err != nil {
+			fmt.Fprintf(os.Stderr, "dovecot: mailez dict proxy: %v\n", err)
 		}
 	}()
 

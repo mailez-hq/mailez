@@ -55,8 +55,8 @@ func TestPostfixRender(t *testing.T) {
 		"smtp_sasl_auth_enable = yes",
 		"smtp_tls_security_level = dane",
 		"smtp_tls_dane_insecure_mx_policy = dane",
-		"virtual_transport = lmtp:inet:front:2525",
-		"smtpd_milters = inet:antispam:11332",
+		"virtual_transport = lmtp:inet:gateway:2525",
+		"smtpd_milters = inet:mail-filter:11332",
 		"smtpd_authorized_xclient_hosts=192.168.206.0/24,[fdc4:f303:9324::254]/64",
 		"socketmap:unix:/tmp/mta-sts.socket:postfix",
 	} {
@@ -115,7 +115,7 @@ func TestPostfixSocketmapProtocol(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	sock := filepath.Join(t.TempDir(), "podop.socket")
+	sock := filepath.Join(t.TempDir(), "mailez.socket")
 	urlFor := func(table, key string) string {
 		if suffix, ok := postfixTables[table]; ok {
 			return srv.URL + "/internal/postfix/" + suffix + key

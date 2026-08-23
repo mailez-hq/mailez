@@ -29,12 +29,12 @@
 
 | 服务 | 地址 | 说明 |
 |---|---|---|
-| 后端 API（本地） | `http://localhost:8080` | **必须 8080**：邮件栈镜像硬编码 `ADMIN_ADDRESS:8080` 访问内部 API |
+| 后端 API（本地） | `http://localhost:8080` | **必须 8080**：邮件栈镜像通过 `BACKEND_ADDRESS:8080` 访问内部 API |
 | webmail（本地 dev） | `http://localhost:3001` | `npm run dev -- -p 3001` |
 | admin（本地 dev） | `http://localhost:3000` | `npm run dev -- -p 3000` |
-| IMAP 代理（容器→宿主映射） | `127.0.0.1:10143` | front 容器的内部代理端口 |
-| SMTP 提交（容器→宿主映射） | `127.0.0.1:10025` | front 容器的内部提交端口 |
-| ManageSieve | `127.0.0.1:4190` | front 容器 |
+| IMAP 代理（容器→宿主映射） | `127.0.0.1:10143` | gateway 容器的内部代理端口 |
+| SMTP 提交（容器→宿主映射） | `127.0.0.1:10025` | gateway 容器的内部提交端口 |
+| ManageSieve | `127.0.0.1:4190` | gateway 容器 |
 
 ## 一次性准备
 
@@ -53,10 +53,10 @@ cd deploy
 docker compose -f docker-compose.dev.yml up -d
 ```
 
-这会启动 redis / front(nginx) / imap(dovecot) / smtp(postfix) / antispam
-(rspamd) / oletools / resolver，并自动把内部代理端口 10143 / 10025 / 4190
-映射到宿主机。`docker-compose.dev.yml` 里的 front 容器通过
-`host.docker.internal` 访问宿主机的 mailez 后端（8080）。
+这会启动 redis / gateway(nginx) / mail-store(dovecot) / mta(postfix) /
+mail-filter(rspamd) / macro-scanner / resolver，并自动把内部代理端口
+10143 / 10025 / 4190 映射到宿主机。`docker-compose.dev.yml` 里的 gateway
+容器通过 `host.docker.internal` 访问宿主机的 mailez 后端（8080）。
 
 ## 启动 mailez（本地开发模式）
 
@@ -64,8 +64,8 @@ docker compose -f docker-compose.dev.yml up -d
 ```
 cd backend
 $env:MAILEZ_PORT='8080'
-$env:IMAP_ADDRESS='192.168.206.5'      # 固定 IP：nginx auth 只认 IP（Auth-Server）
-$env:SMTP_ADDRESS='192.168.206.4'      # 与 docker-compose.dev.yml 的静态 IP 对应
+$env:MAIL_STORE_ADDRESS='192.168.206.5'   # 固定 IP：nginx auth 只认 IP（Auth-Server）
+$env:MTA_ADDRESS='192.168.206.4'          # 与 docker-compose.dev.yml 的静态 IP 对应
 $env:MAIL_IMAP_ADDR='127.0.0.1:10143'
 $env:MAIL_SMTP_ADDR='127.0.0.1:10025'
 $env:MAIL_SIEVE_ADDR='127.0.0.1:4190'
@@ -73,9 +73,9 @@ $env:DB_DSN='D:\code\mailess\backend\mailez.db'   # 建议绝对路径，避免�
 go run ./cmd/server
 ```
 
-`IMAP_ADDRESS` / `SMTP_ADDRESS` 会被内部 API 以 `Auth-Server` 头返回给
+`MAIL_STORE_ADDRESS` / `MTA_ADDRESS` 会被内部 API 以 `Auth-Server` 头返回给
 nginx/dovecot 代理；nginx 1.26+ 的 mail auth 模块只接受 IP 字面量，所以
-必须是固定容器 IP（compose 里 imap/smtp 已配静态地址，见
+必须是固定容器 IP（compose 里 mail-store/mta 已配静态地址，见
 `docker-compose.dev.yml`）。`MAIL_IMAP_ADDR` 等则是后端自己连邮件栈用的
 宿主机映射端口，两者别混。
 
@@ -104,14 +104,14 @@ go run ./cmd/e2e -api-port 8080 -smtp-port 25 -imap-port 10143 --domain e2e.exam
 
 `-smtp-port 25`：开发栈 TLS_FLAVOR=notls，587 未监听，25 走
 `smtp_auth none` 入站路径；`-imap-port 10143`：143 默认关闭，10143 是
-front 容器里的 imap-webmail 代理端口。
+gateway 容器里的 imap-webmail 代理端口。
 
 登录：`admin@example.com` / `MailezDemo2026!`（webmail 与 admin 共用 SSO）。
 
 ## 为什么后端必须监听 8080
 
-邮件栈镜像内部把管理端地址写死为 `ADMIN_ADDRESS:8080`（nginx 认证代理、
-dovecot passdb、postfix 查询都走它）。开发模式下 `ADMIN_ADDRESS` 被
+邮件栈镜像内部把控制面地址写为 `BACKEND_ADDRESS:8080`（nginx 认证代理、
+dovecot passdb、postfix 查询都走它）。开发模式下 `BACKEND_ADDRESS` 被
 `docker-compose.dev.yml` 覆盖为 `host.docker.internal`，因此宿主机后端必须
 监听 8080，前端 `next.config.ts` 的默认 `API_TARGET` 也指向
 `http://localhost:8080`。容器化部署时用环境变量 `API_TARGET=http://backend:8080`
@@ -119,7 +119,7 @@ dovecot passdb、postfix 查询都走它）。开发模式下 `ADMIN_ADDRESS` �
 
 ## 常见问题
 
-- `imap dial: lookup front: no such host`：后端没配置 `MAIL_IMAP_ADDR` 为
+- `imap dial: lookup gateway: no such host`：后端没配置 `MAIL_IMAP_ADDR` 为
   宿主机映射端口，或邮件栈没启动。按上文环境变量设置并确认
   `docker compose -f docker-compose.dev.yml ps` 全部 healthy。
 - 想直接改邮件栈配置：挂载目录 `deploy/overrides/`（nginx/rspamd）与

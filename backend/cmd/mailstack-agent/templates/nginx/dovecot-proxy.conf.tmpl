@@ -8,8 +8,8 @@ login_log_format_elements = user=<%u> method=%m rip=%r rport=%b lip=%l lport=%a 
 protocols = sieve imap pop3 lmtp submission
 postmaster_address = {{ .Postmaster }}@{{ .Domain }}
 hostname = {{ .Hostname }}
-submission_host = {{ .SMTPAddress }}
-submission_relay_host = {{ .SMTPAddress }}
+submission_host = {{ .MtaAddress }}
+submission_relay_host = {{ .MtaAddress }}
 submission_relay_port = 10025
 submission_relay_trusted = yes
 submission_relay_ssl = no

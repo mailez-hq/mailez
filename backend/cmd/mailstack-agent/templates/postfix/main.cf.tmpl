@@ -20,8 +20,8 @@ mynetworks = {{ .MyNetworks }}
 # Empty alias list to override the configuration variable and disable NIS
 alias_maps =
 
-# Podop configuration
-podop = socketmap:unix:/tmp/podop.socket:
+# mailez control-plane socketmap configuration
+mailez = socketmap:unix:/tmp/mailez.socket:
 
 postscreen_upstream_proxy_protocol = haproxy
 compatibility_level=3.6
@@ -59,7 +59,7 @@ smtp_tls_mandatory_protocols = !SSLv2, !SSLv3
 smtp_tls_protocols =!SSLv2,!SSLv3
 smtp_tls_security_level = {{ .OutboundTLSLevel }}
 smtp_tls_dane_insecure_mx_policy = {{ if .DefersOnTLSError }}dane{{ else }}may{{ end }}
-smtp_tls_policy_maps=lmdb:/etc/postfix/tls_policy.map, ${podop}dane, socketmap:unix:/tmp/mta-sts.socket:postfix
+smtp_tls_policy_maps=lmdb:/etc/postfix/tls_policy.map, ${mailez}dane, socketmap:unix:/tmp/mta-sts.socket:postfix
 smtp_tls_CApath = /etc/ssl/certs
 smtp_tls_session_cache_database = lmdb:/dev/shm/postfix/smtp_scache
 smtpd_tls_session_cache_database = lmdb:/dev/shm/postfix/smtpd_scache
@@ -76,19 +76,19 @@ notify_classes = resource, software, delay
 # The alias map actually returns both aliases and local mailboxes, which is
 # required for reject_unlisted_sender to work properly
 virtual_alias_domains =
-virtual_alias_maps = ${podop}alias
-virtual_mailbox_domains = ${podop}domain
-virtual_mailbox_maps = ${podop}mailbox
+virtual_alias_maps = ${mailez}alias
+virtual_mailbox_domains = ${mailez}domain
+virtual_mailbox_maps = ${mailez}mailbox
 
 # Mails are transported if required, then forwarded to Dovecot for delivery
-relay_domains = ${podop}transport
-transport_maps = lmdb:/etc/postfix/transport.map, ${podop}transport
-virtual_transport = lmtp:inet:{{ .FrontAddress }}:2525
+relay_domains = ${mailez}transport
+transport_maps = lmdb:/etc/postfix/transport.map, ${mailez}transport
+virtual_transport = lmtp:inet:{{ .GatewayAddress }}:2525
 
 # Sender and recipient canonical maps, mostly for SRS
-sender_canonical_maps = ${podop}sendermap
+sender_canonical_maps = ${mailez}sendermap
 sender_canonical_classes = envelope_sender
-recipient_canonical_maps = ${podop}recipientmap
+recipient_canonical_maps = ${mailez}recipientmap
 recipient_canonical_classes= envelope_recipient,header_recipient
 
 # In order to prevent Postfix from running DNS query, enforce the use of the
@@ -103,12 +103,12 @@ lmtp_host_lookup = native
 smtpd_delay_reject = yes
 
 # Allowed senders are: the user or one of the alias destinations
-smtpd_sender_login_maps = ${podop}senderlogin
+smtpd_sender_login_maps = ${mailez}senderlogin
 
 # Restrictions for incoming SMTP, other restrictions are applied in master.cf
 smtpd_helo_required = yes
 
-check_ratelimit = check_sasl_access ${podop}senderrate
+check_ratelimit = check_sasl_access ${mailez}senderrate
 
 smtpd_client_restrictions =
   permit_mynetworks,
@@ -130,7 +130,7 @@ smtpd_authorized_xclient_hosts={{ .AuthorizedXclient }}
 # Milter
 ###############
 
-smtpd_milters = inet:{{ .AntispamAddress }}:11332
+smtpd_milters = inet:{{ .MailFilterAddress }}:11332
 milter_protocol = 6
 milter_mail_macros = i {mail_addr} {client_addr} {client_name} {auth_authen}
 milter_default_action = tempfail
