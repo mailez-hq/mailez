@@ -112,7 +112,7 @@ func TestPodopDictProtocol(t *testing.T) {
 		t.Fatalf("lookup reply wrong: %q (path=%s)", line, gotPath)
 	}
 	if gotPath != "/internal/dovecot/quota/user@example.com/user@example.com" {
-		t.Fatalf("lookup path wrong: %s", gotPath)
+		t.Fatalf("priv lookup path wrong: %s", gotPath)
 	}
 
 	fmt.Fprintf(conn, "Lpassdb/e2e@example.com\n")
@@ -120,8 +120,17 @@ func TestPodopDictProtocol(t *testing.T) {
 	if line != "O\t{\"value\":\"ok\"}\n" {
 		t.Fatalf("passdb lookup reply wrong: %q", line)
 	}
-	if gotPath != "/internal/dovecot/e2e@example.com" {
+	if gotPath != "/internal/dovecot/passdb/e2e@example.com" {
 		t.Fatalf("passdb lookup path wrong: %s", gotPath)
+	}
+
+	fmt.Fprintf(conn, "Luserdb/e2e@example.com\n")
+	line, _ = r.ReadString('\n')
+	if line != "O\t{\"value\":\"ok\"}\n" {
+		t.Fatalf("userdb lookup reply wrong: %q", line)
+	}
+	if gotPath != "/internal/dovecot/userdb/e2e@example.com" {
+		t.Fatalf("userdb lookup path wrong: %s", gotPath)
 	}
 
 	fmt.Fprintf(conn, "Lpriv/missing/user@example.com\tuser@example.com\n")
