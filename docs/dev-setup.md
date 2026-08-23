@@ -126,7 +126,7 @@ dovecot passdb、postfix 查询都走它）。开发模式下 `BACKEND_ADDRESS` 
 
 ## 自建镜像（完全本地构建，无外部镜像仓库依赖）
 
-邮件栈组件（nginx / dovecot / postfix / rspamd / oletools / unbound）的
+邮件栈组件（nginx / dovecot / postfix / rspamd / macro-scanner / unbound）的
 Dockerfile 与静态配置在 `deploy/vendor/mailstack/`，全部为多阶段自建镜像
 （Go 编译 agent + 官方 `alpine:3.21`，无任何第三方邮件栈镜像依赖）。两个
 compose 文件默认就引用本地构建的 `mailez/*:local`：

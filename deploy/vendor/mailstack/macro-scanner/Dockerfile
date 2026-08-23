@@ -1,13 +1,13 @@
 # syntax=docker/dockerfile-upstream:1.4.3
 
-# oletools image: static Go OLEFY/1.0-compatible scanner.
+# macro-scanner image: static Go OLEFY/1.0-compatible scanner.
 FROM golang:1.26-alpine AS build
 ENV GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0
 WORKDIR /src
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/internal/agent ./internal/agent
-COPY backend/internal/oletools ./internal/oletools
+COPY backend/internal/macro ./internal/macro
 COPY backend/cmd/mailstack-agent ./cmd/mailstack-agent
 RUN go build -trimpath -ldflags="-s -w" -o /out/mailstack-agent ./cmd/mailstack-agent
 
@@ -31,10 +31,8 @@ HEALTHCHECK --start-period=60s CMD echo PING|nc -q1 127.0.0.1 11343|grep "PONG"
 USER nobody:nobody
 
 ENV \
-    OLEFY_BINDADDRESS="" \
-    OLEFY_BINDPORT="11343" \
-    OLEFY_MINLENGTH="300" \
-    OLEFY_DEL_TMP="1" \
-    OLEFY_DEL_TMP_FAILED="1"
+    MAILEZ_SCANNER_BINDADDRESS="" \
+    MAILEZ_SCANNER_BINDPORT="11343" \
+    MAILEZ_SCANNER_MINLENGTH="300"
 
-CMD ["/mailstack-agent", "oletools"]
+CMD ["/mailstack-agent", "macro-scanner"]

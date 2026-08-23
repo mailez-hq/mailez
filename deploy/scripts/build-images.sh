@@ -14,7 +14,7 @@ build() {
 }
 
 build base base
-for c in nginx dovecot postfix rspamd oletools unbound; do
+for c in nginx dovecot postfix rspamd macro-scanner unbound; do
   build "$c" "$c"
 done
 

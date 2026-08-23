@@ -5,7 +5,7 @@
 mailez is a self-hosted mail platform built from three layers:
 
 1. **Mail stack (Docker)** — nginx gateway, Postfix (MTA), Dovecot
-   (mail-keeper), Rspamd (mail-filter), oletools (macro-scanner), Unbound
+   (mail-keeper), Rspamd (mail-filter), macro-scanner, Unbound
    (resolver), Redis. All components are self-built images driven by a single
    Go agent binary.
 2. **Backend (Go)** — the control plane: REST API for admin/webmail, the

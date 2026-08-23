@@ -24,10 +24,10 @@ func main() {
 		err = runPostfix()
 	case "rspamd":
 		err = runRspamd()
-	case "oletools":
-		err = runOletools()
+	case "macro-scanner":
+		err = runMacroScanner()
 	case "version":
-		fmt.Println("mailez mailstack-agent (unbound + nginx + dovecot + postfix + rspamd + oletools)")
+		fmt.Println("mailez mailstack-agent (unbound + nginx + dovecot + postfix + rspamd + macro-scanner)")
 		return
 	default:
 		usage()
@@ -41,5 +41,5 @@ func main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: mailstack-agent <component>")
-	fmt.Fprintln(os.Stderr, "components: unbound nginx dovecot postfix rspamd oletools")
+	fmt.Fprintln(os.Stderr, "components: unbound nginx dovecot postfix rspamd macro-scanner")
 }

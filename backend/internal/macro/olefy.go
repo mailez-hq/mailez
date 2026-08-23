@@ -1,4 +1,4 @@
-package oletools
+package macro
 
 import (
 	"bytes"
