@@ -5,11 +5,8 @@
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File deploy/scripts/build-images.ps1
 #
-# After building, switch the compose files to the local images:
-#   $env:MAILEZ_IMAGE_PREFIX='mailez'; $env:MAILEZ_IMAGE_TAG='local'
-#   docker compose -f docker-compose.dev.yml up -d
-#
-# Build order matters: base first, then the components that FROM base.
+# Every component is a standalone multi-stage build (Go agent -> slim alpine
+# runtime), so no shared Python base image is needed anymore.
 
 $ErrorActionPreference = 'Stop'
 $root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
@@ -33,17 +30,12 @@ if ($LASTEXITCODE -ne 0) { throw 'docker daemon is not running' }
 
 function Build-Image([string]$name, [string]$dir) {
   Write-Host "==> building mailez/$name :local from $dir"
-  if ($name -in @('unbound', 'nginx', 'dovecot')) {
-    # Go-agent components are multi-stage builds; the repo root is the build
-    # context so the Dockerfile can COPY the backend source (see .dockerignore).
-    & $docker build -f (Join-Path $dir 'Dockerfile') --build-arg VERSION=local -t "mailez/$name`:local" $root
-  } else {
-    & $docker build --build-arg VERSION=local --build-arg BASE_IMAGE="mailez/base:local" -t "mailez/$name`:local" $dir
-  }
+  # Multi-stage builds use the repo root as context so the Dockerfile can COPY
+  # the backend source (see .dockerignore).
+  & $docker build -f (Join-Path $dir 'Dockerfile') --build-arg VERSION=local -t "mailez/$name`:local" $root
   if ($LASTEXITCODE -ne 0) { throw "build failed: mailez/$name" }
 }
 
-Build-Image 'base' (Join-Path $vendor 'base')
 foreach ($component in @('nginx','dovecot','postfix','rspamd','oletools','unbound')) {
   Build-Image $component (Join-Path $vendor $component)
 }

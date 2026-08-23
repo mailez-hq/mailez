@@ -1,0 +1,10 @@
+{{if eq .Antivirus "clamav"}}clamav {
+  scan_mime_parts = true;
+  symbol = "CLAM_VIRUS";
+  type = "clamav";
+  servers = "{{ .AntivirusAddress }}:3310";
+  timeout = 60;
+  retransmits = 10;
+{{if eq .AntivirusAction "reject"}}  action = "reject"
+{{end}}}
+{{end}}.include(try=true,priority=1,duplicate=merge) "/overrides/antivirus.conf"

@@ -1,0 +1,11 @@
+
+rules {
+        BLACKLIST_ANTISPOOF = {
+            valid_dmarc = true;
+            blacklist = true;
+            domains = "http://{{ .AdminAddress }}:8080/internal/rspamd/local_domains";
+	    score = 0.0;
+        }
+}
+.include(try=true,priority=1,duplicate=merge) "/overrides/whitelist.conf"
+

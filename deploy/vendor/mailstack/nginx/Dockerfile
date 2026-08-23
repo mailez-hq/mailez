@@ -8,18 +8,20 @@ WORKDIR /src
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/internal/agent ./internal/agent
+COPY backend/internal/oletools ./internal/oletools
 COPY backend/cmd/mailstack-agent ./cmd/mailstack-agent
 RUN go build -trimpath -ldflags="-s -w" -o /out/mailstack-agent ./cmd/mailstack-agent
 
-# nginx image. certbot is still the Python ACME client; TODO(M2b): replace
-# with an embedded lego client to drop the Python dependency.
+# nginx image: ACME is handled by the embedded lego client (no Python).
 FROM alpine:3.21
 
 ARG VERSION
 LABEL version=$VERSION
+ARG APK_MIRROR="mirrors.aliyun.com"
 
 RUN set -euxo pipefail \
-  ; apk add --no-cache ca-certificates curl certbot nginx nginx-mod-http-brotli nginx-mod-mail openssl dovecot-lua dovecot-pigeonhole-plugin 'dovecot-lmtpd<2.4' dovecot-pop3d dovecot-submissiond \
+  ; sed -i "s|dl-cdn.alpinelinux.org|${APK_MIRROR}|g" /etc/apk/repositories \
+  ; apk add --no-cache ca-certificates curl nginx nginx-mod-http-brotli nginx-mod-mail openssl dovecot-lua dovecot-pigeonhole-plugin 'dovecot-lmtpd<2.4' dovecot-pop3d dovecot-submissiond \
   ; mkdir -p /etc/dovecot
 
 COPY --from=build /out/mailstack-agent /mailstack-agent

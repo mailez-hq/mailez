@@ -1,22 +1,27 @@
 # syntax=docker/dockerfile-upstream:1.4.3
 
-# oletools image
-ARG BASE_IMAGE=mailez/base:local
-FROM ${BASE_IMAGE}
+# oletools image: static Go olefy-compatible scanner (no Python runtime).
+FROM golang:1.26-alpine AS build
+ENV GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0
+WORKDIR /src
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+COPY backend/internal/agent ./internal/agent
+COPY backend/internal/oletools ./internal/oletools
+COPY backend/cmd/mailstack-agent ./cmd/mailstack-agent
+RUN go build -trimpath -ldflags="-s -w" -o /out/mailstack-agent ./cmd/mailstack-agent
+
+FROM alpine:3.21
 
 ARG VERSION=local
 LABEL version=$VERSION
-
-ARG OLEFY_SCRIPT=https://raw.githubusercontent.com/HeinleinSupport/olefy/f8aac6cc55283886d153e89c8f27fae66b1c24e2/olefy.py
-ARG OLEFY_SHA256=1f5aa58b78ca7917350135b4425e5ed4d580c7051aabed1952c6afd12d0345a0
+ARG APK_MIRROR="mirrors.aliyun.com"
 
 RUN set -euxo pipefail \
-  ; apk add --no-cache netcat-openbsd libmagic libffi \
-  ; curl -sLo olefy.py $OLEFY_SCRIPT \
-  ; echo "$OLEFY_SHA256  olefy.py" |sha256sum -c \
-  ; chmod 755 olefy.py
+  ; sed -i "s|dl-cdn.alpinelinux.org|${APK_MIRROR}|g" /etc/apk/repositories \
+  ; apk add --no-cache netcat-openbsd ca-certificates
 
-COPY start.py /
+COPY --from=build /out/mailstack-agent /mailstack-agent
 
 RUN echo $VERSION >/version
 
@@ -28,11 +33,8 @@ USER nobody:nobody
 ENV \
     OLEFY_BINDADDRESS="" \
     OLEFY_BINDPORT="11343" \
-    OLEFY_OLEVBA_PATH="/app/venv/bin/olevba" \
-    OLEFY_PYTHON_PATH="/app/venv/bin/python3" \
-    OLEFY_TMPDIR="/dev/shm/" \
     OLEFY_MINLENGTH="300" \
     OLEFY_DEL_TMP="1" \
     OLEFY_DEL_TMP_FAILED="1"
 
-CMD /start.py
+CMD ["/mailstack-agent", "oletools"]

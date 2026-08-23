@@ -1,0 +1,3 @@
+servers = "{{ .RedisAddress }}";
+.include(try=true,priority=1,duplicate=merge) "/overrides/history_redis.conf"
+

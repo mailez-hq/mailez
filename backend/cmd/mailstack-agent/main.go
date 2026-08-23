@@ -20,8 +20,14 @@ func main() {
 		err = runNginx()
 	case "dovecot":
 		err = runDovecot()
+	case "postfix":
+		err = runPostfix()
+	case "rspamd":
+		err = runRspamd()
+	case "oletools":
+		err = runOletools()
 	case "version":
-		fmt.Println("mailez mailstack-agent (unbound + nginx + dovecot)")
+		fmt.Println("mailez mailstack-agent (unbound + nginx + dovecot + postfix + rspamd + oletools)")
 		return
 	default:
 		usage()
@@ -35,5 +41,5 @@ func main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: mailstack-agent <component>")
-	fmt.Fprintln(os.Stderr, "components: unbound nginx dovecot")
+	fmt.Fprintln(os.Stderr, "components: unbound nginx dovecot postfix rspamd oletools")
 }

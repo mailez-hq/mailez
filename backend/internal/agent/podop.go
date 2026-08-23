@@ -247,14 +247,19 @@ func (h *DictHandler) set(baseURL, key, value, user string) {
 	}
 }
 
-// PostfixHandler serves the postfix socketmap protocol (M4), mapping
-// L<table>\t<key>\t<args> to the control plane internal API.
+// PostfixSocketmapServe serves the postfix socketmap protocol (podop
+// replacement, see socketmap_table(5)): requests are netstring-framed
+// "<table> <key>" payloads answered with netstrings "OK <value>" / "NOTFOUND "
+// / "TEMP <error>". Lookups are forwarded to the control plane internal API
+// through urlFunc.
 func PostfixSocketmapServe(ctx context.Context, socketPath string, urlFunc func(table, key string) string, client *http.Client) error {
 	_ = os.Remove(socketPath)
 	ln, err := net.Listen("unix", socketPath)
 	if err != nil {
 		return err
 	}
+	// Postfix connects as its own user while the agent runs as root.
+	_ = os.Chmod(socketPath, 0o666)
 	defer ln.Close()
 
 	var wg sync.WaitGroup
@@ -281,39 +286,107 @@ func handleSocketmap(conn net.Conn, urlFunc func(table, key string) string, clie
 	defer conn.Close()
 	r := bufio.NewReader(conn)
 	for {
-		line, err := r.ReadBytes('\n')
+		req, err := ReadNetstring(r)
 		if err != nil {
 			return
 		}
-		line = bytes.TrimRight(line, "\r\n")
-		if len(line) < 2 {
+		// Payload is "<table> <key>" (podop's SocketmapProtocol.string_received).
+		table, key, ok := strings.Cut(string(req), " ")
+		if !ok {
+			WriteNetstring(conn, []byte("TEMP malformed request"))
 			continue
 		}
-		parts := bytes.Split(line[1:], []byte{'\t'})
-		if line[0] != 'L' || len(parts) < 2 {
-			conn.Write([]byte("N\n"))
-			continue
-		}
-		table := string(parts[0])
-		key := string(parts[1])
 		u := urlFunc(table, key)
+		if u == "" {
+			WriteNetstring(conn, []byte("TEMP no such map"))
+			continue
+		}
 		resp, err := client.Get(u)
 		if err != nil || resp.StatusCode == http.StatusNotFound {
-			conn.Write([]byte("N\n"))
 			if resp != nil {
 				resp.Body.Close()
 			}
+			WriteNetstring(conn, []byte("NOTFOUND "))
 			continue
 		}
 		if resp.StatusCode != http.StatusOK {
 			resp.Body.Close()
-			conn.Write([]byte("N\n"))
+			WriteNetstring(conn, []byte("TEMP unknown error"))
 			continue
 		}
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		conn.Write([]byte("O "))
-		conn.Write(body)
-		conn.Write([]byte("\n"))
+		value := socketmapValue(body)
+		WriteNetstring(conn, append([]byte("OK "), value...))
+	}
+}
+
+// ReadNetstring reads one netstring ("<len>:<payload>,") from r.
+func ReadNetstring(r *bufio.Reader) ([]byte, error) {
+	var lenBuf []byte
+	for {
+		b, err := r.ReadByte()
+		if err != nil {
+			return nil, err
+		}
+		if b == ':' {
+			break
+		}
+		if b < '0' || b > '9' {
+			return nil, fmt.Errorf("socketmap: invalid netstring length byte %q", b)
+		}
+		lenBuf = append(lenBuf, b)
+		if len(lenBuf) > 10 {
+			return nil, fmt.Errorf("socketmap: netstring length too long")
+		}
+	}
+	n, err := strconv.Atoi(string(lenBuf))
+	if err != nil || n < 0 || n > 65535 {
+		return nil, fmt.Errorf("socketmap: invalid netstring length %q", lenBuf)
+	}
+	payload := make([]byte, n)
+	if _, err := io.ReadFull(r, payload); err != nil {
+		return nil, err
+	}
+	if b, err := r.ReadByte(); err != nil || b != ',' {
+		return nil, fmt.Errorf("socketmap: missing netstring terminator")
+	}
+	return payload, nil
+}
+
+// WriteNetstring frames payload as a netstring.
+func WriteNetstring(w io.Writer, payload []byte) error {
+	if _, err := fmt.Fprintf(w, "%d:", len(payload)); err != nil {
+		return err
+	}
+	if _, err := w.Write(payload); err != nil {
+		return err
+	}
+	_, err := w.Write([]byte{','})
+	return err
+}
+
+// socketmapValue converts a control-plane JSON response into the plain-text
+// value postfix expects, mirroring podop's str(json.loads(body)) behavior for
+// the string results the internal API returns.
+func socketmapValue(body []byte) []byte {
+	var v any
+	if err := json.Unmarshal(body, &v); err != nil {
+		return bytes.TrimSpace(body)
+	}
+	switch t := v.(type) {
+	case string:
+		return []byte(t)
+	case float64:
+		return []byte(strconv.FormatFloat(t, 'g', -1, 64))
+	case bool:
+		if t {
+			return []byte("True")
+		}
+		return []byte("False")
+	case nil:
+		return []byte("None")
+	default:
+		return bytes.TrimSpace(body)
 	}
 }
