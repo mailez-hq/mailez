@@ -3,3 +3,4 @@
 // OpenAPI document (generated types replace these by hand).
 export * from "./contract/auth";
 export * from "./contract/admin";
+export * from "./contract/mail";

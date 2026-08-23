@@ -1,47 +1,41 @@
-export type Me = {
-  email: string;
-  displayed_name: string;
-  global_admin: boolean;
-  enabled: boolean;
-  quota_bytes?: number;
-  quota_bytes_used?: number;
-  signature?: string;
-};
+import type {
+  AIStatus,
+  Contact,
+  DraftTone,
+  LoginResult,
+  MailAttachment,
+  MailIdentity,
+  MailMessage,
+  MailPage,
+  MailThread,
+  Me,
+  MeSettings,
+  OutboundAttachment,
+  PgpStatus,
+  PushSubscriptionInput,
+  SieveScript,
+  TotpStatus,
+} from "@mailez/types";
 
-export type MailAttachment = {
-  filename: string;
-  content_type: string;
-  size: number;
-  data?: string;
-};
-
-// OutboundAttachment is a file being attached to a message being written:
-// data is base64-encoded on the wire.
-export type OutboundAttachment = {
-  filename: string;
-  content_type: string;
-  size: number;
-  data: string;
-};
-
-export type MailMessage = {
-  uid: number;
-  id: string;
-  seq: number;
-  subject: string;
-  from: { name: string; email: string }[];
-  to: { name: string; email: string }[];
-  cc?: { name: string; email: string }[];
-  date: string;
-  flags: string[];
-  has_attachment: boolean;
-  thread_id?: string;
-  thread_count?: number;
-  thread_latest?: boolean;
-  folder?: string;
-  text_body?: string;
-  html_body?: string;
-  attachments?: MailAttachment[];
+// The wire types live in the shared @mailez/types package; re-export them so
+// existing components keep importing from "@/lib/api".
+export type {
+  AIStatus,
+  Contact,
+  DraftTone,
+  LoginResult,
+  MailAttachment,
+  MailIdentity,
+  MailMessage,
+  MailPage,
+  MailThread,
+  Me,
+  MeSettings,
+  OutboundAttachment,
+  PgpStatus,
+  PushSubscriptionInput,
+  SieveScript,
+  TotpStatus,
 };
 
 const API = "/api/v1";
@@ -73,12 +67,6 @@ export const apiPost = <T,>(path: string, body: unknown) =>
 export const apiPut = <T,>(path: string, body: unknown) =>
   api<T>(path, { method: "PUT", body: JSON.stringify(body) });
 
-export type LoginResult = {
-  email: string;
-  totp_required?: boolean;
-  pending_token?: string;
-};
-
 export async function login(email: string, pw: string) {
   return api<LoginResult>("/sso/login", { method: "POST", body: JSON.stringify({ email, pw }) });
 }
@@ -101,8 +89,6 @@ export async function me(): Promise<Me> {
 export const mailFolders = () => api<string[]>("/mail/folders");
 
 export const mailUnseen = () => api<Record<string, number>>("/mail/unseen");
-
-export type MailPage = { messages: MailMessage[]; total: number };
 
 export async function mailMessages(folder: string, page = 0): Promise<MailPage> {
   const res = await fetch(`${API}/mail/messages?folder=${encodeURIComponent(folder)}&page=${page}`, {
@@ -132,12 +118,6 @@ export const mailMessage = (folder: string, ref: { id: string } | { uid: number 
 
 export const mailRaw = (folder: string, uid: number) =>
   api<{ raw: string }>(`/mail/raw?folder=${encodeURIComponent(folder)}&uid=${uid}`);
-
-export type MailThread = {
-  thread_id: string;
-  subject: string;
-  messages: MailMessage[];
-};
 
 export const mailThread = (folder: string, threadId: string) =>
   api<MailThread>(
@@ -179,21 +159,9 @@ export const mailDelete = (folder: string, uid: number) =>
 export const mailMove = (folder: string, uids: number[], destination: string) =>
   apiPost("/mail/move", { folder, uids, destination });
 
-export type MailIdentity = {
-  email: string;
-  name: string;
-  dkim_enabled: boolean;
-  signature?: string;
-};
-
 export const mailIdentities = () => api<MailIdentity[]>("/mail/identities");
 
 // Web Push subscriptions (new-mail notifications via service worker).
-export type PushSubscriptionInput = {
-  endpoint: string;
-  keys: { p256dh: string; auth: string };
-};
-
 export const pushVapid = () => api<{ public_key: string }>("/push/vapid");
 
 export const pushSubscribe = (sub: PushSubscriptionInput) =>
@@ -203,11 +171,6 @@ export const pushUnsubscribe = (sub: { endpoint: string }) =>
   api("/push/subscribe", { method: "DELETE", body: JSON.stringify(sub) });
 
 // Sieve filter rules (ManageSieve)
-export type SieveScript = {
-  name: string;
-  active: boolean;
-};
-
 export const sieveList = () => api<SieveScript[]>("/sieve");
 
 export const sieveGet = (name: string) =>
@@ -225,14 +188,10 @@ export const sieveDelete = (name: string) =>
 export const sieveActivate = (name: string) =>
   apiPost(`/sieve/${encodeURIComponent(name)}/activate`, {});
 
-export type AIStatus = { enabled: boolean; provider: string };
-
 export const aiStatus = () => api<AIStatus>("/ai/status");
 
 export const aiSummarize = (text: string) =>
   api<{ summary: string }>("/ai/summarize", { method: "POST", body: JSON.stringify({ text }) });
-
-export type DraftTone = "formal" | "concise" | "friendly";
 
 export const aiDraft = (context: string, tone: DraftTone = "formal") =>
   api<{ draft: string }>("/ai/draft", {
@@ -253,12 +212,6 @@ export const aiSearch = (query: string) =>
   });
 
 // Built-in OpenPGP (key management + encrypt/decrypt/sign/verify)
-export type PgpStatus = {
-  has_key: boolean;
-  public_key?: string;
-  fingerprint?: string;
-};
-
 export const pgpStatus = () => api<PgpStatus>("/me/pgp");
 
 export const pgpGenerate = (): Promise<PgpStatus> =>
@@ -297,12 +250,6 @@ export const pgpVerify = (text: string, signature: string, publicKey: string) =>
   });
 
 // Two-factor authentication (TOTP)
-export type TotpStatus = {
-  enabled: boolean;
-  secret?: string;
-  otpauth?: string;
-};
-
 export const totpStatus = () => api<TotpStatus>("/me/totp");
 
 export const totpEnable = (code: string) =>
@@ -312,23 +259,6 @@ export const totpDisable = (code: string) =>
   api<void>("/me/totp", { method: "DELETE", body: JSON.stringify({ code }) });
 
 // Self-service settings (GET /me / PUT /me/settings / PUT /me/password)
-export type MeSettings = Me & {
-  forward_enabled: boolean;
-  forward_destination: string;
-  forward_keep: boolean;
-  reply_enabled: boolean;
-  reply_subject: string;
-  reply_body: string;
-  reply_startdate: string;
-  reply_enddate: string;
-  spam_enabled: boolean;
-  spam_mark_as_read: boolean;
-  spam_threshold: number;
-  signature: string;
-  whitelist: string;
-  blacklist: string;
-};
-
 export const meProfile = () => api<MeSettings>("/me");
 
 export const updateMeSettings = (body: Partial<MeSettings>) =>
@@ -338,14 +268,6 @@ export const changePassword = (oldPw: string, newPw: string) =>
   api("/me/password", { method: "PUT", body: JSON.stringify({ old_pw: oldPw, new_pw: newPw }) });
 
 // address book
-export type Contact = {
-  id: number;
-  user_email: string;
-  name: string;
-  email: string;
-  comment: string;
-};
-
 export const contacts = () => api<Contact[]>("/contacts");
 
 export const createContact = (name: string, email: string, comment = "") =>
