@@ -189,6 +189,8 @@
     "sbFlagged": "已加星标",
     "sbBefore": "早于",
     "sbAfter": "晚于",
+    "sbAdd": "添加",
+    "sbApply": "应用",
     "savedSearches": "保存的搜索",
     "newMail": "您有 {count} 封新邮件",
     "syntaxHint": "搜索语法：",

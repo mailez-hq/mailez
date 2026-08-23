@@ -18,12 +18,12 @@ import {
   accounts, setActiveAccountId,
   contacts, mailFlag, mailMove, mailIdentities,
   mailFolders, mailFolderCreate, mailFolderRename, mailFolderDelete, mailFolderClear,
-  mailLabelDelete, mailLabelRename, mailLabelSave, mailLabels, mailMessage, mailMessages, mailSaveDraft, mailSearch, mailSend, mailThread, mailUnseen, mailUndoSend, mailUnsubscribe, mailScheduled,
+  mailLabelDelete, mailLabelRename, mailLabelSave, mailLabels, mailMessage, mailMessages, mailSaveDraft, mailSearch, mailSearchSpec, mailSend, mailThread, mailUnseen, mailUndoSend, mailUnsubscribe, mailScheduled,
   mailSnooze, mailSnoozed,
   meProfile, updateMeSettings,
   pgpEncrypt, pgpLookup, pgpSign,
   type Contact, type DraftTone, type MailAccount, type MailIdentity, type MailLabel, type MailMessage, type MailThread, type Me,
-  type OutboundAttachment, type ScheduledSend, type SnoozedMessage,
+  type MailSearchSpec, type OutboundAttachment, type ScheduledSend, type SnoozedMessage,
 } from "@/lib/api";
 import {
   SYSTEM_FLAGS,
@@ -43,6 +43,20 @@ import {
 // A full MailStore interface lands together with the store-splitting refactor.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MailStoreContext = createContext<any>(null);
+
+// buildSearchSpec merges the free-text keywords with the visual builder
+// conditions into a structured spec; null when nothing is active.
+function buildSearchSpec(keywords: string, spec: MailSearchSpec | null): MailSearchSpec | null {
+  const merged: MailSearchSpec = spec ? { ...spec } : {};
+  const words = keywords.split(/\s+/).filter(Boolean);
+  if (words.length) {
+    merged.text = [...(spec?.text ?? []), ...words];
+  }
+  const active = Object.entries(merged).some(([, v]) =>
+    Array.isArray(v) ? v.length > 0 : Boolean(v),
+  );
+  return active ? merged : null;
+}
 
 export function useMailStore() {
   return useContext(MailStoreContext);
@@ -75,6 +89,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [selectedUids, setSelectedUids] = useState<Set<number>>(new Set());
   const [query, setQuery] = useState("");
+  const [searchSpec, setSearchSpec] = useState<MailSearchSpec | null>(null);
   const [searching, setSearching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -729,22 +744,39 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   async function doSearch(e?: React.FormEvent | string) {
     if (typeof e !== "string") e?.preventDefault();
     const q = (typeof e === "string" ? e : query).trim();
-    if (!q) {
+    const spec = buildSearchSpec(q, searchSpec);
+    if (!spec) {
       setSearching(false);
       setActiveView("all");
       setActiveLabel("");
       return;
     }
+    await runSearchWithSpec(spec);
+  }
+
+  // runSearchWithSpec executes a structured search (visual builder or merged
+  // keywords) straight against /mail/search — no syntax-string round-trip.
+  async function runSearchWithSpec(spec: MailSearchSpec) {
     setSearching(true);
     setSelected(null);
     setDetail(null);
     setCursor(0);
     try {
-      setMessages(await mailSearch(searchAll ? "all" : folder, q));
-      lastSearchRef.current = q;
+      setMessages(await mailSearchSpec(searchAll ? "all" : folder, spec));
+      lastSearchRef.current = spec.text?.join(" ") ?? "";
     } catch (err) {
       setError(err instanceof Error ? err.message : "search failed");
     }
+  }
+
+  // applySearchSpec is the visual builder's submit: it replaces the keyword
+  // box with the structured conditions and searches immediately.
+  function applySearchSpec(spec: MailSearchSpec) {
+    setSearchSpec(spec);
+    setQuery("");
+    setActiveView("all");
+    setActiveLabel("");
+    runSearchWithSpec(spec);
   }
 
   // Instant search: debounce manual typing so results appear live (except when
@@ -759,6 +791,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   function clearSearch() {
     setSearching(false);
     setQuery("");
+    setSearchSpec(null);
     setActiveView("all");
     setActiveLabel("");
     lastSearchRef.current = "";
@@ -1689,6 +1722,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     loading,
     query,
     setQuery,
+    searchSpec,
+    applySearchSpec,
     setSearchAll,
     doSearch,
     clearSearch,

@@ -71,6 +71,8 @@ export function MailView() {
     cursor,
     selected,
     searchAll,
+    searchSpec,
+    applySearchSpec,
     activeView,
     selectView,
     categoryFilter,
@@ -245,7 +247,9 @@ export function MailView() {
           searching={searching}
           loading={loading}
           query={query}
+          searchSpec={searchSpec}
           onQueryChange={setQuery}
+          onApplySpec={applySearchSpec}
           onSearch={doSearch}
           onClearSearch={clearSearch}
           selectedUids={selectedUids}

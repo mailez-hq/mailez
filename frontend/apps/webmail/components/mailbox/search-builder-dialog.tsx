@@ -8,51 +8,70 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import type { MailSearchSpec } from "@/lib/api";
+
+// Guided search builder: users tap a condition ("发件人", "有附件", ...),
+// fill in one value at a time, and the result is a structured MailSearchSpec
+// POSTed straight to /mail/search — no syntax strings anywhere.
 
 type Field =
-  | "from" | "to" | "subject" | "text" | "label"
+  | "from" | "to" | "subject" | "label"
   | "hasAttachment" | "unread" | "flagged" | "before" | "after";
 
 type Condition = { id: number; field: Field; value: string };
 
-const VALUE_FIELDS: Record<Field, boolean> = {
-  from: true, to: true, subject: true, text: true, label: true,
-  hasAttachment: false, unread: false, flagged: false,
-  before: true, after: true,
-};
+const BOOLEAN_FIELDS: Field[] = ["hasAttachment", "unread", "flagged"];
+const DATE_FIELDS: Field[] = ["before", "after"];
+const ALL_FIELDS: Field[] = [
+  "from", "to", "subject", "hasAttachment", "unread", "flagged", "before", "after", "label",
+];
 
 let nextId = 1;
 
-// compileConditions converts the visual conditions into the same query
-// expression the search box accepts (AND semantics, matching SearchQuery).
-function compileConditions(conditions: Condition[]): string {
-  const parts: string[] = [];
+// toSpec converts the selected conditions into a structured search spec.
+// Dates are sent as RFC 3339 (the backend SearchQuery unmarshals time.Time).
+function toSpec(conditions: Condition[]): MailSearchSpec {
+  const spec: MailSearchSpec = {};
+  const push = (key: "from" | "to" | "subject" | "labels", v: string) => {
+    if (!v.trim()) return;
+    if (key === "labels") {
+      spec.labels = [...(spec.labels ?? []), v.trim()];
+    } else {
+      spec[key] = [...(spec[key] ?? []), v.trim()];
+    }
+  };
   for (const c of conditions) {
-    const v = c.value.trim();
     switch (c.field) {
+      case "from":
+        push("from", c.value);
+        break;
+      case "to":
+        push("to", c.value);
+        break;
+      case "subject":
+        push("subject", c.value);
+        break;
+      case "label":
+        push("labels", c.value);
+        break;
       case "hasAttachment":
-        parts.push("has:attachment");
+        spec.hasAttachment = true;
         break;
       case "unread":
-        parts.push("is:unread");
+        spec.unseen = true;
         break;
       case "flagged":
-        parts.push("is:flagged");
+        spec.flagged = true;
         break;
       case "before":
+        if (c.value) spec.before = new Date(c.value + "T00:00:00Z").toISOString();
+        break;
       case "after":
-        if (/^\d{4}-\d{2}-\d{2}$/.test(v)) parts.push(`${c.field}:${v}`);
+        if (c.value) spec.after = new Date(c.value + "T00:00:00Z").toISOString();
         break;
-      case "text":
-        // bare words are ANDed by the text parser; split a multi-word phrase
-        if (v) for (const w of v.split(/\s+/)) parts.push(w);
-        break;
-      default:
-        if (v) parts.push(`${c.field}:"${v.replace(/"/g, "")}"`);
     }
   }
-  return parts.join(" ");
+  return spec;
 }
 
 export function SearchBuilderDialog({
@@ -62,27 +81,52 @@ export function SearchBuilderDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onApply: (query: string) => void;
+  onApply: (spec: MailSearchSpec) => void;
 }) {
   const t = useTranslations("mail");
   const [conditions, setConditions] = useState<Condition[]>([]);
+  const [editing, setEditing] = useState<Field | null>(null);
+  const [draft, setDraft] = useState("");
 
   const fieldLabel = (f: Field) => t(`sb${f.charAt(0).toUpperCase()}${f.slice(1)}`);
+  const activeCount = useMemo(() => conditions.length, [conditions]);
 
-  const query = useMemo(() => compileConditions(conditions), [conditions]);
-
-  const update = (id: number, patch: Partial<Condition>) =>
-    setConditions((cs) => cs.map((c) => (c.id === id ? { ...c, ...patch } : c)));
-
-  const addCondition = () =>
-    setConditions((cs) => [...cs, { id: nextId++, field: "from", value: "" }]);
-
-  const runSearch = () => {
-    onApply(query);
-    onOpenChange(false);
+  const startEdit = (f: Field) => {
+    if (editing === f) {
+      setEditing(null);
+      setDraft("");
+      return;
+    }
+    setEditing(f);
+    setDraft("");
   };
 
-  const clearAll = () => setConditions([]);
+  const addBoolean = (f: Field) => {
+    setConditions((cs) => [...cs, { id: nextId++, field: f, value: "" }]);
+  };
+
+  const commitInput = () => {
+    if (!editing) return;
+    if (draft.trim()) {
+      setConditions((cs) => [...cs, { id: nextId++, field: editing, value: draft.trim() }]);
+    }
+    setDraft("");
+    setEditing(null);
+  };
+
+  const remove = (id: number) =>
+    setConditions((cs) => cs.filter((c) => c.id !== id));
+
+  const clearAll = () => {
+    setConditions([]);
+    setEditing(null);
+    setDraft("");
+  };
+
+  const apply = () => {
+    onApply(toSpec(conditions));
+    onOpenChange(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -96,83 +140,85 @@ export function SearchBuilderDialog({
 
         <p className="text-xs text-muted-foreground">{t("sbHint")}</p>
 
-        {conditions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("sbEmpty")}</p>
-        ) : (
-          <div className="space-y-1.5">
+        {/* Condition buttons — tap one, type a value, hit Enter */}
+        <div className="flex flex-wrap gap-1.5">
+          {ALL_FIELDS.map((f) => (
+            <Button
+              key={f}
+              type="button"
+              size="sm"
+              variant={editing === f ? "default" : "outline"}
+              className="h-7 gap-1 px-2 text-xs"
+              onClick={() => (BOOLEAN_FIELDS.includes(f) ? addBoolean(f) : startEdit(f))}
+            >
+              {fieldLabel(f)}
+              {editing === f && <X className="size-3" />}
+            </Button>
+          ))}
+        </div>
+
+        {/* Inline input for the active value condition */}
+        {editing && (
+          <div className="flex items-center gap-1.5">
+            <span className="shrink-0 text-sm font-medium">{fieldLabel(editing)}</span>
+            <Input
+              autoFocus
+              type={DATE_FIELDS.includes(editing) ? "date" : "text"}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitInput();
+                if (e.key === "Escape") {
+                  setEditing(null);
+                  setDraft("");
+                }
+              }}
+              placeholder={DATE_FIELDS.includes(editing) ? "2026-01-01" : fieldLabel(editing)}
+              className="h-8 flex-1 text-sm"
+            />
+            <Button type="button" size="sm" className="h-8" onClick={commitInput}>
+              {t("sbAdd")}
+            </Button>
+          </div>
+        )}
+
+        {/* Selected conditions as removable chips */}
+        {conditions.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
             {conditions.map((c) => (
-              <div key={c.id} className="flex items-center gap-1.5">
-                <select
-                  value={c.field}
-                  onChange={(e) =>
-                    update(c.id, { field: e.target.value as Field, value: "" })
-                  }
-                  className="h-8 w-32 shrink-0 rounded-md border border-border bg-transparent px-1.5 text-sm text-foreground outline-none focus-visible:border-ring"
-                >
-                  {(
-                    ["from", "to", "subject", "text", "label", "hasAttachment", "unread", "flagged", "before", "after"] as Field[]
-                  ).map((f) => (
-                    <option key={f} value={f}>
-                      {fieldLabel(f)}
-                    </option>
-                  ))}
-                </select>
-                {VALUE_FIELDS[c.field] ? (
-                  <Input
-                    type={c.field === "before" || c.field === "after" ? "date" : "text"}
-                    value={c.value}
-                    onChange={(e) => update(c.id, { value: e.target.value })}
-                    placeholder={fieldLabel(c.field)}
-                    className="h-8 flex-1 text-sm"
-                  />
+              <span
+                key={c.id}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-xs text-foreground"
+              >
+                <span className="text-muted-foreground">{fieldLabel(c.field)}</span>
+                {c.value ? (
+                  <span className="font-medium">{c.value}</span>
                 ) : (
-                  <span className="flex-1 text-sm text-muted-foreground">
-                    {fieldLabel(c.field)}
-                  </span>
+                  <Plus className="size-3" />
                 )}
-                <Button
+                <button
                   type="button"
-                  size="icon-sm"
-                  variant="ghost"
-                  title={t("delete")}
-                  className="size-7 shrink-0 p-0 text-muted-foreground hover:text-destructive"
-                  onClick={() =>
-                    setConditions((cs) => cs.filter((x) => x.id !== c.id))
-                  }
+                  onClick={() => remove(c.id)}
+                  className="rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
+                  aria-label={t("delete")}
                 >
-                  <X className="size-3.5" />
-                </Button>
-              </div>
+                  <X className="size-3" />
+                </button>
+              </span>
             ))}
           </div>
         )}
 
-        <Button type="button" variant="outline" size="sm" onClick={addCondition}>
-          <Plus className="size-3.5" />
-          {t("sbAddCondition")}
-        </Button>
-
-        <div className="space-y-1.5">
-          <p className="text-xs text-muted-foreground">{t("sbPreview")}</p>
-          <p
-            className={cn(
-              "min-h-8 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 font-mono text-xs break-words",
-              query ? "text-foreground" : "text-muted-foreground",
-            )}
-          >
-            {query || "—"}
-          </p>
-        </div>
-
-        <DialogFooter>
-          <Button type="button" variant="ghost" onClick={clearAll} disabled={conditions.length === 0}>
-            {t("sbClear")}
-          </Button>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            {t("cancel")}
-          </Button>
-          <Button type="button" onClick={runSearch} disabled={!query}>
-            {t("sbSearch")}
+        <DialogFooter className="flex items-center justify-between gap-2">
+          {activeCount > 0 ? (
+            <Button type="button" variant="ghost" size="sm" onClick={clearAll}>
+              {t("sbClear")}
+            </Button>
+          ) : (
+            <span />
+          )}
+          <Button type="button" onClick={apply} disabled={activeCount === 0}>
+            {t("sbApply")}
           </Button>
         </DialogFooter>
       </DialogContent>

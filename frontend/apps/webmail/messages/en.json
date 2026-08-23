@@ -189,6 +189,8 @@
     "sbFlagged": "Flagged",
     "sbBefore": "Before",
     "sbAfter": "After",
+    "sbAdd": "Add",
+    "sbApply": "Apply",
     "savedSearches": "Saved searches",
     "newMail": "You have {count} new messages",
     "syntaxHint": "Search syntax:",
