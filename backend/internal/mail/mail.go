@@ -21,16 +21,19 @@ import (
 // Message is the API-facing representation of a mail.
 type Message struct {
 	UID           uint32       `json:"uid"`
+	ID            string       `json:"id"`
 	Seq           uint32       `json:"seq"`
 	Subject       string       `json:"subject"`
 	From          []Address    `json:"from"`
 	To            []Address    `json:"to"`
+	Cc            []Address    `json:"cc,omitempty"`
 	Date          time.Time    `json:"date"`
 	Flags         []string     `json:"flags"`
 	HasAttachment bool         `json:"has_attachment"`
 	ThreadID      string       `json:"thread_id,omitempty"`
 	ThreadCount   int          `json:"thread_count,omitempty"`
 	ThreadLatest  bool         `json:"thread_latest,omitempty"`
+	Folder        string       `json:"folder,omitempty"`
 	TextBody      string       `json:"text_body,omitempty"`
 	HTMLBody      string       `json:"html_body,omitempty"`
 	Attachments   []Attachment `json:"attachments,omitempty"`
@@ -53,9 +56,9 @@ type Address struct {
 // Client is a stateless IMAP gateway. Each operation opens its own connection
 // authenticated with a per-session temp token (never the user's password).
 type Client struct {
-	IMAPAddr string // host:port, e.g. front:10143
-	SMTPAddr string // host:port, e.g. front:10025
-	SieveAddr string // host:port, e.g. front:4190
+	IMAPAddr  string // host:port, e.g. gateway:10143
+	SMTPAddr  string // host:port, e.g. gateway:10025
+	SieveAddr string // host:port, e.g. gateway:4190
 }
 
 // New creates a mail gateway client.
@@ -67,7 +70,7 @@ func (c *Client) tlsConfig() *tls.Config {
 	return &tls.Config{InsecureSkipVerify: true} // internal connections only
 }
 
-// openIMAP dials the front IMAP proxy, upgrades to STARTTLS and logs in.
+// openIMAP dials the gateway IMAP proxy, upgrades to STARTTLS and logs in.
 func (c *Client) openIMAP(email, token string) (*client.Client, error) {
 	cli, err := client.Dial(c.IMAPAddr)
 	if err != nil {
@@ -214,6 +217,45 @@ func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, 
 	return &out, nil
 }
 
+// GetRaw returns the full RFC 822 source of a message, for the "view raw"
+// feature. Fetching the whole body works through the same BodySectionName the
+// detail view uses.
+func (c *Client) GetRaw(email, token, folder string, uid uint32) (string, error) {
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return "", err
+	}
+	defer cli.Logout()
+
+	if _, err := cli.Select(folder, true); err != nil {
+		return "", fmt.Errorf("imap select %q: %w", folder, err)
+	}
+	seqset := new(imap.SeqSet)
+	seqset.AddNum(uid)
+	section := &imap.BodySectionName{}
+	messages := make(chan *imap.Message, 1)
+	done := make(chan error, 1)
+	go func() {
+		done <- cli.UidFetch(seqset, []imap.FetchItem{section.FetchItem()}, messages)
+	}()
+
+	var raw string
+	for msg := range messages {
+		if body := msg.GetBody(section); body != nil {
+			if b, err := io.ReadAll(body); err == nil {
+				raw = string(b)
+			}
+		}
+	}
+	if err := <-done; err != nil {
+		return "", fmt.Errorf("imap uidfetch raw: %w", err)
+	}
+	if raw == "" {
+		return "", errors.New("message not found")
+	}
+	return raw, nil
+}
+
 func envelopeToMessage(msg *imap.Message) Message {
 	out := Message{
 		UID:   msg.Uid,
@@ -225,6 +267,8 @@ func envelopeToMessage(msg *imap.Message) Message {
 		out.Date = msg.Envelope.Date
 		out.From = addresses(msg.Envelope.From)
 		out.To = addresses(msg.Envelope.To)
+		out.Cc = addresses(msg.Envelope.Cc)
+		out.ID = EncodeMessageID(msg.Envelope.MessageId)
 	}
 	if msg.BodyStructure != nil {
 		out.HasAttachment = hasAttachments(msg.BodyStructure)
@@ -294,7 +338,7 @@ func extractBody(r io.Reader) (text, html string, attachments []Attachment, err 
 			} else if strings.HasPrefix(partType, "text/plain") && text == "" {
 				text = string(decoded)
 			} else if strings.HasPrefix(partType, "text/html") && html == "" {
-				html = string(decoded)
+				html = SanitizeHTML(string(decoded))
 			}
 		}
 	} else {
@@ -302,7 +346,7 @@ func extractBody(r io.Reader) (text, html string, attachments []Attachment, err 
 		if strings.HasPrefix(mt, "text/plain") {
 			text = decodeBody(b, encoding)
 		} else if strings.HasPrefix(mt, "text/html") {
-			html = decodeBody(b, encoding)
+			html = SanitizeHTML(decodeBody(b, encoding))
 		}
 	}
 	return text, html, attachments, nil

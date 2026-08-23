@@ -2,6 +2,8 @@ package mail
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/emersion/go-imap"
 )
@@ -90,4 +92,78 @@ func (c *Client) EnsureMailbox(email, token, name string) error {
 		return nil
 	}
 	return cli.Create(name)
+}
+
+// UnseenCounts returns the number of unseen messages per mailbox, for the
+// sidebar badges. Folders that fail STATUS are skipped.
+func (c *Client) UnseenCounts(email, token string) (map[string]int, error) {
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return nil, err
+	}
+	defer cli.Logout()
+
+	mailboxes := make(chan *imap.MailboxInfo, 10)
+	done := make(chan error, 1)
+	go func() { done <- cli.List("", "*", mailboxes) }()
+	var folders []string
+	for m := range mailboxes {
+		folders = append(folders, m.Name)
+	}
+	if err := <-done; err != nil {
+		return nil, fmt.Errorf("imap list: %w", err)
+	}
+
+	out := make(map[string]int, len(folders))
+	for _, f := range folders {
+		st, err := cli.Status(f, []imap.StatusItem{imap.StatusUnseen})
+		if err != nil {
+			continue
+		}
+		out[f] = int(st.Unseen)
+	}
+	return out, nil
+}
+
+// appendLiteral adapts a strings.Reader to the imap.Literal interface.
+type appendLiteral struct{ *strings.Reader }
+
+func (a appendLiteral) Len() int { return a.Reader.Len() }
+
+// SaveDraft appends a message to Drafts with the \Draft flag. When replaceUID
+// is non-zero the previous draft is removed first (auto-save keeps exactly one
+// draft per compose session). The new message's UID is returned when known.
+// to/cc keep the recipients and attachments keep the files, so reopening the
+// draft restores the whole compose state.
+func (c *Client) SaveDraft(email, token string, to, cc []string, subject, text, html string, attachments []Attachment, replaceUID uint32) (uint32, error) {
+	if err := c.EnsureMailbox(email, token, "Drafts"); err != nil {
+		return 0, err
+	}
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return 0, err
+	}
+	defer cli.Logout()
+
+	if _, err := cli.Select("Drafts", false); err != nil {
+		return 0, fmt.Errorf("imap select drafts: %w", err)
+	}
+	if replaceUID > 0 {
+		seqset := new(imap.SeqSet)
+		seqset.AddNum(replaceUID)
+		if err := cli.UidStore(seqset, imap.AddFlags, []interface{}{imap.RawString("\\Deleted")}, nil); err == nil {
+			deleted := make(chan uint32, 1)
+			_ = cli.Expunge(deleted)
+		}
+	}
+
+	msg := buildMessage(email, to, cc, subject, text, html, attachments)
+	if err := cli.Append("Drafts", []string{"\\Draft"}, time.Now(), appendLiteral{strings.NewReader(msg)}); err != nil {
+		return 0, fmt.Errorf("imap append draft: %w", err)
+	}
+	st, err := cli.Status("Drafts", []imap.StatusItem{imap.StatusUidNext})
+	if err != nil || st == nil || st.UidNext <= 1 {
+		return 0, nil // uid unknown; caller just saves again without replacing
+	}
+	return st.UidNext - 1, nil
 }

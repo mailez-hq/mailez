@@ -21,62 +21,62 @@ type TLSPaths struct {
 // NginxConfig is the typed, validated view of the environment consumed by the
 // nginx/dovecot-proxy templates.
 type NginxConfig struct {
-	Resolver           string
-	Hostname           string
-	RealIPHeader       string
-	RealIPFrom         string
-	RealIPFromList     []string
-	ProxyProtocol25    bool
-	ProxyProtocol80    bool
-	ProxyProtocol110   bool
-	ProxyProtocol143   bool
-	ProxyProtocol443   bool
-	ProxyProtocol465   bool
-	ProxyProtocol587   bool
-	ProxyProtocol993   bool
-	ProxyProtocol995   bool
-	ProxyProtocol4190  bool
-	Subnet6            bool
-	TLSFlavor          string
-	TLSError           bool
-	TLSPermissive      bool
-	TLS                *TLSPaths
-	Port80             bool
-	Port143            bool
-	Port110            bool
-	Port587            bool
-	Port4190           bool
-	Port995            bool
-	TLS443             bool
-	TLS993             bool
-	TLS995             bool
-	TLS465             bool
-	BackendAddress     string
-	MailFilterAddress  string
-	WebmailAddress     string
-	WebdavAddress      string
-	MessageSizeLimit   int
+	Resolver             string
+	Hostname             string
+	RealIPHeader         string
+	RealIPFrom           string
+	RealIPFromList       []string
+	ProxyProtocol25      bool
+	ProxyProtocol80      bool
+	ProxyProtocol110     bool
+	ProxyProtocol143     bool
+	ProxyProtocol443     bool
+	ProxyProtocol465     bool
+	ProxyProtocol587     bool
+	ProxyProtocol993     bool
+	ProxyProtocol995     bool
+	ProxyProtocol4190    bool
+	Subnet6              bool
+	TLSFlavor            string
+	TLSError             bool
+	TLSPermissive        bool
+	TLS                  *TLSPaths
+	Port80               bool
+	Port143              bool
+	Port110              bool
+	Port587              bool
+	Port4190             bool
+	Port995              bool
+	TLS443               bool
+	TLS993               bool
+	TLS995               bool
+	TLS465               bool
+	BackendAddress       string
+	MailFilterAddress    string
+	WebmailAddress       string
+	WebdavAddress        string
+	MessageSizeLimit     int
 	MessageSizeLimitPlus int
-	CPUCount           int
-	Admin              bool
-	API                bool
-	Webmail            string
-	Webdav             string
-	WebWebmail         string
-	WebAdmin           string
-	WebAPI             string
-	WebrootRedirect    string
-	Postmaster         string
-	Domain             string
-	MtaAddress         string
-	RecipientDelimiter string
+	CPUCount             int
+	Admin                bool
+	API                  bool
+	Webmail              string
+	Webdav               string
+	WebWebmail           string
+	WebAdmin             string
+	WebAPI               string
+	WebrootRedirect      string
+	Postmaster           string
+	Domain               string
+	MtaAddress           string
+	RecipientDelimiter   string
 }
 
 var (
-	protoMail       = []string{"25", "110", "995", "143", "993", "587", "465", "4190"}
+	protoMail         = []string{"25", "110", "995", "143", "993", "587", "465", "4190"}
 	portsRequiringTLS = []string{"443", "465", "993", "995"}
-	defaultPorts    = "25,80,443,465,993,995,4190"
-	defaultTLS      = "25,80,443,465,993,995,4190"
+	defaultPorts      = "25,80,443,465,993,995,4190"
+	defaultTLS        = "25,80,443,465,993,995,4190"
 )
 
 func loadNginxConfig() (NginxConfig, error) {

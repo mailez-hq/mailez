@@ -12,36 +12,36 @@ import (
 // DovecotConfig is the typed view of the environment consumed by the dovecot
 // templates.
 type DovecotConfig struct {
-	Postmaster           string
-	Domain               string
-	Hostname             string
-	ProxyProtocol25      bool
-	GatewayAddress       string
-	Subnet6              bool
-	Subnet               string
-	CPUCount             int
-	RecipientDelimiter   string
-	MailPlugins          string
-	DefaultMailboxes     []string
-	FTSEnabled           bool
-	FTSLanguages         string
-	FTSTika              bool
+	Postmaster            string
+	Domain                string
+	Hostname              string
+	ProxyProtocol25       bool
+	GatewayAddress        string
+	Subnet6               bool
+	Subnet                string
+	CPUCount              int
+	RecipientDelimiter    string
+	MailPlugins           string
+	DefaultMailboxes      []string
+	FTSEnabled            bool
+	FTSLanguages          string
+	FTSTika               bool
 	FTSAttachmentsAddress string
-	CompressionEnabled   bool
-	Compression          string
-	CompressionLevel     string
+	CompressionEnabled    bool
+	Compression           string
+	CompressionLevel      string
 }
 
 func loadDovecotConfig() (DovecotConfig, error) {
 	cfg := DovecotConfig{
-		Postmaster:           agent.Getenv("POSTMASTER", "postmaster"),
-		Domain:               agent.Getenv("DOMAIN", "example.com"),
-		GatewayAddress:       agent.Getenv("GATEWAY_ADDRESS", "gateway"),
-		Subnet:               agent.Getenv("SUBNET", "192.168.206.0/24"),
-		RecipientDelimiter:   agent.Getenv("RECIPIENT_DELIMITER", "+"),
-		DefaultMailboxes:     []string{"Trash", "Drafts", "Sent", "Junk"},
-		Compression:          os.Getenv("COMPRESSION"),
-		CompressionLevel:     os.Getenv("COMPRESSION_LEVEL"),
+		Postmaster:            agent.Getenv("POSTMASTER", "postmaster"),
+		Domain:                agent.Getenv("DOMAIN", "example.com"),
+		GatewayAddress:        agent.Getenv("GATEWAY_ADDRESS", "gateway"),
+		Subnet:                agent.Getenv("SUBNET", "192.168.206.0/24"),
+		RecipientDelimiter:    agent.Getenv("RECIPIENT_DELIMITER", "+"),
+		DefaultMailboxes:      []string{"Trash", "Drafts", "Sent", "Junk"},
+		Compression:           os.Getenv("COMPRESSION"),
+		CompressionLevel:      os.Getenv("COMPRESSION_LEVEL"),
 		FTSAttachmentsAddress: agent.Getenv("FTS_ATTACHMENTS_ADDRESS", "tika"),
 	}
 
@@ -99,7 +99,9 @@ func loadDovecotConfig() (DovecotConfig, error) {
 
 type requiredError struct{ key string }
 
-func (e requiredError) Error() string { return "required environment variable " + e.key + " is not set" }
+func (e requiredError) Error() string {
+	return "required environment variable " + e.key + " is not set"
+}
 
 func errRequired(key string) error { return requiredError{key: key} }
 

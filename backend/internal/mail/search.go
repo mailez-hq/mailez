@@ -3,6 +3,8 @@ package mail
 import (
 	"fmt"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,13 +14,17 @@ import (
 
 // SearchQuery is the structured form of an advanced search expression such as
 // `from:amy subject:"weekly report" has:attachment before:2026-01-01`, or the
-// output of the AI query interpreter.
+// output of the AI query interpreter. is:unread / is:flagged / label:NAME power
+// the FastMail-style virtual views and labels.
 type SearchQuery struct {
 	Text          []string
 	From          []string
 	To            []string
 	Subject       []string
 	HasAttachment bool
+	Unseen        bool
+	Flagged       bool
+	Labels        []string
 	Before        *time.Time
 	After         *time.Time
 }
@@ -48,6 +54,17 @@ func parseSearchQuery(q string) SearchQuery {
 		case "has":
 			if strings.EqualFold(val, "attachment") {
 				out.HasAttachment = true
+			}
+		case "is":
+			switch strings.ToLower(val) {
+			case "unread":
+				out.Unseen = true
+			case "flagged", "starred":
+				out.Flagged = true
+			}
+		case "label":
+			if val != "" {
+				out.Labels = append(out.Labels, val)
 			}
 		case "before":
 			if t, err := time.Parse("2006-01-02", val); err == nil {
@@ -84,6 +101,13 @@ func (c *Client) SearchMessagesSpec(email, token, folder string, sel SearchQuery
 	criteria.Header["From"] = sel.From
 	criteria.Header["To"] = sel.To
 	criteria.Header["Subject"] = sel.Subject
+	if sel.Unseen {
+		criteria.WithoutFlags = []string{imap.SeenFlag}
+	}
+	if sel.Flagged {
+		criteria.WithFlags = []string{imap.FlaggedFlag}
+	}
+	criteria.WithFlags = append(criteria.WithFlags, sel.Labels...)
 	if sel.Before != nil {
 		criteria.Before = *sel.Before
 	}
@@ -122,6 +146,39 @@ func (c *Client) SearchMessagesSpec(email, token, folder string, sel SearchQuery
 	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
 		out[i], out[j] = out[j], out[i]
 	}
+	return out, nil
+}
+
+// SearchAllMessages runs a query against every mailbox (except Trash) and
+// merges the results, newest first, tagging each hit with its source folder so
+// the reader can open it from the right place.
+func (c *Client) SearchAllMessages(email, token, query string) ([]Message, error) {
+	folders, err := c.ListFolders(email, token)
+	if err != nil {
+		return nil, err
+	}
+	sel := parseSearchQuery(query)
+	var out []Message
+	seen := make(map[string]bool)
+	for _, f := range folders {
+		if strings.EqualFold(f, "Trash") {
+			continue
+		}
+		msgs, err := c.SearchMessagesSpec(email, token, f, sel)
+		if err != nil {
+			continue
+		}
+		for i := range msgs {
+			key := f + "/" + strconv.FormatUint(uint64(msgs[i].UID), 10)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			msgs[i].Folder = f
+			out = append(out, msgs[i])
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Date.After(out[j].Date) })
 	return out, nil
 }
 

@@ -15,8 +15,8 @@ import (
 	"github.com/emersion/go-imap/client"
 	"gorm.io/gorm"
 
+	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/crypto"
-	"mailez/backend/internal/models"
 )
 
 // Fetcher polls remote POP/IMAP accounts and delivers new mail to the local
@@ -26,10 +26,11 @@ type Fetcher struct {
 	SmtpAddr string // local smtp host:port for delivery
 	Secret   string
 	Interval time.Duration
+	Insecure bool // skip TLS verification for external accounts (opt-out)
 }
 
-func New(db *gorm.DB, smtpAddr, secret string, interval time.Duration) *Fetcher {
-	return &Fetcher{DB: db, SmtpAddr: smtpAddr, Secret: secret, Interval: interval}
+func New(db *gorm.DB, smtpAddr, secret string, insecure bool, interval time.Duration) *Fetcher {
+	return &Fetcher{DB: db, SmtpAddr: smtpAddr, Secret: secret, Interval: interval, Insecure: insecure}
 }
 
 // Run starts the periodic poll loop.
@@ -95,7 +96,7 @@ func (f *Fetcher) fetchIMAP(fetch *models.Fetch, password string) error {
 	}
 	defer cli.Logout()
 	if fetch.TLS {
-		if err := cli.StartTLS(&tls.Config{InsecureSkipVerify: true}); err != nil {
+		if err := cli.StartTLS(&tls.Config{InsecureSkipVerify: f.Insecure, ServerName: fetch.Host}); err != nil {
 			return err
 		}
 	}
@@ -157,7 +158,7 @@ func (f *Fetcher) fetchRawIMAP(cli *client.Client, uid uint32) (string, error) {
 
 // fetchPOP3 downloads messages and optionally deletes them (Keep=false).
 func (f *Fetcher) fetchPOP3(fetch *models.Fetch, password string) error {
-	conn, err := dialPOP3(fetch.Host, fetch.Port, fetch.TLS)
+	conn, err := dialPOP3(fetch.Host, fetch.Port, fetch.TLS, f.Insecure)
 	if err != nil {
 		return err
 	}

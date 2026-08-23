@@ -8,7 +8,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"mailez/backend/internal/models"
+	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/password"
 )
 
@@ -19,10 +19,16 @@ type Manager struct {
 	SessionName string
 	SessionTTL  time.Duration
 	TokenTTL    time.Duration
+
+	secureCookie bool
+	loginWindow  time.Duration
+	loginPerIP   int
+	loginFail    int
 }
 
 const sessionKeyPrefix = "mailez:session:"
 const tokenKeyPrefix = "mailez:token:"
+const pending2faPrefix = "mailez:pending2fa:"
 
 // NewManager wires the auth manager. store may be nil (disabled sessions).
 func NewManager(db *gorm.DB, store Store, sessionName string, ttl time.Duration) *Manager {
@@ -32,13 +38,30 @@ func NewManager(db *gorm.DB, store Store, sessionName string, ttl time.Duration)
 		SessionName: sessionName,
 		SessionTTL:  ttl,
 		TokenTTL:    ttl,
+		loginWindow: 15 * time.Minute,
+		loginPerIP:  30,
+		loginFail:   10,
+	}
+}
+
+// SetCookieSecure marks session cookies Secure (required behind HTTPS).
+func (m *Manager) SetCookieSecure(v bool) { m.secureCookie = v }
+
+// SetLoginLimits overrides the login brute-force limits (per IP per window,
+// and per-email failure lockout). Values <= 0 keep the defaults.
+func (m *Manager) SetLoginLimits(perIP, fail int) {
+	if perIP > 0 {
+		m.loginPerIP = perIP
+	}
+	if fail > 0 {
+		m.loginFail = fail
 	}
 }
 
 // Login validates credentials and creates a session, returning the session id.
 func (m *Manager) Login(ctx context.Context, email, pw string) (string, *models.User, error) {
 	var user models.User
-	if err := m.DB.First(&user, "email = ?", email).Error; err != nil {
+	if err := m.DB.WithContext(ctx).First(&user, "email = ?", email).Error; err != nil {
 		return "", nil, err
 	}
 	if !user.Enabled || !password.Verify(user.Password, pw) {
@@ -66,8 +89,12 @@ func (m *Manager) UserFromSession(ctx context.Context, sid string) (*models.User
 	if err != nil || !ok {
 		return nil, err
 	}
+	// Sliding expiry: refresh the session TTL on every authenticated access.
+	if m.SessionTTL > 0 {
+		_ = m.Store.Set(ctx, sessionKeyPrefix+sid, email, m.SessionTTL)
+	}
 	var user models.User
-	if err := m.DB.First(&user, "email = ?", email).Error; err != nil {
+	if err := m.DB.WithContext(ctx).First(&user, "email = ?", email).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -90,6 +117,29 @@ func (m *Manager) CreateTempToken(ctx context.Context, email, sid string) (strin
 		return "", err
 	}
 	return full, nil
+}
+
+// CreatePending2FA stores a short-lived token for the second-factor step of a
+// login, so the password is never enough to open a session for a 2FA user.
+func (m *Manager) CreatePending2FA(ctx context.Context, email string) (string, error) {
+	token, err := randomToken(32)
+	if err != nil {
+		return "", err
+	}
+	if err := m.Store.Set(ctx, pending2faPrefix+token, email, 5*time.Minute); err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+// ConsumePending2FA returns the email behind a pending token (one use only).
+func (m *Manager) ConsumePending2FA(ctx context.Context, token string) (string, bool) {
+	email, ok, err := m.Store.Get(ctx, pending2faPrefix+token)
+	if err != nil || !ok {
+		return "", false
+	}
+	_ = m.Store.Delete(ctx, pending2faPrefix+token)
+	return email, true
 }
 
 // VerifyTempToken checks a token-* credential against a user.

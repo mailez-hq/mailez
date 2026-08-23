@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 
-	"mailez/backend/internal/models"
+	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/password"
 )
 
@@ -20,31 +20,37 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := models.AutoMigrate(db); err != nil {
+	if err := models.Migrate(db); err != nil {
 		log.Fatal(err)
 	}
 
-	hash, err := password.Hash("MailezDemo2026!")
+	adminEmail := envOr("MAILEZ_ADMIN_EMAIL", "admin@example.com")
+	adminDomain := envOr("MAILEZ_DOMAIN", "example.com")
+	adminPassword := envOr("MAILEZ_ADMIN_PASSWORD", "MailezDemo2026!")
+	if adminPassword == "MailezDemo2026!" {
+		log.Println("WARNING: using the demo admin password; set MAILEZ_ADMIN_PASSWORD for anything but local dev")
+	}
+	hash, err := password.Hash(adminPassword)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	domain := models.Domain{Name: "example.com", MaxUsers: -1, MaxAliases: -1}
-	if err := db.FirstOrCreate(&domain, "name = ?", "example.com").Error; err != nil {
+	domain := models.Domain{Name: adminDomain, MaxUsers: -1, MaxAliases: -1}
+	if err := db.FirstOrCreate(&domain, "name = ?", adminDomain).Error; err != nil {
 		log.Fatal(err)
 	}
 
 	user := models.User{
-		Email:       "admin@example.com",
-		Localpart:   "admin",
-		DomainName:  "example.com",
+		Email:       adminEmail,
+		Localpart:   adminEmail[:len(adminEmail)-len(adminDomain)-1],
+		DomainName:  adminDomain,
 		Password:    hash,
 		GlobalAdmin: true,
 	}
-	if err := db.FirstOrCreate(&user, "email = ?", "admin@example.com").Error; err != nil {
+	if err := db.FirstOrCreate(&user, "email = ?", adminEmail).Error; err != nil {
 		log.Fatal(err)
 	}
-	log.Println("seeded admin@example.com / MailezDemo2026!")
+	log.Printf("seeded %s", adminEmail)
 }
 
 func dsn() string {
@@ -52,4 +58,11 @@ func dsn() string {
 		return v
 	}
 	return "mailez.db"
+}
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }

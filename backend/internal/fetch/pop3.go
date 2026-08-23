@@ -17,12 +17,12 @@ type pop3Conn struct {
 	r    *bufio.Reader
 }
 
-func dialPOP3(host string, port int, useTLS bool) (*pop3Conn, error) {
+func dialPOP3(host string, port int, useTLS, insecure bool) (*pop3Conn, error) {
 	addr := net.JoinHostPort(host, strconv.Itoa(port))
 	var conn net.Conn
 	var err error
 	if useTLS {
-		conn, err = tls.Dial("tcp", addr, &tls.Config{InsecureSkipVerify: true})
+		conn, err = tls.Dial("tcp", addr, &tls.Config{InsecureSkipVerify: insecure, ServerName: host})
 	} else {
 		conn, err = net.Dial("tcp", addr)
 	}
