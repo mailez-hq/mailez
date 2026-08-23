@@ -60,4 +60,3 @@ func (h *Handler) rspamdLocalDomains(c *fiber.Ctx) error {
 	names = append(names, alts...)
 	return c.Type("text/plain").SendString(strings.Join(names, "\n"))
 }
-

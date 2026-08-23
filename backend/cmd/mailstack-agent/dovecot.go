@@ -61,4 +61,3 @@ func runDovecot() error {
 
 	return agent.RunChild(ctx, []string{"/usr/sbin/dovecot", "-c", "/etc/dovecot/dovecot.conf", "-F"})
 }
-

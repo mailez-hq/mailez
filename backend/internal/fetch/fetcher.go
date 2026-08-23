@@ -277,4 +277,3 @@ func (f *Fetcher) deliver(recipient, raw string) error {
 	}
 	return smtp.SendMail(f.SmtpAddr, nil, recipient, []string{recipient}, msg)
 }
-

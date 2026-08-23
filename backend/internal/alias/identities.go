@@ -108,4 +108,3 @@ func MaySendAs(app *core.App, user *models.User, from string) bool {
 	}
 	return false
 }
-

@@ -57,4 +57,3 @@ func writeRenderedRspamd(files map[string][]byte) error {
 	}
 	return nil
 }
-

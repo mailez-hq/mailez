@@ -8,4 +8,3 @@ type Base struct {
 	UpdatedAt *time.Time `gorm:"type:date" json:"updated_at"`
 	Comment   string     `gorm:"size:255;default:''" json:"comment"`
 }
-

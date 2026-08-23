@@ -799,4 +799,3 @@ func TestAutoconfigContract(t *testing.T) {
 		t.Fatalf("apple: got %d %q", code, body)
 	}
 }
-

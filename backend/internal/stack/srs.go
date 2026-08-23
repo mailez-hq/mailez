@@ -85,4 +85,3 @@ func randomTokenString(n int) string {
 	}
 	return sb.String()
 }
-

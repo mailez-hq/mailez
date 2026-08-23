@@ -123,4 +123,3 @@ func (s *MemoryStore) Incr(ctx context.Context, key string, ttl time.Duration) (
 	s.data[key] = item
 	return n, nil
 }
-

@@ -43,4 +43,3 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "usage: mailstack-agent <component>")
 	fmt.Fprintln(os.Stderr, "components: unbound nginx dovecot postfix rspamd oletools")
 }
-
