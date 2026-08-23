@@ -1,5 +1,5 @@
-// mailstack-agent drives each mail-stack container in the mailez
-// mail-stack containers with a single static Go binary.
+// mailez-agent drives every mail container (gateway / mta / mail-keeper /
+// mail-filter / macro-scanner / resolver) with a single static Go binary.
 package main
 
 import (
@@ -27,19 +27,19 @@ func main() {
 	case "macro-scanner":
 		err = runMacroScanner()
 	case "version":
-		fmt.Println("mailez mailstack-agent (unbound + nginx + dovecot + postfix + rspamd + macro-scanner)")
+		fmt.Println("mailez-agent (unbound + nginx + dovecot + postfix + rspamd + macro-scanner)")
 		return
 	default:
 		usage()
 		os.Exit(1)
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "mailstack-agent:", err)
+		fmt.Fprintln(os.Stderr, "mailez-agent:", err)
 		os.Exit(1)
 	}
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: mailstack-agent <component>")
+	fmt.Fprintln(os.Stderr, "usage: mailez-agent <component>")
 	fmt.Fprintln(os.Stderr, "components: unbound nginx dovecot postfix rspamd macro-scanner")
 }

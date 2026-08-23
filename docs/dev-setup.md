@@ -126,14 +126,16 @@ dovecot passdb、postfix 查询都走它）。开发模式下 `MAILEZ_BACKEND_AD
 
 ## 自建镜像（完全本地构建，无外部镜像仓库依赖）
 
-邮件栈组件（nginx / dovecot / postfix / rspamd / macro-scanner / unbound）的
-Dockerfile 与静态配置在 `deploy/vendor/mailstack/`，全部为多阶段自建镜像
-（Go 编译 agent + 官方 `alpine:3.21`，无任何第三方邮件栈镜像依赖）。两个
-compose 文件默认就引用本地构建的 `mailez/*:local`：
+邮件组件（nginx / dovecot / postfix / rspamd / macro-scanner / unbound）的
+Dockerfile 与静态配置在 `deploy/images/`（共享基础设施）与
+`deploy/engines/postdove/`（引擎 A）下，全部为多阶段自建镜像
+（Go 编译 agent + 官方 `alpine:3.21`，无任何第三方邮件镜像依赖）。构建
+入口为 `go run ./backend/cmd/build-images`，两个 compose 文件默认就引用
+本地构建的 `mailez/*:local`：
 
 ```
 # 1. 本地构建全部组件（首次较慢）
-powershell -ExecutionPolicy Bypass -File deploy/scripts/build-images.ps1
+cd backend && go run ./cmd/build-images
 # 2. 直接启动（compose 已默认 mailez/*:local）
 docker compose -f docker-compose.dev.yml up -d
 ```

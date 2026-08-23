@@ -23,7 +23,7 @@ import (
 )
 
 // fakeGateway embeds the production gateway interface and overrides only the
-// compose surface, so handler logic is tested without a live mail stack.
+// compose surface, so handler logic is tested without live mail services.
 type fakeGateway struct {
 	mail.Gateway
 	sentTo     []string

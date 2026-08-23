@@ -4,12 +4,12 @@
 
 mailez is a self-hosted mail platform built from three layers:
 
-1. **Mail stack (Docker)** — nginx gateway, Postfix (MTA), Dovecot
+1. **Mail images (Docker)** — nginx gateway, Postfix (MTA), Dovecot
    (mail-keeper), Rspamd (mail-filter), macro-scanner, Unbound
    (resolver), Redis. All components are self-built images driven by a single
-   Go agent binary.
+   Go agent binary (`mailez-agent`).
 2. **Backend (Go)** — the control plane: REST API for admin/webmail, the
-   internal API the mail stack authenticates against, SSO sessions, Sieve,
+   internal API the mail images authenticate against, SSO sessions, Sieve,
    fetching, push notifications, AI.
 3. **Frontends (Next.js)** — `webmail` and `admin` apps, both consuming the
    same `/api/v1` contract.
@@ -42,7 +42,7 @@ backend/internal/
 Dependency direction is one-way: domains depend on `core` (and infrastructure
 packages such as `mail`); `server` depends on everything and nothing depends on
 it. This keeps the graph acyclic and lets handler tests inject a fake
-`mail.Gateway` instead of a live mail stack.
+`mail.Gateway` instead of live mail services.
 
 ## Authentication flow
 
@@ -50,7 +50,7 @@ it. This keeps the graph acyclic and lets handler tests inject a fake
 - Every webmail request exchanges the session for a short-lived `token-*`
   temporary credential used as the IMAP/SMTP password — the user's real
   password never reaches the browser.
-- The mail stack authenticates through `/stack/*`: nginx's mail proxy and
+- The mail images authenticate through `/stack/*`: nginx's mail proxy and
   Dovecot's passdb call the backend, which validates credentials, 2FA state,
   protocol permissions and rate limits.
 

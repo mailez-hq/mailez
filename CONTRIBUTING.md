@@ -2,7 +2,7 @@
 
 ## Development setup
 
-Follow [`docs/dev-setup.md`](docs/dev-setup.md) to bring up the mail stack and
+Follow [`docs/dev-setup.md`](docs/dev-setup.md) to bring up the mail services and
 the backend/frontends in development mode. The short version:
 
 ```sh

@@ -8,8 +8,8 @@ COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/internal/agent ./internal/agent
 COPY backend/internal/macro ./internal/macro
-COPY backend/cmd/mailstack-agent ./cmd/mailstack-agent
-RUN go build -trimpath -ldflags="-s -w" -o /out/mailstack-agent ./cmd/mailstack-agent
+COPY backend/cmd/mailez-agent ./cmd/mailez-agent
+RUN go build -trimpath -ldflags="-s -w" -o /out/mailez-agent ./cmd/mailez-agent
 
 FROM alpine:3.21
 
@@ -21,7 +21,7 @@ RUN set -euxo pipefail \
   ; sed -i "s|dl-cdn.alpinelinux.org|${APK_MIRROR}|g" /etc/apk/repositories \
   ; apk add --no-cache cyrus-sasl-login postfix postfix-pcre logrotate
 
-COPY --from=build /out/mailstack-agent /mailstack-agent
+COPY --from=build /out/mailez-agent /mailez-agent
 
 RUN echo $VERSION >/version
 
@@ -30,4 +30,4 @@ HEALTHCHECK --start-period=30s CMD ! /usr/libexec/postfix/master -t
 
 VOLUME ["/queue"]
 
-CMD ["/mailstack-agent", "postfix"]
+CMD ["/mailez-agent", "postfix"]

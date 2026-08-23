@@ -1,6 +1,7 @@
 # mailez compose
-# The mail-stack containers (gateway/mta/mail-keeper/mail-filter/macro-scanner/
-# resolver) are self-built images; the mailez backend is the control plane and
+# Default engine: postdove (postfix + dovecot). The mail images
+# (gateway/mta/mail-keeper/mail-filter/macro-scanner/resolver) are self-built
+# by backend/cmd/build-images; the mailez backend is the control plane and
 # serves its internal API at http://backend:8080 (the port is hardcoded to
 # 8080 inside the images).
 

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile-upstream:1.4.3
 
-# Build the static mailstack-agent (nginx gateway agent).
+# Build the static mailez-agent (nginx gateway agent).
 FROM golang:1.26-alpine AS build
 ENV GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0
 WORKDIR /src
@@ -8,8 +8,8 @@ COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/internal/agent ./internal/agent
 COPY backend/internal/macro ./internal/macro
-COPY backend/cmd/mailstack-agent ./cmd/mailstack-agent
-RUN go build -trimpath -ldflags="-s -w" -o /out/mailstack-agent ./cmd/mailstack-agent
+COPY backend/cmd/mailez-agent ./cmd/mailez-agent
+RUN go build -trimpath -ldflags="-s -w" -o /out/mailez-agent ./cmd/mailez-agent
 
 # nginx image: ACME is handled by the embedded lego client.
 FROM alpine:3.21
@@ -23,11 +23,11 @@ RUN set -euxo pipefail \
   ; apk add --no-cache ca-certificates curl nginx nginx-mod-http-brotli nginx-mod-mail openssl dovecot-lua dovecot-pigeonhole-plugin 'dovecot-lmtpd<2.4' dovecot-pop3d dovecot-submissiond \
   ; mkdir -p /etc/dovecot
 
-COPY --from=build /out/mailstack-agent /mailstack-agent
+COPY --from=build /out/mailez-agent /mailez-agent
 # This Dockerfile is built with the repo root as context (see
 # build script), hence the vendored paths below.
-COPY deploy/vendor/mailstack/nginx/conf/dhparam.pem /conf/dhparam.pem
-COPY deploy/vendor/mailstack/nginx/static/ /static/
+COPY deploy/images/gateway/conf/dhparam.pem /conf/dhparam.pem
+COPY deploy/images/gateway/static/ /static/
 
 RUN set -euxo pipefail \
   ; gzip -k9 /static/*.ico /static/*.txt \
@@ -40,4 +40,4 @@ HEALTHCHECK --start-period=60s CMD curl -m3 -skfLo /dev/null http://127.0.0.1:10
 
 VOLUME ["/certs", "/overrides"]
 
-CMD ["/mailstack-agent", "nginx"]
+CMD ["/mailez-agent", "nginx"]
