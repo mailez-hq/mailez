@@ -41,6 +41,25 @@ export function fmtBytes(n: number) {
   return `${Math.max(1, Math.round(n / 1024))} KB`;
 }
 
+// playChime rings a short notification tone without shipping an audio file.
+export function playChime() {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.4);
+  } catch {
+    // audio unavailable; skip silently
+  }
+}
+
 // textToHtml converts a plain-text draft (reply quoting, AI drafts) into
 // sanitized HTML for the rich-text editor: "> " lines become blockquotes,
 // everything else becomes paragraphs.
