@@ -5,6 +5,7 @@ import type { NextConfig } from "next";
 const API_TARGET = process.env.API_TARGET || "http://localhost:8080";
 
 const nextConfig: NextConfig = {
+  transpilePackages: ["@mailez/ui", "@mailez/types"],
   async rewrites() {
     return [
       { source: "/api/v1/:path*", destination: `${API_TARGET}/api/v1/:path*` },
