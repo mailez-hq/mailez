@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
@@ -45,14 +46,7 @@ func (h *Handler) mailIdentities(c *fiber.Ctx) error {
 	}}
 	seen := map[string]bool{strings.ToLower(user.Email): true}
 
-	var aliases []models.Alias
-	if err := h.DB.
-		Where("disabled = ?", false).
-		Where("destination LIKE ? OR owner_email = ?", "%"+user.Email+"%", user.Email).
-		Find(&aliases).Error; err != nil {
-		return core.Fail(c, 500, err, "internal error")
-	}
-	for _, a := range aliases {
+	for _, a := range userAliases(h.DB, user) {
 		key := strings.ToLower(a.Email)
 		if seen[key] {
 			continue
@@ -66,6 +60,40 @@ func (h *Handler) mailIdentities(c *fiber.Ctx) error {
 	return c.JSON(ids)
 }
 
+// aliasDeliversTo reports whether the alias destination list (a CSV column)
+// contains the address exactly, or the user owns the alias. Substring
+// matching would let "anna@example.com" match user "a@example.com".
+func aliasDeliversTo(a models.Alias, email string) bool {
+	if strings.EqualFold(a.OwnerEmail, email) {
+		return true
+	}
+	for _, d := range a.Destinations() {
+		if strings.EqualFold(strings.TrimSpace(d), email) {
+			return true
+		}
+	}
+	return false
+}
+
+// userAliases returns the enabled aliases the user may send from. The SQL
+// LIKE is only a coarse prefilter; aliasDeliversTo applies the exact rule.
+func userAliases(db *gorm.DB, user *models.User) []models.Alias {
+	var candidates []models.Alias
+	if err := db.
+		Where("disabled = ?", false).
+		Where("destination LIKE ? OR owner_email = ?", "%"+user.Email+"%", user.Email).
+		Find(&candidates).Error; err != nil {
+		return nil
+	}
+	var out []models.Alias
+	for _, a := range candidates {
+		if aliasDeliversTo(a, user.Email) {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
 // MaySendAs reports whether from is the user's own address or one of their
 // aliases (the same rule the reference implementation applies for spoofing protection).
 func MaySendAs(app *core.App, user *models.User, from string) bool {
@@ -73,12 +101,10 @@ func MaySendAs(app *core.App, user *models.User, from string) bool {
 	if from == "" || strings.EqualFold(from, user.Email) {
 		return true
 	}
-	var count int64
-	if err := app.DB.Model(&models.Alias{}).
-		Where("lower(email) = ? AND disabled = ? AND (destination LIKE ? OR owner_email = ?)",
-			from, false, "%"+user.Email+"%", user.Email).
-		Count(&count).Error; err != nil {
-		return false
+	for _, a := range userAliases(app.DB, user) {
+		if strings.EqualFold(a.Email, from) {
+			return true
+		}
 	}
-	return count > 0
+	return false
 }

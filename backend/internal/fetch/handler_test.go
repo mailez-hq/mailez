@@ -53,7 +53,7 @@ func TestFetchCRUD(t *testing.T) {
 	body := `{"user_email":"a@example.com","protocol":"pop3","host":"mail.example.net","port":110,"username":"u","password":"p"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/fetches", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Test(req)
+	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestFetchCRUD(t *testing.T) {
 	}
 
 	del := httptest.NewRequest(http.MethodDelete, "/api/v1/fetches/1", nil)
-	if resp, _ := app.Test(del); resp.StatusCode != http.StatusNoContent {
+	if resp, _ := app.Test(del, -1); resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("delete status = %d, want 204", resp.StatusCode)
 	}
 }

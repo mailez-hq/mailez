@@ -66,6 +66,10 @@ func New(cfg core.Config) *Server {
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
+		// Only trust X-Forwarded-For from the stack's own gateway subnet;
+		// a client-spoofed XFF must not control c.IP() (login rate limiting).
+		EnableTrustedProxyCheck: true,
+		TrustedProxies:          []string{cfg.Subnet},
 	})
 	app.Use(recover.New())
 	app.Use(requestid.New())
