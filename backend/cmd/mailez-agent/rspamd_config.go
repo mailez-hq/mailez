@@ -23,7 +23,7 @@ type RspamdConfig struct {
 	Domain              string
 	Sitename            string
 	DmarcSendReports    bool
-	MtaAddress          string
+	PostfixAddress      string
 }
 
 func loadRspamdConfig() (RspamdConfig, error) {
@@ -42,7 +42,7 @@ func loadRspamdConfig() (RspamdConfig, error) {
 		Domain:              agent.Getenv("MAILEZ_DOMAIN", "example.com"),
 		Sitename:            agent.Getenv("MAILEZ_SITENAME", ""),
 		DmarcSendReports:    envTrue("MAILEZ_DMARC_SEND_REPORTS", false),
-		MtaAddress:          agent.Getenv("MTA_ADDRESS", "mta"),
+		PostfixAddress:      agent.Getenv("POSTFIX_ADDRESS", "postfix"),
 	}
 	if cfg.Subnet == "" {
 		var err error

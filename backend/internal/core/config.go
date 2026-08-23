@@ -18,8 +18,8 @@ type Config struct {
 	SecretKey          string
 	CookieSecure       bool
 	SessionLifetime    int // seconds
-	MailKeeperAddress  string
-	MtaAddress         string
+	DovecotAddress     string
+	PostfixAddress     string
 	MailEngine         string
 	RecipientDelimiter string
 	Subnet             string
@@ -60,8 +60,8 @@ func Load() Config {
 		SecretKey:          env("MAILEZ_SECRET_KEY", "dev-secret-change-me"),
 		CookieSecure:       envBool("MAILEZ_COOKIE_SECURE", false),
 		SessionLifetime:    envInt("SESSION_LIFETIME", 3600),
-		MailKeeperAddress:  env("MAIL_KEEPER_ADDRESS", "mail-keeper"),
-		MtaAddress:         env("MTA_ADDRESS", "mta"),
+		DovecotAddress:     env("DOVECOT_ADDRESS", "dovecot"),
+		PostfixAddress:     env("POSTFIX_ADDRESS", "postfix"),
 		MailEngine:         env("MAILEZ_MAIL_ENGINE", "postdove"),
 		RecipientDelimiter: env("MAILEZ_RECIPIENT_DELIMITER", ""),
 		Subnet:             env("MAILEZ_SUBNET", "192.168.206.0/24"),

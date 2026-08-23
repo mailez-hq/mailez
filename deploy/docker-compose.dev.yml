@@ -1,6 +1,6 @@
 # mailez 开发模式基础设施编排
 #
-# 只编排"不会去动的"邮件栈依赖（自建 gateway/mta/mail-keeper/mail-filter/
+# 只编排"不会去动的"邮件栈依赖（自建 gateway/postfix/dovecot/mail-filter/
 # macro-scanner/resolver 镜像）。mailez 自研部分（backend / webmail / admin /
 # SSO）不在此
 # 容器化，而是在宿主机以开发模式运行（go run / npm run dev）。
@@ -59,7 +59,7 @@ services:
       - "./certs:/certs"
       - "./overrides/nginx-dev:/overrides"
 
-  mail-keeper:
+  dovecot:
     image: mailez/dovecot:local
     pull_policy: missing
     restart: always
@@ -81,7 +81,7 @@ services:
     depends_on:
       - gateway
 
-  mta:
+  postfix:
     image: mailez/postfix:local
     pull_policy: missing
     restart: always
@@ -94,7 +94,7 @@ services:
       - "./overrides:/overrides"
     networks:
       default:
-        # Fixed IP: same reason as mail-keeper (Auth-Server from the host backend).
+        # Fixed IP: same reason as dovecot (Auth-Server from the host backend).
         ipv4_address: 192.168.206.4
     depends_on:
       - gateway
@@ -118,7 +118,7 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       default:
-        # Fixed IP: keep it out of mta's reserved .4 (IPAM race on recreate).
+        # Fixed IP: keep it out of postfix's reserved .4 (IPAM race on recreate).
         ipv4_address: 192.168.206.6
       no-egress: {}
     volumes:

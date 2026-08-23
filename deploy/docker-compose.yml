@@ -1,6 +1,6 @@
 # mailez compose
 # Default engine: postdove (postfix + dovecot). The mail images
-# (gateway/mta/mail-keeper/mail-filter/macro-scanner/resolver) are self-built
+# (gateway/postfix/dovecot/mail-filter/macro-scanner/resolver) are self-built
 # by backend/cmd/build-images; the mailez backend is the control plane and
 # serves its internal API at http://backend:8080 (the port is hardcoded to
 # 8080 inside the images).
@@ -97,7 +97,7 @@ services:
     depends_on:
       - backend
 
-  mail-keeper:
+  dovecot:
     image: mailez/dovecot:local
     pull_policy: missing
     restart: always
@@ -108,7 +108,7 @@ services:
     depends_on:
       - gateway
 
-  mta:
+  postfix:
     image: mailez/postfix:local
     pull_policy: missing
     restart: always

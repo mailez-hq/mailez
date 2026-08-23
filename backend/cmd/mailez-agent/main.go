@@ -1,4 +1,4 @@
-// mailez-agent drives every mail container (gateway / mta / mail-keeper /
+// mailez-agent drives every mail container (gateway / postfix / dovecot /
 // mail-filter / macro-scanner / resolver) with a single static Go binary.
 package main
 

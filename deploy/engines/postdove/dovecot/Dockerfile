@@ -25,7 +25,7 @@ RUN set -euxo pipefail \
 
 COPY --from=build /out/mailez-agent /mailez-agent
 # This Dockerfile is built with the repo root as context.
-COPY deploy/engines/postdove/mail-keeper/conf/ /conf/
+COPY deploy/engines/postdove/dovecot/conf/ /conf/
 
 RUN echo $VERSION >/version
 

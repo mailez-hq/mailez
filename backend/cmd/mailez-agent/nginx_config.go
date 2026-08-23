@@ -59,7 +59,7 @@ type NginxConfig struct {
 	API                  bool
 	Postmaster           string
 	Domain               string
-	MtaAddress           string
+	PostfixAddress       string
 	RecipientDelimiter   string
 }
 
@@ -74,7 +74,7 @@ func loadNginxConfig() (NginxConfig, error) {
 	cfg := NginxConfig{
 		BackendAddress:     agent.Getenv("MAILEZ_BACKEND_ADDRESS", "backend"),
 		MailFilterAddress:  agent.Getenv("MAIL_FILTER_ADDRESS", "mail-filter"),
-		MtaAddress:         agent.Getenv("MTA_ADDRESS", "mta"),
+		PostfixAddress:     agent.Getenv("POSTFIX_ADDRESS", "postfix"),
 		RecipientDelimiter: agent.Getenv("MAILEZ_RECIPIENT_DELIMITER", "+"),
 		RealIPHeader:       os.Getenv("REAL_IP_HEADER"),
 		RealIPFrom:         os.Getenv("REAL_IP_FROM"),

@@ -52,7 +52,7 @@ cd deploy
 docker compose -f docker-compose.dev.yml up -d
 ```
 
-这会启动 redis / gateway(nginx) / mail-keeper(dovecot) / mta(postfix) /
+这会启动 redis / gateway(nginx) / dovecot / postfix /
 mail-filter(rspamd) / macro-scanner / resolver，并自动把内部代理端口
 1143 / 1587 / 4190 映射到宿主机。`docker-compose.dev.yml` 里的 gateway
 容器通过 `host.docker.internal` 访问宿主机的 mailez 后端（8080）。
@@ -63,8 +63,8 @@ mail-filter(rspamd) / macro-scanner / resolver，并自动把内部代理端口
 ```
 cd backend
 $env:MAILEZ_PORT='8080'
-$env:MAIL_KEEPER_ADDRESS='192.168.206.5'   # 固定 IP：nginx auth 只认 IP（Auth-Server）
-$env:MTA_ADDRESS='192.168.206.4'          # 与 docker-compose.dev.yml 的静态 IP 对应
+$env:DOVECOT_ADDRESS='192.168.206.5'   # 固定 IP：nginx auth 只认 IP（Auth-Server）
+$env:POSTFIX_ADDRESS='192.168.206.4'   # 与 docker-compose.dev.yml 的静态 IP 对应
 $env:MAIL_IMAP_ADDR='127.0.0.1:1143'
 $env:MAIL_SMTP_ADDR='127.0.0.1:1587'
 $env:MAIL_SIEVE_ADDR='127.0.0.1:4190'
@@ -72,9 +72,9 @@ $env:DB_DSN='D:\code\mailez\backend\mailez.db'   # 建议绝对路径，避免�
 go run ./cmd/server
 ```
 
-`MAIL_KEEPER_ADDRESS` / `MTA_ADDRESS` 会被内部 API 以 `Auth-Server` 头返回给
+`DOVECOT_ADDRESS` / `POSTFIX_ADDRESS` 会被内部 API 以 `Auth-Server` 头返回给
 nginx/dovecot 代理；nginx 1.26+ 的 mail auth 模块只接受 IP 字面量，所以
-必须是固定容器 IP（compose 里 mail-keeper/mta 已配静态地址，见
+必须是固定容器 IP（compose 里 dovecot/postfix 已配静态地址，见
 `docker-compose.dev.yml`）。`MAIL_IMAP_ADDR` 等则是后端自己连邮件栈用的
 宿主机映射端口，两者别混。
 
