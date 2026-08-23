@@ -7,14 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
-  File,
-  FileArchive,
-  FileAudio,
   FileCode,
-  FileText,
-  FileVideo,
-  Eye,
-  Image as ImageIcon,
   Info,
   Loader2,
   Lock,
@@ -40,247 +33,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { mailRaw, pgpDecrypt } from "@/lib/api";
 import type { MailAttachment, MailMessage, MailThread } from "@/lib/api";
+import { AttachmentCard } from "@/components/mailbox/reader/attachment-card";
+import { QuoteBlock } from "@/components/mailbox/reader/quote-block";
+import { useMounted } from "@/components/mailbox/reader/use-mounted";
+import {
+  blockRemoteImages, hasRemoteImages, rememberedRemoteSenders, rememberRemoteSender,
+} from "@/components/mailbox/reader/remote-images";
+import {
+  fmtFullDate, fmtShort, getSnippet, parseBody, type Segment,
+} from "@/components/mailbox/reader/body";
 import { Highlight } from "@/components/mailbox/highlight";
 import { sanitizeMailHTML } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
 
-function hasRemoteImages(html?: string) {
-  return /<img\b[^>]*\bsrc="https?:\/\//i.test(html || "");
-}
-
-const REMOTE_SENDERS_KEY = "mailez.remoteSenders";
-
-function rememberedRemoteSenders(): string[] {
-  try {
-    const raw = localStorage.getItem(REMOTE_SENDERS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {
-    // storage unavailable
-  }
-  return [];
-}
-
-function rememberRemoteSender(domain: string) {
-  const list = rememberedRemoteSenders();
-  if (!list.includes(domain)) {
-    list.push(domain);
-    try {
-      localStorage.setItem(REMOTE_SENDERS_KEY, JSON.stringify(list));
-    } catch {
-      // storage unavailable
-    }
-  }
-}
-
-function blockRemoteImages(html: string) {
-  return html.replace(
-    /(<img\b[^>]*\bsrc)="(https?:\/\/[^"]+)"/gi,
-    '$1="about:blank" data-remote-src="$2"',
-  );
-}
-
-// useMounted defers HTML-body rendering until hydration completes so untrusted
-// email HTML is only ever produced by DOMPurify in the browser, never by SSR.
-function useMounted() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  return mounted;
-}
-
-function fmtFullDate(d: string) {
-  const date = new Date(d);
-  return Number.isNaN(date.getTime())
-    ? d
-    : date.toLocaleString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-}
-
-function fmtShort(d: string) {
-  const date = new Date(d);
-  if (Number.isNaN(date.getTime())) return "";
-  const now = new Date();
-  if (date.toDateString() === now.toDateString())
-    return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-  if (date.getFullYear() === now.getFullYear())
-    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function fmtSize(n: number) {
-  if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
-  if (n >= 1024) return `${Math.round(n / 1024)} KB`;
-  return `${n} B`;
-}
-
-function attachmentIcon(a: MailAttachment) {
-  const ct = a.content_type;
-  const cls = "size-4 shrink-0";
-  if (ct.startsWith("image/")) return <ImageIcon className={cls} />;
-  if (ct.startsWith("audio/")) return <FileAudio className={cls} />;
-  if (ct.startsWith("video/")) return <FileVideo className={cls} />;
-  if (ct.includes("zip") || ct.includes("rar") || ct.includes("tar") || ct.includes("7z"))
-    return <FileArchive className={cls} />;
-  if (ct.includes("pdf") || ct.startsWith("text/")) return <FileText className={cls} />;
-  return <File className={cls} />;
-}
-
-type Segment = { type: "p" | "quote"; lines: string[] };
-
-function parseBody(text: string): Segment[] {
-  const segs: Segment[] = [];
-  let para: string[] | null = null;
-  let quote: string[] | null = null;
-  const flushPara = () => {
-    if (para) {
-      segs.push({ type: "p", lines: para });
-      para = null;
-    }
-  };
-  const flushQuote = () => {
-    if (quote) {
-      segs.push({ type: "quote", lines: quote });
-      quote = null;
-    }
-  };
-  for (const raw of text.split(/\r?\n/)) {
-    const m = raw.match(/^>\s?(.*)$/);
-    if (m) {
-      flushPara();
-      if (!quote) quote = [];
-      quote.push(m[1] || "");
-    } else if (raw.trim() === "") {
-      flushPara();
-      flushQuote();
-    } else {
-      flushQuote();
-      if (!para) para = [];
-      para.push(raw);
-    }
-  }
-  flushPara();
-  flushQuote();
-  return segs;
-}
-
-function getSnippet(text: string, maxLength = 120): string {
-  const segments = parseBody(text);
-  const plain = segments
-    .filter((s) => s.type === "p")
-    .flatMap((s) => s.lines)
-    .join(" ")
-    .trim();
-  if (plain.length <= maxLength) return plain;
-  return plain.slice(0, maxLength).trimEnd() + "…";
-}
-
-function QuoteBlock({
-  lines,
-  expanded,
-  onToggle,
-}: {
-  lines: string[];
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  const t = useTranslations("mail");
-  const collapsed = !expanded && lines.length > 3;
-  return (
-    <div className="my-1">
-      <blockquote
-        className={cn(
-          "relative overflow-hidden rounded-r-md border-l-2 border-muted pl-3 text-muted-foreground",
-          collapsed && "max-h-20 after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-8 after:bg-gradient-to-t after:from-card",
-        )}
-      >
-        {lines.map((l, j) => (
-          <p key={j} className="text-sm">{l || <br />}</p>
-        ))}
-      </blockquote>
-      {lines.length > 3 && (
-        <button
-          onClick={onToggle}
-          className="mt-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-        >
-          {expanded ? (
-            <>
-              <ChevronUp className="size-3" />
-              {t("collapseQuote")}
-            </>
-          ) : (
-            <>
-              <ChevronDown className="size-3" />
-              {t("expandQuote")} · {t("quoteLines", { count: lines.length })}
-            </>
-          )}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function AttachmentCard({ attachment }: { attachment: MailAttachment }) {
-  const t = useTranslations("mail");
-  const isImage = attachment.content_type.startsWith("image/") && attachment.data;
-  const isPdf = attachment.content_type.includes("pdf") && attachment.data;
-  const [previewOpen, setPreviewOpen] = useState(false);
-  return (
-    <div className="w-48 rounded-lg border border-border p-2 transition-colors hover:bg-muted/50">
-      {isImage && (
-        <img
-          src={`data:${attachment.content_type};base64,${attachment.data}`}
-          alt={attachment.filename}
-          className="mb-2 max-h-24 w-full rounded-md object-cover"
-        />
-      )}
-      <a
-        href={`data:${attachment.content_type};base64,${attachment.data}`}
-        download={attachment.filename}
-        className="flex items-center gap-2"
-      >
-        {attachmentIcon(attachment)}
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-xs font-medium">{attachment.filename}</span>
-          <span className="block text-[11px] text-muted-foreground">
-            {fmtSize(attachment.size)}
-          </span>
-        </span>
-        <Archive className="size-3.5 shrink-0 text-muted-foreground" />
-      </a>
-      {isPdf && (
-        <Button
-          size="xs"
-          variant="outline"
-          className="mt-2 w-full"
-          onClick={() => setPreviewOpen(true)}
-        >
-          <Eye className="size-3" />
-          {t("preview")}
-        </Button>
-      )}
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader><DialogTitle>{attachment.filename}</DialogTitle></DialogHeader>
-          <iframe
-            src={`data:application/pdf;base64,${attachment.data}`}
-            className="h-[70vh] w-full rounded-lg border border-border"
-            title={attachment.filename}
-          />
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-// ThreadMessage — renders a single message in the conversation (FastMail-style)
 function ThreadMessage({
   message,
   isExpanded,
