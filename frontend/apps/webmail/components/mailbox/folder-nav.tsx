@@ -42,6 +42,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/logo";
 import { FolderACLDialog } from "@/components/mailbox/folder-acl-dialog";
+import {
+  SYSTEM_FOLDERS,
+  buildFolderTree,
+  folderLabel,
+  type FolderNode,
+} from "@/components/mailbox/folder-tree";
 import { labelColor, type SavedSearch } from "@/components/mailbox/mail-utils";
 import { cn } from "@/lib/utils";
 
@@ -58,64 +64,6 @@ const FOLDER_ICON: Record<string, React.ReactNode> = {
   JUNK: <Star className="size-4" />,
   SPAM: <Star className="size-4" />,
 };
-
-// Common folders always sort before custom ones; INBOX is pinned first.
-const FOLDER_ORDER = ["INBOX", "Sent", "Drafts", "Trash", "Archive", "Junk", "Spam"];
-const SYSTEM_FOLDERS = new Set(FOLDER_ORDER.map((f) => f.toUpperCase()));
-
-function sortFolders(folders: string[]): string[] {
-  return [...folders].sort((a, b) => {
-    const ia = FOLDER_ORDER.indexOf(a.toUpperCase());
-    const ib = FOLDER_ORDER.indexOf(b.toUpperCase());
-    const ra = ia === -1 ? Number.MAX_SAFE_INTEGER : ia;
-    const rb = ib === -1 ? Number.MAX_SAFE_INTEGER : ib;
-    if (ra !== rb) return ra - rb;
-    return a.localeCompare(b);
-  });
-}
-
-function folderLabel(t: ReturnType<typeof useTranslations<"mail">>, name: string) {
-  const key = `folder${name.charAt(0).toUpperCase()}${name.slice(1).toLowerCase()}` as const;
-  // fall back to the raw IMAP name for custom folders
-  return t.has(key) ? t(key) : name;
-}
-
-// IMAP folder hierarchy is expressed with "/" as the separator (matching the
-// dovecot namespace). The sidebar renders the list as a tree so nested folders
-// (e.g. Projects/Invoice) show up indented under their parent instead of as a
-// single flat row containing "/".
-type FolderNode = {
-  name: string; // full path, e.g. "Projects/Invoice"
-  label: string; // last path segment, e.g. "Invoice"
-  depth: number;
-  children: FolderNode[];
-};
-
-// buildFolderTree groups the flat folder list into a nested tree by splitting
-// each name on "/". Parent folders appear before their children (sorted by the
-// existing folder ordering), so unknown intermediate parents get a node too.
-function buildFolderTree(folders: string[]): FolderNode[] {
-  const roots: FolderNode[] = [];
-  const byPath = new Map<string, FolderNode>();
-  const ordered = sortFolders(folders);
-  for (const f of ordered) {
-    const parts = f.split("/");
-    let parent: FolderNode | null = null;
-    let path = "";
-    for (let i = 0; i < parts.length; i++) {
-      path = path ? `${path}/${parts[i]}` : parts[i];
-      let node = byPath.get(path);
-      if (!node) {
-        node = { name: path, label: parts[i], depth: i, children: [] };
-        byPath.set(path, node);
-        if (parent) parent.children.push(node);
-        else roots.push(node);
-      }
-      parent = node;
-    }
-  }
-  return roots;
-}
 
 // A folder-management dialog: create/rename take a name input, delete/clear ask
 // for confirmation.
