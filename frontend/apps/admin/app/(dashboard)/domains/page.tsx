@@ -23,6 +23,7 @@ const fmtBytes = (n: number) =>
 
 export default function DomainsPage() {
   const t = useTranslations("domains");
+  const ct = useTranslations("common");
   const [domains, setDomains] = useState<Domain[]>([]);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
@@ -210,7 +211,7 @@ export default function DomainsPage() {
                       {alternatives.map((a) => (
                         <div key={a.name} className="flex items-center justify-between rounded-md border px-3 py-2">
                           <span className="text-sm">{a.name}</span>
-                          <Button variant="ghost" size="sm" onClick={() => removeAlternative(a)}>{t("common:delete")}</Button>
+                          <Button variant="ghost" size="sm" onClick={() => removeAlternative(a)}>{ct("delete")}</Button>
                         </div>
                       ))}
                       {alternatives.length === 0 && (
@@ -218,7 +219,7 @@ export default function DomainsPage() {
                       )}
                       <form onSubmit={addAlternative} className="flex items-center gap-2">
                         <Input value={altName} onChange={(e) => setAltName(e.target.value)} placeholder="alt.example.com" required />
-                        <Button type="submit" variant="outline" size="sm">{t("common:add")}</Button>
+                        <Button type="submit" variant="outline" size="sm">{ct("add")}</Button>
                       </form>
                     </div>
                   </div>
@@ -239,7 +240,7 @@ export default function DomainsPage() {
                                 {dkim.record}
                               </code>
                               <Button type="button" variant="outline" size="sm" onClick={copyRecord}>
-                                {dkimCopied ? t("dkimCopied") : t("common:copy")}
+                                {dkimCopied ? t("dkimCopied") : ct("copy")}
                               </Button>
                             </div>
                           </div>
@@ -265,7 +266,7 @@ export default function DomainsPage() {
 
               {error && <p className="text-sm text-red-600">{error}</p>}
               <DialogFooter>
-                <Button type="submit">{editTarget ? t("common:edit") : t("common:create")}</Button>
+                <Button type="submit">{editTarget ? ct("edit") : ct("create")}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -296,15 +297,15 @@ export default function DomainsPage() {
                   <TableCell>{d.signup_enabled ? t("open") : t("closed")}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(d)}>{t("common:edit")}</Button>
-                      <Button variant="ghost" size="sm" onClick={() => remove(d)}>{t("common:delete")}</Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(d)}>{ct("edit")}</Button>
+                      <Button variant="ghost" size="sm" onClick={() => remove(d)}>{ct("delete")}</Button>
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
               {domains.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-zinc-400">{t("common:noItems")}</TableCell>
+                  <TableCell colSpan={6} className="text-center text-zinc-400">{ct("noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>
