@@ -73,6 +73,7 @@ export function MailView() {
     searchAll,
     searchSpec,
     applySearchSpec,
+    saveSearchSpec,
     activeView,
     selectView,
     categoryFilter,
@@ -270,6 +271,7 @@ export function MailView() {
           folders={folders}
           onMoveToFolder={moveSelectedTo}
           onSaveSearch={saveCurrentSearch}
+          onSaveSearchSpec={saveSearchSpec}
           searchAll={searchAll}
           onToggleSearchAll={() => setSearchAll((v: boolean) => !v)}
           activeView={activeView}

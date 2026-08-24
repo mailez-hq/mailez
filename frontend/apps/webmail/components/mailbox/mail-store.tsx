@@ -32,6 +32,7 @@ import {
   isSnoozed,
   snoozeUntil,
   SAVED_SEARCH_KEY,
+  type SavedSearch,
   MAX_ATTACHMENT_BYTES,
   escHtml,
   readFileAsBase64,
@@ -177,7 +178,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [labelDefs, setLabelDefs] = useState<MailLabel[]>([]);
   const [flagLabels, setFlagLabels] = useState<string[]>([]);
   const [labelManagerOpen, setLabelManagerOpen] = useState(false);
-  const [savedSearches, setSavedSearches] = useState<string[]>([]);
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [searchAll, setSearchAll] = useState(false);
   const [baseMessages, setBaseMessages] = useState<MailMessage[] | null>(null);
   const [identities, setIdentities] = useState<MailIdentity[]>([]);
@@ -855,17 +856,39 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     }
   }
 
-  // Saved searches (virtual folders).
+  // Saved searches (virtual folders): keyword queries and structured specs.
   useEffect(() => {
     try {
       const raw = localStorage.getItem(SAVED_SEARCH_KEY);
-      if (raw) setSavedSearches(JSON.parse(raw));
+      if (!raw) return;
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      // Legacy entries are plain query strings; migrate them to typed items.
+      const migrated: SavedSearch[] = parsed.map((item, i) => {
+        if (typeof item === "string") {
+          return { id: i + 1, kind: "query", name: item, query: item };
+        }
+        const s = item as {
+          id?: number;
+          kind?: string;
+          name?: string;
+          query?: string;
+          spec?: MailSearchSpec;
+        };
+        const id = s.id ?? i + 1;
+        const name = s.name ?? s.query ?? "";
+        if (s.kind === "spec" && s.spec) {
+          return { id, kind: "spec", name, spec: s.spec };
+        }
+        return { id, kind: "query", name, query: s.query ?? "" };
+      });
+      setSavedSearches(migrated);
     } catch {
       // storage unavailable
     }
   }, []);
 
-  function persistSearches(next: string[]) {
+  function persistSearches(next: SavedSearch[]) {
     setSavedSearches(next);
     try {
       localStorage.setItem(SAVED_SEARCH_KEY, JSON.stringify(next));
@@ -876,17 +899,29 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
 
   function saveCurrentSearch() {
     const q = query.trim();
-    if (!q || savedSearches.includes(q)) return;
-    persistSearches([...savedSearches, q]);
+    if (!q || savedSearches.some((s) => s.kind === "query" && s.query === q)) return;
+    persistSearches([...savedSearches, { id: Date.now(), kind: "query", name: q, query: q }]);
   }
 
-  function removeSavedSearch(q: string) {
-    persistSearches(savedSearches.filter((s) => s !== q));
+  // saveSearchSpec persists a structured condition set from the search builder
+  // as a named quick entry in the sidebar.
+  function saveSearchSpec(name: string, spec: MailSearchSpec) {
+    const n = name.trim();
+    if (!n || savedSearches.some((s) => s.kind === "spec" && s.name === n)) return;
+    persistSearches([...savedSearches, { id: Date.now(), kind: "spec", name: n, spec }]);
   }
 
-  function runSavedSearch(q: string) {
-    setQuery(q);
-    doSearch(q);
+  function removeSavedSearch(id: number) {
+    persistSearches(savedSearches.filter((s) => s.id !== id));
+  }
+
+  function runSavedSearch(item: SavedSearch) {
+    if (item.kind === "spec") {
+      applySearchSpec(item.spec);
+      return;
+    }
+    setQuery(item.query);
+    doSearch(item.query);
   }
 
   function openMessage(m: MailMessage, srcFolder = folder) {
@@ -1756,6 +1791,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     loadMore,
     error,
     saveCurrentSearch,
+    saveSearchSpec,
     searchRef,
     ai,
     prioritizing,

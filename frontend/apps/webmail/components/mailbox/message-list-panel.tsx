@@ -46,6 +46,7 @@ export function MessageListPanel({
   folders,
   onMoveToFolder,
   onSaveSearch,
+  onSaveSearchSpec,
   searchAll,
   onToggleSearchAll,
   activeView,
@@ -96,6 +97,7 @@ export function MessageListPanel({
   folders: string[];
   onMoveToFolder: (destination: string) => void;
   onSaveSearch: () => void;
+  onSaveSearchSpec: (name: string, spec: MailSearchSpec) => void;
   searchAll: boolean;
   onToggleSearchAll: () => void;
   activeView: string;
@@ -269,26 +271,8 @@ export function MessageListPanel({
             </button>
           ))}
         </div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          <span className="hidden text-[10px] text-muted-foreground sm:inline">{t("syntaxHint")}</span>
-          <div className="flex flex-wrap items-center gap-1">
-            {["from:", "to:", "subject:", "has:attachment", "before:", "after:"].map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => {
-                  // Appending the same token again (e.g. has:attachment twice)
-                  // would duplicate the filter; skip when it is already present.
-                  if (query.split(/\s+/).some((t) => t.startsWith(s))) return;
-                  onQueryChange(query ? `${query} ${s}` : s);
-                }}
-                className="rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-          {aiPriorityEnabled && (
+        {aiPriorityEnabled && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
             <Button
               size="xs"
               variant={priorityOn ? "default" : "outline"}
@@ -299,8 +283,8 @@ export function MessageListPanel({
               <Sparkles className="size-3" />
               {prioritizing ? t("prioritizing") : t("aiPriority")}
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -421,6 +405,7 @@ export function MessageListPanel({
         open={builderOpen}
         onOpenChange={setBuilderOpen}
         onApply={onApplySpec}
+        onSave={onSaveSearchSpec}
       />
     </div>
   );

@@ -40,7 +40,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/logo";
 import { FolderACLDialog } from "@/components/mailbox/folder-acl-dialog";
-import { labelColor } from "@/components/mailbox/mail-utils";
+import { labelColor, type SavedSearch } from "@/components/mailbox/mail-utils";
 import { cn } from "@/lib/utils";
 
 // The admin console lives behind the same nginx front in deployments (/admin);
@@ -124,7 +124,7 @@ export function FolderNav({
   labels?: string[];
   labelColors?: Record<string, string>;
   activeLabel?: string;
-  savedSearches?: string[];
+  savedSearches?: SavedSearch[];
   current: string;
   email: string;
   quotaBytes?: number;
@@ -137,8 +137,8 @@ export function FolderNav({
   onSelect: (folder: string) => void;
   onSelectLabel: (label: string) => void;
   onManageLabels?: () => void;
-  onSelectSavedSearch: (query: string) => void;
-  onRemoveSavedSearch: (query: string) => void;
+  onSelectSavedSearch: (item: SavedSearch) => void;
+  onRemoveSavedSearch: (id: number) => void;
   onMoveToFolder: (folder: string, uid: number) => void;
   onScheduled: () => void;
   onCreateFolder: (name: string) => void;
@@ -488,25 +488,25 @@ export function FolderNav({
               <p className="px-2.5 pb-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
                 {t("savedSearches")}
               </p>
-              {savedSearches.map((q) => (
+              {savedSearches.map((item) => (
                 <div
-                  key={q}
+                  key={item.id}
                   className="group flex w-full items-center gap-1 rounded-lg px-1 transition-colors hover:bg-sidebar-accent/60"
                 >
                   <button
                     onClick={() => {
-                      onSelectSavedSearch(q);
+                      onSelectSavedSearch(item);
                       onClose();
                     }}
                     className="min-w-0 flex-1 rounded-lg px-1.5 py-1.5 text-left text-sm text-sidebar-foreground transition-colors hover:text-foreground"
                   >
                     <span className="flex items-center gap-2 truncate">
                       <Search className="size-3.5 shrink-0 opacity-60" />
-                      <span className="truncate">{q}</span>
+                      <span className="truncate">{item.name}</span>
                     </span>
                   </button>
                   <button
-                    onClick={() => onRemoveSavedSearch(q)}
+                    onClick={() => onRemoveSavedSearch(item.id)}
                     title={t("delete")}
                     className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
                   >

@@ -1,4 +1,4 @@
-import type { OutboundAttachment } from "@/lib/api";
+import type { MailSearchSpec, OutboundAttachment } from "@/lib/api";
 
 // System IMAP flags and reserved keywords are excluded from the label list;
 // custom keywords (tags) are any other flag names. $Pin and $Snoozed* drive
@@ -47,7 +47,12 @@ export function labelColor(name: string, assigned?: string) {
 }
 
 // Saved searches live in localStorage and show up as virtual folders in the
-// sidebar, FastMail-style.
+// sidebar, FastMail-style. They are either a plain keyword query (bookmark in
+// the list toolbar) or a structured spec saved from the search builder.
+export type SavedSearch =
+  | { id: number; kind: "query"; name: string; query: string }
+  | { id: number; kind: "spec"; name: string; spec: MailSearchSpec };
+
 export const SAVED_SEARCH_KEY = "mailez.savedSearches";
 
 // Per-attachment size cap keeps compose messages inside the MTA size limit.
