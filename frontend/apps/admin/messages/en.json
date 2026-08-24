@@ -10,7 +10,7 @@
     "copy": "Copy",
     "loading": "Loading...",
     "noItems": "No items",
-    "actions": ""
+    "actions": "Actions"
   },
   "login": {
     "title": "Sign in to mailez",
@@ -52,6 +52,7 @@
   },
   "domains": {
     "title": "Domains",
+    "desc": "Manage domains, quotas, self-registration and DKIM signing.",
     "new": "New domain",
     "edit": "Edit domain",
     "name": "Domain name",
@@ -87,6 +88,7 @@
   },
   "users": {
     "title": "Users",
+    "desc": "Manage mail accounts, quotas, forwarding and spam filtering.",
     "new": "New user",
     "edit": "Edit user",
     "accounts": "Mail accounts",
@@ -125,6 +127,7 @@
   },
   "aliases": {
     "title": "Aliases",
+    "desc": "Forward addresses to one or more mailboxes.",
     "new": "New alias",
     "address": "Alias address",
     "destination": "Destination (comma separated)",
@@ -137,6 +140,7 @@
   },
   "relays": {
     "title": "Relays",
+    "desc": "Domains delivered by an external SMTP host.",
     "new": "New relay",
     "edit": "Edit relay",
     "name": "Domain name",
@@ -147,6 +151,7 @@
   },
   "tokens": {
     "title": "Tokens",
+    "desc": "App passwords for IMAP/SMTP clients.",
     "new": "New token",
     "app": "New app token",
     "user": "User",
@@ -161,6 +166,7 @@
   },
   "fetches": {
     "title": "Fetches",
+    "desc": "Pull mail from external accounts into local mailboxes.",
     "new": "New fetch",
     "edit": "Edit fetch",
     "user": "User",
@@ -188,6 +194,7 @@
   },
   "anonAliases": {
     "title": "Anonymous aliases",
+    "desc": "Disposable addresses that deliver into your inbox.",
     "new": "New alias",
     "domain": "Domain",
     "selectDomain": "Select domain...",
@@ -201,6 +208,7 @@
   },
   "audit": {
     "title": "Audit log",
+    "desc": "A record of admin and self-service activity.",
     "recent": "Recent activity (last 200)",
     "time": "Time",
     "user": "User",
@@ -212,6 +220,7 @@
   },
   "config": {
     "title": "Configuration",
+    "desc": "Export or import the full server configuration.",
     "backup": "Backup",
     "hint": "Export the full configuration (domains, users, aliases, relays, fetches, tokens) as JSON. User password hashes are included so a backup can restore credentials.",
     "export": "Export JSON",

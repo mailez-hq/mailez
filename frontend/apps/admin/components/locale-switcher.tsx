@@ -25,8 +25,8 @@ export function LocaleSwitcher() {
           onClick={() => switchTo(l.code)}
           className={`rounded px-1.5 py-0.5 text-xs transition-colors ${
             locale === l.code
-              ? "bg-zinc-200 font-medium text-zinc-900 dark:bg-zinc-700 dark:text-zinc-50"
-              : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+              ? "bg-muted font-medium text-foreground"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
           {l.label}

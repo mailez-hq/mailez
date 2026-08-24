@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
 import {
   Card, CardContent, CardHeader, CardTitle,
 } from "@/components/ui/card";
@@ -33,7 +35,7 @@ export default function AuditPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <PageHeader title={t("title")} description={t("desc")} />
       {error && <p className="text-sm text-red-600">{error}</p>}
       <Card>
         <CardHeader><CardTitle className="text-base">{t("recent")}</CardTitle></CardHeader>
@@ -54,15 +56,19 @@ export default function AuditPage() {
                 <TableRow key={l.id}>
                   <TableCell className="whitespace-nowrap">{fmtTime(l.created_at)}</TableCell>
                   <TableCell>{l.user}</TableCell>
-                  <TableCell>{l.method}</TableCell>
+                  <TableCell className="font-mono text-xs">{l.method}</TableCell>
                   <TableCell className="font-mono text-xs">{l.path}</TableCell>
-                  <TableCell>{l.status}</TableCell>
+                  <TableCell>
+                    <Badge variant={l.status >= 400 ? "destructive" : "secondary"}>
+                      {l.status}
+                    </Badge>
+                  </TableCell>
                   <TableCell>{l.ip}</TableCell>
                 </TableRow>
               ))}
               {logs.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-zinc-400">{t("noItems")}</TableCell>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">{t("noItems")}</TableCell>
                 </TableRow>
               )}
             </TableBody>
