@@ -62,7 +62,7 @@ export interface ComposePanelProps {
   setSubject: (v: string) => void;
 }
 
-// ComposePanel renders the non-modal right-side compose sheet (FastMail-style).
+// ComposePanel renders the non-modal right-side compose sheet.
 // It is a pure view: all compose state and handlers live in MailView and are
 // passed down as props so the panel stays a self-contained UI block.
 export function ComposePanel(props: ComposePanelProps) {
