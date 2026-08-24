@@ -19,12 +19,12 @@ func newTestIdentity(t *testing.T, email string) (certPEM, keyPEM string) {
 		t.Fatalf("generate key: %v", err)
 	}
 	tmpl := &x509.Certificate{
-		SerialNumber: big.NewInt(1),
-		Subject:      pkix.Name{CommonName: email, Organization: []string{"mailez test"}},
-		NotBefore:    time.Now().Add(-time.Hour),
-		NotAfter:     time.Now().Add(24 * time.Hour),
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageEmailProtection},
+		SerialNumber:   big.NewInt(1),
+		Subject:        pkix.Name{CommonName: email, Organization: []string{"mailez test"}},
+		NotBefore:      time.Now().Add(-time.Hour),
+		NotAfter:       time.Now().Add(24 * time.Hour),
+		KeyUsage:       x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:    []x509.ExtKeyUsage{x509.ExtKeyUsageEmailProtection},
 		EmailAddresses: []string{email},
 	}
 	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
