@@ -29,4 +29,16 @@ describe("preferences", () => {
     expect(p.density).toBe("cozy");
     expect(p.undoSendSeconds).toBe(5);
   });
+
+  it("defaults undoSendSeconds when the stored prefs lack the field", () => {
+    // Prefs written before the undoSendSeconds option existed: the field is
+    // absent, so it must fall back to 5 (not undefined, which used to crash
+    // the send flow on `res.outbox_id`).
+    window.localStorage.setItem(
+      "mailez.prefs",
+      JSON.stringify({ theme: "light", density: "cozy", accent: "blue" }),
+    );
+    const p = readPreferences();
+    expect(p.undoSendSeconds).toBe(5);
+  });
 });

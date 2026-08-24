@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Archive,
   CalendarClock,
+  ChevronDown,
+  ChevronRight,
   ChevronsUpDown,
   ExternalLink,
   FileText,
@@ -76,6 +78,43 @@ function folderLabel(t: ReturnType<typeof useTranslations<"mail">>, name: string
   const key = `folder${name.charAt(0).toUpperCase()}${name.slice(1).toLowerCase()}` as const;
   // fall back to the raw IMAP name for custom folders
   return t.has(key) ? t(key) : name;
+}
+
+// IMAP folder hierarchy is expressed with "/" as the separator (matching the
+// dovecot namespace). The sidebar renders the list as a tree so nested folders
+// (e.g. Projects/Invoice) show up indented under their parent instead of as a
+// single flat row containing "/".
+type FolderNode = {
+  name: string; // full path, e.g. "Projects/Invoice"
+  label: string; // last path segment, e.g. "Invoice"
+  depth: number;
+  children: FolderNode[];
+};
+
+// buildFolderTree groups the flat folder list into a nested tree by splitting
+// each name on "/". Parent folders appear before their children (sorted by the
+// existing folder ordering), so unknown intermediate parents get a node too.
+function buildFolderTree(folders: string[]): FolderNode[] {
+  const roots: FolderNode[] = [];
+  const byPath = new Map<string, FolderNode>();
+  const ordered = sortFolders(folders);
+  for (const f of ordered) {
+    const parts = f.split("/");
+    let parent: FolderNode | null = null;
+    let path = "";
+    for (let i = 0; i < parts.length; i++) {
+      path = path ? `${path}/${parts[i]}` : parts[i];
+      let node = byPath.get(path);
+      if (!node) {
+        node = { name: path, label: parts[i], depth: i, children: [] };
+        byPath.set(path, node);
+        if (parent) parent.children.push(node);
+        else roots.push(node);
+      }
+      parent = node;
+    }
+  }
+  return roots;
 }
 
 // A folder-management dialog: create/rename take a name input, delete/clear ask
@@ -152,13 +191,17 @@ export function FolderNav({
   onClose: () => void;
 }) {
   const t = useTranslations("mail");
-  const orderedFolders = sortFolders(folders);
+  const folderTree = buildFolderTree(folders);
   const [dialog, setDialog] = useState<FolderDialog | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [aclFor, setAclFor] = useState<string | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [nameInput, setNameInput] = useState("");
+  const [parentInput, setParentInput] = useState("");
   const nameRef = useRef<HTMLInputElement>(null);
+  // Folded parent folders; an empty set means everything is expanded. The
+  // currently active folder's ancestors are always expanded regardless.
+  const [folded, setFolded] = useState<Set<string>>(new Set());
   const activeExternal = accountList?.find((a) => a.id === activeAccount) ?? null;
   const currentAccountEmail = activeExternal ? activeExternal.email : email;
 
@@ -195,23 +238,37 @@ export function FolderNav({
 
   const openCreate = () => {
     setNameInput("");
+    setParentInput("");
     setDialog({ mode: "create", value: "" });
     requestAnimationFrame(() => nameRef.current?.focus());
   };
   const openRename = (name: string) => {
-    setNameInput(name);
-    setDialog({ mode: "rename", name, value: name });
+    // Prefill the parent (path prefix) and the leaf name so renaming a nested
+    // folder only needs the last segment changed.
+    const idx = name.lastIndexOf("/");
+    const parent = idx >= 0 ? name.slice(0, idx) : "";
+    const leaf = idx >= 0 ? name.slice(idx + 1) : name;
+    setParentInput(parent);
+    setNameInput(leaf);
+    setDialog({ mode: "rename", name, value: leaf });
     setMenuFor(null);
     requestAnimationFrame(() => nameRef.current?.focus());
   };
+  // Renaming may move the folder under another parent; it cannot be moved
+  // under itself or one of its descendants.
+  const parentOptions = folders.filter(
+    (f) => dialog?.mode !== "rename" || (f !== dialog.name && !f.startsWith(`${dialog.name}/`)),
+  );
   const submitName = (e: React.FormEvent) => {
     e.preventDefault();
     const value = nameInput.trim();
     if (!value) return;
+    const parent = parentInput.trim();
+    const fullName = parent ? `${parent}/${value}` : value;
     if (dialog?.mode === "create") {
-      onCreateFolder(value);
+      onCreateFolder(fullName);
     } else if (dialog?.mode === "rename") {
-      onRenameFolder(dialog.name, value);
+      onRenameFolder(dialog.name, fullName);
     }
     setDialog(null);
   };
@@ -221,6 +278,144 @@ export function FolderNav({
     if (dialog.mode === "clear") onClearFolder(dialog.name);
     setDialog(null);
   };
+
+  // renderFolderNodes renders the folder tree recursively: each row keeps the
+  // selection / drag-drop / "..." menu behaviour, parent folders get an expand
+  // chevron, and children are indented. The active folder's ancestors stay
+  // expanded regardless of the folded set.
+  const renderFolderNodes = (nodes: FolderNode[]): ReactNode =>
+    nodes.map((node) => {
+      const active = node.name === current;
+      const system = SYSTEM_FOLDERS.has(node.name.toUpperCase());
+      const icon =
+        FOLDER_ICON[node.name.toUpperCase()] || <FolderIcon className="size-4" />;
+      const hasChildren = node.children.length > 0;
+      // A parent is only foldable when it is not an ancestor of the active
+      // folder; the active path is always kept visible.
+      const isFolded =
+        folded.has(node.name) && !current.startsWith(`${node.name}/`);
+      const showChildren = hasChildren && !isFolded;
+
+      const toggleFold = () => {
+        if (!hasChildren) return;
+        setFolded((prev) => {
+          const next = new Set(prev);
+          if (next.has(node.name)) next.delete(node.name);
+          else next.add(node.name);
+          return next;
+        });
+      };
+
+      return (
+        <Fragment key={node.name}>
+          <div className="group relative flex w-full items-center rounded-lg transition-colors">
+            <div className="flex w-5 shrink-0 items-center justify-center">
+              {hasChildren && (
+                <button
+                  onClick={toggleFold}
+                  title={isFolded ? t("expandFolder") : t("collapseFolder")}
+                  className="flex size-4 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {isFolded ? (
+                    <ChevronRight className="size-3" />
+                  ) : (
+                    <ChevronDown className="size-3" />
+                  )}
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                onSelect(node.name);
+                onClose();
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const uid = Number(e.dataTransfer.getData("text/plain"));
+                if (uid) onMoveToFolder(node.name, uid);
+              }}
+              className={cn(
+                "flex min-w-0 flex-1 items-center gap-2.5 rounded-lg py-1.5 pr-2.5 text-sm transition-colors",
+                active
+                  ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+              )}
+            >
+              <span className="shrink-0 opacity-70">{icon}</span>
+              <span className="truncate">{folderLabel(t, node.label)}</span>
+              {unseen?.[node.name] != null && unseen[node.name] > 0 && (
+                <span className="ml-auto shrink-0 rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-medium text-primary">
+                  {unseen[node.name]}
+                </span>
+              )}
+            </button>
+            {!system && (
+              <div className="absolute right-1 top-1/2 z-30 -translate-y-1/2">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className={cn(
+                    "size-6 rounded-md",
+                    menuFor === node.name
+                      ? "opacity-100"
+                      : "opacity-0 group-hover:opacity-100",
+                  )}
+                  onClick={() => setMenuFor(menuFor === node.name ? null : node.name)}
+                >
+                  <MoreVertical className="size-3.5" />
+                  <span className="sr-only">{t("menu")}</span>
+                </Button>
+                {menuFor === node.name && (
+                  <div className="absolute right-0 top-full z-30 w-40 rounded-lg border border-border bg-popover p-1 text-sm shadow-lg">
+                    <button
+                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted"
+                      onClick={() => {
+                        setMenuFor(null);
+                        setAclFor(node.name);
+                      }}
+                    >
+                      <Share2 className="size-3.5" />
+                      {t("shareFolder")}
+                    </button>
+                    <button
+                      className="flex w-full items-center rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted"
+                      onClick={() => openRename(node.name)}
+                    >
+                      {t("renameFolder")}
+                    </button>
+                    <button
+                      className="flex w-full items-center rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted"
+                      onClick={() => {
+                        setMenuFor(null);
+                        setDialog({ mode: "clear", name: node.name });
+                      }}
+                    >
+                      {t("clearFolder")}
+                    </button>
+                    <button
+                      className="flex w-full items-center rounded-md px-2 py-1.5 text-left text-destructive transition-colors hover:bg-muted"
+                      onClick={() => {
+                        setMenuFor(null);
+                        setDialog({ mode: "delete", name: node.name });
+                      }}
+                    >
+                      {t("deleteFolder")}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          {showChildren && (
+            <div className="pl-6">{renderFolderNodes(node.children)}</div>
+          )}
+        </Fragment>
+      );
+    });
 
   return (
     <>
@@ -332,102 +527,7 @@ export function FolderNav({
               <FolderPlus className="size-3.5" />
             </button>
           </div>
-          {orderedFolders.map((f) => {
-            const active = f === current;
-            const system = SYSTEM_FOLDERS.has(f.toUpperCase());
-            const icon =
-              FOLDER_ICON[f.toUpperCase()] || <FolderIcon className="size-4" />;
-            return (
-              <div
-                key={f}
-                className="group relative flex w-full items-center rounded-lg transition-colors"
-              >
-                <button
-                  onClick={() => {
-                    onSelect(f);
-                    onClose();
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const uid = Number(e.dataTransfer.getData("text/plain"));
-                    if (uid) onMoveToFolder(f, uid);
-                  }}
-                  className={cn(
-                    "flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
-                    active
-                      ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
-                  )}
-                >
-                  <span className="shrink-0 opacity-70">{icon}</span>
-                  <span className="truncate">{folderLabel(t, f)}</span>
-                  {unseen?.[f] != null && unseen[f] > 0 && (
-                    <span className="ml-auto shrink-0 rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-medium text-primary">
-                      {unseen[f]}
-                    </span>
-                  )}
-                </button>
-                {!system && (
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className={cn(
-                        "size-6 rounded-md",
-                        menuFor === f ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-                      )}
-                      onClick={() => setMenuFor(menuFor === f ? null : f)}
-                    >
-                      <MoreVertical className="size-3.5" />
-                      <span className="sr-only">{t("menu")}</span>
-                    </Button>
-                    {menuFor === f && (
-                      <div className="absolute right-0 top-full z-30 w-40 rounded-lg border border-border bg-popover p-1 text-sm shadow-lg">
-                        <button
-                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted"
-                          onClick={() => {
-                            setMenuFor(null);
-                            setAclFor(f);
-                          }}
-                        >
-                          <Share2 className="size-3.5" />
-                          {t("shareFolder")}
-                        </button>
-                        <button
-                          className="flex w-full items-center rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted"
-                          onClick={() => openRename(f)}
-                        >
-                          {t("renameFolder")}
-                        </button>
-                        <button
-                          className="flex w-full items-center rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted"
-                          onClick={() => {
-                            setMenuFor(null);
-                            setDialog({ mode: "clear", name: f });
-                          }}
-                        >
-                          {t("clearFolder")}
-                        </button>
-                        <button
-                          className="flex w-full items-center rounded-md px-2 py-1.5 text-left text-destructive transition-colors hover:bg-muted"
-                          onClick={() => {
-                            setMenuFor(null);
-                            setDialog({ mode: "delete", name: f });
-                          }}
-                        >
-                          {t("deleteFolder")}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {renderFolderNodes(folderTree)}
           <button
             onClick={onScheduled}
             className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground"
@@ -565,16 +665,34 @@ export function FolderNav({
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={submitName} className="grid gap-3">
-            <Label htmlFor="folder-name" className="sr-only">
-              {t("folderNamePlaceholder")}
-            </Label>
-            <Input
-              id="folder-name"
-              ref={nameRef}
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              placeholder={t("folderNamePlaceholder")}
-            />
+            <div className="grid gap-1.5">
+              <Label htmlFor="folder-parent">{t("folderParent")}</Label>
+              <select
+                id="folder-parent"
+                value={parentInput}
+                onChange={(e) => setParentInput(e.target.value)}
+                className="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+              >
+                <option value="">{t("folderParentRoot")}</option>
+                {parentOptions.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="folder-name" className="sr-only">
+                {t("folderNamePlaceholder")}
+              </Label>
+              <Input
+                id="folder-name"
+                ref={nameRef}
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                placeholder={t("folderNamePlaceholder")}
+              />
+            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialog(null)}>
                 {t("cancel")}

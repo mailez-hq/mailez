@@ -17,11 +17,13 @@ func (h *Handler) registerAliases(r fiber.Router, mw fiber.Handler) {
 	r.Delete("/aliases/:email", mw, h.deleteAlias)
 }
 
-// listAliases returns aliases (manager/admin).
+// listAliases returns aliases (manager/admin), paginated.
 // @Summary List aliases
 // @Tags aliases
 // @Produce json
-// @Success 200 {array} models.Alias
+// @Param page query int false "page number, 1-based"
+// @Param limit query int false "page size"
+// @Success 200 {object} models.Page
 // @Failure 403 {object} models.APIError
 // @Router /aliases [get]
 func (h *Handler) listAliases(c *fiber.Ctx) error {
@@ -29,11 +31,17 @@ func (h *Handler) listAliases(c *fiber.Ctx) error {
 	if u := currentUser(c); !u.GlobalAdmin {
 		q = h.ManagedDomainScope(u, q)
 	}
-	var aliases []models.Alias
-	if err := q.Find(&aliases).Error; err != nil {
+	page, limit := core.PageParams(c)
+	var total int64
+	if err := q.Model(&models.Alias{}).Count(&total).Error; err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
-	return c.JSON(aliases)
+	var aliases []models.Alias
+	offset := (page - 1) * limit
+	if err := q.Order("email").Limit(limit).Offset(offset).Find(&aliases).Error; err != nil {
+		return core.Fail(c, 500, err, "internal error")
+	}
+	return core.Page(c, aliases, int(total), page, limit)
 }
 
 // getAlias returns one alias.

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/page-header";
+import { Pagination } from "@/components/pagination";
 import { Badge } from "@/components/ui/badge";
 import {
   Card, CardContent, CardHeader, CardTitle,
@@ -17,14 +18,19 @@ export default function AuditPage() {
   const t = useTranslations("audit");
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [total, setTotal] = useState(0);
 
   const load = useCallback(async () => {
     try {
-      setLogs(await auditLogs());
+      const res = await auditLogs(page, pageSize);
+      setLogs(res.data);
+      setTotal(res.total);
     } catch (e) {
       setError(e instanceof Error ? e.message : "load failed");
     }
-  }, []);
+  }, [page, pageSize]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -73,6 +79,13 @@ export default function AuditPage() {
               )}
             </TableBody>
           </Table>
+          <Pagination
+            total={total}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => { setPage(1); setPageSize(s); }}
+          />
         </CardContent>
       </Card>
     </div>

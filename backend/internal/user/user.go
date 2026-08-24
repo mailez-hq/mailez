@@ -19,12 +19,14 @@ func (h *Handler) registerUsers(r fiber.Router, mw fiber.Handler) {
 	r.Delete("/users/:email", mw, h.deleteUser)
 }
 
-// listUsers returns users, optionally filtered by domain (manager/admin).
+// listUsers returns users, optionally filtered by domain (manager/admin),
+// paginated.
 // @Summary List users
 // @Tags users
 // @Produce json
-// @Param domain query string false "filter by domain"
-// @Success 200 {array} models.User
+// @Param page query int false "page number, 1-based"
+// @Param limit query int false "page size"
+// @Success 200 {object} models.Page
 // @Failure 403 {object} models.APIError
 // @Router /users [get]
 func (h *Handler) listUsers(c *fiber.Ctx) error {
@@ -32,11 +34,17 @@ func (h *Handler) listUsers(c *fiber.Ctx) error {
 	if u := currentUser(c); !u.GlobalAdmin {
 		q = h.ManagedDomainScope(u, q)
 	}
-	var users []models.User
-	if err := q.Find(&users).Error; err != nil {
+	page, limit := core.PageParams(c)
+	var total int64
+	if err := q.Model(&models.User{}).Count(&total).Error; err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
-	return c.JSON(users)
+	var users []models.User
+	offset := (page - 1) * limit
+	if err := q.Order("email").Limit(limit).Offset(offset).Find(&users).Error; err != nil {
+		return core.Fail(c, 500, err, "internal error")
+	}
+	return core.Page(c, users, int(total), page, limit)
 }
 
 // getUser returns one user (manager/admin).

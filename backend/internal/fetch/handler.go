@@ -31,25 +31,32 @@ func (h *Handler) registerFetches(r fiber.Router, mw fiber.Handler) {
 	r.Delete("/fetches/:id", mw, h.deleteFetch)
 }
 
-// listFetches returns all fetch accounts, optionally filtered by ?user=email.
-// listFetches returns fetch accounts, optionally filtered by user.
+// listFetches returns fetch accounts, optionally filtered by user, paginated.
 // @Summary List fetch accounts
 // @Tags fetch
 // @Produce json
 // @Param user query string false "filter by user email"
-// @Success 200 {array} models.Fetch
+// @Param page query int false "page number, 1-based"
+// @Param limit query int false "page size"
+// @Success 200 {object} models.Page
 // @Failure 403 {object} models.APIError
 // @Router /fetches [get]
 func (h *Handler) listFetches(c *fiber.Ctx) error {
-	q := h.DB.Order("id")
+	q := h.DB
 	if user := c.Query("user"); user != "" {
 		q = q.Where("user_email = ?", user)
 	}
-	var fetches []models.Fetch
-	if err := q.Find(&fetches).Error; err != nil {
+	page, limit := core.PageParams(c)
+	var total int64
+	if err := q.Model(&models.Fetch{}).Count(&total).Error; err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
-	return c.JSON(fetches)
+	var fetches []models.Fetch
+	offset := (page - 1) * limit
+	if err := q.Order("id").Limit(limit).Offset(offset).Find(&fetches).Error; err != nil {
+		return core.Fail(c, 500, err, "internal error")
+	}
+	return core.Page(c, fetches, int(total), page, limit)
 }
 
 type fetchIn struct {

@@ -10,7 +10,10 @@
     "copy": "复制",
     "loading": "加载中...",
     "noItems": "暂无数据",
-    "actions": "操作"
+    "actions": "操作",
+    "prev": "上一页",
+    "next": "下一页",
+    "perPage": "每页条数"
   },
   "login": {
     "title": "登录 mailez",
@@ -209,7 +212,7 @@
   "audit": {
     "title": "审计日志",
     "desc": "管理员与自助操作的审计记录。",
-    "recent": "最近活动（最近 200 条）",
+    "recent": "最近活动",
     "time": "时间",
     "user": "用户",
     "method": "方法",

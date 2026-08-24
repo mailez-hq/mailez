@@ -451,8 +451,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   // full detail).
   const pathname = usePathname();
   const segs = (pathname ?? "").split("/").filter(Boolean);
-  const pathFolder = segs[1] || "Inbox";
-  const pathId = segs.length > 2 ? segs[2] : null;
+  const pathFolder = segs[1] ? decodeURIComponent(segs[1]) : "Inbox";
+  const pathId = segs.length > 2 ? decodeURIComponent(segs[2]) : null;
 
   useEffect(() => {
     if (pathFolder !== folder) setFolder(pathFolder);
@@ -932,8 +932,9 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     }
     // Navigate to the message route; MailView follows the /mail/[folder]/[id]
     // URL (pathId effect) to load and show the reading pane. The stable id
-    // keeps every view routable, shareable and survives mailbox moves.
-    router.push(`/mail/${srcFolder}/${m.id || m.uid}`);
+    // keeps every view routable, shareable and survives mailbox moves. The
+    // folder is URL-encoded so nested names (Parent/Child) stay one segment.
+    router.push(`/mail/${encodeURIComponent(srcFolder)}/${m.id || m.uid}`);
   }
 
   function removeMessage(m: MailMessage) {
@@ -1511,14 +1512,14 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
 
   function backToList() {
     // Navigate back to the folder; the pathId effect clears the reading pane.
-    router.push(`/mail/${folder}`);
+    router.push(`/mail/${encodeURIComponent(folder)}`);
     setSelected(null);
     setDetail(null);
     setThreadOpen(false);
   }
 
   function selectFolder(f: string) {
-    router.push(`/mail/${f}`);
+    router.push(`/mail/${encodeURIComponent(f)}`);
   }
 
   async function toggleThread() {
@@ -1548,7 +1549,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       const next = await mailMessage(folder, { uid });
       setDetail(next);
       // Keep the URL pinned to the opened thread member so it stays shareable.
-      router.push(`/mail/${folder}/${next.id || next.uid}`);
+      router.push(`/mail/${encodeURIComponent(folder)}/${next.id || next.uid}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "load message failed");
     }
