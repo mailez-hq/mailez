@@ -69,7 +69,7 @@ func Load() Config {
 		Hostname:           env("MAILEZ_HOSTNAME", "localhost"),
 		MailImapAddr:       env("MAIL_IMAP_ADDR", "gateway:1143"),
 		MailSmtpAddr:       env("MAIL_SMTP_ADDR", "gateway:1587"),
-		MailSieveAddr:      env("MAIL_SIEVE_ADDR", "gateway:4190"),
+		MailSieveAddr:      env("MAIL_SIEVE_ADDR", "gateway:11490"),
 		AIProvider:         env("AI_PROVIDER", "none"),
 		AIBaseURL:          env("AI_BASE_URL", "https://api.openai.com/v1"),
 		AIAPIKey:           env("AI_API_KEY", ""),

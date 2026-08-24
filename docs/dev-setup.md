@@ -33,7 +33,8 @@
 | admin（本地 dev） | `http://localhost:3000` | `npm run dev -- -p 3000` |
 | IMAP 代理（容器→宿主映射） | `127.0.0.1:1143` | gateway 容器的内部代理端口 |
 | SMTP 提交（容器→宿主映射） | `127.0.0.1:1587` | gateway 容器的内部提交端口 |
-| ManageSieve | `127.0.0.1:4190` | gateway 容器 |
+| ManageSieve | `127.0.0.1:4190` | gateway 容器（外部客户端） |
+| ManageSieve（webmail 内部） | `127.0.0.1:11490` | gateway 容器 |
 
 ## 一次性准备
 
@@ -54,7 +55,7 @@ docker compose -f docker-compose.dev.yml up -d
 
 这会启动 redis / gateway(nginx) / dovecot / postfix /
 mail-filter(rspamd) / macro-scanner / resolver，并自动把内部代理端口
-1143 / 1587 / 4190 映射到宿主机。`docker-compose.dev.yml` 里的 gateway
+1143 / 1587 / 11490 映射到宿主机。`docker-compose.dev.yml` 里的 gateway
 容器通过 `host.docker.internal` 访问宿主机的 mailez 后端（8080）。
 
 ## 启动 mailez（本地开发模式）
@@ -67,7 +68,7 @@ $env:DOVECOT_ADDRESS='192.168.206.5'   # 固定 IP：nginx auth 只认 IP（Auth
 $env:POSTFIX_ADDRESS='192.168.206.4'   # 与 docker-compose.dev.yml 的静态 IP 对应
 $env:MAIL_IMAP_ADDR='127.0.0.1:1143'
 $env:MAIL_SMTP_ADDR='127.0.0.1:1587'
-$env:MAIL_SIEVE_ADDR='127.0.0.1:4190'
+$env:MAIL_SIEVE_ADDR='127.0.0.1:11490'
 $env:DB_DSN='D:\code\mailez\backend\mailez.db'   # 建议绝对路径，避免工作目录歧义
 go run ./cmd/server
 ```

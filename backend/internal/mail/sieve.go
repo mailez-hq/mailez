@@ -47,20 +47,27 @@ func (s *sieve) close() {
 }
 
 func (s *sieve) handshake(email, token string) error {
-	greeting, err := s.readLine()
+	// RFC 5804 greeting is multi-line: capability lines
+	// ("IMPLEMENTATION" ..., "SIEVE" ..., "VERSION" ...) terminated by an
+	// OK status line. readResponse consumes all content lines until the
+	// status line, so the first command response is not polluted by them.
+	status, _, err := s.readResponse()
 	if err != nil {
 		return fmt.Errorf("sieve greeting: %w", err)
 	}
-	if statusOf(greeting) != "OK" {
-		return fmt.Errorf("sieve greeting: %s", greeting)
+	if status != "OK" {
+		return fmt.Errorf("sieve greeting: %s", status)
 	}
-	// Try STARTTLS; the internal link may be plaintext behind the gateway proxy,
-	// in which case we continue unencrypted.
-	if err := s.startTLS(); err == nil {
-		// upgraded
-	}
+	// No STARTTLS on the internal link: the gateway terminates TLS for
+	// external clients, and the mail-keeper proxy's managesieve-login
+	// misbehaves after a rejected STARTTLS (subsequent AUTHENTICATE fails
+	// with "Error in MANAGESIEVE command").
 	auth := base64.StdEncoding.EncodeToString([]byte("\x00" + email + "\x00" + token))
-	status, _, err := s.do(`AUTHENTICATE "PLAIN" ` + auth)
+	// RFC 5804 allows the initial response as a quoted string. Dovecot's
+	// managesieve-login rejects the literal forms over the login proxy
+	// (non-synchronizing {n+}: "Missing LF after literal size"; synchronizing
+	// {n}: no "+" continuation), so send the base64 payload inline.
+	status, _, err = s.do(`AUTHENTICATE "PLAIN" "` + auth + `"`)
 	if err != nil {
 		return err
 	}
@@ -225,7 +232,24 @@ func (c *Client) SieveDeleteScript(email, token, name string) error {
 		return err
 	}
 	defer s.close()
-	status, _, err := s.do(fmt.Sprintf("DELETESCRIPT %s", quoteSieve(name)))
+	// Dovecot rejects DELETESCRIPT for the active script; deactivate it first.
+	status, content, err := s.do("LISTSCRIPTS")
+	if err != nil {
+		return err
+	}
+	if status == "OK" {
+		quoted := quoteSieve(name)
+		for _, line := range content {
+			fields := strings.Fields(strings.TrimSpace(line))
+			if len(fields) > 1 && fields[0] == quoted && fields[1] == "ACTIVE" {
+				if _, _, err := s.do(`SETACTIVE ""`); err != nil {
+					return err
+				}
+				break
+			}
+		}
+	}
+	status, _, err = s.do(fmt.Sprintf("DELETESCRIPT %s", quoteSieve(name)))
 	if err != nil {
 		return err
 	}

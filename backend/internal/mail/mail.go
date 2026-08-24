@@ -164,10 +164,11 @@ func (c *Client) ListMessages(email, token, folder string, page int) ([]Message,
 		return []Message{}, int(mbox.Messages), nil
 	}
 
-	end := mbox.Messages - uint32(page)*PageSize
-	if end == 0 {
+	skip := uint32(page) * PageSize
+	if skip >= mbox.Messages {
 		return []Message{}, int(mbox.Messages), nil
 	}
+	end := mbox.Messages - skip
 	start := uint32(1)
 	if end > PageSize {
 		start = end - PageSize + 1

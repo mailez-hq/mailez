@@ -2,10 +2,17 @@ package mail
 
 import (
 	"bufio"
+	"io"
 	"net"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
+
+// authLiteralRe matches a literal size embedded in an AUTHENTICATE command
+// (e.g. AUTHENTICATE "PLAIN" {48}), unlike literalRe which is line-anchored.
+var authLiteralRe = regexp.MustCompile(`\{(\d+)\+?\}`)
 
 // fakeSieveServer serves a canned ManageSieve conversation over TCP.
 func fakeSieveServer(t *testing.T, handler func(cmd string) []string) string {
@@ -31,6 +38,20 @@ func fakeSieveServer(t *testing.T, handler func(cmd string) []string) string {
 				return
 			}
 			cmd := strings.TrimSpace(line)
+			if strings.HasPrefix(cmd, "AUTHENTICATE") {
+				// RFC 5804 literal initial response: {n} (synchronizing: send
+				// "+" first) or {n+}; consume the payload either way.
+				if m := authLiteralRe.FindStringSubmatch(cmd); m != nil {
+					n, _ := strconv.Atoi(m[1])
+					if !strings.HasSuffix(m[0], "+") {
+						_, _ = bw.WriteString("+\r\n")
+						_ = bw.Flush()
+					}
+					buf := make([]byte, n)
+					_, _ = io.ReadFull(br, buf)
+					_, _ = br.ReadString('\n') // trailing CRLF after the literal
+				}
+			}
 			if strings.HasPrefix(cmd, "PUTSCRIPT") || strings.HasPrefix(cmd, "SETACTIVE") {
 				// consume nothing extra; PUTSCRIPT literal body is ignored here
 				if strings.HasPrefix(cmd, "PUTSCRIPT") {
