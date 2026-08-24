@@ -9,6 +9,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ApiError, login, loginTotp, me } from "@/lib/api";
+import { readLastFolder } from "@/lib/preferences";
+
+// Where to send a signed-in user: the deep link they asked for (?next=), else
+// their last-visited folder, else the inbox. next is only trusted when it
+// stays inside the /mail area, so the login page can't be used as an open
+// redirect.
+function mailboxTarget(): string {
+  try {
+    const next = new URLSearchParams(window.location.search).get("next");
+    if (
+      next &&
+      (next === "/mail" || next.startsWith("/mail/")) &&
+      !next.startsWith("//") &&
+      !next.includes("\\")
+    ) {
+      return next;
+    }
+  } catch {
+    // ignore malformed query
+  }
+  const last = readLastFolder();
+  return last ? `/mail/${encodeURIComponent(last)}` : "/mail/Inbox";
+}
 
 // The root route is the sign-in page. An already-authenticated visitor is
 // sent straight into the mailbox; after a successful login we route into it.
@@ -31,7 +54,7 @@ export default function Home() {
 
   const check = useCallback(() => {
     me()
-      .then(() => router.replace("/mail/Inbox"))
+      .then(() => router.replace(mailboxTarget()))
       .catch(() => {
         // not authenticated: stay on the sign-in form
       })
@@ -49,7 +72,7 @@ export default function Home() {
       if (res.totp_required && res.pending_token) {
         setPendingToken(res.pending_token);
       } else {
-        router.replace("/mail/Inbox");
+        router.replace(mailboxTarget());
       }
     } catch (err) {
       setError(loginError(err));
@@ -64,7 +87,7 @@ export default function Home() {
     setBusy(true);
     try {
       await loginTotp(pendingToken, code);
-      router.replace("/mail/Inbox");
+      router.replace(mailboxTarget());
     } catch (err) {
       setError(loginError(err));
     } finally {

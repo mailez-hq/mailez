@@ -76,6 +76,30 @@ export function writePreferences(prefs: Preferences) {
   }
 }
 
+// Last-visited mailbox folder, used to restore the user's position after
+// login / app open (the "inbox is home, but home is where you left off" rule
+// used by Gmail / Outlook / Thunderbird).
+export const LAST_FOLDER_KEY = "mailez.lastFolder";
+
+export function readLastFolder(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const v = window.localStorage.getItem(LAST_FOLDER_KEY);
+    if (typeof v !== "string" || v.length === 0 || v.length > 200) return null;
+    return v;
+  } catch {
+    return null;
+  }
+}
+
+export function writeLastFolder(folder: string) {
+  try {
+    window.localStorage.setItem(LAST_FOLDER_KEY, folder);
+  } catch {
+    // storage unavailable (private mode etc.); position just isn't persisted
+  }
+}
+
 export function resolveTheme(theme: Theme): "light" | "dark" {
   if (theme === "system") {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
