@@ -13,6 +13,7 @@ type RspamdConfig struct {
 	Subnet6             string
 	RelayNets           string
 	ScanMacros          bool
+	Greylisting         bool
 	Antivirus           string
 	AntivirusAction     string
 	AntivirusAddress    string
@@ -32,6 +33,7 @@ func loadRspamdConfig() (RspamdConfig, error) {
 		Subnet6:             os.Getenv("MAILEZ_SUBNET6"),
 		RelayNets:           os.Getenv("MAILEZ_RELAYNETS"),
 		ScanMacros:          envTrue("MAILEZ_SCAN_MACROS", false),
+		Greylisting:         envTrue("MAILEZ_GREYLISTING", false),
 		Antivirus:           agent.Getenv("MAILEZ_ANTIVIRUS", "none"),
 		AntivirusAction:     agent.Getenv("MAILEZ_ANTIVIRUS_ACTION", "discard"),
 		AntivirusAddress:    agent.Getenv("MAILEZ_ANTIVIRUS_ADDRESS", "antivirus"),

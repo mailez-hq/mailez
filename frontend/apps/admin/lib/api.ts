@@ -1,4 +1,4 @@
-import type { Alias, AuditLog, DkimInfo, LoginResult, Me, Page, SignupDomain } from "@mailez/types";
+import type { Alias, Announcement, AuditLog, DkimInfo, LoginResult, Me, Page, SignupDomain } from "@mailez/types";
 
 // Re-export the shared auth types for existing importers of @/lib/api.
 export type { Me, LoginResult };
@@ -78,6 +78,12 @@ export const anonAliases = () => api<Alias[]>("/anon-aliases");
 export const anonmailDomains = () => api<string[]>("/anon-aliases/domains");
 export const createAnonAlias = (domain: string, displayName: string) =>
   apiPost("/anon-aliases", { domain, display_name: displayName });
+
+// global announcement banner
+export const announcement = () => api<Announcement | undefined>("/announcement");
+export const saveAnnouncement = (subject: string, body: string, enabled: boolean) =>
+  apiPut<Announcement>("/announcement", { subject, body, enabled });
+export const clearAnnouncement = () => apiDelete("/announcement");
 export const deleteAnonAlias = (email: string) =>
   apiDelete(`/anon-aliases/${encodeURIComponent(email)}`);
 

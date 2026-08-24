@@ -4,6 +4,7 @@
 // actions live in the MailStoreProvider in mail-store.tsx and are read here
 // via useMailStore(), keeping the three-pane layout free of state logic.
 
+import { useEffect, useState } from "react";
 import { Inbox as InboxIcon, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { highlightTerms } from "@/components/mailbox/highlight";
@@ -19,9 +20,48 @@ import { CommandPalette } from "@/components/palette/command-palette";
 import { ShortcutsDialog } from "@/components/mailbox/shortcuts-dialog";
 import { SieveEditor } from "@/components/sieve/sieve-editor";
 import { textToHtml } from "@/components/mailbox/mail-utils";
-import type { OutboundAttachment } from "@/lib/api";
+import { buildFolderTree, flattenTree, folderLabel } from "@/components/mailbox/folder-tree";
+import { mailAnnouncement, type MailAnnouncement, type OutboundAttachment } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useMailStore } from "@/components/mailbox/mail-store";
+
+// First-run hint shown in the empty reading pane until dismissed. It nudges
+// new users toward the shortcut help without adding a separate "home" page —
+// the inbox stays the landing view (Gmail / FastMail convention).
+const WELCOME_SEEN_KEY = "mailez.welcomeSeen";
+
+function FirstRunHint({ t }: { t: (key: string) => string }) {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (!window.localStorage.getItem(WELCOME_SEEN_KEY)) setShow(true);
+    } catch {
+      // storage unavailable: skip the hint
+    }
+  }, []);
+
+  if (!show) return null;
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <p className="max-w-xs text-center">{t("welcomeHint")}</p>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => {
+          setShow(false);
+          try {
+            window.localStorage.setItem(WELCOME_SEEN_KEY, "1");
+          } catch {
+            // ignore
+          }
+        }}
+      >
+        {t("welcomeDismiss")}
+      </Button>
+    </div>
+  );
+}
 
 export function MailView() {
   const {
@@ -190,10 +230,38 @@ export function MailView() {
     toast,
     setToast,
   } = useMailStore();
+
+  const [announcement, setAnnouncement] = useState<MailAnnouncement | null>(null);
+
+  // The global admin announcement banner: fetched once per session, hidden
+  // while the backend has none published.
+  useEffect(() => {
+    let cancelled = false;
+    mailAnnouncement()
+      .then((a) => {
+        if (a && !cancelled) setAnnouncement(a);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
+      {announcement && (
+        <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-2 bg-primary px-4 py-1.5 text-xs text-primary-foreground">
+          <span className="font-semibold">{announcement.subject}</span>
+          {announcement.body && <span className="text-primary-foreground/85">{announcement.body}</span>}
+        </div>
+      )}
       {!online && (
-        <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-1.5 bg-ai py-1 text-xs text-ai-foreground">
+        <div
+          className={cn(
+            "fixed inset-x-0 z-50 flex items-center justify-center gap-1.5 bg-ai py-1 text-xs text-ai-foreground",
+            announcement ? "top-7" : "top-0",
+          )}
+        >
           <WifiOff className="size-3" />
           {t("offline")}
         </div>
@@ -339,7 +407,8 @@ export function MailView() {
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 bg-secondary p-6 text-sm text-muted-foreground dark:bg-background">
             <InboxIcon className="size-9 opacity-40" />
-            {t("selectMessage")}
+            <span>{t("selectMessage")}</span>
+            <FirstRunHint t={t} />
           </div>
         )}
       </div>
@@ -548,18 +617,18 @@ export function MailView() {
               <p className="px-2 py-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
                 {t("moveTo")}
               </p>
-              {folders
-                .filter((f: string) => f !== src)
-                .map((f: string) => (
+              {flattenTree(buildFolderTree(folders), (leaf) => folderLabel(t, leaf))
+                .filter((o) => o.value !== src)
+                .map((o) => (
                   <button
-                    key={f}
+                    key={o.value}
                     onClick={() => {
                       setCtxMenu(null);
-                      moveTo([m.uid], f, t("toastMoved"));
+                      moveTo([m.uid], o.value, t("toastMoved"));
                     }}
                     className="w-full truncate rounded-md px-2 py-1 text-left transition-colors hover:bg-accent"
                   >
-                    {f}
+                    {o.label}
                   </button>
                 ))}
             </div>

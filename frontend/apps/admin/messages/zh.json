@@ -48,10 +48,26 @@
     "relays": "中继",
     "fetches": "外部收件",
     "tokens": "应用密码",
+    "announcement": "公告",
     "anonAliases": "匿名别名",
     "audit": "审计日志",
     "config": "配置",
     "logout": "退出"
+  },
+  "announcement": {
+    "title": "公告",
+    "desc": "向所有 webmail 用户广播一条通知。",
+    "formTitle": "公开公告",
+    "formDesc": "公告会显示在 webmail 顶部，直到你清除它。",
+    "subject": "标题",
+    "subjectPlaceholder": "例如：计划维护",
+    "body": "内容",
+    "bodyPlaceholder": "可选详情…",
+    "enabled": "启用",
+    "saving": "保存中…",
+    "saved": "公告已保存",
+    "clear": "清除",
+    "clearConfirm": "确定清除公告？用户将不再看到它。"
   },
   "domains": {
     "title": "域名",

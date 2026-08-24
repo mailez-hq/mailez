@@ -83,6 +83,12 @@ var migrations = []migration{
 		ID: "20260824_outbox_account_id",
 		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Outbox{}) },
 	},
+	{
+		// Global announcement banner (Mailu parity): one admin-authored notice
+		// shown to every user in the webmail until cleared.
+		ID: "20260824_announcement",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Announcement{}) },
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

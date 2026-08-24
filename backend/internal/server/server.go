@@ -23,6 +23,7 @@ import (
 	"mailez/backend/internal/admin"
 	"mailez/backend/internal/ai"
 	"mailez/backend/internal/alias"
+	"mailez/backend/internal/announcement"
 	"mailez/backend/internal/auth"
 	"mailez/backend/internal/compose"
 	"mailez/backend/internal/contacts"
@@ -181,6 +182,7 @@ func (s *Server) routes() {
 	contacts.New(app).Register(authed)
 	sieve.New(app).Register(authed)
 	admin.New(app).Register(authed)
+	announcement.New(app).Register(authed)
 	fetch.RegisterAPI(authed, app)
 	ai.RegisterAPI(authed, app, aiMgr)
 	push.RegisterAPI(authed, app)
