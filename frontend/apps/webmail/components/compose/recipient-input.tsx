@@ -8,7 +8,7 @@ export type RecipientSuggestion = { name?: string; email: string };
 
 // RecipientInput is a chip-style address input: type an address, press Enter
 // or comma to pin it as a chip, click the chip's × to remove it, and pick from
-// contact suggestions while typing. FastMail-style recipient editing.
+// contact suggestions while typing, with chip-based recipient editing.
 export function RecipientInput({
   value,
   onChange,

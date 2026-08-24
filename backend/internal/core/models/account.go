@@ -8,7 +8,7 @@ import "time"
 type Account struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
 	UserEmail    string    `gorm:"size:255;not null;index" json:"user_email"` // owning mailess account
-	Name         string    `gorm:"size:255;not null" json:"name"`             // display label, e.g. "Gmail"
+	Name         string    `gorm:"size:255;not null" json:"name"`             // display label, e.g. "Work"
 	Email        string    `gorm:"size:255;not null" json:"email"`            // the external address
 	ImapHost     string    `gorm:"size:255;not null" json:"imap_host"`
 	ImapPort     int       `gorm:"not null;default:993" json:"imap_port"`

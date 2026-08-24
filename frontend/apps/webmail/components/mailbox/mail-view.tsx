@@ -344,7 +344,7 @@ export function MailView() {
         )}
       </div>
 
-      {/* Compose panel — non-modal right-side sheet (FastMail-style) */}
+      {/* Compose panel — non-modal right-side sheet */}
       {composeOpen && (
         <ComposePanel
           t={t}

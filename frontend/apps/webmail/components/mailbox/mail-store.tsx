@@ -815,7 +815,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     }
   }
 
-  // Virtual views: unread / starred / attachments / snoozed as FastMail-style
+  // Virtual views: unread / starred / attachments / snoozed as built-in
   // filters. Snoozed is a dedicated fetch (keyword-driven), not a search.
   function selectView(view: string) {
     setActiveView(view);

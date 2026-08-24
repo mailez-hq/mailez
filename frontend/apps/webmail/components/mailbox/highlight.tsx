@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 
-// highlightTerms extracts plain search words from a FastMail-style query,
+// highlightTerms extracts plain search words from a structured search query,
 // dropping field operators (from:, has:attachment, before:, ...) and quoted
 // values so only free text is highlighted in the results.
 export function highlightTerms(query: string): string[] {

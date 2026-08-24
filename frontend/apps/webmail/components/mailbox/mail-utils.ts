@@ -47,7 +47,7 @@ export function labelColor(name: string, assigned?: string) {
 }
 
 // Saved searches live in localStorage and show up as virtual folders in the
-// sidebar, FastMail-style. They are either a plain keyword query (bookmark in
+// sidebar. They are either a plain keyword query (bookmark in
 // the list toolbar) or a structured spec saved from the search builder.
 export type SavedSearch =
   | { id: number; kind: "query"; name: string; query: string }

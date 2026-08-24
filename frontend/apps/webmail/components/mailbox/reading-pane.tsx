@@ -249,7 +249,7 @@ function ThreadMessage({
         </div>
       )}
 
-      {/* Action buttons below message — FastMail style */}
+      {/* Action buttons below message */}
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
         <Button size="sm" variant="outline" onClick={onShowActions}>
           <Reply className="size-3.5" />
@@ -345,7 +345,7 @@ export function ReadingPane({
   const [rawLoading, setRawLoading] = useState(false);
   const [rawError, setRawError] = useState("");
 
-  // FastMail-style: track which thread message is expanded
+  // Track which thread message is expanded
   const [expandedUid, setExpandedUid] = useState<number | null>(detail.uid);
 
   // Reset transient panel state when a different mail is opened. The panel is
@@ -459,7 +459,7 @@ export function ReadingPane({
 
   return (
     <main className="mail-scroll min-w-0 flex-1 overflow-y-auto bg-card">
-      {/* Subject header — FastMail style */}
+      {/* Subject header */}
       <div className="sticky top-0 z-10 border-b border-border bg-card/95 px-4 py-3 backdrop-blur-sm md:px-6">
         {/* Mobile back */}
         <div className="mb-1.5 md:hidden">
@@ -615,7 +615,7 @@ export function ReadingPane({
 
       {/* Message content area */}
       <div className="px-4 py-4 md:px-6">
-        {/* Thread view — FastMail style conversation */}
+        {/* Thread view */}
         {isThreadView ? (
           <div className="space-y-0">
             {threadMessages.map((msg) => (
@@ -699,7 +699,7 @@ export function ReadingPane({
               </div>
             )}
 
-            {/* Action buttons — FastMail style */}
+            {/* Action buttons */}
             <div className="mb-4 flex flex-wrap items-center gap-2">
               {showNotSpam && (
                 <Button size="sm" variant="outline" onClick={onNotSpam}>

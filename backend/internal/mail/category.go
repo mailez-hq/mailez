@@ -44,7 +44,7 @@ const (
 	CategoryOther      = "other"
 )
 
-// Rule-based categorization, matching the deterministic tier of Fastmail-style
+// Rule-based categorization, matching the deterministic tier of
 // auto-sorting: List-Unsubscribe marks newsletters, then known sender domains
 // (with a couple of subject keywords) cover shopping/finance/work/social, and
 // personal mailbox domains fall through to social. Everything else is other.

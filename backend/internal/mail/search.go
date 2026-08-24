@@ -15,7 +15,7 @@ import (
 // SearchQuery is the structured form of an advanced search expression such as
 // `from:amy subject:"weekly report" has:attachment before:2026-01-01`, or the
 // output of the AI query interpreter. is:unread / is:flagged / label:NAME power
-// the FastMail-style virtual views and labels.
+// the virtual views and labels.
 type SearchQuery struct {
 	Text          []string   `json:"text"`
 	From          []string   `json:"from"`
