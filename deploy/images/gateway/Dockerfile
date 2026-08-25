@@ -20,7 +20,7 @@ ARG APK_MIRROR="mirrors.aliyun.com"
 
 RUN set -euxo pipefail \
   ; sed -i "s|dl-cdn.alpinelinux.org|${APK_MIRROR}|g" /etc/apk/repositories \
-  ; apk add --no-cache ca-certificates curl nginx nginx-mod-http-brotli nginx-mod-mail openssl dovecot-lua dovecot-pigeonhole-plugin 'dovecot-lmtpd<2.4' dovecot-pop3d dovecot-submissiond \
+  ; apk add --no-cache ca-certificates curl nginx nginx-mod-http-brotli nginx-mod-mail nginx-mod-stream openssl dovecot-lua dovecot-pigeonhole-plugin 'dovecot-lmtpd<2.4' dovecot-pop3d dovecot-submissiond \
   ; mkdir -p /etc/dovecot
 
 COPY --from=build /out/mailez-agent /mailez-agent

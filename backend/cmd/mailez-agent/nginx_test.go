@@ -72,6 +72,55 @@ func TestNginxRenderNotls(t *testing.T) {
 	}
 }
 
+func TestNginxRenderMailezineEngine(t *testing.T) {
+	t.Setenv("MAILEZ_HOSTNAMES", "mail.example.com")
+	t.Setenv("MAILEZ_DOMAIN", "example.com")
+	t.Setenv("MAILEZ_POSTMASTER", "postmaster")
+	t.Setenv("MAILEZ_TLS", "off")
+	t.Setenv("MAILEZ_BACKEND_ADDRESS", "backend")
+	t.Setenv("MAILEZ_SUBNET", "192.168.206.0/24")
+	t.Setenv("MAILEZ_RESOLVER_ADDRESS", "192.168.206.254")
+	t.Setenv("MAILEZ_ENGINE", "mailezine")
+	t.Setenv("MAILEZINE_ADDRESS", "mailezine")
+
+	cfg, err := loadNginxConfig()
+	if err != nil {
+		t.Fatalf("loadNginxConfig: %v", err)
+	}
+	files, err := renderNginxAll(cfg)
+	if err != nil {
+		t.Fatalf("renderNginxAll: %v", err)
+	}
+	nginx := string(files["/etc/nginx/nginx.conf"])
+	for _, want := range []string{
+		"load_module \"modules/ngx_stream_module.so\"",
+		"stream {",
+		"listen 465; proxy_pass mailezine:465;",
+		"listen 993; proxy_pass mailezine:993;",
+		"listen 995; proxy_pass mailezine:995;",
+		"listen 1143; proxy_pass mailezine:143;",
+		"listen 1587; proxy_pass mailezine:1587;",
+		"listen 11490; proxy_pass mailezine:4190;",
+	} {
+		if !strings.Contains(nginx, want) {
+			t.Errorf("mailezine nginx.conf missing %q:\n%s", want, nginx)
+		}
+	}
+	for _, banned := range []string{
+		"ngx_mail_module", "auth_http", "mail {", "smtp_auth", "starttls on",
+	} {
+		if strings.Contains(nginx, banned) {
+			t.Errorf("mailezine nginx.conf must not contain %q:\n%s", banned, nginx)
+		}
+	}
+	if _, ok := files["/etc/dovecot/proxy.conf"]; ok {
+		t.Errorf("dovecot proxy must not be rendered in mailezine mode")
+	}
+	if _, ok := files["/etc/dovecot/login.lua"]; ok {
+		t.Errorf("login.lua must not be rendered in mailezine mode")
+	}
+}
+
 func TestNginxPortsDerivation(t *testing.T) {
 	t.Setenv("MAILEZ_HOSTNAMES", "mail.example.com")
 	t.Setenv("MAILEZ_DOMAIN", "example.com")

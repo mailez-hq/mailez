@@ -1,0 +1,84 @@
+# mailezine 引擎 profile（替换 postfix + dovecot）。
+#
+# 用法：
+#   docker compose -f docker-compose.dev.yml -f docker-compose.mailezine.yml \
+#     --profile mailezine up -d --build
+#
+# 说明：
+#   - 本文件把 postfix/dovecot 移入 "postdove" profile：默认（不带 profile）
+#     仍与原来一致；带 --profile mailezine 时只启动 mailezine 引擎。
+#     注意：仅使用本覆写文件而不带任何 --profile 时不会启动任何引擎
+#     （postfix/dovecot 已归入 postdove profile），请始终显式带上
+#     --profile mailezine。
+#   - 宿主机 backend 需要以 POSTFIX_ADDRESS=mailezine DOVECOT_ADDRESS=mailezine
+#     启动（gateway 的 nginx/dovecot 登录代理按 backend 的 Auth-Server 响应
+#     把 SMTP/IMAP 会话路由到 mailezine 容器）。
+#   - mailezine 在容器内按 gateway 的后端端口契约监听：25/1587/143/4190；
+#     存储用 Pebble+FS（纯 Go），数据落在 ./data/mailezine。
+name: mailez
+
+services:
+
+  # gateway in mailezine mode: no mail auth proxy, no dovecot login proxy.
+  # nginx keeps HTTP (webmail/admin/API/autoconfig/ACME) and stream-forwards
+  # the mail ports to the engine; the engine terminates TLS itself.
+  gateway:
+    environment:
+      - MAILEZ_ENGINE=mailezine
+      - MAILEZINE_ADDRESS=mailezine
+
+  mailezine:
+    image: mailez/mailezine:local
+    build:
+      context: ../../mailezine
+      dockerfile: Dockerfile
+    profiles: ["mailezine"]
+    pull_policy: missing
+    restart: always
+    env_file: mailez.env
+    environment:
+      - MAILEZINE_BACKEND_ADDRESS=host.docker.internal:8080
+      - MAILEZ_BACKEND_ADDRESS=host.docker.internal
+      - MAILEZINE_STORAGE_BACKEND=pebble
+      - MAILEZINE_ROCKS_PATH=/data/rocks
+      - MAILEZINE_DIRECTORY_MODE=mailez
+      - MAILEZINE_AUTH_MODE=mailez
+      - MAILEZINE_RSPAMD_URL=http://mail-filter:11333/checkv2
+      - MAILEZINE_DKIM_VAULT_URL=http://host.docker.internal:8080/stack/rspamd/vault
+      - MAILEZINE_TRUSTED_NETS=192.168.206.0/24
+      # 后端端口契约（与 dovecot/postfix 时代一致，gateway 无需改端口映射）
+      - MAILEZINE_SMTP_ADDR=:25
+      - MAILEZINE_SUBMISSION_ADDR=:1587
+      - MAILEZINE_IMAP_ADDR=:143
+      - MAILEZINE_MANAGESIEVE_ADDR=:4190
+      - MAILEZINE_POP3_ADDR=:110
+      - MAILEZINE_SMTPS_ADDR=:465
+      - MAILEZINE_IMAPS_ADDR=:993
+      - MAILEZINE_POP3S_ADDR=:995
+      - MAILEZINE_TLS_CERT_FILE=/certs/letsencrypt/live/mailez/nginx-chain.pem
+      - MAILEZINE_TLS_KEY_FILE=/certs/letsencrypt/live/mailez/privkey.pem
+      - MAILEZINE_OUTBOUND_ENABLED=true
+      - MAILEZINE_OUTBOUND_PORT=25
+      - MAILEZINE_LOG_LEVEL=info
+    # The image runs as unprivileged mailezine (uid 82): the host data dir
+    # must be writable by that id (e.g. chown -R 82:101 data/mailezine).
+    user: "82:101"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - "./data/mailezine:/data"
+      - "./certs:/certs:ro"
+    networks:
+      default:
+        ipv4_address: 192.168.206.7
+    depends_on:
+      - gateway
+      - mail-filter
+      - resolver
+
+  # 默认引擎保持可用：只有显式 --profile postdove 时才启动它们。
+  postfix:
+    profiles: ["postdove"]
+
+  dovecot:
+    profiles: ["postdove"]

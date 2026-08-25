@@ -60,6 +60,8 @@ type NginxConfig struct {
 	Postmaster           string
 	Domain               string
 	PostfixAddress       string
+	Engine               string // postdove (default) | mailezine
+	EngineAddress        string // mailezine container address in mailezine mode
 	RecipientDelimiter   string
 }
 
@@ -75,6 +77,8 @@ func loadNginxConfig() (NginxConfig, error) {
 		BackendAddress:     agent.Getenv("MAILEZ_BACKEND_ADDRESS", "backend"),
 		MailFilterAddress:  agent.Getenv("MAIL_FILTER_ADDRESS", "mail-filter"),
 		PostfixAddress:     agent.Getenv("POSTFIX_ADDRESS", "postfix"),
+		Engine:             agent.Getenv("MAILEZ_ENGINE", "postdove"),
+		EngineAddress:      agent.Getenv("MAILEZINE_ADDRESS", "mailezine"),
 		RecipientDelimiter: agent.Getenv("MAILEZ_RECIPIENT_DELIMITER", "+"),
 		RealIPHeader:       os.Getenv("REAL_IP_HEADER"),
 		RealIPFrom:         os.Getenv("REAL_IP_FROM"),
@@ -120,6 +124,9 @@ func loadNginxConfig() (NginxConfig, error) {
 	applyProxyProtocol(&cfg)
 	applyPorts(&cfg)
 	applyTLS(&cfg)
+	if cfg.Engine != "postdove" && cfg.Engine != "mailezine" {
+		return cfg, fmt.Errorf("MAILEZ_ENGINE must be postdove or mailezine, got %q", cfg.Engine)
+	}
 	return cfg, nil
 }
 

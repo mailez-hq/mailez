@@ -21,8 +21,14 @@ func renderNginxAll(cfg NginxConfig) (map[string][]byte, error) {
 	files := []file{
 		{"templates/nginx/nginx.conf.tmpl", "/etc/nginx/nginx.conf"},
 		{"templates/nginx/proxy.conf.tmpl", "/etc/nginx/proxy.conf"},
-		{"templates/nginx/dovecot-proxy.conf.tmpl", "/etc/dovecot/proxy.conf"},
-		{"templates/nginx/login.lua.tmpl", "/etc/dovecot/login.lua"},
+	}
+	// The dovecot login proxy only exists in the postdove engine mode; the
+	// mailezine engine authenticates by itself.
+	if cfg.Engine != "mailezine" {
+		files = append(files,
+			file{"templates/nginx/dovecot-proxy.conf.tmpl", "/etc/dovecot/proxy.conf"},
+			file{"templates/nginx/login.lua.tmpl", "/etc/dovecot/login.lua"},
+		)
 	}
 	if cfg.TLS != nil {
 		files = append(files, file{"templates/nginx/tls.conf.tmpl", "/etc/nginx/tls.conf"})

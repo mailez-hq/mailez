@@ -31,6 +31,7 @@ var imageName = map[string]string{
 	"macro-scanner": "macro-scanner",
 	"postfix":       "postfix",
 	"dovecot":       "dovecot",
+	"mailezine":     "mailezine",
 }
 
 // component describes one buildable image.
@@ -173,13 +174,24 @@ func discoverComponents(root string) ([]component, error) {
 // buildImage runs docker build with the repository root as context so
 // multi-stage Dockerfiles can COPY backend sources.
 func buildImage(docker, root string, c component, version string) {
-	dockerfile := filepath.Join(c.dir, "Dockerfile")
 	tag := fmt.Sprintf("mailez/%s:%s", c.name, version)
-	fmt.Printf("==> building %s from %s\n", tag, c.dir)
+	// The mailezine engine is a separate module living next to this repo
+	// (D:\code\mailez-hq\mailezine); build it from its own context so its
+	// Dockerfile can COPY go.mod/internal/cmd.
+	contextDir := root
+	dockerfile := filepath.Join(c.dir, "Dockerfile")
+	if c.name == "mailezine" {
+		contextDir = filepath.Join(root, "..", "mailezine")
+		dockerfile = filepath.Join(contextDir, "Dockerfile")
+		if _, err := os.Stat(dockerfile); err != nil {
+			fatal(fmt.Errorf("mailezine module not found at %s", dockerfile))
+		}
+	}
+	fmt.Printf("==> building %s from %s\n", tag, contextDir)
 	cmd := exec.Command(docker, "build", "-f", dockerfile,
 		"--build-arg", "VERSION="+version,
 		"-t", tag,
-		root,
+		contextDir,
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
