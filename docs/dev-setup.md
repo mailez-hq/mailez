@@ -95,7 +95,9 @@ docker compose -f docker-compose.dev.yml -f docker-compose.mailezine.yml `
 
 该 profile 把 postfix/dovecot 移入 `postdove` profile（默认不带 profile 时
 行为不变），启动单个 mailezine 容器（固定 IP 192.168.206.7）替代两者；
-gateway 容器内 `MAILEZ_ENGINE=mailezine` 即完成切换（容器内只有 caddy 在跑）。
+gateway 自动换用 `mailez/caddy:local` 镜像（仅 caddy，无 nginx/dovecot；
+postdove 模式仍是 `mailez/nginx:local` 全家桶），容器内
+`MAILEZ_ENGINE=mailezine` 即完成切换（容器内只有 caddy 在跑）。
 宿主机的邮件端口（25/465/587/143/993/110/995/4190）由 mailezine 容器发布，
 后端直接连引擎：
 

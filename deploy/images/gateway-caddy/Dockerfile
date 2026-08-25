@@ -1,6 +1,9 @@
 # syntax=docker/dockerfile-upstream:1.4.3
 
-# Build the static mailez-agent (nginx gateway agent).
+# mailezine-mode gateway: caddy only (HTTP/ACME). The engine publishes the
+# mail ports itself, so this image carries no nginx/dovecot at all.
+
+# Build the static mailez-agent (shared by both gateway variants).
 FROM golang:1.26-alpine AS build
 ENV GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0
 WORKDIR /src
@@ -11,7 +14,6 @@ COPY backend/internal/macro ./internal/macro
 COPY backend/cmd/mailez-agent ./cmd/mailez-agent
 RUN go build -trimpath -ldflags="-s -w" -o /out/mailez-agent ./cmd/mailez-agent
 
-# nginx image: ACME is handled by the embedded lego client.
 FROM alpine:3.21
 
 ARG VERSION
@@ -20,13 +22,10 @@ ARG APK_MIRROR="mirrors.aliyun.com"
 
 RUN set -euxo pipefail \
   ; sed -i "s|dl-cdn.alpinelinux.org|${APK_MIRROR}|g" /etc/apk/repositories \
-  ; apk add --no-cache ca-certificates curl nginx nginx-mod-http-brotli nginx-mod-mail openssl dovecot-lua dovecot-pigeonhole-plugin 'dovecot-lmtpd<2.4' dovecot-pop3d dovecot-submissiond \
-  ; mkdir -p /etc/dovecot
+  ; apk add --no-cache ca-certificates curl caddy \
+  ; mkdir -p /etc/caddy
 
 COPY --from=build /out/mailez-agent /mailez-agent
-# This Dockerfile is built with the repo root as context (see
-# build script), hence the vendored paths below.
-COPY deploy/images/gateway/conf/dhparam.pem /conf/dhparam.pem
 COPY deploy/images/gateway/static/ /static/
 
 RUN set -euxo pipefail \
@@ -34,10 +33,7 @@ RUN set -euxo pipefail \
   ; chmod a+rX-w -R /static \
   ; echo $VERSION >/version
 
-EXPOSE 80/tcp 443/tcp 110/tcp 143/tcp 465/tcp 587/tcp 993/tcp 995/tcp 25/tcp 4190/tcp
-# EXPOSE 1587/tcp 1143/tcp 11490/tcp
-HEALTHCHECK --start-period=60s CMD curl -m3 -skfLo /dev/null http://127.0.0.1:10204/health && kill -0 `cat /run/dovecot/master.pid`
-
-VOLUME ["/certs", "/overrides"]
+EXPOSE 80/tcp 443/tcp
+HEALTHCHECK --start-period=30s CMD curl -m3 -sfkLo /dev/null http://127.0.0.1/health
 
 CMD ["/mailez-agent", "nginx"]
