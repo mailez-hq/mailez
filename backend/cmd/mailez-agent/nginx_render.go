@@ -18,11 +18,11 @@ var nginxTemplates embed.FS
 // (nginx.conf includes it conditionally).
 func renderNginxAll(cfg NginxConfig) (map[string][]byte, error) {
 	type file struct{ tmpl, dest string }
-	files := []file{
-		{"templates/nginx/nginx.conf.tmpl", "/etc/nginx/nginx.conf"},
-	}
 	if cfg.Engine != "mailezine" {
-		files = append(files, file{"templates/nginx/proxy.conf.tmpl", "/etc/nginx/proxy.conf"})
+		files := []file{
+			{"templates/nginx/nginx.conf.tmpl", "/etc/nginx/nginx.conf"},
+			{"templates/nginx/proxy.conf.tmpl", "/etc/nginx/proxy.conf"},
+		}
 		// The dovecot login proxy only exists in the postdove engine mode;
 		// the mailezine engine authenticates by itself.
 		files = append(files,
@@ -32,10 +32,20 @@ func renderNginxAll(cfg NginxConfig) (map[string][]byte, error) {
 		if cfg.TLS != nil {
 			files = append(files, file{"templates/nginx/tls.conf.tmpl", "/etc/nginx/tls.conf"})
 		}
-	} else {
-		// mailezine mode: caddy owns HTTP/ACME; nginx only stream-forwards
-		// mail ports to the engine.
-		files = append(files, file{"templates/nginx/Caddyfile.tmpl", "/etc/caddy/Caddyfile"})
+		out := make(map[string][]byte, len(files))
+		for _, f := range files {
+			data, err := renderTemplate(f.tmpl, cfg)
+			if err != nil {
+				return nil, fmt.Errorf("render %s: %w", f.tmpl, err)
+			}
+			out[f.dest] = data
+		}
+		return out, nil
+	}
+	// mailezine mode: no nginx at all. The engine publishes the mail ports
+	// itself (implicit TLS on 465/993/995) and caddy owns HTTP/ACME.
+	files := []file{
+		{"templates/nginx/Caddyfile.tmpl", "/etc/caddy/Caddyfile"},
 	}
 	out := make(map[string][]byte, len(files))
 	for _, f := range files {

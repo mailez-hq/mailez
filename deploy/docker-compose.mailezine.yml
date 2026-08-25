@@ -11,21 +11,30 @@
 #     （postfix/dovecot 已归入 postdove profile），请始终显式带上
 #     --profile mailezine。
 #   - 宿主机 backend 需要以 POSTFIX_ADDRESS=mailezine DOVECOT_ADDRESS=mailezine
-#     启动（gateway 的 nginx/dovecot 登录代理按 backend 的 Auth-Server 响应
-#     把 SMTP/IMAP 会话路由到 mailezine 容器）。
-#   - mailezine 在容器内按 gateway 的后端端口契约监听：25/1587/143/4190；
-#     存储用 Pebble+FS（纯 Go），数据落在 ./data/mailezine。
+#     启动；backend 直连引擎（MAIL_IMAP_ADDR=mailezine:143、
+#     MAIL_SMTP_ADDR=mailezine:1587、MAIL_SIEVE_ADDR=mailezine:4190）。
+#   - mailezine 直接发布邮件端口（25/465/587/143/993/110/995/4190）并自持
+#     隐式 TLS（465/993/995）；gateway 只剩 caddy（HTTP/ACME），mailezine
+#     模式下完全没有 nginx。存储用 Pebble+FS（纯 Go），数据落在
+#     ./data/mailezine。
 name: mailez
 
 services:
 
-  # gateway in mailezine mode: no mail auth proxy, no dovecot login proxy.
-  # nginx keeps HTTP (webmail/admin/API/autoconfig/ACME) and stream-forwards
-  # the mail ports to the engine; the engine terminates TLS itself.
+  # gateway in mailezine mode: caddy only (HTTP/ACME). The engine publishes
+  # the mail ports itself, so no mail ports are mapped here.
   gateway:
     environment:
       - MAILEZ_ENGINE=mailezine
-      - MAILEZINE_ADDRESS=mailezine
+    # Replace the base file's mail-port mappings (postdove proxy ports):
+    # the engine publishes those itself; caddy only needs 80/443.
+    ports: !reset
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:443:443"
+
+  # Backend routes directly to the engine (no gateway mail proxy): set
+  # MAIL_IMAP_ADDR=mailezine:143, MAIL_SMTP_ADDR=mailezine:1587 and
+  # MAIL_SIEVE_ADDR=mailezine:4190 on the backend service/deployment.
 
   mailezine:
     image: mailez/mailezine:local
@@ -68,6 +77,15 @@ services:
     volumes:
       - "./data/mailezine:/data"
       - "./certs:/certs:ro"
+    ports:
+      - "127.0.0.1:25:25"
+      - "127.0.0.1:465:465"
+      - "127.0.0.1:587:587"
+      - "127.0.0.1:110:110"
+      - "127.0.0.1:995:995"
+      - "127.0.0.1:143:143"
+      - "127.0.0.1:993:993"
+      - "127.0.0.1:4190:4190"
     networks:
       default:
         ipv4_address: 192.168.206.7

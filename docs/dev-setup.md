@@ -83,10 +83,9 @@ nginx/dovecot 代理；nginx 1.26+ 的 mail auth 模块只接受 IP 字面量，
 
 mailezine 是独立 Go 模块（`D:\code\mailez-hq\mailezine`），开发期可完全独立
 运行（`go run ./cmd/mailezine`，dev 目录/口令桩）。接入完整邮件栈时，gateway
-通过 `MAILEZ_ENGINE=mailezine` 切换为**引擎自持 TLS** 模式：不再渲染 nginx
-mail 代理、不启动 dovecot 登录代理，nginx 只保留 HTTP（webmail/admin/API/
-autoconfig/ACME）并用 stream 转发邮件端口到引擎（465/993/995 由引擎终止
-TLS）；对外端口与后端内部契约（gateway:1143/1587/11490）保持不变：
+通过 `MAILEZ_ENGINE=mailezine` 切换为**无 nginx** 模式：gateway 只剩 caddy
+（HTTP/ACME），邮件端口由引擎直接发布并自持 TLS（465/993/995 隐式 TLS），
+backend 直连引擎（不再经 gateway 的 1143/1587/11490 代理端口）：
 
 ```powershell
 cd deploy
@@ -96,16 +95,17 @@ docker compose -f docker-compose.dev.yml -f docker-compose.mailezine.yml `
 
 该 profile 把 postfix/dovecot 移入 `postdove` profile（默认不带 profile 时
 行为不变），启动单个 mailezine 容器（固定 IP 192.168.206.7）替代两者；
-gateway 容器内 `MAILEZ_ENGINE=mailezine` + `MAILEZINE_ADDRESS=mailezine`
-（引擎容器名）即完成切换。宿主机后端既可保持经 gateway 的端口契约，也
-可直接指向引擎：
+gateway 容器内 `MAILEZ_ENGINE=mailezine` 即完成切换（容器内只有 caddy 在跑）。
+宿主机的邮件端口（25/465/587/143/993/110/995/4190）由 mailezine 容器发布，
+后端直接连引擎：
 
 ```powershell
 cd backend
 $env:DOVECOT_ADDRESS='192.168.206.7'   # IMAP/POP3/Sieve 路由
 $env:POSTFIX_ADDRESS='192.168.206.7'   # SMTP 收信/提交路由
-$env:MAIL_IMAP_ADDR='127.0.0.1:143'
-$env:MAIL_SMTP_ADDR='127.0.0.1:25'
+$env:MAIL_IMAP_ADDR='127.0.0.1:143'    # mailezine 直发端口
+$env:MAIL_SMTP_ADDR='127.0.0.1:1587'   # submission
+$env:MAIL_SIEVE_ADDR='127.0.0.1:4190'
 go run ./cmd/server
 ```
 
