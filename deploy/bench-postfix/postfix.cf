@@ -1,0 +1,4 @@
+# Benchmark: disable the rspamd milter so the engine comparison isolates
+# postfix/dovecot vs mailezine (rspamd is a shared component in real
+# deployments and is exercised separately).
+smtpd_milters =
