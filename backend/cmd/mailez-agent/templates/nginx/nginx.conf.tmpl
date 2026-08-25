@@ -12,7 +12,7 @@ events {
     worker_connections 1024;
 }
 
-http {
+{{ if ne .Engine "mailezine" }}http {
     # Standard HTTP configuration with slight hardening
     include /etc/nginx/mime.types;
     default_type application/octet-stream;
@@ -202,6 +202,7 @@ http {
 
     include /etc/nginx/conf.d/*.conf;
 }
+{{ end }}
 
 {{ if ne .Engine "mailezine" }}mail {
     server_name {{ .Hostname }};
@@ -241,16 +242,21 @@ http {
 # and owns authentication, so the gateway only forwards mail ports and keeps
 # the backend's internal port contract (1143/1587/11490) unchanged.
 stream {
-    server { listen 25; proxy_pass {{ .EngineAddress }}:25; }
-    server { listen 465; proxy_pass {{ .EngineAddress }}:465; }
-    server { listen 587; proxy_pass {{ .EngineAddress }}:587; }
-    server { listen 143; proxy_pass {{ .EngineAddress }}:143; }
-    server { listen 993; proxy_pass {{ .EngineAddress }}:993; }
-    server { listen 110; proxy_pass {{ .EngineAddress }}:110; }
-    server { listen 995; proxy_pass {{ .EngineAddress }}:995; }
-    server { listen 4190; proxy_pass {{ .EngineAddress }}:4190; }
-    server { listen 1143; proxy_pass {{ .EngineAddress }}:143; }
-    server { listen 1587; proxy_pass {{ .EngineAddress }}:1587; }
-    server { listen 11490; proxy_pass {{ .EngineAddress }}:4190; }
+    # Resolve the engine address at request time (Docker's embedded DNS),
+    # so the gateway can start before the engine and recover after engine
+    # restarts; a static proxy_pass would fail startup when the engine is
+    # not yet resolvable.
+    resolver 127.0.0.11 valid=30s;
+    server { listen 25; set $engine {{ .EngineAddress }}; proxy_pass $engine:25; }
+    server { listen 465; set $engine {{ .EngineAddress }}; proxy_pass $engine:465; }
+    server { listen 587; set $engine {{ .EngineAddress }}; proxy_pass $engine:587; }
+    server { listen 143; set $engine {{ .EngineAddress }}; proxy_pass $engine:143; }
+    server { listen 993; set $engine {{ .EngineAddress }}; proxy_pass $engine:993; }
+    server { listen 110; set $engine {{ .EngineAddress }}; proxy_pass $engine:110; }
+    server { listen 995; set $engine {{ .EngineAddress }}; proxy_pass $engine:995; }
+    server { listen 4190; set $engine {{ .EngineAddress }}; proxy_pass $engine:4190; }
+    server { listen 1143; set $engine {{ .EngineAddress }}; proxy_pass $engine:143; }
+    server { listen 1587; set $engine {{ .EngineAddress }}; proxy_pass $engine:1587; }
+    server { listen 11490; set $engine {{ .EngineAddress }}; proxy_pass $engine:4190; }
 }
 {{ end }}

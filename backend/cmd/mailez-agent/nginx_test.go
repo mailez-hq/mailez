@@ -95,12 +95,14 @@ func TestNginxRenderMailezineEngine(t *testing.T) {
 	for _, want := range []string{
 		"load_module \"modules/ngx_stream_module.so\"",
 		"stream {",
-		"listen 465; proxy_pass mailezine:465;",
-		"listen 993; proxy_pass mailezine:993;",
-		"listen 995; proxy_pass mailezine:995;",
-		"listen 1143; proxy_pass mailezine:143;",
-		"listen 1587; proxy_pass mailezine:1587;",
-		"listen 11490; proxy_pass mailezine:4190;",
+		"resolver 127.0.0.11",
+		"set $engine mailezine",
+		"listen 465; set $engine mailezine; proxy_pass $engine:465;",
+		"listen 993; set $engine mailezine; proxy_pass $engine:993;",
+		"listen 995; set $engine mailezine; proxy_pass $engine:995;",
+		"listen 1143; set $engine mailezine; proxy_pass $engine:143;",
+		"listen 1587; set $engine mailezine; proxy_pass $engine:1587;",
+		"listen 11490; set $engine mailezine; proxy_pass $engine:4190;",
 	} {
 		if !strings.Contains(nginx, want) {
 			t.Errorf("mailezine nginx.conf missing %q:\n%s", want, nginx)
@@ -108,9 +110,22 @@ func TestNginxRenderMailezineEngine(t *testing.T) {
 	}
 	for _, banned := range []string{
 		"ngx_mail_module", "auth_http", "mail {", "smtp_auth", "starttls on",
+		"http {", "location /api",
 	} {
 		if strings.Contains(nginx, banned) {
 			t.Errorf("mailezine nginx.conf must not contain %q:\n%s", banned, nginx)
+		}
+	}
+	caddy := string(files["/etc/caddy/Caddyfile"])
+	for _, want := range []string{
+		"http:// {",
+		"reverse_proxy backend:8080",
+		"handle /mail/config-v1.1.xml",
+		"handle /Autodiscover/Autodiscover.json",
+		"file_server",
+	} {
+		if !strings.Contains(caddy, want) {
+			t.Errorf("Caddyfile missing %q:\n%s", want, caddy)
 		}
 	}
 	if _, ok := files["/etc/dovecot/proxy.conf"]; ok {
@@ -118,6 +133,12 @@ func TestNginxRenderMailezineEngine(t *testing.T) {
 	}
 	if _, ok := files["/etc/dovecot/login.lua"]; ok {
 		t.Errorf("login.lua must not be rendered in mailezine mode")
+	}
+	if _, ok := files["/etc/nginx/tls.conf"]; ok {
+		t.Errorf("tls.conf must not be rendered in mailezine mode")
+	}
+	if _, ok := files["/etc/nginx/proxy.conf"]; ok {
+		t.Errorf("proxy.conf must not be rendered in mailezine mode")
 	}
 }
 
