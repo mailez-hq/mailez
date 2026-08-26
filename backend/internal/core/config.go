@@ -28,6 +28,12 @@ type Config struct {
 	MailImapAddr       string
 	MailSmtpAddr       string
 	MailSieveAddr      string
+	// MailMtaAddr is the host:port used by background workers (outbox
+	// delivery, external fetch poller) to submit mail to the local MTA.
+	// Defaults to PostfixAddress:25 (resolves inside the docker network);
+	// host-run dev backends must point it at a host-reachable mapping
+	// (e.g. 127.0.0.1:25).
+	MailMtaAddr        string
 	AIProvider         string
 	AIBaseURL          string
 	AIAPIKey           string
@@ -50,7 +56,7 @@ var SupportedMailEngines = []string{"postdove"}
 
 // Load reads configuration from the environment.
 func Load() Config {
-	return Config{
+	cfg := Config{
 		Port:               env("MAILEZ_PORT", "8081"),
 		Env:                env("MAILEZ_ENV", "development"),
 		MetricsAddr:        env("MAILEZ_METRICS_ADDR", ":9090"),
@@ -70,6 +76,7 @@ func Load() Config {
 		MailImapAddr:       env("MAIL_IMAP_ADDR", "gateway:1143"),
 		MailSmtpAddr:       env("MAIL_SMTP_ADDR", "gateway:1587"),
 		MailSieveAddr:      env("MAIL_SIEVE_ADDR", "gateway:11490"),
+		MailMtaAddr:        env("MAIL_MTA_ADDR", ""),
 		AIProvider:         env("AI_PROVIDER", "none"),
 		AIBaseURL:          env("AI_BASE_URL", "https://api.openai.com/v1"),
 		AIAPIKey:           env("AI_API_KEY", ""),
@@ -84,6 +91,10 @@ func Load() Config {
 		FetchInsecure:      envBool("FETCH_INSECURE", false),
 		DkimSelector:       env("MAILEZ_DKIM_SELECTOR", "dkim"),
 	}
+	if cfg.MailMtaAddr == "" {
+		cfg.MailMtaAddr = cfg.PostfixAddress + ":25"
+	}
+	return cfg
 }
 
 func env(key, fallback string) string {
