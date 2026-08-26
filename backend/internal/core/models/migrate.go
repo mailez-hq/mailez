@@ -4,6 +4,8 @@ import (
 	"log"
 	"time"
 
+	"mailez/backend/internal/labelutil"
+
 	"gorm.io/gorm"
 )
 
@@ -104,6 +106,29 @@ var migrations = []migration{
 		ID: "20260825_query_indexes",
 		Up: func(db *gorm.DB) error {
 			return db.AutoMigrate(&User{}, &Alias{}, &Alternative{}, &Token{}, &Fetch{}, &Outbox{})
+		},
+	},
+	{
+		// Label keyword column: IMAP keywords must be ASCII atoms, so labels
+		// with non-ASCII display names (Chinese etc.) are =XX-encoded on the
+		// wire. Backfill the keyword for every existing row.
+		ID: "20260826_label_keyword",
+		Up: func(db *gorm.DB) error {
+			if err := db.AutoMigrate(&Label{}); err != nil {
+				return err
+			}
+			var labels []Label
+			if err := db.Where("keyword = ?", "").Find(&labels).Error; err != nil {
+				return err
+			}
+			for i := range labels {
+				kw := labelutil.EncodeKeyword(labels[i].Name)
+				if err := db.Model(&Label{}).Where("id = ?", labels[i].ID).
+					Update("keyword", kw).Error; err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 	},
 }
