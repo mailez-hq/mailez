@@ -52,4 +52,9 @@ describe("textToHtml blank-line round trip", () => {
     const html = textToHtml("> a < b & c");
     expect(html).toBe("<blockquote><p>a &lt; b &amp; c</p></blockquote>");
   });
+
+  it("does not fold leading blank lines into the first paragraph", () => {
+    const html = textToHtml("\n\nOn 2026-08-26, admin@example.com wrote:\n> hi");
+    expect(html).toBe("<p>On 2026-08-26, admin@example.com wrote:</p><blockquote><p>hi</p></blockquote>");
+  });
 });

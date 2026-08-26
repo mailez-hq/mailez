@@ -127,6 +127,9 @@ export function textToHtml(text: string): string {
   for (const raw of text.replace(/\r\n/g, "\n").split("\n")) {
     const m = raw.match(/^>\s?(.*)$/);
     const quote = !!m;
+    // Ignore leading blank lines (and blank lines before the first quoted
+    // line) instead of folding them into the first paragraph.
+    if (!run && raw.trim() === "") continue;
     if (run && run.quote !== quote) flush();
     if (!run) run = {quote, lines: []};
     run.lines.push(quote ? m![1] : raw);

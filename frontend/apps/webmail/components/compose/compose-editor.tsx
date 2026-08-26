@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -21,6 +21,12 @@ export function ComposeEditor({ value, onChange, placeholder, autoFocus }: {
   // recipient is pre-filled and the user should start typing immediately).
   autoFocus?: boolean;
 }) {
+  // TipTap's deferred editor creation (immediatelyRender:false on Next.js)
+  // emits one update right after mount, normalizing the document. That
+  // normalization must not count as a user edit (it would dirty the store
+  // body and trigger draft auto-save on a pristine reply), so the first
+  // update of each editor lifecycle is ignored.
+  const firstUpdate = useRef(true);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -31,6 +37,10 @@ export function ComposeEditor({ value, onChange, placeholder, autoFocus }: {
     ],
     content: value || "",
     onUpdate: ({ editor }) => {
+      if (firstUpdate.current) {
+        firstUpdate.current = false;
+        return;
+      }
       const html = editor.isEmpty ? "" : editor.getHTML();
       onChange(html, editor.getText() || "");
     },
@@ -42,7 +52,10 @@ export function ComposeEditor({ value, onChange, placeholder, autoFocus }: {
     if (!editor) return;
     const current = editor.isEmpty ? "" : editor.getHTML();
     if (value !== current) {
-      editor.commands.setContent(value || "");
+      // The store owns the content (quote/signature/AI drafts): syncing it
+      // into the editor must not count as a user edit, otherwise mount
+      // normalization would dirty the body and trigger draft auto-save.
+      editor.commands.setContent(value || "", { emitUpdate: false });
     }
   }, [value, editor]);
 
