@@ -49,14 +49,12 @@ export function LabelManager({
   const {
     labelDefs,
     knownLabels,
-    labelColors,
     saveLabel,
     renameLabel,
     deleteLabel,
   } = useMailStore() as {
     labelDefs: MailLabel[];
     knownLabels: string[];
-    labelColors: Record<string, string>;
     saveLabel: (name: string, color: string) => Promise<void>;
     renameLabel: (from: string, to: string) => Promise<void>;
     deleteLabel: (name: string) => Promise<void>;
@@ -80,10 +78,16 @@ export function LabelManager({
     }
   }, [open]);
 
-  // Definitions first (alphabetical), then keywords seen on messages that
-  // have no definition row yet.
-  const defs = [...labelDefs].sort((a, b) => a.name.localeCompare(b.name));
-  const extras = knownLabels.filter((l) => !labelDefs.some((d) => d.name === l));
+  // Every label row is manageable: defined labels carry a persisted color,
+  // while keywords seen on messages without a definition row (orphan tags)
+  // start with the palette fallback. Editing an orphan (color or rename)
+  // first creates its definition so the metadata has somewhere to live.
+  const rows = [
+    ...labelDefs.map((d) => ({ key: d.name, name: d.name, color: d.color })),
+    ...knownLabels
+      .filter((l) => !labelDefs.some((d) => d.name === l))
+      .map((l) => ({ key: l, name: l, color: "" })),
+  ].sort((a, b) => a.name.localeCompare(b.name));
 
   async function run(action: () => Promise<void>) {
     setError("");
@@ -107,20 +111,20 @@ export function LabelManager({
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         <div className="space-y-1">
-          {defs.length === 0 && extras.length === 0 && (
+          {rows.length === 0 && (
             <p className="py-2 text-sm text-muted-foreground">{t("noLabels")}</p>
           )}
-          {defs.map((label) => (
-            <div key={label.name} className="rounded-lg px-1 py-1">
+          {rows.map((label) => (
+            <div key={label.key} className="rounded-lg px-1 py-1">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   title={t("labelColor")}
-                  onClick={() => setColorsOpen((v) => (v === label.name ? "" : label.name))}
+                  onClick={() => setColorsOpen((v) => (v === label.key ? "" : label.key))}
                   className="size-3.5 shrink-0 rounded-full border border-border transition-transform hover:scale-110"
                   style={{ backgroundColor: labelColor(label.name, label.color) }}
                 />
-                {renaming === label.name ? (
+                {renaming === label.key ? (
                   <Input
                     autoFocus
                     value={renameTo}
@@ -128,6 +132,11 @@ export function LabelManager({
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && renameTo.trim() && renameTo.trim() !== label.name) {
                         run(async () => {
+                          // Adopt an orphan keyword into a definition before
+                          // renaming so the new name is persisted.
+                          if (!labelDefs.some((d) => d.name === label.name)) {
+                            await saveLabel(label.name, "");
+                          }
                           await renameLabel(label.name, renameTo.trim());
                           setRenaming("");
                         });
@@ -138,7 +147,7 @@ export function LabelManager({
                 ) : (
                   <span className="min-w-0 flex-1 truncate text-sm">{label.name}</span>
                 )}
-                {renaming === label.name ? (
+                {renaming === label.key ? (
                   <Button
                     size="xs"
                     variant="ghost"
@@ -146,6 +155,9 @@ export function LabelManager({
                     onClick={() => {
                       if (renameTo.trim() && renameTo.trim() !== label.name) {
                         run(async () => {
+                          if (!labelDefs.some((d) => d.name === label.name)) {
+                            await saveLabel(label.name, "");
+                          }
                           await renameLabel(label.name, renameTo.trim());
                           setRenaming("");
                         });
@@ -163,14 +175,14 @@ export function LabelManager({
                     title={t("renameLabel")}
                     className="size-7 shrink-0 p-0 text-muted-foreground"
                     onClick={() => {
-                      setRenaming(label.name);
+                      setRenaming(label.key);
                       setRenameTo(label.name);
                     }}
                   >
                     <Pencil className="size-3.5" />
                   </Button>
                 )}
-                {confirming === label.name ? (
+                {confirming === label.key ? (
                   <Button
                     size="xs"
                     variant="ghost"
@@ -191,38 +203,27 @@ export function LabelManager({
                     variant="ghost"
                     title={t("delete")}
                     className="size-7 shrink-0 p-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => setConfirming(label.name)}
+                    onClick={() => setConfirming(label.key)}
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
                 )}
               </div>
-              {colorsOpen === label.name && (
+              {colorsOpen === label.key && (
                 <div className="mt-1.5">
                   <ColorSwatches
                     value={label.color}
-                    onPick={(color) => run(() => saveLabel(label.name, color))}
+                    onPick={(color) =>
+                      run(async () => {
+                        // Picking a color on an orphan keyword creates its
+                        // definition so the choice persists.
+                        await saveLabel(label.name, color);
+                        setColorsOpen("");
+                      })
+                    }
                   />
                 </div>
               )}
-            </div>
-          ))}
-          {extras.map((name) => (
-            <div key={name} className="flex items-center gap-2 rounded-lg px-1 py-1">
-              <span
-                className="size-3.5 shrink-0 rounded-full"
-                style={{ backgroundColor: labelColor(name, labelColors[name]) }}
-              />
-              <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
-              <Button
-                size="xs"
-                variant="ghost"
-                title={t("delete")}
-                className="size-7 shrink-0 p-0 text-muted-foreground hover:text-destructive"
-                onClick={() => run(() => deleteLabel(name))}
-              >
-                <Trash2 className="size-3.5" />
-              </Button>
             </div>
           ))}
         </div>
