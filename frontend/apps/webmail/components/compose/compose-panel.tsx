@@ -11,6 +11,13 @@ import { fmtBytes } from "@/components/mailbox/mail-utils";
 import { cn } from "@/lib/utils";
 import type { Contact, DraftTone, MailIdentity, OutboundAttachment } from "@/lib/api";
 
+// datetime-local values are local wall time; toISOString() would emit UTC and
+// land 8h in the past on UTC+8 (scheduled send would be rejected).
+function localDateTime(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export interface ComposePanelProps {
   t: (key: string) => string;
   identities: MailIdentity[];
@@ -321,12 +328,12 @@ export function ComposePanel(props: ComposePanelProps) {
                 value={scheduleAt}
                 onChange={(e) => onScheduleAt(e.target.value)}
                 className="w-36 bg-transparent text-[11px] outline-none"
-                min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
+                min={localDateTime(new Date(Date.now() + 60000))}
               />
             ) : (
               <button
                 type="button"
-                onClick={() => onScheduleAt(new Date(Date.now() + 60000).toISOString().slice(0, 16))}
+                onClick={() => onScheduleAt(localDateTime(new Date(Date.now() + 60000)))}
                 title={t("scheduleSend")}
                 className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
               >
