@@ -10,6 +10,7 @@ import {
   ExternalLink,
   FileText,
   Inbox,
+  LogOut,
   Menu,
   Plus,
   Search,
@@ -106,6 +107,7 @@ export function FolderNav({
   onSettings,
   onContacts,
   onSieve,
+  onLogout,
   onClose,
 }: {
   folders: string[];
@@ -139,6 +141,7 @@ export function FolderNav({
   onSettings: () => void;
   onContacts: () => void;
   onSieve: () => void;
+  onLogout: () => void;
   onClose: () => void;
 }) {
   const t = useTranslations("mail");
@@ -652,6 +655,9 @@ export function FolderNav({
             >
               <ExternalLink className="size-4" />
             </a>
+            <Button variant="ghost" size="sm" onClick={onLogout} title={t("logout")}>
+              <LogOut className="size-4" />
+            </Button>
           </div>
           <p className="truncate px-2 text-center text-xs text-muted-foreground">{email}</p>
           {quotaPercent !== null && (
