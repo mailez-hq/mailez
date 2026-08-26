@@ -25,6 +25,7 @@ type RspamdConfig struct {
 	Sitename            string
 	DmarcSendReports    bool
 	PostfixAddress      string
+	Engine              string // postdove (default) | mailezine
 }
 
 func loadRspamdConfig() (RspamdConfig, error) {
@@ -45,6 +46,7 @@ func loadRspamdConfig() (RspamdConfig, error) {
 		Sitename:            agent.Getenv("MAILEZ_SITENAME", ""),
 		DmarcSendReports:    envTrue("MAILEZ_DMARC_SEND_REPORTS", false),
 		PostfixAddress:      agent.Getenv("POSTFIX_ADDRESS", "postfix"),
+		Engine:              agent.Getenv("MAILEZ_ENGINE", "postdove"),
 	}
 	if cfg.Subnet == "" {
 		var err error
