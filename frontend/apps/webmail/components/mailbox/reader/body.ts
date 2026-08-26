@@ -4,37 +4,41 @@ export type Segment = { type: "p" | "quote"; lines: string[] };
 
 export function parseBody(text: string): Segment[] {
   const segs: Segment[] = [];
+  const lines = text.split(/\r?\n/);
+  // Drop trailing empty lines so a body ending in newlines doesn't leave a
+  // stray empty line at the bottom.
+  while (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
   let para: string[] | null = null;
   let quote: string[] | null = null;
-  const flushPara = () => {
-    if (para) {
-      segs.push({ type: "p", lines: para });
-      para = null;
-    }
+  const flush = (seg: Segment) => {
+    if (seg.lines.length > 0) segs.push(seg);
   };
-  const flushQuote = () => {
-    if (quote) {
-      segs.push({ type: "quote", lines: quote });
-      quote = null;
-    }
-  };
-  for (const raw of text.split(/\r?\n/)) {
+  for (const raw of lines) {
     const m = raw.match(/^>\s?(.*)$/);
     if (m) {
-      flushPara();
+      if (para) {
+        flush({ type: "p", lines: para });
+        para = null;
+      }
       if (!quote) quote = [];
       quote.push(m[1] || "");
     } else if (raw.trim() === "") {
-      flushPara();
-      flushQuote();
+      // Preserve blank lines inside the open segment: consecutive empty
+      // lines become <br>s in the viewer instead of being collapsed away.
+      if (para) para.push("");
+      else if (quote) quote.push("");
+      // Leading blank lines are ignored.
     } else {
-      flushQuote();
+      if (quote) {
+        flush({ type: "quote", lines: quote });
+        quote = null;
+      }
       if (!para) para = [];
       para.push(raw);
     }
   }
-  flushPara();
-  flushQuote();
+  if (para) flush({ type: "p", lines: para });
+  if (quote) flush({ type: "quote", lines: quote });
   return segs;
 }
 
@@ -42,7 +46,8 @@ export function getSnippet(text: string, maxLength = 120): string {
   const segments = parseBody(text);
   const plain = segments
     .filter((s) => s.type === "p")
-    .flatMap((s) => s.lines)
+    // Blank lines are kept for faithful rendering; a snippet flattens them.
+    .flatMap((s) => s.lines.filter((l) => l !== ""))
     .join(" ")
     .trim();
   if (plain.length <= maxLength) return plain;
