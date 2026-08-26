@@ -1,6 +1,6 @@
 {
   "login": {
-    "title": "mailez Webmail",
+    "title": "Mailez Webmail",
     "description": "Sign in to read your mail",
     "email": "Email",
     "password": "Password",
@@ -29,7 +29,7 @@
     "noMessages": "No messages",
     "noMatches": "No matches",
     "selectMessage": "Select a message",
-    "welcomeHint": "Welcome to mailez — press ? to see keyboard shortcuts",
+    "welcomeHint": "Welcome to Mailez — press ? to see keyboard shortcuts",
     "welcomeDismiss": "Got it",
     "newMessage": "New message",
     "to": "To",

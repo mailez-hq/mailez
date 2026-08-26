@@ -26,7 +26,7 @@ self.addEventListener("push", (event) => {
   }
   const d = data as { title?: string; body?: string; url?: string; tag?: string };
   event.waitUntil(
-    self.registration.showNotification(d.title || "mailez", {
+    self.registration.showNotification(d.title || "Mailez", {
       body: d.body || "",
       icon: "/mailez-icon.svg",
       badge: "/mailez-icon.svg",

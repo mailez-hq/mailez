@@ -1,6 +1,6 @@
 {
   "login": {
-    "title": "mailez 网页邮箱",
+    "title": "Mailez 网页邮箱",
     "description": "登录以阅读邮件",
     "email": "邮箱",
     "password": "密码",
@@ -29,7 +29,7 @@
     "noMessages": "暂无邮件",
     "noMatches": "无匹配结果",
     "selectMessage": "选择一封邮件",
-    "welcomeHint": "欢迎使用 mailez — 按 ? 查看快捷键",
+    "welcomeHint": "欢迎使用 Mailez — 按 ? 查看快捷键",
     "welcomeDismiss": "知道了",
     "newMessage": "新邮件",
     "to": "收件人",

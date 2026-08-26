@@ -58,18 +58,17 @@ export function AppSidebar({ me }: { me: Me }) {
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center justify-between px-4 py-4">
+      <div className="flex items-center px-4 py-4">
         <Link
           href={nav[0]?.href || "/"}
           className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-foreground hover:opacity-80"
         >
           <Logo className="size-9" />
-          mailez
+          Mailez{" "}
           <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
-            admin
+            Admin
           </span>
         </Link>
-        <LocaleSwitcher />
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-2">
@@ -96,6 +95,12 @@ export function AppSidebar({ me }: { me: Me }) {
           );
         })}
       </nav>
+
+      <div className="border-t border-sidebar-border p-2">
+        <div className="flex items-center justify-center">
+          <LocaleSwitcher />
+        </div>
+      </div>
 
       <div className="flex items-center gap-2 border-t border-sidebar-border px-3 py-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground">

@@ -16,7 +16,7 @@
     "perPage": "Rows per page"
   },
   "login": {
-    "title": "Sign in to mailez",
+    "title": "Sign in to Mailez",
     "description": "Enter your email and password",
     "email": "Email",
     "password": "Password",

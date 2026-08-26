@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "mailez Webmail",
-  description: "mailez webmail — mail easy",
+  title: "Mailez Webmail",
+  description: "Mailez webmail — mail easy",
 };
 
 // Supported locales; the language lives in the NEXT_LOCALE cookie only and the
