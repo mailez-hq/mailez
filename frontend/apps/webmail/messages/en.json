@@ -125,6 +125,7 @@
     "labelColor": "Color",
     "renameLabel": "Rename",
     "confirmDelete": "Delete?",
+    "confirmDeleteLabel": "Delete \"{name}\"? This removes it from every message.",
     "noLabels": "No labels yet",
     "folders": "Folders",
     "newFolder": "New folder",
