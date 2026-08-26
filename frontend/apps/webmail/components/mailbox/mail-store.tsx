@@ -298,6 +298,9 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   // Guards loadMessages responses: increments on every call so an older
   // in-flight request can detect it has been superseded and drop its result.
   const loadSeq = useRef(0);
+  // Same guard for search responses: rapid saved-search / label / typing
+  // transitions fire overlapping /mail/search requests.
+  const searchSeq = useRef(0);
   const pendingG = useRef(false);
   const draftUidRef = useRef<number | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -506,6 +509,9 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     setSearching(false);
     setSearchSpec(null);
     lastSearchRef.current = "";
+    // A folder switch resets the transient view filters so a category chosen
+    // in one folder can't silently filter (and empty) the next one.
+    setCategoryFilter("");
     setSelectedUids(new Set());
     setCursor(0);
     setSelected(null);
@@ -834,17 +840,24 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     const q = (typeof e === "string" ? e : query).trim();
     const spec = buildSearchSpec(q, searchSpec);
     if (!spec) {
-      setSearching(false);
-      setActiveView("all");
-      setActiveLabel("");
+      // An empty submission with no builder conditions means "show the plain
+      // folder": clear the search state and reload, otherwise stale filtered
+      // results would stay on screen with no indicator.
+      clearSearch();
       return;
     }
+    // A real search replaces any active label filter.
+    setActiveLabel("");
     await runSearchWithSpec(spec);
   }
 
   // runSearchWithSpec executes a structured search (visual builder or merged
   // keywords) straight against /mail/search — no syntax-string round-trip.
   async function runSearchWithSpec(spec: MailSearchSpec) {
+    // Monotonic seq: a slow earlier search must not overwrite a newer one
+    // (rapid saved-search / label / typing transitions fire overlapping
+    // requests).
+    const seq = ++searchSeq.current;
     setSearching(true);
     setSelected(null);
     setDetail(null);
@@ -857,9 +870,12 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       router.replace(`/mail/${encodeURIComponent(folder)}`, { scroll: false });
     }
     try {
-      setMessages(await mailSearchSpec(searchAll ? "all" : folder, spec));
+      const results = await mailSearchSpec(searchAll ? "all" : folder, spec);
+      if (seq !== searchSeq.current) return;
+      setMessages(results);
       lastSearchRef.current = spec.text?.join(" ") ?? "";
     } catch (err) {
+      if (seq !== searchSeq.current) return;
       setError(err instanceof Error ? err.message : "search failed");
     }
   }
@@ -903,7 +919,12 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     setRefreshing(true);
     try {
       if (searching) {
-        await doSearch(query);
+        if (activeLabel) {
+          // Re-run the label filter instead of dropping back to the folder.
+          await runSearchWithSpec({ labels: [activeLabel] });
+        } else {
+          await doSearch(query);
+        }
       } else {
         await Promise.all([loadMessages(folder, 0, true), mailUnseen().then(setUnseen)]);
       }
@@ -916,6 +937,9 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   function selectLabel(label: string) {
     setActiveView("all");
     setActiveLabel(label);
+    // Drop any stale builder conditions so they can't leak into the label
+    // view or into a later search box submission.
+    setSearchSpec(null);
     if (label) {
       // Run the structured search directly; keep the keyword box empty
       // instead of echoing the raw label: syntax into it.
@@ -991,8 +1015,17 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       applySearchSpec(item.spec);
       return;
     }
+    // A keyword saved search replaces, not merges with, any stale builder
+    // conditions from an earlier search. Build the spec explicitly with no
+    // prior conditions so the synchronous call below can't capture the old
+    // searchSpec and fire a duplicate, stale-merged request.
+    setSearchSpec(null);
     setQuery(item.query);
-    doSearch(item.query);
+    const spec = buildSearchSpec(item.query, null);
+    if (spec) {
+      setActiveLabel("");
+      runSearchWithSpec(spec);
+    }
   }
 
   function openMessage(m: MailMessage, srcFolder = folder) {
@@ -1582,8 +1615,12 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     // search that kept the same URL) must drop the active search conditions
     // and show the folder's full list; router.push to the identical path is
     // a no-op and would leave the filtered results on screen.
-    if (f === folder && (searching || searchSpec || query.trim() || activeLabel)) {
+    if (
+      f === folder &&
+      (searching || searchSpec || query.trim() || activeLabel || categoryFilter)
+    ) {
       clearSearch();
+      setCategoryFilter("");
       return;
     }
     router.push(`/mail/${encodeURIComponent(f)}`);
