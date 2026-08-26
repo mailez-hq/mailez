@@ -8,6 +8,10 @@ import (
 	"strings"
 
 	"mailez/backend/internal/core"
+	"mailez/backend/internal/core/models"
+	"mailez/backend/internal/crypto"
+
+	"gorm.io/gorm"
 )
 
 // ErrDisabled is returned when no AI provider is configured.
@@ -20,41 +24,85 @@ type Provider interface {
 	Chat(ctx context.Context, system, user string) (string, error)
 }
 
-// Manager dispatches AI features to the configured provider. A nil provider
-// means AI is fully disabled (zero cost, no external calls).
+// Manager dispatches AI features to the configured provider. The provider is
+// resolved from the database on every call, so admin-side configuration
+// changes apply without a restart. A nil provider means AI is fully disabled.
 type Manager struct {
-	provider Provider
+	db        *gorm.DB
+	secretKey string
+	// envFallback mirrors the legacy AI_PROVIDER=... environment variables
+	// for the very first boot, before an admin saves a DB row.
+	envFallback Provider
 }
 
-// New builds a manager from configuration. AI_PROVIDER=none disables AI.
-func New(cfg core.Config) *Manager {
+// New builds a manager backed by the database. The legacy environment
+// variables only seed the first-boot fallback; the admin console is the
+// source of truth once a row exists.
+func New(db *gorm.DB, cfg core.Config) *Manager {
+	m := &Manager{db: db, secretKey: cfg.SecretKey}
 	switch cfg.AIProvider {
 	case "openai":
-		return &Manager{provider: NewOpenAI(cfg)}
-	default:
-		return &Manager{}
+		m.envFallback = NewOpenAI(cfg)
 	}
+	return m
+}
+
+// load returns the active provider, preferring the database configuration.
+func (m *Manager) load() Provider {
+	if m.db != nil {
+		var row models.AiConfig
+		if err := m.db.First(&row).Error; err == nil {
+			if !row.Enabled || row.Provider == "" {
+				return nil
+			}
+			key := ""
+			if row.APIKeyEnc != "" {
+				if k, err := crypto.Decrypt(m.secretKey, row.APIKeyEnc); err == nil {
+					key = k
+				}
+			}
+			base := row.BaseURL
+			if base == "" {
+				base = "https://api.openai.com/v1"
+			}
+			model := row.Model
+			if model == "" {
+				model = "gpt-4o-mini"
+			}
+			switch row.Provider {
+			case "openai":
+				return NewOpenAIProvider(base, key, model)
+			}
+			return nil
+		}
+	}
+	if m.envFallback != nil {
+		return m.envFallback
+	}
+	return nil
 }
 
 // Enabled reports whether an AI provider is configured.
 func (m *Manager) Enabled() bool {
-	return m.provider != nil
+	return m.load() != nil
 }
 
 // ProviderName returns the active provider name, or "none".
 func (m *Manager) ProviderName() string {
-	if m.provider == nil {
+	p := m.load()
+	if p == nil {
 		return "none"
 	}
-	return m.provider.Name()
+	return p.Name()
 }
 
 // Summarize produces a concise summary of an email body.
 func (m *Manager) Summarize(ctx context.Context, text string) (string, error) {
-	if m.provider == nil {
+	p := m.load()
+	if p == nil {
 		return "", ErrDisabled
 	}
-	return m.provider.Chat(ctx, summarizeSystem, text)
+	return p.Chat(ctx, summarizeSystem, text)
 }
 
 // DraftTone controls the style of an AI-generated reply draft. An empty tone
@@ -69,7 +117,8 @@ const (
 
 // DraftReply writes a reply draft given the original email context.
 func (m *Manager) DraftReply(ctx context.Context, tone DraftTone, context string) (string, error) {
-	if m.provider == nil {
+	p := m.load()
+	if p == nil {
 		return "", ErrDisabled
 	}
 	system := draftSystem
@@ -79,7 +128,7 @@ func (m *Manager) DraftReply(ctx context.Context, tone DraftTone, context string
 	case ToneFriendly:
 		system = draftFriendlySystem
 	}
-	return m.provider.Chat(ctx, system, context)
+	return p.Chat(ctx, system, context)
 }
 
 // PriorityItem is a lightweight mail descriptor sent for AI ranking.
@@ -123,7 +172,8 @@ type SearchSpec struct {
 // buckets each into a PriorityCategory with a single provider call returning a
 // JSON object keyed by uid.
 func (m *Manager) Prioritize(ctx context.Context, items []PriorityItem) (PriorityResult, error) {
-	if m.provider == nil {
+	p := m.load()
+	if p == nil {
 		return PriorityResult{}, ErrDisabled
 	}
 	var b strings.Builder
@@ -133,7 +183,7 @@ func (m *Manager) Prioritize(ctx context.Context, items []PriorityItem) (Priorit
 	}
 	b.WriteString("\nRespond ONLY with a JSON object mapping uid to {\"score\": 1-5, \"category\": \"work\"}, e.g. {\"12\": {\"score\": 5, \"category\": \"work\"}, \"3\": {\"score\": 2, \"category\": \"newsletter\"}}.")
 
-	raw, err := m.provider.Chat(ctx, prioritySystem, b.String())
+	raw, err := p.Chat(ctx, prioritySystem, b.String())
 	if err != nil {
 		return PriorityResult{}, err
 	}
@@ -180,10 +230,11 @@ func (m *Manager) Prioritize(ctx context.Context, items []PriorityItem) (Priorit
 // criteria. Dates use YYYY-MM-DD; relative phrases ("last month") are
 // resolved by the model.
 func (m *Manager) InterpretSearch(ctx context.Context, query string) (SearchSpec, error) {
-	if m.provider == nil {
+	p := m.load()
+	if p == nil {
 		return SearchSpec{}, ErrDisabled
 	}
-	raw, err := m.provider.Chat(ctx, searchSystem, query)
+	raw, err := p.Chat(ctx, searchSystem, query)
 	if err != nil {
 		return SearchSpec{}, err
 	}

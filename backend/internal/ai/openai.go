@@ -30,6 +30,16 @@ func NewOpenAI(cfg core.Config) *OpenAI {
 	}
 }
 
+// NewOpenAIProvider builds an OpenAI-compatible provider from explicit
+// settings (database-backed admin configuration).
+func NewOpenAIProvider(baseURL, apiKey, model string) *OpenAI {
+	return &OpenAI{
+		baseURL: strings.TrimRight(baseURL, "/"),
+		apiKey:  apiKey,
+		model:   model,
+	}
+}
+
 func (o *OpenAI) Name() string { return "openai" }
 
 type chatRequest struct {
