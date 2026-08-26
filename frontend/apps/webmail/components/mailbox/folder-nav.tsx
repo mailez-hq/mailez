@@ -14,7 +14,7 @@ import {
   Plus,
   Search,
   Send,
-  Star,
+  ShieldAlert,
   Trash2,
   Filter,
   Folder as FolderIcon,
@@ -62,8 +62,8 @@ const FOLDER_ICON: Record<string, React.ReactNode> = {
   DRAFTS: <FileText className="size-4" />,
   TRASH: <Trash2 className="size-4" />,
   ARCHIVE: <Archive className="size-4" />,
-  JUNK: <Star className="size-4" />,
-  SPAM: <Star className="size-4" />,
+  JUNK: <ShieldAlert className="size-4" />,
+  SPAM: <ShieldAlert className="size-4" />,
 };
 
 // A folder-management dialog: create/rename take a name input, delete/clear ask
