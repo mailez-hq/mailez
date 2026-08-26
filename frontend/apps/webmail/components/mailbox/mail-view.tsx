@@ -114,8 +114,6 @@ export function MailView() {
     searchSpec,
     applySearchSpec,
     saveSearchSpec,
-    activeView,
-    selectView,
     categoryFilter,
     setCategoryFilter,
     doAiSearch,
@@ -342,8 +340,6 @@ export function MailView() {
           onSaveSearchSpec={saveSearchSpec}
           searchAll={searchAll}
           onToggleSearchAll={() => setSearchAll((v: boolean) => !v)}
-          activeView={activeView}
-          onSelectView={selectView}
           category={categoryFilter}
           onCategoryChange={setCategoryFilter}
           onMenu={() => setSidebarOpen(true)}
