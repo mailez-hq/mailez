@@ -103,12 +103,14 @@ func main() {
 
 	// 3. Provision test domain + user.
 	{
-		var domains []struct {
-			Name string
+		var domainPage struct {
+			Data []struct {
+				Name string
+			}
 		}
-		if code, err := api.json("GET", "/domains", nil, &domains); err != nil || code != 200 {
+		if code, err := api.json("GET", "/domains", nil, &domainPage); err != nil || code != 200 {
 			fail("list domains", fmt.Errorf("status %d: %w", code, err))
-		} else if !containsName(domains, opts.domain) {
+		} else if !containsName(domainPage.Data, opts.domain) {
 			code, err := api.json("POST", "/domains",
 				map[string]any{"name": opts.domain, "max_users": -1, "max_aliases": -1}, nil)
 			check("create test domain", err == nil && (code == 200 || code == 201), fmt.Sprintf("status %d", code))
@@ -117,12 +119,14 @@ func main() {
 		}
 	}
 	{
-		var users []struct {
-			Email string
+		var userPage struct {
+			Data []struct {
+				Email string
+			}
 		}
-		if code, err := api.json("GET", "/users", nil, &users); err != nil || code != 200 {
+		if code, err := api.json("GET", "/users", nil, &userPage); err != nil || code != 200 {
 			fail("list users", fmt.Errorf("status %d: %w", code, err))
-		} else if !containsEmail(users, userEmail) {
+		} else if !containsEmail(userPage.Data, userEmail) {
 			code, err := api.json("POST", "/users",
 				map[string]any{"email": userEmail, "password": userPassword, "enabled": true}, nil)
 			check("create test user", err == nil && (code == 200 || code == 201), fmt.Sprintf("status %d", code))
@@ -201,13 +205,15 @@ func main() {
 	// 8. Optional alias delivery.
 	if opts.alias != "" {
 		aliasEmail := opts.alias + "@" + opts.domain
-		var aliases []struct {
-			Email string
+		var aliasPage struct {
+			Data []struct {
+				Email string
+			}
 		}
-		code, err := api.json("GET", "/aliases", nil, &aliases)
+		code, err := api.json("GET", "/aliases", nil, &aliasPage)
 		if err != nil || code != 200 {
 			fail("list aliases", fmt.Errorf("status %d: %w", code, err))
-		} else if !containsEmail(aliases, aliasEmail) {
+		} else if !containsEmail(aliasPage.Data, aliasEmail) {
 			api.json("POST", "/aliases", map[string]string{"email": aliasEmail, "destination": userEmail}, nil)
 		}
 		subject2 := fmt.Sprintf("mailez-e2e-alias-%d", time.Now().Unix())

@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"regexp"
 	"strconv"
@@ -34,6 +35,20 @@ func (c *Client) openSieve(email, token string) (*sieve, error) {
 		return nil, fmt.Errorf("sieve dial: %w", err)
 	}
 	s := &sieve{conn: conn, r: bufio.NewReader(conn), w: bufio.NewWriter(conn)}
+	// RFC 5804 greeting (capability lines + OK status) must be consumed
+	// before any command, otherwise the buffered greeting bytes pollute the
+	// STARTTLS handshake.
+	if _, _, err := s.readResponse(); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("sieve greeting: %w", err)
+	}
+	// The engine (mailezine) requires TLS before AUTH and advertises
+	// STARTTLS; the postdove gateway proxy speaks plaintext on the internal
+	// link. Try STARTTLS first and fall back to plaintext so both engines
+	// work.
+	if err := s.startTLS(); err != nil {
+		log.Printf("sieve %s: STARTTLS unavailable, continuing in plaintext: %v", c.SieveAddr, err)
+	}
 	if err := s.handshake(email, token); err != nil {
 		conn.Close()
 		return nil, err
@@ -47,27 +62,12 @@ func (s *sieve) close() {
 }
 
 func (s *sieve) handshake(email, token string) error {
-	// RFC 5804 greeting is multi-line: capability lines
-	// ("IMPLEMENTATION" ..., "SIEVE" ..., "VERSION" ...) terminated by an
-	// OK status line. readResponse consumes all content lines until the
-	// status line, so the first command response is not polluted by them.
-	status, _, err := s.readResponse()
-	if err != nil {
-		return fmt.Errorf("sieve greeting: %w", err)
-	}
-	if status != "OK" {
-		return fmt.Errorf("sieve greeting: %s", status)
-	}
-	// No STARTTLS on the internal link: the gateway terminates TLS for
-	// external clients, and the mail-keeper proxy's managesieve-login
-	// misbehaves after a rejected STARTTLS (subsequent AUTHENTICATE fails
-	// with "Error in MANAGESIEVE command").
 	auth := base64.StdEncoding.EncodeToString([]byte("\x00" + email + "\x00" + token))
 	// RFC 5804 allows the initial response as a quoted string. Dovecot's
 	// managesieve-login rejects the literal forms over the login proxy
 	// (non-synchronizing {n+}: "Missing LF after literal size"; synchronizing
 	// {n}: no "+" continuation), so send the base64 payload inline.
-	status, _, err = s.do(`AUTHENTICATE "PLAIN" "` + auth + `"`)
+	status, _, err := s.do(`AUTHENTICATE "PLAIN" "` + auth + `"`)
 	if err != nil {
 		return err
 	}

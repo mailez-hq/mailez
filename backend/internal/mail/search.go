@@ -115,7 +115,9 @@ func (c *Client) SearchMessagesSpec(email, token, folder string, sel SearchQuery
 	if sel.After != nil {
 		criteria.Since = *sel.After
 	}
-	uids, err := cli.Search(criteria)
+	// UidSearch returns UIDs (Search returns sequence numbers, which must
+	// not be passed to UidFetch below).
+	uids, err := cli.UidSearch(criteria)
 	if err != nil {
 		return nil, fmt.Errorf("imap search: %w", err)
 	}
