@@ -31,7 +31,7 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
-import type { MailAccount } from "@/lib/api";
+import type { MailAccount, MailDelegation } from "@/lib/api";
 import {
   Dialog,
   DialogContent,
@@ -89,7 +89,10 @@ export function FolderNav({
   open,
   accountList,
   activeAccount,
+  delegateList,
+  activeDelegate,
   onSwitchAccount,
+  onSwitchDelegate,
   onManageAccounts,
   onSelect,
   onSelectLabel,
@@ -123,7 +126,10 @@ export function FolderNav({
   open: boolean;
   accountList?: MailAccount[];
   activeAccount?: number | null;
+  delegateList?: MailDelegation[];
+  activeDelegate?: string | null;
   onSwitchAccount?: (id: number | null) => void;
+  onSwitchDelegate?: (email: string | null) => void;
   onManageAccounts?: () => void;
   onSelect: (folder: string) => void;
   onSelectLabel: (label: string) => void;
@@ -158,7 +164,7 @@ export function FolderNav({
   // currently active folder's ancestors are always expanded regardless.
   const [folded, setFolded] = useState<Set<string>>(new Set());
   const activeExternal = accountList?.find((a) => a.id === activeAccount) ?? null;
-  const currentAccountEmail = activeExternal ? activeExternal.email : email;
+  const currentAccountEmail = activeDelegate ?? (activeExternal ? activeExternal.email : email);
 
   // Close the account switcher on Escape / outside click.
   useEffect(() => {
@@ -407,7 +413,7 @@ export function FolderNav({
           </Button>
         </div>
 
-        {/* aggregated account switcher: internal mailbox + external accounts */}
+        {/* account switcher: own mailbox + delegated mailboxes + external accounts */}
         {onSwitchAccount && onManageAccounts && (
           <div className="relative px-3 pb-2" data-account-menu>
             <button
@@ -424,18 +430,43 @@ export function FolderNav({
             {accountMenuOpen && (
               <div className="absolute left-3 right-3 top-full z-30 mt-1 rounded-lg border border-border bg-popover p-1 text-sm shadow-lg">
                 <button
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted",
-                    activeAccount === null && "bg-muted font-medium",
-                  )}
                   onClick={() => {
                     onSwitchAccount(null);
                     setAccountMenuOpen(false);
                   }}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted",
+                    activeAccount === null && activeDelegate === null && "bg-muted font-medium",
+                  )}
                 >
                   <span className="min-w-0 flex-1 truncate">{email}</span>
                   <span className="text-[10px] text-muted-foreground">{t("myAccount")}</span>
                 </button>
+                {delegateList && delegateList.length > 0 && (
+                  <div className="mt-0.5 border-t border-border pt-0.5">
+                    <p className="px-2 pb-1 pt-1 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                      {t("delegatedMailboxes")}
+                    </p>
+                    {delegateList.map((d) => (
+                      <button
+                        key={d.id}
+                        className={cn(
+                          "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted",
+                          activeDelegate === d.owner_email && "bg-muted font-medium",
+                        )}
+                        onClick={() => {
+                          onSwitchDelegate?.(d.owner_email);
+                          setAccountMenuOpen(false);
+                        }}
+                      >
+                        <span className="min-w-0 flex-1 truncate">{d.owner_email}</span>
+                        <span className="rounded bg-accent px-1.5 py-px text-[10px] text-accent-foreground">
+                          {t("delegated")}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {accountList?.map((a) => (
                   <button
                     key={a.id}

@@ -5,6 +5,8 @@ import type {
   LoginResult,
   MailAnnouncement,
   MailAccount,
+  MailDelegation,
+  DelegationListing,
   MailAttachment,
   MailIdentity,
   MailLabel,
@@ -34,6 +36,8 @@ export type {
   LoginResult,
   MailAnnouncement,
   MailAccount,
+  MailDelegation,
+  DelegationListing,
   MailAttachment,
   MailIdentity,
   MailLabel,
@@ -65,11 +69,27 @@ export const setActiveAccountId = (id: number | null) => {
 };
 export const getActiveAccountId = () => activeAccountId;
 
-// mailPath appends the active account selector to mailbox-scoped requests.
+// Active delegated mailbox: when set, every /mail/* request runs in that
+// owner's mailbox context (X-Delegate-Email). Only full-access grants are
+// listed by the backend, so the header is safe to send for the whole mail
+// surface; the backend re-validates the grant on every request.
+let activeDelegateEmail: string | null = null;
+export const setActiveDelegateEmail = (email: string | null) => {
+  activeDelegateEmail = email;
+};
+export const getActiveDelegateEmail = () => activeDelegateEmail;
+
+// mailPath appends the active account selector to mailbox-scoped requests;
+// mailHeaders adds the delegated-mailbox context header.
 function mailPath(path: string): string {
   if (activeAccountId == null || !path.startsWith("/mail/")) return path;
   const sep = path.includes("?") ? "&" : "?";
   return `${path}${sep}account_id=${activeAccountId}`;
+}
+
+function mailHeaders(): Record<string, string> {
+  if (activeDelegateEmail != null) return { "X-Delegate-Email": activeDelegateEmail };
+  return {};
 }
 
 // ApiError carries the HTTP status and the backend's machine-readable code
@@ -88,7 +108,7 @@ export class ApiError extends Error {
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${mailPath(path)}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...mailHeaders() },
     ...init,
   });
   if (!res.ok) {
@@ -152,7 +172,7 @@ export const mailUnseen = () => api<Record<string, number>>("/mail/unseen");
 export async function mailMessages(folder: string, page = 0, sort = "date", dir = ""): Promise<MailPage> {
   const res = await fetch(
     `${API}${mailPath(`/mail/messages?folder=${encodeURIComponent(folder)}&page=${page}&sort=${encodeURIComponent(sort)}&dir=${encodeURIComponent(dir)}`)}`,
-    { headers: { "Content-Type": "application/json" } },
+    { headers: { "Content-Type": "application/json", ...mailHeaders() } },
   );
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -388,6 +408,23 @@ export const accountDelete = (id: number) =>
 
 export const accountTest = (id: number) =>
   apiPost<{ ok: boolean }>(`/accounts/${id}/test`, {});
+
+// Mailbox delegation / shared mailboxes.
+export const delegations = () => api<DelegationListing>("/delegations");
+
+export const delegationCreate = (input: {
+  delegate_email: string;
+  can_send: boolean;
+  full_access: boolean;
+}) => apiPost<MailDelegation>("/delegations", input);
+
+export const delegationUpdate = (
+  id: number,
+  input: { can_send: boolean; full_access: boolean },
+) => apiPut<MailDelegation>(`/delegations/${id}`, input);
+
+export const delegationDelete = (id: number) =>
+  api<void>(`/delegations/${id}`, { method: "DELETE" });
 
 // Web Push subscriptions (new-mail notifications via service worker).
 export const pushVapid = () => api<{ public_key: string }>("/push/vapid");

@@ -179,7 +179,14 @@ func (h *Handler) checkCredentials(u *models.User, pw, ip, protocol, authPort st
 		return false
 	}
 	if webmailPorts[authPort] && strings.HasPrefix(pw, "token-") {
-		return h.Auth.VerifyTempToken(c.Context(), u.Email, pw)
+		if h.Auth.VerifyTempToken(c.Context(), u.Email, pw) {
+			return true
+		}
+		// Mailbox delegation (full access): the temp token belongs to a
+		// delegate whose session is allowed to act as this owner, so the
+		// IMAP/SMTP login for the owner account succeeds with the delegate's
+		// credential.
+		return h.delegatedFullAccess(c, pw, u.Email)
 	}
 	if auth.IsAppToken(pw) {
 		var tokens []models.Token
@@ -191,9 +198,51 @@ func (h *Handler) checkCredentials(u *models.User, pw, ip, protocol, authPort st
 				return true
 			}
 		}
-		return false
+		// App-token delegation: a client (e.g. Thunderbird) configured with
+		// the delegate's app token may connect to the delegated owner
+		// account when the delegate holds full access.
+		return h.delegatedAppToken(c, pw, u.Email)
 	}
 	return verifyPassword(c, u.Password, pw)
+}
+
+// delegatedFullAccess reports whether the temp token belongs to a session
+// whose user holds a full-access delegation on owner. The credential stays
+// the delegate's; only the mailbox context switches to the owner.
+func (h *Handler) delegatedFullAccess(c *fiber.Ctx, token, owner string) bool {
+	delegate, ok := h.Auth.SessionEmailFromToken(c.Context(), token)
+	if !ok || strings.EqualFold(delegate, owner) {
+		return false
+	}
+	var dep models.MailDelegation
+	err := h.DB.WithContext(c.Context()).
+		Where("LOWER(owner_email) = LOWER(?) AND LOWER(delegate_email) = LOWER(?) AND full_access = ?", owner, delegate, true).
+		First(&dep).Error
+	return err == nil
+}
+
+// delegatedAppToken reports whether the app token belongs to one of the
+// owner's full-access delegates. Only the delegate's own token rows are
+// verified, so the brute-force surface stays bounded by the delegation list.
+func (h *Handler) delegatedAppToken(c *fiber.Ctx, pw, owner string) bool {
+	var deps []models.MailDelegation
+	if err := h.DB.WithContext(c.Context()).
+		Where("LOWER(owner_email) = LOWER(?) AND full_access = ?", owner, true).
+		Find(&deps).Error; err != nil {
+		return false
+	}
+	for _, dep := range deps {
+		var tokens []models.Token
+		if err := h.DB.WithContext(c.Context()).Where("user_email = ?", dep.DelegateEmail).Find(&tokens).Error; err != nil {
+			continue
+		}
+		for _, t := range tokens {
+			if password.VerifyPBKDF2SHA256(t.Password, pw) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // serverFor resolves the backend host:port for a protocol. Hosts come from

@@ -141,6 +141,14 @@ var migrations = []migration{
 		ID: "20260827_carddav",
 		Up: func(db *gorm.DB) error { return db.AutoMigrate(&CardDAVConfig{}) },
 	},
+	{
+		// Mailbox delegation / shared mailbox: a delegate may send as the
+		// owner (CanSend) and optionally access the owner's full mailbox
+		// (FullAccess). Powering the webmail account switcher and the
+		// send-as identity list.
+		ID: "20260827_mail_delegations",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&MailDelegation{}) },
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

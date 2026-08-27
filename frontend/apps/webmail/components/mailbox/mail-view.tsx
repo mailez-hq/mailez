@@ -82,6 +82,9 @@ export function MailView() {
     accountList,
     activeAccount,
     switchAccount,
+    delegateList,
+    activeDelegate,
+    switchDelegate,
     openSettingsSection,
     settingsInitialSection,
     selectFolder,
@@ -286,7 +289,10 @@ export function MailView() {
         open={sidebarOpen}
         accountList={accountList}
         activeAccount={activeAccount}
+        delegateList={delegateList}
+        activeDelegate={activeDelegate}
         onSwitchAccount={switchAccount}
+        onSwitchDelegate={switchDelegate}
         onManageAccounts={() => openSettingsSection("accounts")}
         onSelect={selectFolder}
         onSelectLabel={selectLabel}

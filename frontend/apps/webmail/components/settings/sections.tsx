@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
   pgpDelete, pgpGenerate, totpDisable, totpEnable,
-  type MailAccount, type MeSettings, type PgpKey, type PgpStatus, type SmimeCert, type SmimeStatus,
+  type DelegationListing, type MailAccount, type MailDelegation, type MeSettings, type PgpKey, type PgpStatus, type SmimeCert, type SmimeStatus,
   type TotpStatus, type Webhook,
 } from "@/lib/api";
 import type { Accent, Density, Preferences, ReaderFontSize, ReadingPaneWidth, Theme } from "@/lib/preferences";
@@ -114,6 +114,14 @@ export type SettingsSectionsProps = {
   onDeleteAccount: (id: number) => void;
   onToggleAccount: (a: MailAccount) => void;
   onTestAccount: (id: number) => void;
+  delegationList: DelegationListing | null;
+  delEmail: string; setDelEmail: (v: string) => void;
+  delCanSend: boolean; setDelCanSend: (v: boolean) => void;
+  delFullAccess: boolean; setDelFullAccess: (v: boolean) => void;
+  delSaving: boolean;
+  onAddDelegation: () => void;
+  onUpdateDelegation: (d: MailDelegation) => void;
+  onDeleteDelegation: (id: number) => void;
   setError: (v: string) => void;
   oldPw: string; setOldPw: (v: string) => void;
   newPw: string; setNewPw: (v: string) => void;
@@ -124,7 +132,7 @@ export type SettingsSectionsProps = {
 // MailSettings shell owns all state and passes it down; the extracted JSX
 // is byte-identical to the original single-file implementation.
 export function SettingsSections(props: SettingsSectionsProps) {
-  const { t, section, profile, theme, setTheme, density, setDensity, accent, setAccent, spellcheck, setSpellcheck, readerFont, setReaderFont, paneWidth, setPaneWidth, prefs, setAi, setNotifications, displayedName, setDisplayedName, signature, setSignature, whitelist, setWhitelist, blacklist, setBlacklist, forwardEnabled, setForwardEnabled, forwardDestination, setForwardDestination, forwardKeep, setForwardKeep, replyEnabled, setReplyEnabled, replySubject, setReplySubject, replyBody, setReplyBody, replyStartdate, setReplyStartdate, replyEnddate, setReplyEnddate, spamEnabled, setSpamEnabled, spamMarkAsRead, setSpamMarkAsRead, spamThreshold, setSpamThreshold, saveSettings, savePassword, pgp, setPgp, generating, setGenerating, copied, setCopied, pgpKeys, pgpImportEmail, setPgpImportEmail, pgpImportKeyText, setPgpImportKeyText, pgpImporting, pgpDeleting, onImportPgpKey, onDeletePgpKey, totp, setTotp, totpCode, setTotpCode, totpBusy, setTotpBusy, webhooks, whUrl, setWhUrl, whSecret, setWhSecret, whEvents, setWhEvents, whEnabled, setWhEnabled, whSaving, whTesting, whTestMsg, onAddWebhook, onDeleteWebhook, onToggleWebhook, onTestWebhook, smime, smimeCerts, smimeImportMode, setSmimeImportMode, smimeCertPem, setSmimeCertPem, smimeKeyPem, setSmimeKeyPem, smimeP12B64, setSmimeP12B64, smimeP12Password, setSmimeP12Password, smimeImporting, smimeKeyringEmail, setSmimeKeyringEmail, smimeKeyringCert, setSmimeKeyringCert, smimeKeyringImporting, smimeKeyringDeleting, onImportSmime, onDeleteSmime, onImportSmimeCert, onDeleteSmimeCert, accountList, accName, setAccName, accEmail, setAccEmail, accImapHost, setAccImapHost, accImapPort, setAccImapPort, accImapSecurity, setAccImapSecurity, accSmtpHost, setAccSmtpHost, accSmtpPort, setAccSmtpPort, accSmtpSecurity, setAccSmtpSecurity, accUsername, setAccUsername, accPassword, setAccPassword, accSaving, accTesting, accTestMsg, onAddAccount, onDeleteAccount, onToggleAccount, onTestAccount, setError, oldPw, setOldPw, newPw, setNewPw, confirmPw, setConfirmPw } = props;
+  const { t, section, profile, theme, setTheme, density, setDensity, accent, setAccent, spellcheck, setSpellcheck, readerFont, setReaderFont, paneWidth, setPaneWidth, prefs, setAi, setNotifications, displayedName, setDisplayedName, signature, setSignature, whitelist, setWhitelist, blacklist, setBlacklist, forwardEnabled, setForwardEnabled, forwardDestination, setForwardDestination, forwardKeep, setForwardKeep, replyEnabled, setReplyEnabled, replySubject, setReplySubject, replyBody, setReplyBody, replyStartdate, setReplyStartdate, replyEnddate, setReplyEnddate, spamEnabled, setSpamEnabled, spamMarkAsRead, setSpamMarkAsRead, spamThreshold, setSpamThreshold, saveSettings, savePassword, pgp, setPgp, generating, setGenerating, copied, setCopied, pgpKeys, pgpImportEmail, setPgpImportEmail, pgpImportKeyText, setPgpImportKeyText, pgpImporting, pgpDeleting, onImportPgpKey, onDeletePgpKey, totp, setTotp, totpCode, setTotpCode, totpBusy, setTotpBusy, webhooks, whUrl, setWhUrl, whSecret, setWhSecret, whEvents, setWhEvents, whEnabled, setWhEnabled, whSaving, whTesting, whTestMsg, onAddWebhook, onDeleteWebhook, onToggleWebhook, onTestWebhook, smime, smimeCerts, smimeImportMode, setSmimeImportMode, smimeCertPem, setSmimeCertPem, smimeKeyPem, setSmimeKeyPem, smimeP12B64, setSmimeP12B64, smimeP12Password, setSmimeP12Password, smimeImporting, smimeKeyringEmail, setSmimeKeyringEmail, smimeKeyringCert, setSmimeKeyringCert, smimeKeyringImporting, smimeKeyringDeleting, onImportSmime, onDeleteSmime, onImportSmimeCert, onDeleteSmimeCert, accountList, accName, setAccName, accEmail, setAccEmail, accImapHost, setAccImapHost, accImapPort, setAccImapPort, accImapSecurity, setAccImapSecurity, accSmtpHost, setAccSmtpHost, accSmtpPort, setAccSmtpPort, accSmtpSecurity, setAccSmtpSecurity, accUsername, setAccUsername, accPassword, setAccPassword, accSaving, accTesting, accTestMsg, onAddAccount, onDeleteAccount, onToggleAccount, onTestAccount, delegationList, delEmail, setDelEmail, delCanSend, setDelCanSend, delFullAccess, setDelFullAccess, delSaving, onAddDelegation, onUpdateDelegation, onDeleteDelegation, setError, oldPw, setOldPw, newPw, setNewPw, confirmPw, setConfirmPw } = props;
   return (
             <div className="min-w-0 flex-1">
               {PROFILE_SECTIONS.has(section) && (
@@ -506,6 +514,110 @@ export function SettingsSections(props: SettingsSectionsProps) {
                     <Button disabled={accSaving} onClick={onAddAccount}>
                       {accSaving ? t("accountSaving") : t("accountAdd")}
                     </Button>
+                  </div>
+                </div>
+              )}
+
+              {section === "delegations" && (
+                <div key={section} className="h-full space-y-5 overflow-y-auto p-5">
+                  <p className="text-sm font-medium">{t("delegations")}</p>
+                  <p className="text-xs text-muted-foreground">{t("delegationIntro")}</p>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                      {t("delegationGranted")}
+                    </p>
+                    {delegationList === null && <p className="text-sm text-muted-foreground">{t("loading")}</p>}
+                    {delegationList !== null && delegationList.granted.length === 0 && (
+                      <p className="text-sm text-muted-foreground">{t("delegationGrantedEmpty")}</p>
+                    )}
+                    {(delegationList?.granted || []).map((d) => (
+                      <div key={d.id} className="rounded-lg border border-border p-3">
+                        <div className="flex items-center gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{d.delegate_email}</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {d.delegate_name && <>{d.delegate_name} · </>}
+                              {d.full_access
+                                ? t("delegationFull")
+                                : d.can_send
+                                  ? t("delegationSendOnly")
+                                  : ""}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <Switch
+                                checked={d.can_send}
+                                disabled={d.full_access}
+                                onCheckedChange={() => onUpdateDelegation({ ...d, can_send: !d.can_send })}
+                              />
+                              <span className="text-xs text-muted-foreground">{t("delegationCanSend")}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Switch
+                                checked={d.full_access}
+                                onCheckedChange={() => onUpdateDelegation({ ...d, full_access: !d.full_access })}
+                              />
+                              <span className="text-xs text-muted-foreground">{t("delegationFullAccess")}</span>
+                            </div>
+                            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => onDeleteDelegation(d.id)}>
+                              {t("delegationRevoke")}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="space-y-2.5 rounded-lg border border-border p-3">
+                    <p className="text-sm font-medium">{t("delegationAdd")}</p>
+                    <div className="space-y-1">
+                      <Label>{t("delegationDelegate")}</Label>
+                      <Input
+                        value={delEmail}
+                        onChange={(e) => setDelEmail(e.target.value)}
+                        placeholder="teammate@example.com"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="flex items-center gap-1.5">
+                        <Switch
+                          checked={delCanSend}
+                          disabled={delFullAccess}
+                          onCheckedChange={setDelCanSend}
+                        />
+                        <span className="text-sm text-muted-foreground">{t("delegationCanSend")}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Switch checked={delFullAccess} onCheckedChange={setDelFullAccess} />
+                        <span className="text-sm text-muted-foreground">{t("delegationFullAccess")}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{t("delegationFullHint")}</p>
+                    <Button disabled={delSaving || !delEmail.trim()} onClick={onAddDelegation}>
+                      {delSaving ? t("delegationSaving") : t("delegationGrant")}
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                      {t("delegationReceived")}
+                    </p>
+                    {delegationList !== null && delegationList.received.length === 0 && (
+                      <p className="text-sm text-muted-foreground">{t("delegationReceivedEmpty")}</p>
+                    )}
+                    {(delegationList?.received || []).map((d) => (
+                      <div key={d.id} className="rounded-lg border border-border p-3">
+                        <p className="truncate text-sm font-medium">
+                          {d.owner_email}
+                          {d.owner_name && <span className="text-xs text-muted-foreground"> · {d.owner_name}</span>}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {d.full_access ? t("delegationFull") : t("delegationSendOnly")}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

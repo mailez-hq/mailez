@@ -213,6 +213,10 @@ export function ComposeEditor({
     </Button>
   );
 
+  // Open the hidden file picker. The ref is only dereferenced inside the
+  // click handler; the lint rule conservatively flags the closure.
+  const pickImage = () => imageInputRef.current?.click();
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-border">
       <input
@@ -311,7 +315,8 @@ export function ComposeEditor({
             </div>
           )}
         </div>
-        {toolBtn(false, () => imageInputRef.current?.click(), <ImagePlus className="h-3.5 w-3.5" />, "插入图片")}
+        {/* eslint-disable-next-line react-hooks/refs */}
+        {toolBtn(false, pickImage, <ImagePlus className="h-3.5 w-3.5" />, "插入图片")}
         {!state.table
           ? toolBtn(false, () => editor.chain().focus().insertTable({rows: 3, cols: 3, withHeaderRow: true}).run(), <TableIcon className="h-3.5 w-3.5" />, "插入表格")
           : toolBtn(false, () => editor.chain().focus().deleteTable().run(), <Trash2 className="h-3.5 w-3.5" />, "删除表格")}

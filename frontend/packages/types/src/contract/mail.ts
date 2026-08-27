@@ -94,6 +94,26 @@ export type MailIdentity = {
   name: string;
   dkim_enabled: boolean;
   signature?: string;
+  delegated?: boolean;
+};
+
+// MailDelegation is a mailbox-sharing grant: the owner lets a delegate send
+// as them (can_send) and optionally operate the full mailbox (full_access).
+export type MailDelegation = {
+  id: number;
+  owner_email: string;
+  delegate_email: string;
+  can_send: boolean;
+  full_access: boolean;
+  delegate_name?: string;
+  owner_name?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DelegationListing = {
+  granted: MailDelegation[];
+  received: MailDelegation[];
 };
 
 // MailAccount is an external IMAP/SMTP mailbox aggregated into the inbox
