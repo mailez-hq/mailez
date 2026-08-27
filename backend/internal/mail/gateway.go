@@ -41,6 +41,9 @@ type Gateway interface {
 	SearchAllMessages(email, token, query string) ([]Message, error)
 	SearchAllMessagesSpec(email, token string, sel SearchQuery) ([]Message, error)
 	SetFlag(email, token, folder string, uid uint32, flag string, value bool) error
+	// MarkAllRead sets \Seen on every message of a folder in one batch
+	// (folder-level "mark all read").
+	MarkAllRead(email, token, folder string) error
 	ReplaceKeyword(email, token, oldKw, newKw string) error
 	MoveMany(email, token, folder string, uids []uint32, destination string) error
 	Delete(email, token, folder string, uid uint32) error

@@ -56,6 +56,12 @@ export interface ComposePanelProps {
   onUndoSendSeconds: (seconds: number) => void;
   scheduleAt: string;
   onScheduleAt: (v: string) => void;
+  receiptOn: boolean;
+  onReceiptOn: (v: boolean) => void;
+  mergeOn: boolean;
+  onMergeOn: (v: boolean) => void;
+  mergeText: string;
+  onMergeText: (v: string) => void;
   signOn: boolean;
   encryptOn: boolean;
   onToggleSign: () => void;
@@ -113,6 +119,12 @@ export function ComposePanel(props: ComposePanelProps) {
     onUndoSendSeconds,
     scheduleAt,
     onScheduleAt,
+    receiptOn,
+    onReceiptOn,
+    mergeOn,
+    onMergeOn,
+    mergeText,
+    onMergeText,
     signOn,
     encryptOn,
     onToggleSign,
@@ -312,6 +324,20 @@ export function ComposePanel(props: ComposePanelProps) {
         )}
         <div className="flex min-h-0 flex-1 flex-col px-4 py-3">
           <div className="flex min-h-0 flex-1 flex-col">
+            {mergeOn && (
+              <div className="mb-2 rounded-lg border border-border bg-muted/30 p-2">
+                <p className="mb-1 text-[11px] text-muted-foreground">
+                  {t("mergeHint")}
+                </p>
+                <textarea
+                  value={mergeText}
+                  onChange={(e) => onMergeText(e.target.value)}
+                  placeholder={t("mergePlaceholder")}
+                  rows={5}
+                  className="w-full resize-y rounded-md border border-border bg-background p-2 text-xs outline-none focus:border-accent"
+                />
+              </div>
+            )}
             <ComposeEditor
               value={body}
               onChange={onBodyChange}
@@ -329,6 +355,31 @@ export function ComposePanel(props: ComposePanelProps) {
           )}
         </div>
         <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap items-center gap-2 border-t bg-muted/40 px-4 py-2.5">
+          <label className="flex cursor-pointer items-center gap-1 text-[11px] text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={receiptOn}
+              onChange={(e) => onReceiptOn(e.target.checked)}
+              className="size-3"
+            />
+            {t("receiptRequest")}
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              onMergeOn(!mergeOn);
+              if (!mergeOn) onReceiptOn(false);
+            }}
+            className={cn(
+              "rounded-full border px-2 py-0.5 text-[11px] transition-colors",
+              mergeOn
+                ? "border-accent bg-accent font-medium text-accent-foreground"
+                : "border-border text-muted-foreground hover:text-foreground",
+            )}
+            title={t("mergeTitle")}
+          >
+            {t("mergeToggle")}
+          </button>
           <div className="relative">
             <Button type="button" variant="ghost" size="sm" onClick={openTemplates} title={t("templates")}>
               <LayoutTemplate className="size-4" />

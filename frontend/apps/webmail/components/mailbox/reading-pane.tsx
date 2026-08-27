@@ -14,8 +14,11 @@ import {
   Languages,
   Loader2,
   Lock,
+  MailCheck,
+  MailWarning,
   Printer,
   RotateCw,
+  Undo2,
   Volume2,
   VolumeX,
   Reply,
@@ -53,6 +56,11 @@ import {
 import { Highlight } from "@/components/mailbox/highlight";
 import { sanitizeMailHTML } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
+
+// isSentFolder reports whether a mailbox path is the Sent Items folder.
+function isSentFolder(name: string): boolean {
+  return ["sent", "sent items", "sentitems", "已发送"].includes(name.toLowerCase().trim());
+}
 
 function ThreadMessage({
   message,
@@ -383,6 +391,9 @@ export function ReadingPane({
   onQuickReply,
   muted,
   onToggleMute,
+  onRecall,
+  onSendReceipt,
+  onApplyRecall,
 }: {
   detail: MailMessage;
   detailLoading: boolean;
@@ -421,6 +432,9 @@ export function ReadingPane({
   ) => Promise<boolean>;
   muted: boolean;
   onToggleMute: () => void;
+  onRecall: (folder: string, uid: number) => Promise<boolean>;
+  onSendReceipt: (folder: string, uid: number) => Promise<boolean>;
+  onApplyRecall: (messageId: string, folder: string, uid: number) => Promise<boolean>;
 }) {
   const t = useTranslations("mail");
   const fontPx = readerFont === "sm" ? 13 : readerFont === "lg" ? 16 : readerFont === "xl" ? 18 : 14;
@@ -430,6 +444,9 @@ export function ReadingPane({
   const [expandedQuotes, setExpandedQuotes] = useState<Set<number>>(new Set());
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+  const [receiptBusy, setReceiptBusy] = useState(false);
+  const [recallBusy, setRecallBusy] = useState(false);
+  const [recallHandled, setRecallHandled] = useState(false);
   const [pgpPlaintext, setPgpPlaintext] = useState<string | null>(null);
   const [decrypting, setDecrypting] = useState(false);
   const [pgpError, setPgpError] = useState("");
@@ -679,6 +696,17 @@ export function ReadingPane({
             >
               <Star className={cn("size-4", starred && "fill-current")} />
             </Button>
+            {isSentFolder(folder) && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onRecall(detail.folder || folder, detail.uid)}
+                title={t("recall")}
+                className="size-8 text-muted-foreground hover:text-foreground"
+              >
+                <Undo2 className="size-4" />
+              </Button>
+            )}
             <Button
               size="sm"
               variant="ghost"
@@ -906,6 +934,54 @@ export function ReadingPane({
             {/* Meeting invitation */}
             {detail.invitation && detail.invitation.method === "REQUEST" && (
               <InvitationBanner invitation={detail.invitation} />
+            )}
+
+            {/* Read-receipt request (RFC 3798) */}
+            {detail.receipt_requested && !detail.flags.includes("$MDNSent") && (
+              <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs">
+                <MailCheck className="size-4 text-muted-foreground" />
+                <span className="flex-1">{t("receiptRequested")}</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={receiptBusy}
+                  onClick={async () => {
+                    setReceiptBusy(true);
+                    await onSendReceipt(detail.folder || folder, detail.uid);
+                    setReceiptBusy(false);
+                  }}
+                >
+                  {receiptBusy ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                  {t("sendReceipt")}
+                </Button>
+              </div>
+            )}
+
+            {/* Recall notice (Outlook-style X-MS-Recall) */}
+            {detail.recall && !recallHandled && (
+              <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-amber-300/60 bg-amber-50 p-3 text-xs dark:border-amber-700/50 dark:bg-amber-950/30">
+                <MailWarning className="size-4 text-amber-600" />
+                <span className="flex-1">
+                  {t("recallNotice", { subject: detail.recall.subject })}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={recallBusy}
+                  onClick={async () => {
+                    setRecallBusy(true);
+                    const ok = await onApplyRecall(detail.recall!.message_id, detail.folder || folder, detail.uid);
+                    if (ok) setRecallHandled(true);
+                    setRecallBusy(false);
+                  }}
+                >
+                  {recallBusy ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                  {t("recallDeleteOriginal")}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setRecallHandled(true)}>
+                  {t("recallDismiss")}
+                </Button>
+              </div>
             )}
 
             {/* Expanded details */}

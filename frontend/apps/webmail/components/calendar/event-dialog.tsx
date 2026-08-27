@@ -35,6 +35,7 @@ export function EventDialog({
   onOpenChange,
   onSave,
   onDelete,
+  readOnly = false,
 }: {
   open: boolean;
   event: CalendarEvent | null;
@@ -48,8 +49,10 @@ export function EventDialog({
     start: string;
     end?: string;
     rrule: string;
+    reminder_minutes: number;
   }) => Promise<void>;
   onDelete?: (id: number) => Promise<void>;
+  readOnly?: boolean;
 }) {
   const t = useTranslations("calendar");
   const [summary, setSummary] = useState("");
@@ -59,6 +62,7 @@ export function EventDialog({
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [rrule, setRrule] = useState("");
+  const [reminder, setReminder] = useState(0);
   const [sendInvite, setSendInvite] = useState(false);
   const [attendees, setAttendees] = useState("");
   const [saving, setSaving] = useState(false);
@@ -76,6 +80,7 @@ export function EventDialog({
       setStart(event.all_day ? dateInput(event.start) : localInput(event.start));
       setEnd(event.end ? (event.all_day ? dateInput(event.end) : localInput(event.end)) : "");
       setRrule(event.rrule || "");
+      setReminder(event.reminder_minutes || 0);
       setSendInvite(false);
       setAttendees("");
     } else {
@@ -88,6 +93,7 @@ export function EventDialog({
       setStart(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
       setEnd("");
       setRrule("");
+      setReminder(0);
       setSendInvite(false);
       setAttendees("");
     }
@@ -102,6 +108,7 @@ export function EventDialog({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     if (!summary.trim() || !start) {
       setError(t("errorRequired"));
       return;
@@ -117,6 +124,7 @@ export function EventDialog({
         start: toISO(start, allDay),
         end: end ? toISO(end, allDay) : undefined,
         rrule,
+        reminder_minutes: reminder,
       });
       if (sendInvite && attendees.trim()) {
         const to = attendees
@@ -143,6 +151,7 @@ export function EventDialog({
   };
 
   const del = async () => {
+    if (readOnly) return;
     if (!event) return;
     setDeleting(true);
     setError("");
@@ -161,16 +170,17 @@ export function EventDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{event ? t("editEvent") : t("newEvent")}</DialogTitle>
+          {readOnly && <p className="text-xs text-muted-foreground">{t("readOnlyCalendar")}</p>}
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-3">
           {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="grid gap-1.5">
             <Label htmlFor="ev-summary">{t("summary")}</Label>
-            <Input id="ev-summary" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder={t("summaryPlaceholder")} />
+            <Input id="ev-summary" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder={t("summaryPlaceholder")} readOnly={readOnly} />
           </div>
           <div className="flex items-center justify-between">
             <Label>{t("allDay")}</Label>
-            <Switch checked={allDay} onCheckedChange={setAllDay} />
+            <Switch checked={allDay} onCheckedChange={setAllDay} disabled={readOnly} />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="grid gap-1.5">
@@ -180,6 +190,7 @@ export function EventDialog({
                 type={allDay ? "date" : "datetime-local"}
                 value={start}
                 onChange={(e) => setStart(e.target.value)}
+                readOnly={readOnly}
                 required
               />
             </div>
@@ -190,13 +201,31 @@ export function EventDialog({
                 type={allDay ? "date" : "datetime-local"}
                 value={end}
                 onChange={(e) => setEnd(e.target.value)}
+                readOnly={readOnly}
               />
             </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="ev-reminder">{t("reminder")}</Label>
+            <select
+              id="ev-reminder"
+              value={reminder}
+              onChange={(e) => setReminder(Number(e.target.value))}
+              disabled={readOnly}
+              className="h-8 rounded-md border border-border bg-transparent px-2 text-sm outline-none focus-visible:border-ring"
+            >
+              <option value={0}>{t("reminderNone")}</option>
+              <option value={5}>{t("reminder5")}</option>
+              <option value={15}>{t("reminder15")}</option>
+              <option value={30}>{t("reminder30")}</option>
+              <option value={60}>{t("reminder60")}</option>
+              <option value={1440}>{t("reminder1d")}</option>
+            </select>
           </div>
           <div className="rounded-md border border-border p-3">
             <div className="flex items-center justify-between">
               <Label>{t("sendInvite")}</Label>
-              <Switch checked={sendInvite} onCheckedChange={setSendInvite} />
+              <Switch checked={sendInvite} onCheckedChange={setSendInvite} disabled={readOnly} />
             </div>
             {sendInvite && (
               <Input
@@ -210,7 +239,7 @@ export function EventDialog({
           <div className="grid grid-cols-2 gap-2">
             <div className="grid gap-1.5">
               <Label htmlFor="ev-location">{t("location")}</Label>
-              <Input id="ev-location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t("locationPlaceholder")} />
+              <Input id="ev-location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t("locationPlaceholder")} readOnly={readOnly} />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="ev-rrule">{t("repeat")}</Label>
@@ -218,6 +247,7 @@ export function EventDialog({
                 id="ev-rrule"
                 value={rrule}
                 onChange={(e) => setRrule(e.target.value)}
+                disabled={readOnly}
                 className="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
               >
                 <option value="">{t("repeatNone")}</option>
@@ -234,12 +264,13 @@ export function EventDialog({
               id="ev-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              readOnly={readOnly}
               rows={3}
               className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
             />
           </div>
           <DialogFooter className="gap-2">
-            {event && onDelete && (
+            {!readOnly && event && onDelete && (
               <Button type="button" variant="ghost" className="mr-auto text-destructive" onClick={del} disabled={deleting}>
                 {deleting ? t("deleting") : t("delete")}
               </Button>
@@ -247,9 +278,11 @@ export function EventDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t("cancel")}
             </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? t("saving") : t("save")}
-            </Button>
+            {!readOnly && (
+              <Button type="submit" disabled={saving}>
+                {saving ? t("saving") : t("save")}
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>

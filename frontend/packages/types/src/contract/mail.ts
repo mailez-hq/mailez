@@ -51,6 +51,12 @@ export type MailMessage = {
   category?: string;
   // Parsed iTIP meeting invitation (REQUEST/REPLY/CANCEL) when present.
   invitation?: MailInvitation;
+  // Read-receipt request (RFC 3798 Disposition-Notification-To). The reader
+  // offers a "send receipt" action unless the $MDNSent keyword is set.
+  receipt_requested?: boolean;
+  receipt_to?: string;
+  // Recall notice (Outlook-style X-MS-Recall) targeting an original message.
+  recall?: { message_id: string; subject: string };
 };
 
 export type MailInvitation = {
@@ -143,6 +149,12 @@ export type CalendarEvent = {
   start: string; // RFC3339
   end?: string; // RFC3339
   rrule: string;
+  // Reminder delivered this many minutes before start (0 = none).
+  reminder_minutes?: number;
+  // Calendar sharing context: the owning account and whether the viewer may
+  // only read (shared calendars are read-only unless granted read-write).
+  owner_email?: string;
+  read_only?: boolean;
   updated_at: string;
 };
 
@@ -154,6 +166,20 @@ export type CalendarEventInput = {
   start: string;
   end?: string;
   rrule?: string;
+  reminder_minutes?: number;
+};
+
+// CalendarShare is a calendar grant between two accounts.
+export type CalendarShare = {
+  id: number;
+  owner_email: string;
+  sharee_email: string;
+  read_only: boolean;
+};
+
+export type CalendarShareListing = {
+  owned: CalendarShare[];
+  granted: CalendarShare[];
 };
 
 // OrgContact is a read-only organization directory entry synced from AD/LDAP.

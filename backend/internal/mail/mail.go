@@ -46,12 +46,25 @@ type Message struct {
 	// into a pre-filled compose. UnsubscribePost marks RFC 8058 one-click.
 	UnsubscribeURL  string `json:"unsubscribe_url,omitempty"`
 	UnsubscribePost bool   `json:"unsubscribe_post,omitempty"`
+	// ReceiptRequested marks a read-receipt request (Disposition-Notification-To,
+	// RFC 3798); ReceiptTo is the address the sender wants the receipt sent to.
+	ReceiptRequested bool   `json:"receipt_requested,omitempty"`
+	ReceiptTo        string `json:"receipt_to,omitempty"`
+	// Recall is set when the message is a recall notice (Outlook-style
+	// X-MS-Recall), linking to the original message by Message-ID.
+	Recall *RecallInfo `json:"recall,omitempty"`
 	// Category is the deterministic auto-classification (work/social/
 	// newsletter/shopping/finance/other) derived from sender and headers.
 	Category string `json:"category,omitempty"`
 	// Invitation is the parsed text/calendar iTIP payload (meeting
 	// REQUEST/REPLY/CANCEL), nil for ordinary messages.
 	Invitation *Invitation `json:"invitation,omitempty"`
+}
+
+// RecallInfo identifies the original message a recall notice refers to.
+type RecallInfo struct {
+	MessageID string `json:"message_id"` // raw RFC 5322 Message-ID, e.g. "<abc@example.com>"
+	Subject   string `json:"subject"`
 }
 
 // Attachment is one file embedded in a message, base64-encoded for download.
@@ -383,6 +396,8 @@ func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, 
 		raw, err := io.ReadAll(body)
 		if err == nil {
 			out.UnsubscribeURL, out.UnsubscribePost = parseUnsubscribe(raw)
+			out.ReceiptRequested, out.ReceiptTo = parseReceiptRequest(raw)
+			out.Recall = parseRecallNotice(raw)
 			if textBody, htmlBody, attachments, inv, err := extractBody(bytes.NewReader(raw)); err == nil {
 				out.TextBody = textBody
 				out.HTMLBody = htmlBody
@@ -392,6 +407,33 @@ func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, 
 		}
 	}
 	return &out, nil
+}
+
+// parseReceiptRequest reads Disposition-Notification-To (RFC 3798) from the
+// raw message headers.
+func parseReceiptRequest(raw []byte) (requested bool, to string) {
+	msg, err := mail.ReadMessage(bytes.NewReader(raw))
+	if err != nil {
+		return false, ""
+	}
+	to = strings.TrimSpace(msg.Header.Get("Disposition-Notification-To"))
+	return to != "", to
+}
+
+// parseRecallNotice detects an Outlook-style recall notice and returns the
+// original message id it targets.
+func parseRecallNotice(raw []byte) *RecallInfo {
+	msg, err := mail.ReadMessage(bytes.NewReader(raw))
+	if err != nil {
+		return nil
+	}
+	if !strings.EqualFold(strings.TrimSpace(msg.Header.Get("X-MS-Recall")), "yes") {
+		return nil
+	}
+	return &RecallInfo{
+		MessageID: strings.TrimSpace(msg.Header.Get("X-MS-Recall-MessageID")),
+		Subject:   strings.TrimSpace(msg.Header.Get("X-MS-Recall-Subject")),
+	}
 }
 
 // parseUnsubscribe reads the List-Unsubscribe / List-Unsubscribe-Post headers

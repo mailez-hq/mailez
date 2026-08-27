@@ -22,6 +22,8 @@ import {
   mailFolders, mailFolderCreate, mailFolderRename, mailFolderDelete, mailFolderClear,
   mailLabelDelete, mailLabelRename, mailLabelSave, mailLabels, mailMessage, mailMessages, mailSaveDraft, mailSearch, mailSearchSpec, mailSend, mailSendReply, mailThread, mailUnseen, mailUndoSend, mailUnsubscribe, mailScheduled,
   mailSnooze,
+  mailReceipt, mailRecall, mailRecallApply, mailMerge, mailReadAll,
+  type MailMergeRecipient,
   meProfile, updateMeSettings,
   pgpEncrypt, pgpLookup, pgpSign,
   type Contact, type DraftTone, type MailAccount, type MailDelegation, type MailIdentity, type MailLabel, type MailMessage, type MailThread, type Me,
@@ -70,6 +72,28 @@ function composeSignature(vals: {
     vals.bodyText,
     vals.attachments.map((a) => `${a.filename}:${a.size}`),
   ]);
+}
+
+// parseMergeRecipients converts pasted "email, 姓名[, 变量=值...]" lines into
+// merge recipients. The first column is the address, the second the display
+// name, and any further columns become {{var}} placeholders.
+function parseMergeRecipients(text: string): MailMergeRecipient[] {
+  const out: MailMergeRecipient[] = [];
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const cols = line.split(/[,，\t]/).map((c) => c.trim()).filter(Boolean);
+    const email = cols.shift() || "";
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) continue;
+    const name = cols.shift() || "";
+    const vars: Record<string, string> = {};
+    for (const col of cols) {
+      const eq = col.indexOf("=");
+      if (eq > 0) vars[col.slice(0, eq).trim()] = col.slice(eq + 1).trim();
+    }
+    out.push({ email, name, vars });
+  }
+  return out;
 }
 
 // buildSearchSpec merges the free-text keywords with the visual builder
@@ -299,6 +323,9 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
 
   // ---- stack: compose / settings / contacts / palette / sieve / sidebar ----
   const [composeOpen, setComposeOpen] = useState(false);
+  const [receiptOn, setReceiptOn] = useState(false);
+  const [mergeOn, setMergeOn] = useState(false);
+  const [mergeText, setMergeText] = useState("");
   // Where the initial focus should land when the compose dialog opens:
   // "to" (new message / forward) or "editor" (reply / reply all).
   const [composeFocus, setComposeFocus] = useState<"to" | "editor">("to");
@@ -1757,6 +1784,31 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       const finalHtml = html;
       const finalFrom = from;
       const delay = prefs.undoSendSeconds;
+
+      // Mail merge (逐封群发): each line is "email, 姓名" and the subject/body
+      // may reference {{name}}, {{email}} and custom {{var}} placeholders.
+      if (mergeOn) {
+        const recipients = parseMergeRecipients(mergeText);
+        if (recipients.length === 0) {
+          setError(t("mergeNoRecipients"));
+          return;
+        }
+        const res = await mailMerge({
+          subject: finalSubject,
+          body: finalText,
+          html: finalHtml,
+          from: finalFrom,
+          recipients,
+        });
+        setMergeText("");
+        setMergeOn(false);
+        closeCompose();
+        showToast(t("mergeSent", { count: res.sent }));
+        if (res.failed.length > 0) {
+          setError(t("mergeFailed", { count: res.failed.length }));
+        }
+        return;
+      }
       // datetime-local value -> RFC3339 (interpreted as local time).
       const sendAt = scheduleAt ? new Date(scheduleAt).toISOString() : undefined;
 
@@ -1779,14 +1831,14 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       // Scheduled send: the backend parks the message until send_at. Cancel it
       // from the Scheduled dialog, not the send/undo toast.
       if (sendAt) {
-        await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, 0, sendAt);
+        await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, 0, sendAt, receiptOn);
         resetCompose();
         showToast(t("toastScheduled", { time: fmtDate(sendAt) }));
         return;
       }
 
       if (delay <= 0) {
-        await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments);
+        await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, 0, undefined, receiptOn);
         resetCompose();
         loadMessages(folder);
         return;
@@ -1795,7 +1847,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       // Server-side undo window: the backend parks the message in its outbox
       // and delivers it when the window elapses, so closing the tab no longer
       // loses the send.
-      const res = await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, delay);
+      const res = await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, delay, undefined, receiptOn);
       const outboxId = res?.outbox_id;
       resetCompose();
 
@@ -1833,6 +1885,68 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "send failed");
+      return false;
+    }
+  }
+
+  // sendReceipt answers a read-receipt request (RFC 3798): the backend mails
+  // the disposition notification and marks $MDNSent on the message.
+  async function sendReceipt(folderName: string, uid: number): Promise<boolean> {
+    setError("");
+    try {
+      await mailReceipt(folderName, uid);
+      showToast(t("receiptSent"));
+      refreshMail();
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "receipt failed");
+      return false;
+    }
+  }
+
+  // recallMessage recalls a sent message: the backend mails X-MS-Recall
+  // notices to the recipients and flags the sent copy.
+  async function recallMessage(folderName: string, uid: number): Promise<boolean> {
+    setError("");
+    try {
+      await mailRecall(folderName, uid);
+      showToast(t("recallSent"));
+      refreshMail();
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "recall failed");
+      return false;
+    }
+  }
+
+  // applyRecall deletes the original message a recall notice targets, then
+  // removes the notice itself.
+  async function applyRecall(messageId: string, noticeFolder: string, noticeUid: number): Promise<boolean> {
+    setError("");
+    try {
+      const res = await mailRecallApply(messageId);
+      if (noticeFolder && noticeUid) {
+        await mailMove(noticeFolder, [noticeUid], "Trash").catch(() => {});
+      }
+      showToast(t("recallApplied", { removed: res.removed }));
+      refreshMail();
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "recall apply failed");
+      return false;
+    }
+  }
+
+  // markAllRead marks the current folder's messages as read.
+  async function markAllRead(folderName: string): Promise<boolean> {
+    setError("");
+    try {
+      await mailReadAll(folderName);
+      showToast(t("markedAllRead"));
+      refreshMail();
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "mark all read failed");
       return false;
     }
   }
@@ -2228,6 +2342,12 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     loadScheduled,
     cancelScheduled,
     composeOpen,
+    receiptOn,
+    setReceiptOn,
+    mergeOn,
+    setMergeOn,
+    mergeText,
+    setMergeText,
     identities,
     from,
     selectIdentity,
@@ -2265,6 +2385,10 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     addFiles,
     send,
     sendQuickReply,
+    sendReceipt,
+    recallMessage,
+    applyRecall,
+    markAllRead,
     closeCompose,
     openCalendar,
     saveDraftNow,
