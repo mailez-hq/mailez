@@ -25,6 +25,9 @@ type eventInput struct {
 	Start       string `json:"start"` // RFC3339
 	End         string `json:"end"`   // RFC3339 (optional)
 	RRule       string `json:"rrule"`
+	// ReminderMinutes asks for a reminder this many minutes before start
+	// (0 disables it). The reminder is delivered as mail to the owner.
+	ReminderMinutes int `json:"reminder_minutes"`
 }
 
 // apply validates the input, builds the raw ICS and fills the model row.
@@ -49,6 +52,10 @@ func (in *eventInput) apply(ev *models.CalendarEvent) error {
 	}
 	if ev.UID == "" {
 		ev.UID = newUID()
+	}
+	ev.ReminderMinutes = in.ReminderMinutes
+	if ev.ReminderMinutes < 0 {
+		ev.ReminderMinutes = 0
 	}
 	d := &caldav.EventData{
 		UID:         ev.UID,
@@ -103,6 +110,9 @@ func view(ev *models.CalendarEvent) fiber.Map {
 		"description": ev.Description,
 		"all_day":     ev.AllDay,
 		"rrule":       ev.RRule,
+		"reminder_minutes": ev.ReminderMinutes,
+		"owner_email":      ev.UserEmail,
+		"read_only":        false,
 		"updated_at":  ev.UpdatedAt,
 	}
 	if ev.Start != nil {
@@ -127,4 +137,9 @@ func (h *Handler) Register(r fiber.Router) {
 	r.Post("/calendar/events", h.createEvent)
 	r.Put("/calendar/events/:id", h.updateEvent)
 	r.Delete("/calendar/events/:id", h.deleteEvent)
+	r.Get("/calendar/shares", h.listShares)
+	r.Post("/calendar/shares", h.createShare)
+	r.Delete("/calendar/shares/:id", h.deleteShare)
+	r.Get("/calendar/feed", h.calendarFeed)
+	r.Get("/calendar/export.ics", h.exportICS)
 }
