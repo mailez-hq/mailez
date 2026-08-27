@@ -11,6 +11,8 @@ import {
   type AiPrefs,
   type Density,
   type Preferences,
+  type ReaderFontSize,
+  type ReadingPaneWidth,
   type Theme,
 } from "@/lib/preferences";
 
@@ -19,12 +21,18 @@ type PreferencesContextValue = {
   theme: Theme;
   density: Density;
   accent: Accent;
+  spellcheck: boolean;
+  readerFont: ReaderFontSize;
+  paneWidth: ReadingPaneWidth;
   setTheme: (theme: Theme) => void;
   setDensity: (density: Density) => void;
   setAccent: (accent: Accent) => void;
   setAi: (ai: AiPrefs) => void;
   setNotifications: (enabled: boolean) => void;
   setUndoSend: (seconds: number) => void;
+  setSpellcheck: (enabled: boolean) => void;
+  setReaderFont: (size: ReaderFontSize) => void;
+  setPaneWidth: (width: ReadingPaneWidth) => void;
   resolvedDark: boolean;
 };
 
@@ -86,6 +94,18 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     (undoSendSeconds: number) => update({ ...prefs, undoSendSeconds }),
     [prefs, update],
   );
+  const setSpellcheck = useCallback(
+    (spellcheck: boolean) => update({ ...prefs, spellcheck }),
+    [prefs, update],
+  );
+  const setReaderFont = useCallback(
+    (readerFont: ReaderFontSize) => update({ ...prefs, readerFont }),
+    [prefs, update],
+  );
+  const setPaneWidth = useCallback(
+    (paneWidth: ReadingPaneWidth) => update({ ...prefs, paneWidth }),
+    [prefs, update],
+  );
 
   const value = useMemo(
     () => ({
@@ -93,15 +113,21 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       theme: prefs.theme,
       density: prefs.density,
       accent: prefs.accent,
+      spellcheck: prefs.spellcheck,
+      readerFont: prefs.readerFont,
+      paneWidth: prefs.paneWidth,
       setTheme,
       setDensity,
       setAccent,
       setAi,
       setNotifications,
       setUndoSend,
+      setSpellcheck,
+      setReaderFont,
+      setPaneWidth,
       resolvedDark,
     }),
-    [prefs, setTheme, setDensity, setAccent, setAi, setNotifications, setUndoSend, resolvedDark],
+    [prefs, setTheme, setDensity, setAccent, setAi, setNotifications, setUndoSend, setSpellcheck, setReaderFont, setPaneWidth, resolvedDark],
   );
 
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;

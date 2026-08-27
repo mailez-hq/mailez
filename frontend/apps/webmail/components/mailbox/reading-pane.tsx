@@ -10,10 +10,13 @@ import {
   Download,
   FileCode,
   Info,
+  Languages,
   Loader2,
   Lock,
   Printer,
   RotateCw,
+  Volume2,
+  VolumeX,
   Reply,
   ReplyAll,
   Send,
@@ -32,13 +35,14 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { mailRaw, pgpDecrypt } from "@/lib/api";
+import { aiTranslate, mailRaw, pgpDecrypt } from "@/lib/api";
 import type { MailAttachment, MailMessage, MailThread } from "@/lib/api";
 import { AttachmentCard } from "@/components/mailbox/reader/attachment-card";
 import { QuoteBlock } from "@/components/mailbox/reader/quote-block";
 import { useMounted } from "@/components/mailbox/reader/use-mounted";
-import { labelColor } from "@/components/mailbox/mail-utils";
+import { escHtml, labelColor } from "@/components/mailbox/mail-utils";
 import { buildFolderTree, flattenTree, folderLabel } from "@/components/mailbox/folder-tree";
+import type { ReaderFontSize, ReadingPaneWidth } from "@/lib/preferences";
 import {
   blockRemoteImages, hasRemoteImages, rememberedRemoteSenders, rememberRemoteSender,
 } from "@/components/mailbox/reader/remote-images";
@@ -299,6 +303,12 @@ export function ReadingPane({
   onToggleThread,
   onSelectThread,
   highlightTerms,
+  readerFont,
+  paneWidth,
+  meEmail,
+  onQuickReply,
+  muted,
+  onToggleMute,
 }: {
   detail: MailMessage;
   detailLoading: boolean;
@@ -329,8 +339,18 @@ export function ReadingPane({
   onToggleThread: () => void;
   onSelectThread: (uid: number) => void;
   highlightTerms?: string[];
+  readerFont?: ReaderFontSize;
+  paneWidth?: ReadingPaneWidth;
+  meEmail: string;
+  onQuickReply: (
+    to: string[], cc: string[], subject: string, text: string, inReplyTo: string, references: string,
+  ) => Promise<boolean>;
+  muted: boolean;
+  onToggleMute: () => void;
 }) {
   const t = useTranslations("mail");
+  const fontPx = readerFont === "sm" ? 13 : readerFont === "lg" ? 16 : readerFont === "xl" ? 18 : 14;
+  const paneMax = paneWidth === "narrow" ? 720 : paneWidth === "wide" ? 1100 : 0;
   const mounted = useMounted();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [expandedQuotes, setExpandedQuotes] = useState<Set<number>>(new Set());
@@ -346,6 +366,12 @@ export function ReadingPane({
   const [rawText, setRawText] = useState("");
   const [rawLoading, setRawLoading] = useState(false);
   const [rawError, setRawError] = useState("");
+  const [quickReplyText, setQuickReplyText] = useState("");
+  const [quickReplyAll, setQuickReplyAll] = useState(false);
+  const [quickSending, setQuickSending] = useState(false);
+  const [translation, setTranslation] = useState("");
+  const [translating, setTranslating] = useState(false);
+  const [translatedView, setTranslatedView] = useState(false);
 
   // Track which thread message is expanded
   const [expandedUid, setExpandedUid] = useState<number | null>(detail.uid);
@@ -479,8 +505,78 @@ export function ReadingPane({
     });
   }
 
+  async function doTranslate() {
+    const text = (detail.text_body || "").trim();
+    if (!text) return;
+    setTranslating(true);
+    try {
+      const target = /[\u4e00-\u9fff]/.test(text) ? "English" : "简体中文";
+      const res = await aiTranslate(text, target);
+      setTranslation(res.translation);
+      setTranslatedView(true);
+    } catch {
+      setTranslation("");
+      setTranslatedView(false);
+    } finally {
+      setTranslating(false);
+    }
+  }
+
+  function doPrint() {
+    const w = window.open("", "_blank");
+    if (!w) return;
+    const sender = detail.from.map((a) => a.name || a.email).join(", ");
+    const recipients = [...detail.to, ...(detail.cc || [])].map((a) => a.email).join(", ");
+    const body =
+      detail.html_body ||
+      `<pre style="white-space:pre-wrap;font-family:inherit">${escHtml(detail.text_body || "")}</pre>`;
+    w.document.write(
+      `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(detail.subject)}</title>` +
+        `<style>body{font-family:system-ui,sans-serif;max-width:760px;margin:24px auto;padding:0 16px;color:#111}` +
+        `h1{font-size:20px;line-height:1.4}header{color:#555;font-size:13px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #ddd}` +
+        `img{max-width:100%}blockquote{border-left:3px solid #ccc;margin:8px 0;padding-left:12px;color:#555}</style>` +
+        `</head><body><h1>${escHtml(detail.subject)}</h1><header>From: ${escHtml(sender)}<br>Date: ${escHtml(fmtFullDate(detail.date))}<br>To: ${escHtml(recipients)}</header>` +
+        `<div>${body}</div><script>window.onload=()=>window.print()<\/script></body></html>`,
+    );
+    w.document.close();
+  }
+
+  async function doQuickReply() {
+    const text = quickReplyText.trim();
+    if (!text) return;
+    setQuickSending(true);
+    try {
+      const sender = detail.from[0]?.email;
+      if (!sender) return;
+      const meLower = meEmail.toLowerCase();
+      const recipients = new Set<string>();
+      if (quickReplyAll) {
+        [...detail.from, ...(detail.cc || []), ...detail.to].forEach((a) => {
+          if (a.email && a.email.toLowerCase() !== meLower) recipients.add(a.email);
+        });
+      } else {
+        recipients.add(sender);
+      }
+      const subject = detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`;
+      const ok = await onQuickReply(
+        [...recipients],
+        [],
+        subject,
+        text,
+        detail.id,
+        detail.id,
+      );
+      if (ok) setQuickReplyText("");
+    } finally {
+      setQuickSending(false);
+    }
+  }
+
   return (
-    <main className="mail-scroll min-w-0 flex-1 overflow-y-auto bg-card">
+    <main
+      className="mail-scroll min-w-0 flex-1 overflow-y-auto bg-card"
+      style={paneMax ? {maxWidth: paneMax, width: "100%", marginInline: "auto"} : undefined}
+    >
       {/* Subject header */}
       <div className="sticky top-0 z-10 border-b border-border bg-card/95 px-4 py-3 backdrop-blur-sm md:px-6">
         {/* Mobile back */}
@@ -537,11 +633,45 @@ export function ReadingPane({
             >
               <Trash2 className="size-4" />
             </Button>
+            {aiEnabled && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={doTranslate}
+                title={t("translate")}
+                className="size-8 text-muted-foreground"
+              >
+                {translating ? <Loader2 className="size-4 animate-spin" /> : <Languages className="size-4" />}
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onToggleMute}
+              title={muted ? t("unmute") : t("mute")}
+              className={cn("size-8", muted && "text-primary")}
+            >
+              {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={doPrint}
+              title={t("print")}
+              className="size-8 text-muted-foreground"
+            >
+              <Printer className="size-4" />
+            </Button>
           </div>
         </div>
 
         {/* Labels / tags */}
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
+          {muted && (
+            <span className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+              {t("mutedBadge")}
+            </span>
+          )}
           {labels
             .filter((l) => detail.flags.includes(l))
             .map((l) => {
@@ -756,9 +886,6 @@ export function ReadingPane({
                 <Button size="sm" variant="ghost" onClick={downloadRaw} title={t("downloadEml")}>
                   <Download className="size-3.5" />
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => window.print()} title={t("print")}>
-                  <Printer className="size-3.5" />
-                </Button>
                 <select
                   value=""
                   onChange={(e) => {
@@ -776,6 +903,38 @@ export function ReadingPane({
                       </option>
                     ))}
                 </select>
+              </div>
+            </div>
+
+            {/* Inline quick reply */}
+            <div className="mt-4 rounded-lg border border-border p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <p className="text-xs font-medium text-muted-foreground">{t("quickReply")}</p>
+                <button
+                  type="button"
+                  onClick={() => setQuickReplyAll((v) => !v)}
+                  className={cn(
+                    "rounded-full border px-2 py-0.5 text-[11px] transition-colors",
+                    quickReplyAll
+                      ? "border-primary bg-accent font-medium text-accent-foreground"
+                      : "border-border text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  {quickReplyAll ? t("replyAll") : t("reply")}
+                </button>
+              </div>
+              <textarea
+                value={quickReplyText}
+                onChange={(e) => setQuickReplyText(e.target.value)}
+                placeholder={t("quickReply")}
+                rows={3}
+                className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <div className="mt-2 flex justify-end">
+                <Button size="sm" onClick={doQuickReply} disabled={!quickReplyText.trim() || quickSending}>
+                  {quickSending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+                  {t("send")}
+                </Button>
               </div>
             </div>
 
@@ -822,10 +981,23 @@ export function ReadingPane({
               </div>
             )}
 
+            {/* Translation panel */}
+            {translatedView && translation && (
+              <div className="mb-4 rounded-lg border border-border p-3">
+                <div className="mb-1.5 flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground">{t("translate")}</p>
+                  <Button size="xs" variant="ghost" onClick={() => setTranslatedView(false)}>
+                    {t("showOriginal")}
+                  </Button>
+                </div>
+                <div className="whitespace-pre-wrap text-sm leading-6">{translation}</div>
+              </div>
+            )}
+
             {/* Message body: HTML preferred, plain text as fallback */}
             <div className="mail-body">
               {mounted && htmlBody ? (
-                <div dangerouslySetInnerHTML={{ __html: htmlBody }} />
+                <div dangerouslySetInnerHTML={{ __html: htmlBody }} style={{fontSize: fontPx}} />
               ) : segments.length === 0 && detailLoading ? (
                 <p className="flex items-center gap-1.5 text-muted-foreground">
                   <Loader2 className="size-3.5 animate-spin" />
@@ -836,7 +1008,7 @@ export function ReadingPane({
               ) : (
                 segments.map((seg, i) =>
                   seg.type === "p" ? (
-                    <p key={i} className="text-sm leading-6">
+                    <p key={i} className="leading-6" style={{fontSize: fontPx}}>
                       {seg.lines.map((l, j) => (
                         <span key={j}>
                           <Highlight text={l} terms={highlightTerms} />

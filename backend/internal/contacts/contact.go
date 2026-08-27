@@ -15,10 +15,77 @@ import (
 func (h *Handler) registerContacts(r fiber.Router) {
 	r.Get("/contacts", h.listContacts)
 	r.Post("/contacts", h.createContact)
-	r.Put("/contacts/:id", h.updateContact)
-	r.Delete("/contacts/:id", h.deleteContact)
 	r.Get("/contacts/export", h.exportContacts)
 	r.Post("/contacts/import", h.importContacts)
+	r.Post("/contacts/dedupe", h.dedupeContacts)
+	r.Get("/contacts/carddav", h.contactsCardDAVGet)
+	r.Put("/contacts/carddav", h.contactsCardDAVSet)
+	r.Post("/contacts/carddav/sync", h.contactsCardDAVSync)
+	r.Put("/contacts/:id", h.updateContact)
+	r.Delete("/contacts/:id", h.deleteContact)
+}
+
+// dedupeContacts merges contacts that share the same email (case-insensitive):
+// the most complete entry survives and the rest are deleted.
+// @Summary Merge duplicate contacts
+// @Tags contacts
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /contacts/dedupe [post]
+func (h *Handler) dedupeContacts(c *fiber.Ctx) error {
+	userEmail := currentUser(c).Email
+	var contacts []models.Contact
+	if err := h.DB.Where("user_email = ?", userEmail).Order("id").Find(&contacts).Error; err != nil {
+		return core.Fail(c, 500, err, "internal error")
+	}
+	byEmail := map[string]*models.Contact{}
+	merged, removed := 0, 0
+	for i := range contacts {
+		key := strings.ToLower(strings.TrimSpace(contacts[i].Email))
+		if key == "" {
+			continue
+		}
+		cur, ok := byEmail[key]
+		if !ok {
+			byEmail[key] = &contacts[i]
+			continue
+		}
+		// Merge useful fields into the surviving entry.
+		if len(contacts[i].Name) > len(cur.Name) {
+			cur.Name = contacts[i].Name
+		}
+		if len(contacts[i].Comment) > len(cur.Comment) {
+			cur.Comment = contacts[i].Comment
+		}
+		if contacts[i].Avatar != "" && cur.Avatar == "" {
+			cur.Avatar = contacts[i].Avatar
+		}
+		cur.Groups = mergeGroups(cur.Groups, contacts[i].Groups)
+		if err := h.DB.Save(cur).Error; err != nil {
+			return core.Fail(c, 500, err, "db error")
+		}
+		if err := h.DB.Delete(&models.Contact{}, contacts[i].ID).Error; err != nil {
+			return core.Fail(c, 500, err, "db error")
+		}
+		merged++
+		removed++
+	}
+	return c.JSON(fiber.Map{"merged": merged, "removed": removed})
+}
+
+// mergeGroups unions two comma-separated group lists without duplicates.
+func mergeGroups(a, b string) string {
+	seen := map[string]bool{}
+	var out []string
+	for _, g := range strings.Split(a+","+b, ",") {
+		g = strings.TrimSpace(g)
+		if g == "" || seen[g] {
+			continue
+		}
+		seen[g] = true
+		out = append(out, g)
+	}
+	return strings.Join(out, ",")
 }
 
 // listContacts returns the caller's address book.

@@ -33,6 +33,37 @@ func (h *Handler) registerAI(r fiber.Router) {
 	r.Post("/ai/draft", h.aiDraft)
 	r.Post("/ai/prioritize", h.aiPrioritize)
 	r.Post("/ai/search", h.aiSearch)
+	r.Post("/ai/translate", h.aiTranslate)
+}
+
+// aiTranslate translates an email body into a target language via the
+// configured AI provider.
+// @Summary Translate email
+// @Tags ai
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} models.APIError
+// @Router /ai/translate [post]
+func (h *Handler) aiTranslate(c *fiber.Ctx) error {
+	if !h.AI.Enabled() {
+		return c.Status(400).JSON(fiber.Map{"error": "ai is disabled"})
+	}
+	var in struct {
+		Text   string `json:"text"`
+		Target string `json:"target"`
+	}
+	if err := c.BodyParser(&in); err != nil || in.Text == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "text is required"})
+	}
+	if in.Target == "" {
+		in.Target = "简体中文"
+	}
+	translated, err := h.AI.Translate(c.Context(), in.Text, in.Target)
+	if err != nil {
+		return core.Fail(c, 502, err, "mail service error")
+	}
+	return c.JSON(fiber.Map{"translation": translated})
 }
 
 // aiStatus tells the UI whether AI features are available.

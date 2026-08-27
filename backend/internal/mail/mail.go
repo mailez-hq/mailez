@@ -12,6 +12,7 @@ import (
 	"mime/multipart"
 	"mime/quotedprintable"
 	"net/mail"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -32,6 +33,7 @@ type Message struct {
 	Date          time.Time    `json:"date"`
 	Flags         []string     `json:"flags"`
 	HasAttachment bool         `json:"has_attachment"`
+	Size          int64        `json:"size,omitempty"`
 	ThreadID      string       `json:"thread_id,omitempty"`
 	ThreadCount   int          `json:"thread_count,omitempty"`
 	ThreadLatest  bool         `json:"thread_latest,omitempty"`
@@ -147,6 +149,14 @@ const PageSize = 50
 // ListMessages returns a page of the most recent messages of a folder (envelope
 // only). Page is zero-based; the total message count is returned alongside.
 func (c *Client) ListMessages(email, token, folder string, page int) ([]Message, int, error) {
+	return c.ListMessagesSorted(email, token, folder, page, "date", "desc")
+}
+
+// ListMessagesSorted returns a page of messages ordered by the requested
+// field ("date" keeps the fast newest-first path; from/subject/size fetch the
+// whole folder and sort in Go, then slice the page so pagination stays
+// correct across the ordering).
+func (c *Client) ListMessagesSorted(email, token, folder string, page int, sortBy, dir string) ([]Message, int, error) {
 	folder = inboxName(folder)
 	cli, err := c.openIMAP(email, token)
 	if err != nil {
@@ -160,6 +170,9 @@ func (c *Client) ListMessages(email, token, folder string, page int) ([]Message,
 	}
 	if mbox.Messages == 0 || page < 0 {
 		return []Message{}, int(mbox.Messages), nil
+	}
+	if sortBy != "" && sortBy != "date" {
+		return c.listAllSorted(cli, folder, mbox.Messages, page, sortBy, dir)
 	}
 
 	skip := uint32(page) * PageSize
@@ -211,6 +224,69 @@ func (c *Client) ListMessages(email, token, folder string, page int) ([]Message,
 		}
 	}
 	return out, int(mbox.Messages), nil
+}
+
+// listAllSorted fetches every message of the folder, sorts by the requested
+// field and returns the requested page.
+func (c *Client) listAllSorted(cli *client.Client, folder string, total uint32, page int, sortBy, dir string) ([]Message, int, error) {
+	seqset := new(imap.SeqSet)
+	seqset.AddRange(1, total)
+	headerSection := &imap.BodySectionName{Peek: true, BodyPartName: imap.BodyPartName{Specifier: imap.HeaderSpecifier}}
+	messages := make(chan *imap.Message, 50)
+	done := make(chan error, 1)
+	go func() {
+		done <- cli.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure, imap.FetchRFC822Size, headerSection.FetchItem()}, messages)
+	}()
+	var out []Message
+	for msg := range messages {
+		m := envelopeToMessage(msg)
+		m.Category = classifyFetched(msg, headerSection)
+		out = append(out, m)
+	}
+	if err := <-done; err != nil {
+		return nil, 0, fmt.Errorf("imap fetch: %w", err)
+	}
+	less := func(i, j int) bool {
+		switch sortBy {
+		case "from":
+			ai, bi := out[i].From, out[j].From
+			an, bn := "", ""
+			if len(ai) > 0 {
+				an = ai[0].Name
+				if an == "" {
+					an = ai[0].Email
+				}
+			}
+			if len(bi) > 0 {
+				bn = bi[0].Name
+				if bn == "" {
+					bn = bi[0].Email
+				}
+			}
+			return strings.ToLower(an) < strings.ToLower(bn)
+		case "subject":
+			return strings.ToLower(out[i].Subject) < strings.ToLower(out[j].Subject)
+		case "size":
+			return out[i].Size < out[j].Size
+		default:
+			return out[i].Date.After(out[j].Date)
+		}
+	}
+	sort.SliceStable(out, less)
+	if dir == "desc" {
+		for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
+			out[i], out[j] = out[j], out[i]
+		}
+	}
+	start := page * PageSize
+	if start >= len(out) {
+		return []Message{}, len(out), nil
+	}
+	end := start + PageSize
+	if end > len(out) {
+		end = len(out)
+	}
+	return out[start:end], len(out), nil
 }
 
 // GetMessage returns a full message body by UID.
@@ -331,6 +407,7 @@ func envelopeToMessage(msg *imap.Message) Message {
 		UID:   msg.Uid,
 		Seq:   msg.SeqNum,
 		Flags: msg.Flags,
+		Size:  int64(msg.Size),
 	}
 	if msg.Envelope != nil {
 		out.Subject = msg.Envelope.Subject

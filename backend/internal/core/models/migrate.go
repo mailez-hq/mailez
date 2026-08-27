@@ -131,6 +131,16 @@ var migrations = []migration{
 			return nil
 		},
 	},
+	{
+		// Reusable compose templates (canned responses / 常用语) per account.
+		ID: "20260827_email_templates",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&Template{}) },
+	},
+	{
+		// Remote CardDAV address book config for one-way import sync.
+		ID: "20260827_carddav",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&CardDAVConfig{}) },
+	},
 }
 
 // Migrate applies pending migrations in order and records them in
