@@ -228,6 +228,14 @@ var migrations = []migration{
 			return nil
 		},
 	},
+	{
+		// Outbound DLP + approval workflow: sensitive-word/regex rules and
+		// held messages awaiting approver decisions (Coremail-style 审批).
+		ID: "20260827_dlp_approval",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&DlpRule{}, &PendingApproval{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

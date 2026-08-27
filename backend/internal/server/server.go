@@ -30,6 +30,7 @@ import (
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/dav"
 	"mailez/backend/internal/delegation"
+	"mailez/backend/internal/dlp"
 	"mailez/backend/internal/domain"
 	"mailez/backend/internal/fetch"
 	"mailez/backend/internal/ldap"
@@ -126,7 +127,9 @@ func New(cfg core.Config) *Server {
 	fetcher := fetch.New(db, cfg.MailMtaAddr, cfg.SecretKey, cfg.FetchInsecure, time.Duration(cfg.FetchInterval)*time.Second)
 	go fetcher.Run(bgCtx)
 	// Send-undo queue: delivers parked messages once their window elapses.
-	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey).Run(bgCtx)
+	dlpSvc := dlp.New(&core.App{DB: db, Auth: s.Auth, Cfg: cfg})
+	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey, dlpSvc).Run(bgCtx)
+	go dlpSvc.RunExpiry(bgCtx)
 	// Organization address book refresh (AD/LDAP) when directory sync is on.
 	go ldap.RunSyncWorker(bgCtx, db, cfg.SecretKey)
 	// Compliance archive retention: purge messages past their policy deadline.
@@ -202,6 +205,7 @@ func (s *Server) routes() {
 	announcement.New(app).Register(authed)
 	calendar.New(app).Register(authed)
 	archive.New(app).Register(authed)
+	dlp.New(app).Register(authed)
 	fetch.RegisterAPI(authed, app)
 	ai.RegisterAPI(authed, app, aiMgr)
 	push.RegisterAPI(authed, app)
@@ -209,6 +213,7 @@ func (s *Server) routes() {
 	stackGroup := s.App.Group("/stack")
 	s.internal.Register(stackGroup)
 	archive.New(app).RegisterStack(stackGroup)
+	dlp.New(app).RegisterStack(stackGroup)
 
 	// Built-in CardDAV/CalDAV servers (phone/desktop sync over Basic Auth)
 	// plus the RFC 6764 well-known discovery redirects.

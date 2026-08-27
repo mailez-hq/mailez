@@ -12,6 +12,7 @@ import {
   LogOut,
   Megaphone,
   Archive,
+  ShieldAlert,
   ScrollText,
   Server,
   Settings,
@@ -35,6 +36,8 @@ const navItems = [
   { href: "/announcement", key: "announcement", roles: ["admin"], icon: Megaphone },
   { href: "/anon-aliases", key: "anonAliases", roles: ["admin", "manager", "user"], icon: EyeOff },
   { href: "/archive", key: "archive", roles: ["admin"], icon: Archive },
+  // Approvers (regular users listed on hold rules) also need the center.
+  { href: "/dlp", key: "dlp", roles: ["admin", "user"], icon: ShieldAlert },
   { href: "/audit", key: "audit", roles: ["admin"], icon: ScrollText },
   { href: "/config", key: "config", roles: ["admin"], icon: Settings },
 ];
