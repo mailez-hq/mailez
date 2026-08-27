@@ -929,3 +929,78 @@ func TestDirectoryContract(t *testing.T) {
 		t.Fatalf("directory srs restore non-srs: got %d", code)
 	}
 }
+
+// TestDistributionGroupExpansion pins the 通讯组 delivery contract: structured
+// members join the destination list, nested local groups expand recursively,
+// cycles terminate, and local users / external members pass through.
+func TestDistributionGroupExpansion(t *testing.T) {
+	h, app := newContractHarness(t)
+	seedContractData(t, h)
+	db := h.DB
+
+	// eng is a distribution group with a local user, another local user, and
+	// an external member.
+	eng := &models.Alias{Email: "eng@example.com", Localpart: "eng", DomainName: "example.com"}
+	eng.SetMembers([]models.AliasMember{
+		{Email: "alice@example.com", Name: "Alice"},
+		{Email: "bob@example.com"},
+		{Email: "partner@elsewhere.com"},
+	})
+	if err := db.Create(eng).Error; err != nil {
+		t.Fatalf("create eng: %v", err)
+	}
+
+	// all nests eng plus a direct member; then a cycle eng -> all is added to
+	// prove the resolver terminates.
+	all := &models.Alias{Email: "all@example.com", Localpart: "all", DomainName: "example.com"}
+	all.SetMembers([]models.AliasMember{
+		{Email: "eng@example.com"},
+		{Email: "carol@spoof.example.com"},
+	})
+	if err := db.Create(all).Error; err != nil {
+		t.Fatalf("create all: %v", err)
+	}
+	eng.SetMembers(append(eng.MemberList(), models.AliasMember{Email: "all@example.com"}))
+	if err := db.Save(eng).Error; err != nil {
+		t.Fatalf("save eng cycle: %v", err)
+	}
+
+	code, body := doGet(t, app, "/stack/directory/aliases/all@example.com")
+	if code != 200 {
+		t.Fatalf("directory aliases: got %d %q", code, body)
+	}
+	var res struct {
+		Targets []string `json:"targets"`
+	}
+	if err := json.Unmarshal([]byte(body), &res); err != nil {
+		t.Fatalf("unmarshal: %v (%q)", err, body)
+	}
+	got := map[string]bool{}
+	for _, tgt := range res.Targets {
+		got[strings.ToLower(tgt)] = true
+	}
+	for _, want := range []string{
+		"alice@example.com", "bob@example.com",
+		"partner@elsewhere.com", "carol@spoof.example.com",
+	} {
+		if !got[want] {
+			t.Fatalf("target %s missing from %v", want, res.Targets)
+		}
+	}
+	if len(res.Targets) != 4 {
+		t.Fatalf("targets = %v, want 4 unique entries", res.Targets)
+	}
+
+	// The postfix alias map exposes the same flat list (engine contract).
+	code, body = doGet(t, app, "/stack/postfix/alias/all@example.com")
+	if code != 200 {
+		t.Fatalf("postfix alias: got %d %q", code, body)
+	}
+	var joined string
+	if err := json.Unmarshal([]byte(body), &joined); err != nil {
+		t.Fatalf("unmarshal postfix: %v (%q)", err, body)
+	}
+	if parts := strings.Split(joined, ","); len(parts) != 4 {
+		t.Fatalf("postfix targets = %v, want 4", parts)
+	}
+}

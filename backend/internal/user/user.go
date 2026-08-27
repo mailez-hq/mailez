@@ -1,6 +1,7 @@
 package user
 
 import (
+	"net/url"
 	"strings"
 	"time"
 
@@ -58,7 +59,8 @@ func (h *Handler) listUsers(c *fiber.Ctx) error {
 // @Router /users/{email} [get]
 func (h *Handler) getUser(c *fiber.Ctx) error {
 	var u models.User
-	if err := h.DB.First(&u, "email = ?", c.Params("email")).Error; err != nil {
+	email, _ := url.PathUnescape(c.Params("email"))
+	if err := h.DB.First(&u, "email = ?", email).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "user not found"})
 	}
 	if !h.CanManageDomain(currentUser(c), u.DomainName) {
@@ -169,7 +171,8 @@ type updateUserIn struct {
 // @Router /users/{email} [put]
 func (h *Handler) updateUser(c *fiber.Ctx) error {
 	var u models.User
-	if err := h.DB.First(&u, "email = ?", c.Params("email")).Error; err != nil {
+	email, _ := url.PathUnescape(c.Params("email"))
+	if err := h.DB.First(&u, "email = ?", email).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "user not found"})
 	}
 	if !h.CanManageDomain(currentUser(c), u.DomainName) {
@@ -268,13 +271,14 @@ func parseUserDate(s string) *time.Time {
 // @Router /users/{email} [delete]
 func (h *Handler) deleteUser(c *fiber.Ctx) error {
 	var u models.User
-	if err := h.DB.First(&u, "email = ?", c.Params("email")).Error; err != nil {
+	email, _ := url.PathUnescape(c.Params("email"))
+	if err := h.DB.First(&u, "email = ?", email).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "user not found"})
 	}
 	if !h.CanManageDomain(currentUser(c), u.DomainName) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "no access to this domain"})
 	}
-	if err := h.DB.Delete(&models.User{}, "email = ?", c.Params("email")).Error; err != nil {
+	if err := h.DB.Delete(&models.User{}, "email = ?", email).Error; err != nil {
 		return core.Fail(c, 400, err, "delete failed")
 	}
 	return c.SendStatus(204)

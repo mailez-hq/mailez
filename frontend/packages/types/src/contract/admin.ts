@@ -42,11 +42,18 @@ export type User = {
 
 export type Alias = {
   email: string;
+  name: string;
   destination: string;
+  members: AliasMember[];
   wildcard: boolean;
   disabled: boolean;
   hostname?: string;
   owner_email?: string;
+};
+
+export type AliasMember = {
+  email: string;
+  name?: string;
 };
 
 export type AuditLog = {

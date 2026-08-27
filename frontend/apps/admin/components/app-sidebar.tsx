@@ -19,6 +19,7 @@ import {
   Settings,
   ShieldCheck,
   Users,
+  UsersRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LocaleSwitcher } from "@/components/locale-switcher";
@@ -31,6 +32,7 @@ const navItems = [
   { href: "/overview", key: "overview", roles: ["admin", "manager", "user"], icon: LayoutDashboard },
   { href: "/domains", key: "domains", roles: ["admin"], icon: Globe },
   { href: "/users", key: "users", roles: ["admin", "manager"], icon: Users },
+  { href: "/groups", key: "groups", roles: ["admin", "manager"], icon: UsersRound },
   { href: "/aliases", key: "aliases", roles: ["admin", "manager"], icon: AtSign },
   { href: "/relays", key: "relays", roles: ["admin"], icon: Server },
   { href: "/fetches", key: "fetches", roles: ["admin"], icon: Download },

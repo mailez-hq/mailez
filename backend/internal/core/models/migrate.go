@@ -275,6 +275,14 @@ var migrations = []migration{
 			return db.AutoMigrate(&DriveFile{})
 		},
 	},
+	{
+		// Distribution groups (通讯组): Alias gains a display name and a
+		// structured member list for Coremail-style group management.
+		ID: "20260827_alias_group_members",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&Alias{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

@@ -20,7 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { api, apiDelete, apiPost } from "@/lib/api";
+import { api, apiDelete, apiPost, apiPut } from "@/lib/api";
 import type { Alias, Page } from "@/lib/types";
 
 export default function AliasesPage() {
@@ -32,10 +32,13 @@ export default function AliasesPage() {
   const [pageSize, setPageSize] = useState(50);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Alias | null>(null);
 
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [destination, setDestination] = useState("");
   const [wildcard, setWildcard] = useState(false);
+  const [disabled, setDisabled] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -52,13 +55,34 @@ export default function AliasesPage() {
   async function create(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await apiPost("/aliases", { email, destination, wildcard });
+      const body = { email, name, destination, wildcard };
+      if (editTarget) {
+        await apiPut(`/aliases/${encodeURIComponent(editTarget.email)}`, {
+          name,
+          destination,
+          wildcard,
+          disabled,
+        });
+      } else {
+        await apiPost("/aliases", body);
+      }
       setOpen(false);
-      setEmail(""); setDestination(""); setWildcard(false);
+      setEditTarget(null);
+      setEmail(""); setName(""); setDestination(""); setWildcard(false); setDisabled(false);
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "create failed");
     }
+  }
+
+  function openEdit(a: Alias) {
+    setEditTarget(a);
+    setEmail(a.email);
+    setName(a.name);
+    setDestination(a.destination);
+    setWildcard(a.wildcard);
+    setDisabled(a.disabled);
+    setOpen(true);
   }
 
   async function remove(a: Alias) {
@@ -75,24 +99,48 @@ export default function AliasesPage() {
     <div className="space-y-4">
       <PageHeader title={t("title")} description={t("desc")}>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button><Plus />{t("new")}</Button>} />
+          <DialogTrigger
+            render={(
+              <Button onClick={() => { setEditTarget(null); setEmail(""); setName(""); setDestination(""); setWildcard(false); setDisabled(false); }}>
+                <Plus />{t("new")}
+              </Button>
+            )}
+          />
           <DialogContent>
             <form onSubmit={create} className="space-y-4">
-              <DialogHeader><DialogTitle>{t("new")}</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{editTarget ? t("edit") : t("new")}</DialogTitle></DialogHeader>
               <div className="space-y-2">
                 <Label>{t("address")}</Label>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="info@example.com" required />
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="info@example.com" required disabled={!!editTarget} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("name")}</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Info Desk" />
               </div>
               <div className="space-y-2">
                 <Label>{t("destination")}</Label>
-                <Input value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="user@example.com" required />
+                <Input
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  placeholder="user@example.com"
+                  required={!editTarget}
+                />
               </div>
               <div className="flex items-center justify-between">
                 <Label>{t("wildcard")}</Label>
                 <Switch checked={wildcard} onCheckedChange={setWildcard} />
               </div>
+              {editTarget && (
+                <div className="flex items-center justify-between">
+                  <Label>{t("disabled")}</Label>
+                  <Switch checked={disabled} onCheckedChange={setDisabled} />
+                </div>
+              )}
               {error && <p className="text-sm text-red-600">{error}</p>}
-              <DialogFooter><Button type="submit">{ct("create")}</Button></DialogFooter>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>{ct("cancel")}</Button>
+                <Button type="submit">{editTarget ? t("save") : ct("create")}</Button>
+              </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
@@ -123,7 +171,7 @@ export default function AliasesPage() {
                     )}
                   </TableCell>
                   <TableCell className="w-10">
-                    <RowActions onDelete={() => remove(a)} />
+                    <RowActions onEdit={() => openEdit(a)} onDelete={() => remove(a)} />
                   </TableCell>
                 </TableRow>
               ))}

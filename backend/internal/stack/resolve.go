@@ -54,7 +54,7 @@ func (h *Handler) resolveDestination(localpart, domain string, ignoreForwardKeep
 					return members
 				}
 			}
-			return pure.Destinations()
+			return h.expandTargets(pure)
 		}
 	}
 	if stripped != "" && stripped != localpart {
@@ -65,13 +65,72 @@ func (h *Handler) resolveDestination(localpart, domain string, ignoreForwardKeep
 			// Re-attach the delimiter detail for explicit aliases, mirroring
 			// postfix' propagate_unmatched_extensions.
 			detail := localpart[len(stripped):]
-			return appendDetail(s.Destinations(), detail)
+			return appendDetail(h.expandTargets(s), detail)
 		}
 	}
 	if pure := h.resolveAlias(localpart, domain); pure != nil {
-		return pure.Destinations()
+		return h.expandTargets(pure)
 	}
 	return nil
+}
+
+// expandTargets returns the effective delivery list for an alias: its
+// destination list plus structured distribution-group members, with nested
+// local groups expanded (bounded recursion, cycle-safe). Local user members
+// and external addresses pass through unchanged, mirroring top-level alias
+// resolution.
+func (h *Handler) expandTargets(a *models.Alias) []string {
+	return h.expandAliasTargets(a, map[string]bool{})
+}
+
+func (h *Handler) expandAliasTargets(a *models.Alias, seen map[string]bool) []string {
+	var out []string
+	for _, t := range a.Targets() {
+		key := strings.ToLower(strings.TrimSpace(t))
+		if key == "" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		local, domain, ok := strings.Cut(t, "@")
+		if !ok {
+			out = append(out, t)
+			continue
+		}
+		domain = h.realDomain(domain)
+		if h.findUser(local+"@"+domain) != nil {
+			out = append(out, t)
+			continue
+		}
+		nested := h.resolveAlias(local, domain)
+		if nested == nil {
+			out = append(out, t)
+			continue
+		}
+		if nested.Wildcard {
+			for _, d := range nested.Targets() {
+				dk := strings.ToLower(strings.TrimSpace(d))
+				if dk != "" && !seen[dk] {
+					seen[dk] = true
+					out = append(out, d)
+				}
+			}
+			continue
+		}
+		if nested.LdapGroup && h.LDAP != nil {
+			if members, err := h.LDAP.ResolveGroupMembers(context.Background(), nested.Email); err == nil && len(members) > 0 {
+				for _, m := range members {
+					mk := strings.ToLower(strings.TrimSpace(m))
+					if mk != "" && !seen[mk] {
+						seen[mk] = true
+						out = append(out, m)
+					}
+				}
+				continue
+			}
+		}
+		out = append(out, h.expandAliasTargets(nested, seen)...)
+	}
+	return out
 }
 
 func (h *Handler) stripDelimiter(localpart string) string {
