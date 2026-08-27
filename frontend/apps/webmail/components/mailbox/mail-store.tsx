@@ -13,6 +13,7 @@ import { usePreferences } from "@/components/preferences-provider";
 import { useNewMailNotification } from "@/components/mailbox/use-new-mail-notification";
 import { setupPushSubscription, teardownPushSubscription } from "@/lib/push";
 import { writeLastFolder } from "@/lib/preferences";
+import { parseMergeRecipients } from "@/lib/mail-merge";
 import {
   aiDraft, aiStatus, aiSummarize,
   aiPrioritize, aiSearch,
@@ -23,7 +24,6 @@ import {
   mailLabelDelete, mailLabelRename, mailLabelSave, mailLabels, mailMessage, mailMessages, mailSaveDraft, mailSearch, mailSearchSpec, mailSend, mailSendReply, mailThread, mailUnseen, mailUndoSend, mailUnsubscribe, mailScheduled,
   mailSnooze,
   mailReceipt, mailRecall, mailRecallApply, mailMerge, mailReadAll,
-  type MailMergeRecipient,
   meProfile, updateMeSettings,
   pgpEncrypt, pgpLookup, pgpSign,
   type Contact, type DraftTone, type MailAccount, type MailDelegation, type MailIdentity, type MailLabel, type MailMessage, type MailThread, type Me,
@@ -72,28 +72,6 @@ function composeSignature(vals: {
     vals.bodyText,
     vals.attachments.map((a) => `${a.filename}:${a.size}`),
   ]);
-}
-
-// parseMergeRecipients converts pasted "email, 姓名[, 变量=值...]" lines into
-// merge recipients. The first column is the address, the second the display
-// name, and any further columns become {{var}} placeholders.
-function parseMergeRecipients(text: string): MailMergeRecipient[] {
-  const out: MailMergeRecipient[] = [];
-  for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line) continue;
-    const cols = line.split(/[,，\t]/).map((c) => c.trim()).filter(Boolean);
-    const email = cols.shift() || "";
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) continue;
-    const name = cols.shift() || "";
-    const vars: Record<string, string> = {};
-    for (const col of cols) {
-      const eq = col.indexOf("=");
-      if (eq > 0) vars[col.slice(0, eq).trim()] = col.slice(eq + 1).trim();
-    }
-    out.push({ email, name, vars });
-  }
-  return out;
 }
 
 // buildSearchSpec merges the free-text keywords with the visual builder
