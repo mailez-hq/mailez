@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bookmark, Plus, SlidersHorizontal, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -91,6 +91,18 @@ export function SearchBuilderDialog({
   const [draft, setDraft] = useState("");
   const [saveName, setSaveName] = useState("");
 
+  // Reset local editing state each time the dialog opens: without this, a
+  // condition committed in a previous session (e.g. From) silently leaks
+  // into the next search and into saved searches.
+  useEffect(() => {
+    if (open) {
+      setConditions([]);
+      setEditing(null);
+      setDraft("");
+      setSaveName("");
+    }
+  }, [open]);
+
   const fieldLabel = (f: Field) => t(`sb${f.charAt(0).toUpperCase()}${f.slice(1)}`);
   const activeCount = useMemo(() => conditions.length, [conditions]);
 
@@ -137,7 +149,13 @@ export function SearchBuilderDialog({
   };
 
   const apply = () => {
-    onApply(toSpec(conditions));
+    // Commit any pending draft first so a typed value is never silently
+    // dropped when the user hits Apply while editing a condition.
+    const finalConditions =
+      editing && draft.trim()
+        ? [...conditions, { id: nextId++, field: editing, value: draft.trim() }]
+        : conditions;
+    onApply(toSpec(finalConditions));
     onOpenChange(false);
   };
 
