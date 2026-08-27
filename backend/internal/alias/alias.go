@@ -105,6 +105,10 @@ func (h *Handler) createAlias(c *fiber.Ctx) error {
 	if !h.CanManageDomain(currentUser(c), domainName) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "no access to this domain"})
 	}
+	var exists int64
+	if err := h.DB.Model(&models.Alias{}).Where("email = ?", in.Email).Count(&exists).Error; err == nil && exists > 0 {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "alias already exists"})
+	}
 	a := models.Alias{
 		Email:       in.Email,
 		Localpart:   localpart,
