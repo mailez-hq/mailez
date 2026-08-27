@@ -1,5 +1,42 @@
 # mailez deployment scripts
 
+## `mailezctl` — unified stack management
+
+`deploy/mailezctl.ps1` (Windows) / `deploy/mailezctl.sh` (Linux/macOS) is the
+single entry point for the whole stack. All compose files belong to one
+compose project (`mailez`), so `ps`/`logs`/`down` always manage the same
+stack no matter which engine profile is active:
+
+| Engine          | Compose files                                       | Profile       |
+| --------------- | --------------------------------------------------- | ------------- |
+| `postdove`      | `docker-compose.dev.yml`                            | (default)     |
+| `mailezine`     | dev + `docker-compose.mailezine.yml`                | `mailezine`   |
+| `mailezine-tidb`| dev + mailezine + `docker-compose.tidb.yml`         | `mailezine`   |
+
+```sh
+./deploy/mailezctl.sh up mailezine-tidb     # full stack on TiDB KV
+./deploy/mailezctl.sh up mailezine          # engine on Pebble + MinIO blob
+./deploy/mailezctl.sh up postdove           # classic postfix + dovecot
+./deploy/mailezctl.sh ps                    # status (same project regardless)
+./deploy/mailezctl.sh logs mailezine -Follow
+./deploy/mailezctl.sh down
+```
+
+`-Prod` (ps1) / `MAILEZCTL_PROD=1` (sh) switches the base file to
+`docker-compose.yml` (fully containerized backend/frontends); the dev base
+expects the backend on the host at `:8080` (see `docs/dev-setup.md`).
+
+Engine/storage notes:
+
+- `mailezine` runs the pure-Go engine with Pebble KV + MinIO/S3 blob.
+- `mailezine-tidb` keeps the same engine but points its KV layer at the
+  single-node TiDB service added by `docker-compose.tidb.yml` (blob still
+  MinIO/S3). Switching KV backend does not migrate existing mail; treat it
+  as a deployment-time choice.
+- The mailezine repo keeps an engine-only dev/e2e stack
+  (`mailezine/deploy/docker-compose.tidb.yml`) for backend-free development;
+  the unified product stack above is the deployment surface.
+
 ## `go run ./cmd/e2e` — end-to-end mail path smoke test
 
 Verifies, against a running `docker compose up` stack, that the whole mail
