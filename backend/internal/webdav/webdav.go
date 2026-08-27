@@ -16,6 +16,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -433,7 +434,11 @@ func serveError(c *fiber.Ctx, err error) error {
 		}
 		return c.Status(de.Status).Type("text/plain").SendString(msg)
 	}
-	return c.Status(http.StatusInternalServerError).Type("text/plain").SendString(err.Error())
+	// Unknown error kinds are internal failures (storage, DB, …): log the
+	// details server-side and report a generic message so internals never
+	// reach DAV clients.
+	log.Printf("webdav internal error (%s %s): %v", c.Method(), c.Path(), err)
+	return c.Status(http.StatusInternalServerError).Type("text/plain").SendString(http.StatusText(http.StatusInternalServerError))
 }
 
 func asError(err error, target **Error) bool {

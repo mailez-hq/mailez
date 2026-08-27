@@ -124,7 +124,7 @@ func (h *Handler) smimeImport(c *fiber.Ctx) error {
 		"smime_email":       email,
 		"smime_not_after":   cert.NotAfter,
 	}).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "save failed")
 	}
 	return c.JSON(fiber.Map{
 		"email":       email,
@@ -148,7 +148,7 @@ func (h *Handler) smimeDelete(c *fiber.Ctx) error {
 		"smime_email":       "",
 		"smime_not_after":   nil,
 	}).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "delete failed")
 	}
 	return c.SendStatus(204)
 }
@@ -244,7 +244,7 @@ func (h *Handler) smimeImportCert(c *fiber.Ctx) error {
 		NotAfter:    info.NotAfter,
 	}
 	if err := h.DB.Create(&cert).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "save failed")
 	}
 	return c.Status(201).JSON(cert)
 }
@@ -347,7 +347,7 @@ func (h *Handler) smimeSign(c *fiber.Ctx) error {
 	}
 	signature, err := smime.Sign(u.SmimeCert, priv, in.Text)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "sign failed")
 	}
 	return c.JSON(fiber.Map{"signature": signature})
 }

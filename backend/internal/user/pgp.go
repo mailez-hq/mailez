@@ -77,7 +77,7 @@ func (h *Handler) pgpGenerate(c *fiber.Ctx) error {
 		"pgp_private_key": encPriv,
 		"pgp_fingerprint": fp,
 	}).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "save failed")
 	}
 	return c.JSON(fiber.Map{"public_key": pub, "fingerprint": fp})
 }
@@ -94,7 +94,7 @@ func (h *Handler) pgpDelete(c *fiber.Ctx) error {
 		"pgp_private_key": "",
 		"pgp_fingerprint": "",
 	}).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "delete failed")
 	}
 	return c.SendStatus(204)
 }
@@ -191,7 +191,7 @@ func (h *Handler) pgpImportKey(c *fiber.Ctx) error {
 		Fingerprint: info.Fingerprint,
 	}
 	if err := h.DB.Create(&key).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "save failed")
 	}
 	return c.Status(201).JSON(key)
 }
@@ -297,7 +297,7 @@ func (h *Handler) pgpSign(c *fiber.Ctx) error {
 	}
 	signature, err := pgp.Sign(priv, in.Text)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "sign failed")
 	}
 	return c.JSON(fiber.Map{"signature": signature})
 }

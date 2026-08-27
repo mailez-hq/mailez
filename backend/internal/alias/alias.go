@@ -98,7 +98,7 @@ func (h *Handler) createAlias(c *fiber.Ctx) error {
 		Wildcard:    in.Wildcard,
 	}
 	if err := h.DB.Create(&a).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "save failed")
 	}
 	return c.Status(201).JSON(a)
 }
@@ -136,7 +136,7 @@ func (h *Handler) updateAlias(c *fiber.Ctx) error {
 		a.Disabled = *in.Disabled
 	}
 	if err := h.DB.Save(&a).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "update failed")
 	}
 	return c.JSON(a)
 }
@@ -157,7 +157,7 @@ func (h *Handler) deleteAlias(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "no access to this domain"})
 	}
 	if err := h.DB.Delete(&a).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "delete failed")
 	}
 	return c.SendStatus(204)
 }

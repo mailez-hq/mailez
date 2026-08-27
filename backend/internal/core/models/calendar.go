@@ -22,20 +22,20 @@ type CalendarEvent struct {
 	// ReminderMinutes is how many minutes before start the reminder fires
 	// (0 = no reminder). The reminder is delivered as a mail to the owner,
 	// which also triggers the existing web-push path.
-	ReminderMinutes int `gorm:"not null;default:0" json:"reminder_minutes"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ReminderMinutes int       `gorm:"not null;default:0" json:"reminder_minutes"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // CalendarShare grants another account read (or read-write) access to a
 // user's calendar. The webmail view merges shared events; CalDAV ACLs cover
 // DAV clients through the built-in server.
 type CalendarShare struct {
-	ID         uint      `gorm:"primaryKey" json:"id"`
-	OwnerEmail string    `gorm:"size:255;not null;uniqueIndex:idx_calendar_share_pair,priority:1" json:"owner_email"`
-	ShareeEmail string   `gorm:"size:255;not null;uniqueIndex:idx_calendar_share_pair,priority:2" json:"sharee_email"`
-	ReadOnly   bool      `gorm:"not null" json:"read_only"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	OwnerEmail  string    `gorm:"size:255;not null;uniqueIndex:idx_calendar_share_pair,priority:1" json:"owner_email"`
+	ShareeEmail string    `gorm:"size:255;not null;uniqueIndex:idx_calendar_share_pair,priority:2" json:"sharee_email"`
+	ReadOnly    bool      `gorm:"not null" json:"read_only"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 // CalendarReminderLog records that a reminder already fired for an event, so

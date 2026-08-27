@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/crypto"
 )
@@ -80,7 +81,7 @@ func (h *Handler) fetchDone(c *fiber.Ctx) error {
 	}
 	now := time.Now()
 	if err := h.DB.Model(&f).Updates(map[string]any{"last_check": now, "error": msg}).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, fiber.StatusInternalServerError, err, "save fetch result failed")
 	}
 	return c.SendStatus(fiber.StatusOK)
 }

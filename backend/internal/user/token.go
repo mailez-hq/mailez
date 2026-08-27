@@ -88,7 +88,7 @@ func (h *Handler) createToken(c *fiber.Ctx) error {
 	}
 	t := models.Token{UserEmail: in.Email, Password: hash, IP: in.IP}
 	if err := h.DB.Create(&t).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "save failed")
 	}
 	return c.Status(201).JSON(fiber.Map{
 		"id":         t.ID,
@@ -116,7 +116,7 @@ func (h *Handler) deleteToken(c *fiber.Ctx) error {
 	}
 	res := q.Delete(&models.Token{}, "id = ?", id)
 	if res.Error != nil {
-		return c.Status(400).JSON(fiber.Map{"error": res.Error.Error()})
+		return core.Fail(c, 400, res.Error, "delete failed")
 	}
 	if res.RowsAffected == 0 {
 		return c.Status(404).JSON(fiber.Map{"error": "token not found"})

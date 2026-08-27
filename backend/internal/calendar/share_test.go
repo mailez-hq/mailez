@@ -138,7 +138,6 @@ func TestCalendarShareCreateAndRevoke(t *testing.T) {
 	}
 }
 
-
 func TestCalendarExportToken(t *testing.T) {
 	app := newCalApp(t, func(db *gorm.DB) {
 		start := time.Now().Add(time.Hour)

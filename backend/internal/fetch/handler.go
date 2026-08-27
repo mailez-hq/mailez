@@ -16,7 +16,7 @@ type Handler struct {
 	*core.App
 }
 
-func currentUser(c *fiber.Ctx) *models.User { return core.CurrentUser(c) }
+var currentUser = core.CurrentUser
 
 // RegisterAPI mounts the fetch routes.
 func RegisterAPI(r fiber.Router, app *core.App) {
@@ -125,7 +125,7 @@ func (h *Handler) createFetch(c *fiber.Ctx) error {
 		f.Invisible = *in.Invisible
 	}
 	if err := h.DB.Create(&f).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "save failed")
 	}
 	return c.Status(201).JSON(f)
 }
@@ -187,7 +187,7 @@ func (h *Handler) updateFetch(c *fiber.Ctx) error {
 	}
 	f.Folders = in.Folders
 	if err := h.DB.Save(&f).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "update failed")
 	}
 	return c.JSON(f)
 }
@@ -205,7 +205,7 @@ func (h *Handler) deleteFetch(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
 	}
 	if err := h.DB.Delete(&models.Fetch{}, "id = ?", id).Error; err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		return core.Fail(c, 400, err, "delete failed")
 	}
 	return c.SendStatus(204)
 }
