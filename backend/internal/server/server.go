@@ -31,6 +31,7 @@ import (
 	"mailez/backend/internal/delegation"
 	"mailez/backend/internal/domain"
 	"mailez/backend/internal/fetch"
+	"mailez/backend/internal/ldap"
 	"mailez/backend/internal/mailbox"
 	"mailez/backend/internal/push"
 	"mailez/backend/internal/sieve"
@@ -52,6 +53,7 @@ type Server struct {
 	Redis    *redis.Client
 	Cfg      core.Config
 	Auth     *auth.Manager
+	LDAP     *ldap.Service
 	internal *stack.Handler
 
 	bgCtx    context.Context
@@ -111,6 +113,11 @@ func New(cfg core.Config) *Server {
 	s.Auth = auth.NewManager(db, newStore(rdb, cfg.Env), "mailez_session", time.Duration(cfg.SessionLifetime)*time.Second)
 	s.Auth.SetCookieSecure(cfg.CookieSecure)
 	s.Auth.SetLoginLimits(cfg.LoginRateLimit, cfg.LoginFailLimit)
+	// AD/LDAP directory integration: shared by login, mail-proxy auth and the
+	// organization address book sync.
+	ldapSvc := ldap.New(db, cfg.SecretKey)
+	s.Auth.LDAP = ldapSvc
+	s.LDAP = ldapSvc
 	s.internal = stack.New(db, s.Auth, cfg, rdb)
 	s.routes()
 
@@ -119,6 +126,8 @@ func New(cfg core.Config) *Server {
 	go fetcher.Run(bgCtx)
 	// Send-undo queue: delivers parked messages once their window elapses.
 	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey).Run(bgCtx)
+	// Organization address book refresh (AD/LDAP) when directory sync is on.
+	go ldap.RunSyncWorker(bgCtx, db, cfg.SecretKey)
 	// Push notifier (new-mail notifications for subscribed clients).
 	if cfg.PushInterval > 0 {
 		notifier := push.NewNotifier(db, cfg)
@@ -173,6 +182,7 @@ func (s *Server) routes() {
 	s.Auth.RegisterSSO(v1)
 
 	app := core.New(s.DB, s.Auth, s.Cfg)
+	app.LDAP = s.LDAP
 	aiMgr := ai.New(s.DB, s.Cfg)
 	user.RegisterPublic(v1, app)
 	authed := v1.Group("", app.RequireAuth, app.Audit)

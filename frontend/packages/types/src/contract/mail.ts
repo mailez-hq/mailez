@@ -140,6 +140,17 @@ export type CalendarEventInput = {
   rrule?: string;
 };
 
+// OrgContact is a read-only organization directory entry synced from AD/LDAP.
+export type OrgContact = {
+  id: number;
+  email: string;
+  name: string;
+  department: string;
+  title: string;
+  phone: string;
+  updated_at: string;
+};
+
 // MailAccount is an external IMAP/SMTP mailbox aggregated into the inbox
 // (full aggregation client). The password never leaves the backend; these
 // rows only expose configuration and health.

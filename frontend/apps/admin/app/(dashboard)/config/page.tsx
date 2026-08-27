@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
-  exportConfig, getAIConfig, importConfig, putAIConfig,
+  exportConfig, getAIConfig, getLDAPConfig, importConfig, putAIConfig, putLDAPConfig, syncLDAP, testLDAP,
   type ConfigBackup, type ConfigStats,
 } from "@/lib/api";
 
@@ -28,6 +28,14 @@ export default function ConfigPage() {
   const [aiModel, setAiModel] = useState("");
   const [aiHasKey, setAiHasKey] = useState(false);
   const [aiMessage, setAiMessage] = useState("");
+  const [ldap, setLdap] = useState({
+    enabled: false, host: "", port: 389, security: "none", base_dn: "", bind_dn: "",
+    bind_password: "", user_filter: "(objectClass=person)", mail_attr: "mail", uid_attr: "uid",
+    name_attr: "displayName", dept_attr: "department", title_attr: "title", phone_attr: "telephoneNumber",
+    auto_create: true, sync_minutes: 60, has_bind_pw: false,
+  });
+  const [ldapMessage, setLdapMessage] = useState("");
+  const [ldapBusy, setLdapBusy] = useState(false);
 
   useEffect(() => {
     getAIConfig()
@@ -37,6 +45,19 @@ export default function ConfigPage() {
         setAiModel(c.model);
         setAiHasKey(!!c.has_api_key);
       })
+      .catch(() => {});
+    getLDAPConfig()
+      .then((c) =>
+        setLdap({
+          enabled: c.enabled, host: c.host, port: c.port || 389, security: c.security || "none",
+          base_dn: c.base_dn, bind_dn: c.bind_dn, bind_password: "",
+          user_filter: c.user_filter || "(objectClass=person)", mail_attr: c.mail_attr || "mail",
+          uid_attr: c.uid_attr || "uid", name_attr: c.name_attr || "displayName",
+          dept_attr: c.dept_attr || "department", title_attr: c.title_attr || "title",
+          phone_attr: c.phone_attr || "telephoneNumber", auto_create: c.auto_create,
+          sync_minutes: c.sync_minutes || 60, has_bind_pw: !!c.has_bind_pw,
+        }),
+      )
       .catch(() => {});
   }, []);
 
@@ -101,6 +122,55 @@ export default function ConfigPage() {
       setAiMessage(t("aiSaved"));
     } catch (e) {
       setError(e instanceof Error ? e.message : t("aiFailed"));
+    }
+  }
+
+  async function onSaveLDAP() {
+    setError(""); setLdapMessage("");
+    setLdapBusy(true);
+    try {
+      await putLDAPConfig({
+        enabled: ldap.enabled, host: ldap.host, port: ldap.port, security: ldap.security,
+        base_dn: ldap.base_dn, bind_dn: ldap.bind_dn, bind_password: ldap.bind_password,
+        user_filter: ldap.user_filter, mail_attr: ldap.mail_attr, uid_attr: ldap.uid_attr,
+        name_attr: ldap.name_attr, dept_attr: ldap.dept_attr, title_attr: ldap.title_attr,
+        phone_attr: ldap.phone_attr, auto_create: ldap.auto_create, sync_minutes: ldap.sync_minutes,
+      });
+      setLdap((l) => ({ ...l, bind_password: "", has_bind_pw: true }));
+      setLdapMessage(t("ldapSaved"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("ldapFailed"));
+    } finally {
+      setLdapBusy(false);
+    }
+  }
+
+  async function onTestLDAP() {
+    setError(""); setLdapMessage("");
+    setLdapBusy(true);
+    try {
+      await testLDAP({
+        host: ldap.host, port: ldap.port, security: ldap.security, base_dn: ldap.base_dn,
+        bind_dn: ldap.bind_dn, bind_password: ldap.bind_password, user_filter: ldap.user_filter,
+      });
+      setLdapMessage(t("ldapTestOk"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("ldapTestFail"));
+    } finally {
+      setLdapBusy(false);
+    }
+  }
+
+  async function onSyncLDAP() {
+    setError(""); setLdapMessage("");
+    setLdapBusy(true);
+    try {
+      const r = await syncLDAP();
+      setLdapMessage(t("ldapSynced", { added: r.added, updated: r.updated }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("ldapSyncFail"));
+    } finally {
+      setLdapBusy(false);
     }
   }
 
@@ -185,6 +255,104 @@ export default function ConfigPage() {
           <div className="flex items-center gap-2">
             <Button onClick={onSaveAI} disabled={busy}>{t("aiSave")}</Button>
             {aiMessage && <p className="text-sm text-green-600">{aiMessage}</p>}
+          </div>
+        </CardContent>
+      </Card>
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle className="text-base">{t("ldap")}</CardTitle>
+          <CardDescription>{t("ldapHint")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="ldap-enabled">{t("ldapEnabled")}</Label>
+            <Switch id="ldap-enabled" checked={ldap.enabled} onCheckedChange={(v) => setLdap((l) => ({ ...l, enabled: v }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="ldap-host">{t("ldapHost")}</Label>
+              <Input id="ldap-host" value={ldap.host} onChange={(e) => setLdap((l) => ({ ...l, host: e.target.value }))} placeholder="ldap.example.com" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="ldap-port">{t("ldapPort")}</Label>
+              <Input id="ldap-port" type="number" value={String(ldap.port)} onChange={(e) => setLdap((l) => ({ ...l, port: Number(e.target.value) }))} />
+            </div>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="ldap-security">{t("ldapSecurity")}</Label>
+            <select
+              id="ldap-security"
+              value={ldap.security}
+              onChange={(e) => setLdap((l) => ({ ...l, security: e.target.value }))}
+              className="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+            >
+              <option value="none">None</option>
+              <option value="starttls">STARTTLS</option>
+              <option value="tls">LDAPS</option>
+            </select>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="ldap-base-dn">{t("ldapBaseDn")}</Label>
+            <Input id="ldap-base-dn" value={ldap.base_dn} onChange={(e) => setLdap((l) => ({ ...l, base_dn: e.target.value }))} placeholder="dc=example,dc=com" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="ldap-bind-dn">{t("ldapBindDn")}</Label>
+              <Input id="ldap-bind-dn" value={ldap.bind_dn} onChange={(e) => setLdap((l) => ({ ...l, bind_dn: e.target.value }))} placeholder="cn=admin,dc=example,dc=com" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="ldap-bind-pw">
+                {t("ldapBindPw")}
+                {ldap.has_bind_pw && !ldap.bind_password && (
+                  <span className="ml-2 text-xs text-muted-foreground">({t("ldapPwSet")})</span>
+                )}
+              </Label>
+              <Input id="ldap-bind-pw" type="password" value={ldap.bind_password} onChange={(e) => setLdap((l) => ({ ...l, bind_password: e.target.value }))} placeholder={t("ldapPwPlaceholder")} />
+            </div>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="ldap-filter">{t("ldapFilter")}</Label>
+            <Input id="ldap-filter" value={ldap.user_filter} onChange={(e) => setLdap((l) => ({ ...l, user_filter: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {([
+              ["mail_attr", t("ldapMailAttr")],
+              ["uid_attr", t("ldapUidAttr")],
+              ["name_attr", t("ldapNameAttr")],
+            ] as const).map(([key, label]) => (
+              <div key={key} className="grid gap-1.5">
+                <Label htmlFor={`ldap-${key}`}>{label}</Label>
+                <Input id={`ldap-${key}`} value={ldap[key]} onChange={(e) => setLdap((l) => ({ ...l, [key]: e.target.value }))} />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {([
+              ["dept_attr", t("ldapDeptAttr")],
+              ["title_attr", t("ldapTitleAttr")],
+              ["phone_attr", t("ldapPhoneAttr")],
+            ] as const).map(([key, label]) => (
+              <div key={key} className="grid gap-1.5">
+                <Label htmlFor={`ldap-${key}`}>{label}</Label>
+                <Input id={`ldap-${key}`} value={ldap[key]} onChange={(e) => setLdap((l) => ({ ...l, [key]: e.target.value }))} />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="ldap-auto">{t("ldapAutoCreate")}</Label>
+              <Switch id="ldap-auto" checked={ldap.auto_create} onCheckedChange={(v) => setLdap((l) => ({ ...l, auto_create: v }))} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="ldap-sync-min">{t("ldapSyncMinutes")}</Label>
+              <Input id="ldap-sync-min" type="number" value={String(ldap.sync_minutes)} onChange={(e) => setLdap((l) => ({ ...l, sync_minutes: Number(e.target.value) }))} />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button onClick={onSaveLDAP} disabled={ldapBusy}>{t("ldapSave")}</Button>
+            <Button variant="outline" onClick={onTestLDAP} disabled={ldapBusy}>{t("ldapTest")}</Button>
+            <Button variant="outline" onClick={onSyncLDAP} disabled={ldapBusy}>{t("ldapSync")}</Button>
+            {ldapMessage && <p className="text-sm text-green-600">{ldapMessage}</p>}
           </div>
         </CardContent>
       </Card>

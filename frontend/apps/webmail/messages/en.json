@@ -477,6 +477,9 @@
   },
   "contacts": {
     "title": "Contacts",
+    "myContacts": "My contacts",
+    "orgContacts": "Organization",
+    "orgEmpty": "No organization contacts yet (synced from AD/LDAP by an admin)",
     "name": "Name",
     "email": "Email",
     "add": "Add",

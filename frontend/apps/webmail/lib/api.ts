@@ -9,6 +9,7 @@ import type {
   DelegationListing,
   CalendarEvent,
   CalendarEventInput,
+  OrgContact,
   MailAttachment,
   MailIdentity,
   MailLabel,
@@ -42,6 +43,7 @@ export type {
   DelegationListing,
   CalendarEvent,
   CalendarEventInput,
+  OrgContact,
   MailAttachment,
   MailIdentity,
   MailLabel,
@@ -447,6 +449,9 @@ export const calendarEventUpdate = (id: number, input: CalendarEventInput) =>
 
 export const calendarEventDelete = (id: number) =>
   api<void>(`/calendar/events/${id}`, { method: "DELETE" });
+
+// Organization address book (read-only, synced from AD/LDAP).
+export const orgContacts = () => api<OrgContact[]>("/contacts/org");
 
 // App passwords (used by IMAP/SMTP and the DAV servers).
 export type AppToken = {

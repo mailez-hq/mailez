@@ -21,6 +21,7 @@ func (h *Handler) registerContacts(r fiber.Router) {
 	r.Get("/contacts/carddav", h.contactsCardDAVGet)
 	r.Put("/contacts/carddav", h.contactsCardDAVSet)
 	r.Post("/contacts/carddav/sync", h.contactsCardDAVSync)
+	r.Get("/contacts/org", h.orgContacts)
 	r.Put("/contacts/:id", h.updateContact)
 	r.Delete("/contacts/:id", h.deleteContact)
 }
