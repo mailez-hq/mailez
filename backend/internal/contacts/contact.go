@@ -126,6 +126,7 @@ func (h *Handler) createContact(c *fiber.Ctx) error {
 	}
 	contact := models.Contact{
 		UserEmail: currentUser(c).Email,
+		DavUID:    newContactUID(),
 		Name:      in.Name,
 		Email:     in.Email,
 		Comment:   in.Comment,
@@ -247,6 +248,7 @@ func (h *Handler) importContacts(c *fiber.Ctx) error {
 		}
 		if err := h.DB.Create(&models.Contact{
 			UserEmail: userEmail,
+			DavUID:    newContactUID(),
 			Name:      p.Name,
 			Email:     p.Email,
 			Comment:   p.Comment,

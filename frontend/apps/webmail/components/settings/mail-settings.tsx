@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   AtSign, Bell, Filter, Forward, IdCard, KeyRound, Lock, MessageSquareReply,
-  Palette, ShieldAlert, ShieldCheck, Sparkles, User, Users, Webhook as WebhookIcon,
+  Palette, CalendarDays, ShieldAlert, ShieldCheck, Sparkles, User, Users, Webhook as WebhookIcon,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -15,11 +15,12 @@ import {
   changePassword, meProfile, updateMeSettings,
   accounts, accountCreate, accountDelete, accountTest, accountUpdate,
   delegations, delegationCreate, delegationDelete, delegationUpdate,
+  appTokenCreate, appTokenDelete, appTokens,
   pgpDeleteKey, pgpImportKey, pgpListKeys, pgpStatus, totpStatus,
   smimeDelete, smimeDeleteCert, smimeImport, smimeImportCert, smimeListCerts, smimeStatus,
   webhookCreate, webhookDelete, webhookList, webhookTest, webhookUpdate,
   type DelegationListing, type MailAccount, type MailDelegation, type PgpKey, type SmimeCert, type SmimeStatus, type TotpStatus,
-  type PgpStatus, type MeSettings, type Webhook,
+  type PgpStatus, type MeSettings, type Webhook, type AppToken, type AppTokenResult,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ import { cn } from "@/lib/utils";
 // a section list on the left, the active section's form on the right.
 const SETTINGS_SECTIONS = [
   { id: "appearance", icon: Palette, label: "appearance" },
+  { id: "calendarSync", icon: CalendarDays, label: "calendarSync" },
   { id: "accounts", icon: AtSign, label: "accounts" },
   { id: "delegations", icon: Users, label: "delegations" },
   { id: "ai", icon: Sparkles, label: "aiFeatures" },
@@ -151,6 +153,11 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
   const [delFullAccess, setDelFullAccess] = useState(false);
   const [delSaving, setDelSaving] = useState(false);
 
+  // calendar sync: DAV endpoint hints + app passwords
+  const [davTokens, setDavTokens] = useState<AppToken[]>([]);
+  const [davNewToken, setDavNewToken] = useState<AppTokenResult | null>(null);
+  const [davTokenBusy, setDavTokenBusy] = useState(false);
+
   useEffect(() => {
     if (!open) return;
     setError("");
@@ -161,6 +168,8 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
     smimeListCerts().then(setSmimeCerts).catch(() => setSmimeCerts([]));
     accounts().then(setAccountList).catch(() => setAccountList([]));
     delegations().then(setDelegationList).catch(() => setDelegationList({ granted: [], received: [] }));
+    appTokens().then((r) => setDavTokens(r.data || [])).catch(() => setDavTokens([]));
+    setDavNewToken(null);
     webhookList().then(setWebhooks).catch(() => setWebhooks([]));
     meProfile().then((p) => {
       setProfile(p);
@@ -497,6 +506,31 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
     }
   }
 
+  async function createDavToken() {
+    setDavTokenBusy(true);
+    setError("");
+    try {
+      const t = await appTokenCreate();
+      setDavNewToken(t);
+      setDavTokens((ts) => [t, ...ts]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "token create failed");
+    } finally {
+      setDavTokenBusy(false);
+    }
+  }
+
+  async function removeDavToken(id: number) {
+    setError("");
+    try {
+      await appTokenDelete(id);
+      setDavTokens((ts) => ts.filter((x) => x.id !== id));
+      if (davNewToken?.id === id) setDavNewToken(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "token delete failed");
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-0 sm:max-w-3xl">
@@ -679,6 +713,11 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
               onAddDelegation={addDelegation}
               onUpdateDelegation={updateDelegation}
               onDeleteDelegation={removeDelegation}
+              davTokens={davTokens}
+              davNewToken={davNewToken}
+              davTokenBusy={davTokenBusy}
+              onCreateDavToken={createDavToken}
+              onDeleteDavToken={removeDavToken}
               setError={setError}
               oldPw={oldPw}
               setOldPw={setOldPw}

@@ -1,0 +1,160 @@
+// Package dav mounts the built-in CardDAV/CalDAV servers behind Basic Auth
+// (mailbox password or an app token), answers discovery on the principal
+// URLs and dispatches address-book/calendar paths to the protocol backends.
+package dav
+
+import (
+	"encoding/base64"
+	"encoding/xml"
+	"net/url"
+	"strings"
+
+	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
+
+	"mailez/backend/internal/caldav"
+	"mailez/backend/internal/carddav"
+	"mailez/backend/internal/core/models"
+	"mailez/backend/internal/password"
+	"mailez/backend/internal/webdav"
+)
+
+// Server wires the DAV endpoints.
+type Server struct {
+	DB      *gorm.DB
+	Card    *carddav.Server
+	Cal     *caldav.Server
+	Handler *webdav.Server
+}
+
+// New assembles the DAV server stack.
+func New(db *gorm.DB) *Server {
+	card := carddav.New(db)
+	cal := caldav.New(db)
+	return &Server{
+		DB:      db,
+		Card:    card,
+		Cal:     cal,
+		Handler: &webdav.Server{Capabilities: []string{"addressbook", "calendar-access"}},
+	}
+}
+
+// Register mounts the DAV endpoints under the given group (typically /dav).
+func (s *Server) Register(r fiber.Router) {
+	r.All("/*", s.requireAuth, s.dispatch)
+}
+
+// requireAuth validates HTTP Basic credentials (mailbox password or app
+// token) and stores the authenticated email for the request.
+func (s *Server) requireAuth(c *fiber.Ctx) error {
+	authz := c.Get("Authorization")
+	if !strings.HasPrefix(authz, "Basic ") {
+		c.Set("WWW-Authenticate", `Basic realm="Mailez DAV"`)
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(authz, "Basic "))
+	if err != nil {
+		c.Set("WWW-Authenticate", `Basic realm="Mailez DAV"`)
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+	email, pw, ok := strings.Cut(string(raw), ":")
+	email = strings.ToLower(strings.TrimSpace(email))
+	if !ok || email == "" {
+		c.Set("WWW-Authenticate", `Basic realm="Mailez DAV"`)
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+	var user models.User
+	if err := s.DB.WithContext(c.Context()).First(&user, "email = ?", email).Error; err != nil || !user.Enabled {
+		c.Set("WWW-Authenticate", `Basic realm="Mailez DAV"`)
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+	if !s.validCredential(&user, pw) {
+		c.Set("WWW-Authenticate", `Basic realm="Mailez DAV"`)
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+	c.Locals("davUser", user.Email)
+	c.SetUserContext(webdav.WithUser(c.UserContext(), user.Email))
+	return c.Next()
+}
+
+// validCredential accepts the mailbox password or any app token of the user.
+func (s *Server) validCredential(u *models.User, pw string) bool {
+	if password.Verify(u.Password, pw) {
+		return true
+	}
+	var tokens []models.Token
+	if err := s.DB.Where("user_email = ?", u.Email).Find(&tokens).Error; err != nil {
+		return false
+	}
+	for _, t := range tokens {
+		if password.VerifyPBKDF2SHA256(t.Password, pw) {
+			return true
+		}
+	}
+	return false
+}
+
+// dispatch routes the request to the principal handler or the matching
+// protocol backend.
+func (s *Server) dispatch(c *fiber.Ctx) error {
+	path := c.Path()
+	switch {
+	case path == "/dav" || path == "/dav/":
+		return s.serveRoot(c)
+	case strings.HasPrefix(path, "/dav/principals/"):
+		return s.servePrincipal(c, path)
+	case strings.HasPrefix(path, "/dav/addressbooks"):
+		s.Handler.Backend = s.Card
+		return s.Handler.Handle(c)
+	case strings.HasPrefix(path, "/dav/calendars"):
+		s.Handler.Backend = s.Cal
+		return s.Handler.Handle(c)
+	}
+	return c.SendStatus(fiber.StatusNotFound)
+}
+
+// serveRoot answers discovery PROPFIND on /dav/ with the current user's
+// principal and both home sets.
+func (s *Server) serveRoot(c *fiber.Ctx) error {
+	switch c.Method() {
+	case fiber.MethodOptions:
+		c.Set("DAV", "1, 3, addressbook, calendar-access")
+		c.Set("Allow", "OPTIONS, PROPFIND")
+		return c.SendStatus(fiber.StatusNoContent)
+	case "PROPFIND":
+		user := webdav.UserFrom(c.UserContext())
+		principal := principalURL(user)
+		props := []webdav.Prop{
+			{XMLName: xml.Name{Space: webdav.NSDAV, Local: "resourcetype"}, Value: webdav.Empty(xml.Name{Space: webdav.NSDAV, Local: "collection"})},
+			{XMLName: xml.Name{Space: webdav.NSDAV, Local: "current-user-principal"}, Value: webdav.Href(principal)},
+			{XMLName: xml.Name{Space: webdav.NSCardDAV, Local: "addressbook-home-set"}, Value: webdav.Href("/dav/addressbooks/" + url.PathEscape(user) + "/")},
+			{XMLName: xml.Name{Space: webdav.NSCalDAV, Local: "calendar-home-set"}, Value: webdav.Href("/dav/calendars/" + url.PathEscape(user) + "/")},
+		}
+		return c.Status(fiber.StatusMultiStatus).Type("application/xml; charset=utf-8").
+			Send(webdav.RenderMultiStatus([]webdav.Response{{Href: "/dav/", Props: props}}))
+	default:
+		return c.SendStatus(fiber.StatusMethodNotAllowed)
+	}
+}
+
+// servePrincipal answers PROPFIND on a principal URL, enforcing that the URL
+// names the authenticated user.
+func (s *Server) servePrincipal(c *fiber.Ctx, path string) error {
+	user := strings.TrimPrefix(path, "/dav/principals/")
+	user = strings.TrimSuffix(user, "/")
+	decoded, err := url.PathUnescape(user)
+	if err == nil {
+		user = decoded
+	}
+	authUser := webdav.UserFrom(c.UserContext())
+	if !strings.EqualFold(user, authUser) {
+		return c.SendStatus(fiber.StatusForbidden)
+	}
+	return webdav.ServePrincipal(c, principalURL(authUser),
+		"/dav/addressbooks/"+url.PathEscape(authUser)+"/",
+		"/dav/calendars/"+url.PathEscape(authUser)+"/")
+}
+
+func principalURL(user string) string {
+	return "/dav/principals/" + url.PathEscape(user) + "/"
+}

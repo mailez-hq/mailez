@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -148,6 +149,33 @@ var migrations = []migration{
 		// send-as identity list.
 		ID: "20260827_mail_delegations",
 		Up: func(db *gorm.DB) error { return db.AutoMigrate(&MailDelegation{}) },
+	},
+	{
+		// Built-in CalDAV server: calendar events stored raw ICS + structured
+		// columns. Contacts gain CardDAV sync state (DavUID/DavETag/DavRev).
+		ID: "20260827_caldav_calendar",
+		Up: func(db *gorm.DB) error {
+			if err := db.AutoMigrate(&CalendarEvent{}); err != nil {
+				return err
+			}
+			if err := db.AutoMigrate(&Contact{}); err != nil {
+				return err
+			}
+			// Backfill a stable UID for contacts created before CardDAV
+			// existed (the (user_email, dav_uid) unique index rejects empty
+			// duplicates).
+			var legacy []Contact
+			if err := db.Where("dav_uid = ?", "").Find(&legacy).Error; err != nil {
+				return err
+			}
+			for i := range legacy {
+				uid := "mailez-" + fmt.Sprintf("%d", legacy[i].ID) + "-" + legacy[i].Email
+				if err := db.Model(&Contact{}).Where("id = ?", legacy[i].ID).Update("dav_uid", uid).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		},
 	},
 }
 
