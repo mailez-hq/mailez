@@ -47,6 +47,25 @@ export const apiPost = <T,>(path: string, body: unknown) =>
 export const apiPut = <T,>(path: string, body: unknown) =>
   api<T>(path, { method: "PUT", body: JSON.stringify(body) });
 
+// AdminOverview is the operational summary for the dashboard.
+export type AdminOverview = {
+  engine: string;
+  domain: string;
+  hostname: string;
+  users: number;
+  users_enabled: number;
+  domains: number;
+  aliases: number;
+  org_contacts: number;
+  pending_approvals: number;
+  archived_messages: number;
+  upload_bytes: number;
+  drive_bytes: number;
+  drive_files: number;
+};
+
+export const adminOverview = () => api<AdminOverview>("/admin/overview");
+
 export const apiDelete = (path: string) => api(path, { method: "DELETE" });
 
 export async function login(email: string, pw: string) {

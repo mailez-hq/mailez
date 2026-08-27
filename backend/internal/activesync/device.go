@@ -24,6 +24,9 @@ type snapshotItem struct {
 	Read     bool `json:"read"`
 	Flagged  bool `json:"flagged"`
 	Answered bool `json:"answered"`
+	// UpdatedAt (unix seconds) tracks PIM items (calendar/contacts) whose
+	// rows change in place; email snapshots leave it zero.
+	UpdatedAt int64 `json:"updated_at,omitempty"`
 }
 
 func emptySnapshot(uidValidity uint32) syncSnapshot {

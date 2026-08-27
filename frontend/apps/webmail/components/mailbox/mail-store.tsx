@@ -319,6 +319,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   const [sieveOpen, setSieveOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [driveOpen, setDriveOpen] = useState(false);
   const [listWidth, setListWidth] = useState(360);
 
   // Deep links from the app sidebar (?open=settings / ?open=contacts) open
@@ -640,6 +641,13 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   function openCalendar() {
     if (composeOpen) closeCompose();
     setCalendarOpen(true);
+  }
+
+  // Opening the drive drawer dismisses a composing editor first, like the
+  // calendar drawer.
+  function openDrive() {
+    if (composeOpen) closeCompose();
+    setDriveOpen(true);
   }
 
   // Esc dismisses the compose panel (no Base UI dialog to handle it anymore).
@@ -2401,6 +2409,9 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     markAllRead,
     closeCompose,
     openCalendar,
+    driveOpen,
+    setDriveOpen,
+    openDrive,
     saveDraftNow,
     setTo,
     setCc,

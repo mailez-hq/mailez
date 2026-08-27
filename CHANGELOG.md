@@ -61,6 +61,17 @@ All notable changes to mailez are documented here. The format follows
   reveals the body once, flags `$BurnRead` and overlays a viewer watermark
 - Login security alerts: a successful sign-in from a previously unseen IP
   mails the account owner a new-device notice
+- Cloud drive (云盘): per-user file/folder tree with a pluggable blob store
+  (local disk or MinIO via `MAILEZ_DRIVE_BACKEND=minio`), upload/list/
+  download/rename/move/trash/restore, share links and an empty-trash worker
+- Exchange ActiveSync calendar & contacts sync: iOS/Outlook can now sync the
+  built-in calendar and address book (Calendar/Contacts collections with
+  add/change/delete both ways) in addition to mail
+- Admin system overview (`/admin/overview` + dashboard page): users/domains/
+  aliases, LDAP org contacts, pending DLP approvals, archived messages,
+  drive and large-attachment storage usage, engine/host identity
+- PWA/offline: installable web app manifest, apple-web-app metadata and
+  service-worker precache of the app shell for faster offline startup
 
 ### Changed
 

@@ -42,6 +42,7 @@
     "noOpenDomains": "当前没有接受自助注册的域名。"
   },
   "nav": {
+    "overview": "概览",
     "domains": "域名",
     "users": "用户",
     "aliases": "别名",
@@ -55,6 +56,23 @@
     "dlp": "审批/DLP",
     "config": "配置",
     "logout": "退出"
+  },
+  "overview": {
+    "title": "系统概览",
+    "loading": "加载中...",
+    "users": "用户",
+    "usersEnabled": "{n} 个启用",
+    "domains": "域名",
+    "aliases": "{n} 个别名",
+    "orgContacts": "组织通讯录",
+    "ldap": "AD/LDAP 同步",
+    "pendingApprovals": "待审批",
+    "dlp": "外发审批/DLP",
+    "archived": "归档邮件",
+    "compliance": "合规归档",
+    "drive": "云盘文件",
+    "uploads": "超大附件",
+    "largeAttachments": "中转存储"
   },
   "archive": {
     "title": "邮件归档",

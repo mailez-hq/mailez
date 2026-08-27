@@ -43,6 +43,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&CalendarShare{},
 		&CalendarReminderLog{},
 		&UploadedFile{},
+		&DriveFile{},
 		&SchemaMigration{},
 	)
 }

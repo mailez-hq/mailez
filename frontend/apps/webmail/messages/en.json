@@ -221,6 +221,7 @@
     "delegatedMailboxes": "Delegated mailboxes",
     "delegated": "delegated",
     "calendar": "Calendar",
+    "drive": "Drive",
     "templates": "Templates",
     "noTemplates": "No templates yet",
     "templateName": "Name",
@@ -639,5 +640,29 @@
     "copied": "Copied",
     "copyFailed": "Copy failed",
     "readOnlyCalendar": "Shared calendar (read-only)"
+  },
+  "drive": {
+    "title": "Drive",
+    "close": "Close",
+    "root": "All files",
+    "upload": "Upload",
+    "newFolder": "New folder",
+    "folderName": "Folder name",
+    "create": "Create",
+    "download": "Download",
+    "downloadFailed": "Download failed",
+    "share": "Share",
+    "shareFailed": "Share failed",
+    "rename": "Rename",
+    "more": "More",
+    "moveUp": "Move to parent",
+    "trash": "Trash",
+    "trashEmpty": "Trash is empty",
+    "emptyTrash": "Empty trash",
+    "restore": "Restore",
+    "empty": "This folder is empty",
+    "loading": "Loading…",
+    "copied": "Copied",
+    "linkCopied": "Share link copied to the clipboard"
   }
 }

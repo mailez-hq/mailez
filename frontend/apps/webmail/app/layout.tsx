@@ -20,6 +20,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Mailez Webmail",
   description: "Mailez webmail — mail easy",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#2E6E8E",
+  appleWebApp: {
+    capable: true,
+    title: "Mailez",
+    statusBarStyle: "default",
+  },
 };
 
 // Supported locales; the language lives in the NEXT_LOCALE cookie only and the
