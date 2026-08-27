@@ -111,3 +111,44 @@ func TestUserCreateDuplicateReturnsConflict(t *testing.T) {
 		t.Fatalf("dup body = %s, want clear message", string(b))
 	}
 }
+
+func TestUserListSearch(t *testing.T) {
+	app := newUserTestApp(t)
+	for _, email := range []string{"alice@t.example", "bob@t.example", "carol@t.example"} {
+		body := `{"email":"` + email + `","password":"secret-pass","displayed_name":"` + strings.ToUpper(email[:1]) + `"}`
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/users", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		if resp, err := app.Test(req, -1); err != nil || resp.StatusCode != http.StatusCreated {
+			t.Fatalf("create %s: %v status %d", email, err, resp.StatusCode)
+		}
+	}
+	type page struct {
+		Data  []models.User `json:"data"`
+		Total int           `json:"total"`
+	}
+	// Match by email fragment.
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/users?q=li", nil), -1)
+	if err != nil {
+		t.Fatalf("search email: %v", err)
+	}
+	var p page
+	if err := json.NewDecoder(resp.Body).Decode(&p); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	resp.Body.Close()
+	if p.Total != 1 || len(p.Data) != 1 || p.Data[0].Email != "alice@t.example" {
+		t.Fatalf("search 'li' = %+v", p)
+	}
+	// Match by displayed name (case-insensitive on SQLite LIKE).
+	resp, err = app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/users?q=BOB", nil), -1)
+	if err != nil {
+		t.Fatalf("search name: %v", err)
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&p); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	resp.Body.Close()
+	if p.Total != 1 || len(p.Data) != 1 || p.Data[0].Email != "bob@t.example" {
+		t.Fatalf("search 'BOB' = %+v", p)
+	}
+}
