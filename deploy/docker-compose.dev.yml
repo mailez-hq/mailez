@@ -1,17 +1,15 @@
-# mailez 开发模式基础设施编排
+# mailez 开发档（自包含，唯一开发 compose 文件）。
 #
-# 只编排"不会去动的"邮件栈依赖（自建 gateway/postfix/dovecot/mail-filter/
-# macro-scanner/resolver 镜像）。mailez 自研部分（backend / webmail / admin /
-# SSO）不在此
-# 容器化，而是在宿主机以开发模式运行（go run / npm run dev）。
+# 存储：SQLite（宿主机 backend）+ Pebble KV + 本地 FS blob。
+# 运行形态：backend / webmail / admin 在宿主机开发模式跑（go run /
+# npm run dev），本文件只编排邮件栈依赖：redis、rspamd、unbound 和
+# mailezine 引擎。引擎直发邮件端口（25/110/143/1587/4190），通过
+# host.docker.internal:8080 访问宿主机 backend 的目录/认证接口。
 #
-# 用法（需要 Docker Desktop）：
+# 用法（backend 需先按 docs/dev-setup.md 在宿主机 :8080 起来）：
 #   cd deploy
-#   copy mailez.env.example mailez.env   （改 SECRET_KEY / DOMAIN 等）
-#   docker compose -f docker-compose.dev.yml up -d
-#
-# 宿主机后端必须监听 8080（镜像通过 MAILEZ_BACKEND_ADDRESS:8080 访问内部 API），
-# 详见 docs/dev-setup.md。
+#   docker compose -f docker-compose.dev.yml up -d --build
+#   docker compose -f docker-compose.dev.yml down
 
 name: mailez
 
@@ -29,84 +27,52 @@ services:
     volumes:
       - "./data/redis:/data"
 
-  gateway:
-    image: mailez/nginx:local
+  mailezine:
+    image: mailez/mailezine:local
+    build:
+      context: ../../mailezine
+      dockerfile: Dockerfile
     pull_policy: missing
     restart: always
-    env_file: mailez.env
     environment:
-      # 覆盖 mailez.env 里的 MAILEZ_BACKEND_ADDRESS=backend：开发模式下后端在宿主机，
-      # 镜像通过 host.docker.internal 访问它（端口固定 8080）。
+      # 控制面在宿主机（开发模式），引擎经 host.docker.internal 取目录/认证。
+      - MAILEZINE_BACKEND_ADDRESS=host.docker.internal:8080
       - MAILEZ_BACKEND_ADDRESS=host.docker.internal
+      - MAILEZINE_DIRECTORY_MODE=mailez
+      - MAILEZINE_AUTH_MODE=mailez
+      # 开发档存储：Pebble KV + 本地 FS blob（不设 MAILEZINE_S3_*）。
+      - MAILEZINE_STORAGE_BACKEND=pebble
+      - MAILEZINE_ROCKS_PATH=/data/rocks
+      - MAILEZINE_RSPAMD_URL=http://mail-filter:11333/checkv2
+      - MAILEZINE_DKIM_VAULT_URL=http://host.docker.internal:8080/stack/rspamd/vault
+      - MAILEZINE_TRUSTED_NETS=192.168.206.0/24
+      # 明文端口（开发不配 TLS）；465/993/995 隐式 TLS 不启用。
+      - MAILEZINE_SMTP_ADDR=:25
+      - MAILEZINE_SUBMISSION_ADDR=:1587
+      - MAILEZINE_IMAP_ADDR=:143
+      - MAILEZINE_MANAGESIEVE_ADDR=:4190
+      - MAILEZINE_POP3_ADDR=:110
+      - MAILEZINE_OUTBOUND_ENABLED=true
+      - MAILEZINE_OUTBOUND_PORT=25
+      - MAILEZINE_ARCHIVE_ENABLED=true
+      - MAILEZINE_DLP_ENABLED=true
+      - MAILEZINE_FTS_ENABLED=true
+      - MAILEZINE_LOG_LEVEL=info
+    # 引擎以非特权用户运行（uid 82）：宿主机 ./data/mailezine 需 chown 82:101。
+    user: "82:101"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - "./data/mailezine:/data"
     ports:
-      # 80/443 intentionally omitted in dev: the host already has other
-      # gateways bound there (e.g. caddy); webmail/admin run directly on
-      # localhost:3001/3000.
       - "127.0.0.1:25:25"
-      - "127.0.0.1:465:465"
-      - "127.0.0.1:587:587"
-      - "127.0.0.1:110:110"
-      - "127.0.0.1:995:995"
-      - "127.0.0.1:143:143"
-      - "127.0.0.1:993:993"
-      - "127.0.0.1:4190:4190"
-      # 容器网络内 backend 用的内部代理端口，映射出来供宿主机后端连接
-      - "127.0.0.1:1143:1143"
       - "127.0.0.1:1587:1587"
-      - "127.0.0.1:11490:11490"
-    volumes:
-      - "./certs:/certs"
-      - "./overrides/nginx-dev:/overrides"
-
-  dovecot:
-    image: mailez/dovecot:local
-    pull_policy: missing
-    restart: always
-    env_file: mailez.env
-    environment:
-      # Images reach the control plane at MAILEZ_BACKEND_ADDRESS:8080; in dev the
-      # backend runs on the host.
-      - MAILEZ_BACKEND_ADDRESS=host.docker.internal
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - "./data/mail:/mail"
-      - "./overrides:/overrides"
-    networks:
-      default:
-        # Fixed IP: the host-run backend returns it as Auth-Server (the mail
-        # auth module only accepts IP literals), so it must be stable.
-        ipv4_address: 192.168.206.5
+      - "127.0.0.1:110:110"
+      - "127.0.0.1:143:143"
+      - "127.0.0.1:4190:4190"
     depends_on:
-      - gateway
-
-  postfix:
-    image: mailez/postfix:local
-    pull_policy: missing
-    restart: always
-    env_file: mailez.env
-    environment:
-      - MAILEZ_BACKEND_ADDRESS=host.docker.internal
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - "./overrides:/overrides"
-    networks:
-      default:
-        # Fixed IP: same reason as dovecot (Auth-Server from the host backend).
-        ipv4_address: 192.168.206.4
-    depends_on:
-      - gateway
-
-  macro-scanner:
-    image: mailez/macro-scanner:local
-    pull_policy: missing
-    hostname: macro-scanner
-    restart: always
-    networks:
-      - no-egress
+      - mail-filter
+      - resolver
 
   mail-filter:
     image: mailez/rspamd:local
@@ -118,33 +84,22 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      default:
-        # Fixed IP: keep it out of postfix's reserved .4 (IPAM race on recreate).
-        ipv4_address: 192.168.206.6
+      default: {}
       no-egress: {}
     volumes:
       - "./data/filter:/var/lib/rspamd"
       - "./data/dkim:/dkim"
       - "./overrides/rspamd:/etc/rspamd/override.d"
-    depends_on:
-      - gateway
 
   resolver:
     image: mailez/unbound:local
     pull_policy: missing
-    env_file: mailez.env
     restart: always
-    networks:
-      default:
-        ipv4_address: 192.168.206.254
+    env_file: mailez.env
 
 networks:
   default:
     driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 192.168.206.0/24
   no-egress:
     driver: bridge
     internal: true
