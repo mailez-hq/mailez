@@ -11,7 +11,10 @@ COPY backend/internal/macro ./internal/macro
 COPY backend/cmd/mailez-agent ./cmd/mailez-agent
 RUN go build -trimpath -ldflags="-s -w" -o /out/mailez-agent ./cmd/mailez-agent
 
-# nginx image: ACME is handled by the embedded lego client.
+# Unified gateway image for both engine editions (nginx + embedded dovecot
+# login proxy). ACME is handled by the embedded lego client; the mailezine
+# mode runs the same nginx with an HTTP-only config (the engine publishes
+# the mail ports itself).
 FROM alpine:3.21
 
 ARG VERSION
@@ -36,7 +39,9 @@ RUN set -euxo pipefail \
 
 EXPOSE 80/tcp 443/tcp 110/tcp 143/tcp 465/tcp 587/tcp 993/tcp 995/tcp 25/tcp 4190/tcp
 # EXPOSE 1587/tcp 1143/tcp 11490/tcp
-HEALTHCHECK --start-period=60s CMD curl -m3 -skfLo /dev/null http://127.0.0.1:10204/health && kill -0 `cat /run/dovecot/master.pid`
+# nginx's localhost health server is engine-agnostic (dovecot only runs in
+# postdove mode, so its pid must not gate the health check).
+HEALTHCHECK --start-period=60s CMD curl -m3 -skfLo /dev/null http://127.0.0.1:10204/health
 
 VOLUME ["/certs", "/overrides"]
 

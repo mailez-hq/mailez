@@ -47,16 +47,13 @@ func runNginx() error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	if cfg.Engine == "mailezine" {
-		// mailezine mode: no nginx at all — the engine publishes the mail
-		// ports itself and caddy serves HTTP/ACME in the foreground.
-		return agent.RunChild(ctx, []string{"/usr/sbin/caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"})
-	}
-
-	// postdove mode: the dovecot login proxy daemonizes itself; nginx runs
-	// in the foreground.
-	if err := exec.Command("/usr/sbin/dovecot", "-c", "/etc/dovecot/proxy.conf").Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "nginx: dovecot proxy failed to start: %v\n", err)
+	// postdove mode: the dovecot login proxy daemonizes itself; in mailezine
+	// mode the engine authenticates by itself, so only nginx runs. Either
+	// way nginx (HTTP + ACME) stays in the foreground.
+	if cfg.Engine != "mailezine" {
+		if err := exec.Command("/usr/sbin/dovecot", "-c", "/etc/dovecot/proxy.conf").Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "nginx: dovecot proxy failed to start: %v\n", err)
+		}
 	}
 	return agent.RunChild(ctx, []string{"/usr/sbin/nginx", "-g", "daemon off;"})
 }
