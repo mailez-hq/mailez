@@ -243,6 +243,14 @@
     "bulkLabel": "标签",
     "toastMuted": "已静音该会话",
     "toastUnmuted": "已取消静音",
+    "inviteMeeting": "会议邀请",
+    "inviteOrganizer": "组织者",
+    "inviteAccept": "接受",
+    "inviteTentative": "暂定",
+    "inviteDecline": "拒绝",
+    "inviteAccepted": "已接受，回复已发送给组织者",
+    "inviteDeclined": "已拒绝，回复已发送给组织者",
+    "inviteFailed": "回复发送失败"
     "toastLabelApplied": "已应用标签",
     "translationError": "翻译失败",
     "noSelectionQuote": "（未选中文字，引用全文）"
@@ -574,6 +582,8 @@
     "deleting": "删除中…",
     "errorRequired": "标题和开始时间必填",
     "errorSave": "保存失败",
-    "errorDelete": "删除失败"
+    "errorDelete": "删除失败",
+    "sendInvite": "发送会议邀请",
+    "attendeesPlaceholder": "参与者邮箱，逗号分隔"
   }
 }

@@ -49,6 +49,22 @@ export type MailMessage = {
   // Deterministic auto-classification: work | social | newsletter | shopping |
   // finance | other. Derived server-side from sender domain and headers.
   category?: string;
+  // Parsed iTIP meeting invitation (REQUEST/REPLY/CANCEL) when present.
+  invitation?: MailInvitation;
+};
+
+export type MailInvitation = {
+  method: string;
+  uid: string;
+  summary: string;
+  location: string;
+  description: string;
+  start?: string;
+  end?: string;
+  all_day: boolean;
+  organizer: string;
+  attendees: string[];
+  ics: string;
 };
 
 export type MailPage = { messages: MailMessage[]; total: number };

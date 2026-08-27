@@ -33,6 +33,7 @@ import (
 	"mailez/backend/internal/dlp"
 	"mailez/backend/internal/domain"
 	"mailez/backend/internal/fetch"
+	"mailez/backend/internal/invite"
 	"mailez/backend/internal/ldap"
 	"mailez/backend/internal/mailbox"
 	"mailez/backend/internal/push"
@@ -206,6 +207,7 @@ func (s *Server) routes() {
 	calendar.New(app).Register(authed)
 	archive.New(app).Register(authed)
 	dlp.New(app).Register(authed)
+	invite.New(app).Register(authed)
 	fetch.RegisterAPI(authed, app)
 	ai.RegisterAPI(authed, app, aiMgr)
 	push.RegisterAPI(authed, app)

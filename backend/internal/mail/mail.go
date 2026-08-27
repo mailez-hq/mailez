@@ -49,6 +49,9 @@ type Message struct {
 	// Category is the deterministic auto-classification (work/social/
 	// newsletter/shopping/finance/other) derived from sender and headers.
 	Category string `json:"category,omitempty"`
+	// Invitation is the parsed text/calendar iTIP payload (meeting
+	// REQUEST/REPLY/CANCEL), nil for ordinary messages.
+	Invitation *Invitation `json:"invitation,omitempty"`
 }
 
 // Attachment is one file embedded in a message, base64-encoded for download.
@@ -328,10 +331,11 @@ func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, 
 		raw, err := io.ReadAll(body)
 		if err == nil {
 			out.UnsubscribeURL, out.UnsubscribePost = parseUnsubscribe(raw)
-			if textBody, htmlBody, attachments, err := extractBody(bytes.NewReader(raw)); err == nil {
+			if textBody, htmlBody, attachments, inv, err := extractBody(bytes.NewReader(raw)); err == nil {
 				out.TextBody = textBody
 				out.HTMLBody = htmlBody
 				out.Attachments = attachments
+				out.Invitation = inv
 			}
 		}
 	}
@@ -455,10 +459,10 @@ func hasAttachments(bs *imap.BodyStructure) bool {
 
 // extractBody walks a MIME body and returns the plain-text part, the HTML part
 // and any attachments (decoded and base64-encoded for transport).
-func extractBody(r io.Reader) (text, html string, attachments []Attachment, err error) {
+func extractBody(r io.Reader) (text, html string, attachments []Attachment, inv *Invitation, err error) {
 	msg, err := mail.ReadMessage(r)
 	if err != nil {
-		return "", "", nil, err
+		return "", "", nil, nil, err
 	}
 	mt, params, err := mime.ParseMediaType(msg.Header.Get("Content-Type"))
 	if err != nil {
@@ -478,6 +482,10 @@ func extractBody(r io.Reader) (text, html string, attachments []Attachment, err 
 				break
 			}
 			partType, _, _ := mime.ParseMediaType(part.Header.Get("Content-Type"))
+			if strings.HasPrefix(partType, "text/calendar") && inv == nil {
+				b, _ := io.ReadAll(io.LimitReader(part, 1<<20))
+				inv = ParseInvitation(decodeBodyBytes(b, part.Header.Get("Content-Transfer-Encoding")))
+			}
 			disposition, dparams, _ := mime.ParseMediaType(part.Header.Get("Content-Disposition"))
 			filename := dparams["filename"]
 			b, _ := io.ReadAll(part)
@@ -501,9 +509,28 @@ func extractBody(r io.Reader) (text, html string, attachments []Attachment, err 
 			text = decodeBody(b, encoding)
 		} else if strings.HasPrefix(mt, "text/html") {
 			html = SanitizeHTML(decodeBody(b, encoding))
+		} else if strings.HasPrefix(mt, "text/calendar") {
+			inv = ParseInvitation(decodeBodyBytes(b, encoding))
 		}
 	}
-	return text, html, attachments, nil
+	return text, html, attachments, inv, nil
+}
+
+// decodeBodyBytes is decodeBody returning []byte (for ICS parsing).
+func decodeBodyBytes(b []byte, encoding string) []byte {
+	switch strings.ToLower(encoding) {
+	case "base64":
+		if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(b))); err == nil {
+			return decoded
+		}
+	case "quoted-printable":
+		if r := quotedprintable.NewReader(bytes.NewReader(b)); r != nil {
+			if decoded, err := io.ReadAll(r); err == nil {
+				return decoded
+			}
+		}
+	}
+	return b
 }
 
 func decodeBody(b []byte, encoding string) string {

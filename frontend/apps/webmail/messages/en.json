@@ -243,6 +243,14 @@
     "bulkLabel": "Label",
     "toastMuted": "Thread muted",
     "toastUnmuted": "Thread unmuted",
+    "inviteMeeting": "Meeting invitation",
+    "inviteOrganizer": "Organizer",
+    "inviteAccept": "Accept",
+    "inviteTentative": "Tentative",
+    "inviteDecline": "Decline",
+    "inviteAccepted": "Accepted — reply sent to the organizer",
+    "inviteDeclined": "Declined — reply sent to the organizer",
+    "inviteFailed": "Failed to send reply"
     "toastLabelApplied": "Label applied",
     "translationError": "Translation failed",
     "noSelectionQuote": "（未选中文字，引用全文）"
@@ -574,6 +582,8 @@
     "deleting": "Deleting…",
     "errorRequired": "Title and start time are required",
     "errorSave": "Save failed",
-    "errorDelete": "Delete failed"
+    "errorDelete": "Delete failed",
+    "sendInvite": "Send meeting invitation",
+    "attendeesPlaceholder": "Attendee emails, comma-separated"
   }
 }
