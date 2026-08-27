@@ -202,6 +202,32 @@ var migrations = []migration{
 			return db.AutoMigrate(&LdapConfig{}, &Alias{})
 		},
 	},
+	{
+		// Compliance email archiving: capture/retention policies and the
+		// archived message store (Coremail-style 归档/检索/审查).
+		ID: "20260827_email_archive",
+		Up: func(db *gorm.DB) error {
+			if err := db.AutoMigrate(&ArchiveSettings{}, &ArchivedMessage{}); err != nil {
+				return err
+			}
+			// Seed an enabled global policy so a fresh install captures mail
+			// out of the box; admins tune it (or disable it) in the console.
+			var count int64
+			if err := db.Model(&ArchiveSettings{}).Where("domain = ?", "").Count(&count).Error; err != nil {
+				return err
+			}
+			if count == 0 {
+				return db.Create(&ArchiveSettings{
+					Domain:          "",
+					Enabled:         true,
+					CaptureInbound:  true,
+					CaptureOutbound: true,
+					RetentionDays:   0,
+				}).Error
+			}
+			return nil
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

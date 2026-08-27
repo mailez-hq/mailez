@@ -21,6 +21,7 @@ import (
 	"mailez/backend/internal/ai"
 	"mailez/backend/internal/alias"
 	"mailez/backend/internal/announcement"
+	"mailez/backend/internal/archive"
 	"mailez/backend/internal/auth"
 	"mailez/backend/internal/calendar"
 	"mailez/backend/internal/compose"
@@ -128,6 +129,8 @@ func New(cfg core.Config) *Server {
 	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey).Run(bgCtx)
 	// Organization address book refresh (AD/LDAP) when directory sync is on.
 	go ldap.RunSyncWorker(bgCtx, db, cfg.SecretKey)
+	// Compliance archive retention: purge messages past their policy deadline.
+	go archive.New(&core.App{DB: db, Auth: s.Auth, Cfg: cfg}).RunRetention(bgCtx)
 	// Push notifier (new-mail notifications for subscribed clients).
 	if cfg.PushInterval > 0 {
 		notifier := push.NewNotifier(db, cfg)
@@ -198,11 +201,14 @@ func (s *Server) routes() {
 	admin.New(app).Register(authed)
 	announcement.New(app).Register(authed)
 	calendar.New(app).Register(authed)
+	archive.New(app).Register(authed)
 	fetch.RegisterAPI(authed, app)
 	ai.RegisterAPI(authed, app, aiMgr)
 	push.RegisterAPI(authed, app)
 
-	s.internal.Register(s.App.Group("/stack"))
+	stackGroup := s.App.Group("/stack")
+	s.internal.Register(stackGroup)
+	archive.New(app).RegisterStack(stackGroup)
 
 	// Built-in CardDAV/CalDAV servers (phone/desktop sync over Basic Auth)
 	// plus the RFC 6764 well-known discovery redirects.

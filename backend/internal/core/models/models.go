@@ -36,6 +36,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&LdapConfig{},
 		&OrgContact{},
 		&Announcement{},
+		&ArchiveSettings{},
+		&ArchivedMessage{},
 		&SchemaMigration{},
 	)
 }
