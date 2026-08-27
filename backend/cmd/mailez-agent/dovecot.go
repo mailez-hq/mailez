@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"mailez/backend/internal/agent"
 )
@@ -48,11 +49,14 @@ func runDovecot() error {
 	// mailez: dovecot dict proxy -> control plane internal API.
 	backend := agent.Getenv("MAILEZ_BACKEND_ADDRESS", "backend")
 	base := "http://" + backend + ":8080/stack/dovecot/"
-	handler := agent.NewDictHandler(map[string]string{
-		"quota": base + "{}",
-		"auth":  base + "{}",
-		"sieve": base + "{}",
-	})
+	handler := &agent.DictHandler{
+		Tables: map[string]string{
+			"quota": base + "{}",
+			"auth":  base + "{}",
+			"sieve": base + "{}",
+		},
+		Client: agent.StackHTTPClient(agent.StackSecret(), 10*time.Second),
+	}
 	go func() {
 		if err := handler.Serve(ctx, "/tmp/mailez.socket"); err != nil {
 			fmt.Fprintf(os.Stderr, "dovecot: mailez dict proxy: %v\n", err)

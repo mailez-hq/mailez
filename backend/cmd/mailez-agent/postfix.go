@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -88,7 +87,7 @@ func runPostfix() error {
 		}
 		return base + suffix + escapePath(key)
 	}
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := agent.StackHTTPClient(agent.StackSecret(), 10*time.Second)
 	go func() {
 		if err := agent.PostfixSocketmapServe(ctx, "/tmp/mailez.socket", urlFor, client); err != nil {
 			fmt.Fprintf(os.Stderr, "postfix: mailez socketmap: %v\n", err)

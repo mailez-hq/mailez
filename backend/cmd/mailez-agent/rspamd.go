@@ -54,7 +54,7 @@ func runRspamd() error {
 	// original retried every second forever; we use capped exponential backoff.
 	backend := cfg.BackendAddress
 	healthURL := "http://" + backend + ":8080/stack/rspamd/local_domains"
-	client := &http.Client{Timeout: 2 * time.Second}
+	client := agent.StackHTTPClient(agent.StackSecret(), 2*time.Second)
 	delay := time.Second
 	for {
 		if resp, err := client.Get(healthURL); err == nil {
