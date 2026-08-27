@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
-# mailezctl — two-tier management entry: dev / prod.
+# mailezctl — management entry: dev / prod (+ optional postfix+dovecot).
 #
-# Exactly two compose files map to the two storage tiers:
+# Default tiers:
 #   dev  = docker-compose.dev.yml   (SQLite + Pebble + local FS)
 #   prod = docker-compose.prod.yml  (MySQL + TiDB + MinIO/S3)
+# Optional classic engine (self-contained, maildir storage):
+#   postdove = docker-compose.postdove.yml (MySQL control plane + postfix/dovecot)
 #
 # Usage:
 #   ./deploy/mailezctl.sh up              # dev
 #   ./deploy/mailezctl.sh up prod         # prod
+#   ./deploy/mailezctl.sh up postdove     # postfix+dovecot prod
 #   ./deploy/mailezctl.sh ps
 #   ./deploy/mailezctl.sh logs prod mailezine -Follow
 #   ./deploy/mailezctl.sh down
@@ -20,10 +23,11 @@ SERVICE="${3:-}"
 cd "$(dirname "$0")"
 
 case "$TARGET" in
-  dev)  FILE="docker-compose.dev.yml" ;;
-  prod) FILE="docker-compose.prod.yml" ;;
+  dev)      FILE="docker-compose.dev.yml" ;;
+  prod)     FILE="docker-compose.prod.yml" ;;
+  postdove) FILE="docker-compose.postdove.yml" ;;
   *)
-    echo "unknown target: $TARGET (dev|prod)" >&2
+    echo "unknown target: $TARGET (dev|prod|postdove)" >&2
     exit 2
     ;;
 esac

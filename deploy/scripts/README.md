@@ -3,8 +3,8 @@
 ## `mailezctl` — unified stack management
 
 `deploy/mailezctl.ps1` (Windows) / `deploy/mailezctl.sh` (Linux/macOS) is the
-single entry point for the whole stack. There are exactly two self-contained
-compose files, one per storage tier:
+single entry point for the whole stack. The default tiers are two
+self-contained compose files:
 
 | File                            | Control plane | Engine KV | Message blob |
 | ------------------------------- | ------------- | --------- | ------------ |
@@ -14,9 +14,16 @@ compose files, one per storage tier:
 Both files belong to one compose project (`mailez`), so `ps`/`logs`/`down`
 manage the same stack either way.
 
+Optional classic engine (self-contained, maildir storage, no TiDB/MinIO):
+
+| File                                     | Control plane | Engine              | Message storage |
+| ---------------------------------------- | ------------- | ------------------- | --------------- |
+| `docker-compose.postdove.yml`            | MySQL         | postfix + dovecot   | maildir         |
+
 ```sh
 ./deploy/mailezctl.sh up                    # dev: SQLite + Pebble + local FS
 ./deploy/mailezctl.sh up prod               # prod: MySQL + TiDB + MinIO/S3
+./deploy/mailezctl.sh up postdove           # postfix + dovecot prod (maildir)
 ./deploy/mailezctl.sh ps                    # status (same project regardless)
 ./deploy/mailezctl.sh logs prod mailezine -Follow
 ./deploy/mailezctl.sh down

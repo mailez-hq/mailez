@@ -1,12 +1,15 @@
-# mailezctl — 两档管理入口：开发 / 生产。
+# mailezctl — 管理入口：开发 / 生产（+ 可选 postfix+dovecot 引擎）。
 #
-# 只有两个 compose 文件，对应两档存储：
+# 默认两档存储：
 #   dev  = docker-compose.dev.yml   （SQLite + Pebble + 本地 FS）
 #   prod = docker-compose.prod.yml  （MySQL + TiDB + MinIO/S3）
+# 可选经典引擎（自包含，maildir 存储）：
+#   postdove = docker-compose.postdove.yml（MySQL 控制面 + postfix/dovecot）
 #
 # 用法:
 #   powershell .\deploy\mailezctl.ps1 up              # 开发档
 #   powershell .\deploy\mailezctl.ps1 up prod         # 生产档
+#   powershell .\deploy\mailezctl.ps1 up postdove     # postfix+dovecot 生产
 #   powershell .\deploy\mailezctl.ps1 ps
 #   powershell .\deploy\mailezctl.ps1 logs prod mailezine -Follow
 #   powershell .\deploy\mailezctl.ps1 down
@@ -17,7 +20,7 @@ param(
     [string]$Action = "ps",
 
     [Parameter(Position = 1)]
-    [ValidateSet("dev", "prod")]
+    [ValidateSet("dev", "prod", "postdove")]
     [string]$Target = "dev",
 
     [Parameter(Position = 2)]
@@ -28,7 +31,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 $deploy = Split-Path -Parent $MyInvocation.MyCommand.Path
-$file = if ($Target -eq "prod") { "docker-compose.prod.yml" } else { "docker-compose.dev.yml" }
+$file = switch ($Target) {
+    "prod"     { "docker-compose.prod.yml" }
+    "postdove" { "docker-compose.postdove.yml" }
+    default    { "docker-compose.dev.yml" }
+}
 
 $compose = @("docker", "compose", "-f", $file)
 switch ($Action) {
