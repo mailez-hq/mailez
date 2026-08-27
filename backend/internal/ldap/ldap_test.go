@@ -473,8 +473,152 @@ func TestOpenLDAPGroupsReal(t *testing.T) {
 	}
 	t.Logf("real sync groups: created=%d updated=%d disabled=%d", created, updated, disabled)
 	var alias models.Alias
-	if err := db.First(&alias, "email = ?", "eng-team@example.com").Error; err != nil {
+	if err := db.First(&alias, "email = ?", "eng@example.com").Error; err != nil {
 		t.Fatalf("alias missing: %v", err)
 	}
 	t.Logf("alias: %+v", alias)
+}
+
+// TestOpenLDAPLiveResolve exercises delivery-time expansion against the real
+// OpenLDAP container with a nested group.
+func TestOpenLDAPLiveResolve(t *testing.T) {
+	if _, err := ldap.DialURL("ldap://127.0.0.1:1389"); err != nil {
+		t.Skip("local OpenLDAP container not running")
+	}
+	db := testDB(t)
+	cfg := models.LdapConfig{
+		ID: 1, Enabled: true, Host: "127.0.0.1", Port: 1389, Security: "none",
+		BaseDN: "ou=people,dc=example,dc=com", UserFilter: "(objectClass=person)",
+		BindDN: "cn=admin,dc=example,dc=com",
+		MailAttr: "mail", UIDAttr: "uid", UpnAttr: "userPrincipalName",
+		EmailDomain: "example.com", NameAttr: "cn", AutoCreate: true, SyncMinutes: 60,
+		SyncGroups: true, GroupFilter: "(objectClass=groupOfNames)",
+		GroupNameAttr: "cn", GroupMailAttr: "mail", GroupMemberAttr: "member",
+	}
+	if err := db.Create(&cfg).Error; err != nil {
+		t.Fatal(err)
+	}
+	enc, err := crypto.Encrypt("test-secret", "adminpw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Model(&models.LdapConfig{}).Where("id = ?", 1).Update("bind_password_enc", enc).Error; err != nil {
+		t.Fatal(err)
+	}
+	svc := New(db, "test-secret")
+	members, err := svc.ResolveGroupMembers(context.Background(), "all@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("live resolve all: %v", members)
+	if len(members) < 2 || members[0] != "alice@example.com" || members[1] != "bob@example.com" {
+		t.Fatalf("expected alice+bob, got %v", members)
+	}
+}
+
+func TestResolveGroupMembersNested(t *testing.T) {
+	users := testUsers()
+	users = append(users,
+		&testEntry{
+			dn: "cn=eng,ou=people,dc=example,dc=org",
+			attrs: map[string][]string{
+				"objectclass": {"top", "groupOfNames"},
+				"cn":          {"eng"},
+				"member": {
+					"uid=alice,ou=people,dc=example,dc=org",
+					"uid=bob,ou=people,dc=example,dc=org",
+				},
+			},
+		},
+		&testEntry{
+			dn: "cn=all,ou=people,dc=example,dc=org",
+			attrs: map[string][]string{
+				"objectclass": {"top", "groupOfNames"},
+				"cn":          {"all"},
+				"member": {
+					"cn=eng,ou=people,dc=example,dc=org",
+					"uid=alice,ou=people,dc=example,dc=org",
+				},
+			},
+		},
+	)
+	host, port, _ := newTestServer(t, users)
+	db := testDB(t)
+	cfg := models.LdapConfig{
+		ID: 1, Enabled: true, Host: host, Port: port, Security: "none",
+		BaseDN: "ou=people,dc=example,dc=org", UserFilter: "(objectClass=person)",
+		MailAttr: "email", UIDAttr: "uid", UpnAttr: "userPrincipalName",
+		EmailDomain: "example.com", NameAttr: "name", AutoCreate: true, SyncMinutes: 60,
+		SyncGroups: true, GroupFilter: "(objectClass=groupOfNames)",
+		GroupNameAttr: "cn", GroupMailAttr: "mail", GroupMemberAttr: "member",
+	}
+	if err := db.Create(&cfg).Error; err != nil {
+		t.Fatal(err)
+	}
+	svc := New(db, "test-secret")
+
+	// Nested group expansion with dedup: all -> eng -> alice+bob, plus alice.
+	members, err := svc.ResolveGroupMembers(context.Background(), "all@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(members) != 2 || members[0] != "alice@example.com" || members[1] != "bob@example.com" {
+		t.Fatalf("nested members: %v", members)
+	}
+
+	// Cache serves the second call with the same result.
+	members2, err := svc.ResolveGroupMembers(context.Background(), "all@example.com")
+	if err != nil || len(members2) != 2 {
+		t.Fatalf("cached members: %v err=%v", members2, err)
+	}
+}
+
+func TestResolveGroupMembersCycle(t *testing.T) {
+	users := testUsers()
+	users = append(users,
+		&testEntry{
+			dn: "cn=a,ou=people,dc=example,dc=org",
+			attrs: map[string][]string{
+				"objectclass": {"top", "groupOfNames"},
+				"cn":          {"a"},
+				"member": {
+					"cn=b,ou=people,dc=example,dc=org",
+					"uid=alice,ou=people,dc=example,dc=org",
+				},
+			},
+		},
+		&testEntry{
+			dn: "cn=b,ou=people,dc=example,dc=org",
+			attrs: map[string][]string{
+				"objectclass": {"top", "groupOfNames"},
+				"cn":          {"b"},
+				"member": {
+					"cn=a,ou=people,dc=example,dc=org",
+					"uid=bob,ou=people,dc=example,dc=org",
+				},
+			},
+		},
+	)
+	host, port, _ := newTestServer(t, users)
+	db := testDB(t)
+	cfg := models.LdapConfig{
+		ID: 1, Enabled: true, Host: host, Port: port, Security: "none",
+		BaseDN: "ou=people,dc=example,dc=org", UserFilter: "(objectClass=person)",
+		MailAttr: "email", UIDAttr: "uid", UpnAttr: "userPrincipalName",
+		EmailDomain: "example.com", NameAttr: "name", AutoCreate: true, SyncMinutes: 60,
+		SyncGroups: true, GroupFilter: "(objectClass=groupOfNames)",
+		GroupNameAttr: "cn", GroupMailAttr: "mail", GroupMemberAttr: "member",
+	}
+	if err := db.Create(&cfg).Error; err != nil {
+		t.Fatal(err)
+	}
+	svc := New(db, "test-secret")
+	members, err := svc.ResolveGroupMembers(context.Background(), "a@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// a -> b -> a (visited, skipped) + bob; a -> alice.
+	if len(members) != 2 || members[0] != "alice@example.com" || members[1] != "bob@example.com" {
+		t.Fatalf("cycle members: %v", members)
+	}
 }
