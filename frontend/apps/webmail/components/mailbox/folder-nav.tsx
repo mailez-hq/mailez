@@ -5,6 +5,7 @@ import {
   Archive,
   CalendarDays,
   CalendarClock,
+  Ellipsis,
   HardDrive,
   ChevronDown,
   ChevronRight,
@@ -32,7 +33,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import type { MailAccount, MailDelegation } from "@/lib/api";
 import {
   Dialog,
@@ -43,6 +44,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Logo } from "@/components/logo";
 import { FolderACLDialog } from "@/components/mailbox/folder-acl-dialog";
 import { LocaleSwitcher } from "@/components/locale-switcher";
@@ -677,9 +684,6 @@ export function FolderNav({
             <Button variant="ghost" size="sm" onClick={onContacts} title={t("contacts")}>
               <Users className="size-4" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={onSieve} title={t("filterRules")}>
-              <Filter className="size-4" />
-            </Button>
             <Button variant="ghost" size="sm" onClick={onCalendar} title={t("calendar")}>
               <CalendarDays className="size-4" />
             </Button>
@@ -689,15 +693,27 @@ export function FolderNav({
             <Button variant="ghost" size="sm" onClick={onSettings} title={t("settings")}>
               <Settings className="size-4" />
             </Button>
-            <a
-              href={ADMIN_URL}
-              target="_blank"
-              rel="noreferrer"
-              title={t("adminConsole")}
-              className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-            >
-              <ExternalLink className="size-4" />
-            </a>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="ghost" size="sm" title={t("more")}>
+                    <Ellipsis className="size-4" />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onSieve}>
+                  <Filter className="size-4" />
+                  {t("filterRules")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => window.open(ADMIN_URL, "_blank", "noopener,noreferrer")}
+                >
+                  <ExternalLink className="size-4" />
+                  {t("adminConsole")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="ghost" size="sm" onClick={onLogout} title={t("logout")}>
               <LogOut className="size-4" />
             </Button>

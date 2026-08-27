@@ -1,10 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Archive, Bookmark, FolderSearch, Inbox, MailCheck, Menu, Plus, RefreshCw, Search, SearchX, SlidersHorizontal, Sparkles, Tag, Trash2, X } from "lucide-react";
+import { Archive, Bookmark, Check, ChevronDown, Ellipsis, FolderSearch, Inbox, MailCheck, Menu, Plus, RefreshCw, Search, SearchX, SlidersHorizontal, Sparkles, Tag, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { usePreferences } from "@/components/preferences-provider";
   import type { MailMessage, MailSearchSpec } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -156,6 +162,8 @@ export function MessageListPanel({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, categories]);
+  const categoryLabel = (c: string) =>
+    c === "" ? t("categoryAll") : t(`category${c.charAt(0).toUpperCase()}${c.slice(1)}`);
 
   return (
     <div className={cn("flex min-h-0 min-w-0 flex-col border-r border-border bg-card", className)}>
@@ -201,40 +209,6 @@ export function MessageListPanel({
               </kbd>
             )}
           </form>
-          {searching && query.trim() !== "" && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={onSaveSearch}
-              title={t("saveSearch")}
-              className="shrink-0"
-            >
-              <Bookmark className="size-4" />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setBuilderOpen(true)}
-            title={t("advancedSearch")}
-            className={cn("relative shrink-0", activeFilterCount > 0 && "text-primary")}
-          >
-            <SlidersHorizontal className="size-4" />
-            {activeFilterCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-semibold text-primary-foreground">
-                {activeFilterCount}
-              </span>
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={onToggleSearchAll}
-            title={t("searchAll")}
-            className={cn("shrink-0", searchAll && "text-primary")}
-          >
-            <FolderSearch className="size-4" />
-          </Button>
           <select
             value={sortDir === "asc" && sortBy === "date" ? "date-asc" : `${sortBy}-${sortDir}`}
             onChange={(e) => onChangeSort(e.target.value)}
@@ -250,27 +224,6 @@ export function MessageListPanel({
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={onMarkAllRead}
-            title={t("markAllRead")}
-            className="shrink-0"
-          >
-            <MailCheck className="size-4" />
-          </Button>
-          {aiSearchEnabled && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => onAiSearch()}
-              disabled={aiSearching}
-              title={t("aiSearch")}
-              className="shrink-0"
-            >
-              <Sparkles className={cn("size-4", aiSearching && "animate-pulse")} />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon-sm"
             onClick={onRefresh}
             disabled={refreshing}
             title={t("refresh")}
@@ -278,38 +231,96 @@ export function MessageListPanel({
           >
             <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
           </Button>
-        </div>
-        {presentCategories.length > 0 && (
-        <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          {["", ...presentCategories].map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => onCategoryChange(c)}
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[11px] transition-colors",
-                category === c
-                  ? "bg-accent font-medium text-accent-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  title={t("more")}
+                  className={cn("relative shrink-0", activeFilterCount > 0 && "text-primary")}
+                >
+                  <Ellipsis className="size-4" />
+                  {activeFilterCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-semibold text-primary-foreground">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </Button>
+              }
+            />
+            <DropdownMenuContent align="end">
+              {searching && query.trim() !== "" && (
+                <DropdownMenuItem onClick={onSaveSearch}>
+                  <Bookmark className="size-4" />
+                  {t("saveSearch")}
+                </DropdownMenuItem>
               )}
-            >
-              {c === "" ? t("categoryAll") : t(`category${c.charAt(0).toUpperCase()}${c.slice(1)}`)}
-            </button>
-          ))}
+              <DropdownMenuItem onClick={() => setBuilderOpen(true)}>
+                <SlidersHorizontal className="size-4" />
+                {t("advancedSearch")}
+                {activeFilterCount > 0 && (
+                  <span className="ml-auto rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onToggleSearchAll}>
+                <FolderSearch className="size-4" />
+                {t("searchAll")}
+                {searchAll && <Check className="ml-auto size-4" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onMarkAllRead}>
+                <MailCheck className="size-4" />
+                {t("markAllRead")}
+              </DropdownMenuItem>
+              {aiSearchEnabled && (
+                <DropdownMenuItem onClick={() => onAiSearch()} disabled={aiSearching}>
+                  <Sparkles className={cn("size-4", aiSearching && "animate-pulse")} />
+                  {t("aiSearch")}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        )}
-        {aiPriorityEnabled && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-1">
-            <Button
-              size="xs"
-              variant={priorityOn ? "default" : "outline"}
-              onClick={onTogglePriority}
-              disabled={prioritizing}
-              className="ml-auto"
-            >
-              <Sparkles className="size-3" />
-              {prioritizing ? t("prioritizing") : t("aiPriority")}
-            </Button>
+        {(presentCategories.length > 0 || aiPriorityEnabled) && (
+          <div className="mt-1.5 flex items-center gap-1">
+            {presentCategories.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button size="xs" variant="outline">
+                      <span className="max-w-32 truncate">{categoryLabel(category)}</span>
+                      <ChevronDown className="size-3" />
+                    </Button>
+                  }
+                />
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => onCategoryChange("")}>
+                    {t("categoryAll")}
+                    {category === "" && <Check className="ml-auto size-4" />}
+                  </DropdownMenuItem>
+                  {presentCategories.map((c) => (
+                    <DropdownMenuItem key={c} onClick={() => onCategoryChange(c)}>
+                      {categoryLabel(c)}
+                      {category === c && <Check className="ml-auto size-4" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {aiPriorityEnabled && (
+              <Button
+                size="xs"
+                variant={priorityOn ? "default" : "outline"}
+                onClick={onTogglePriority}
+                disabled={prioritizing}
+                className="ml-auto"
+              >
+                <Sparkles className="size-3" />
+                {prioritizing ? t("prioritizing") : t("aiPriority")}
+              </Button>
+            )}
           </div>
         )}
       </div>
