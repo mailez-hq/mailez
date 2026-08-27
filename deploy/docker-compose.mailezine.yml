@@ -15,8 +15,8 @@
 #     MAIL_SMTP_ADDR=mailezine:1587、MAIL_SIEVE_ADDR=mailezine:4190）。
 #   - mailezine 直接发布邮件端口（25/465/587/143/993/110/995/4190）并自持
 #     隐式 TLS（465/993/995）；gateway 只剩 caddy（HTTP/ACME），mailezine
-#     模式下完全没有 nginx。存储用 Pebble+FS（纯 Go），数据落在
-#     ./data/mailezine。
+#     模式下完全没有 nginx。存储默认 Pebble + 本地 FS（纯 Go，开发档）；
+#     生产叠加 docker-compose.blob-s3.yml 切换到 MinIO/S3 blob。
 name: mailez
 
 services:
@@ -51,12 +51,6 @@ services:
       - MAILEZ_BACKEND_ADDRESS=host.docker.internal
       - MAILEZINE_STORAGE_BACKEND=pebble
       - MAILEZINE_ROCKS_PATH=/data/rocks
-      # Pebble KV + MinIO/S3 blob (the production storage shape).
-      - MAILEZINE_S3_ENDPOINT=minio:9000
-      - MAILEZINE_S3_ACCESS_KEY=mailezine
-      - MAILEZINE_S3_SECRET_KEY=mailezine-e2e-pass
-      - MAILEZINE_S3_BUCKET=mailezine
-      - MAILEZINE_S3_USE_SSL=false
       - MAILEZINE_DIRECTORY_MODE=mailez
       - MAILEZINE_AUTH_MODE=mailez
       - MAILEZINE_RSPAMD_URL=http://mail-filter:11333/checkv2
@@ -107,27 +101,6 @@ services:
       - gateway
       - mail-filter
       - resolver
-      - minio
-
-  # MinIO object storage: holds message blobs in pebble+minio mode.
-  minio:
-    image: minio/minio:latest
-    pull_policy: missing
-    restart: always
-    command: server /data --console-address ":9001"
-    environment:
-      - MINIO_ROOT_USER=mailezine
-      - MINIO_ROOT_PASSWORD=mailezine-e2e-pass
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/ready"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-    volumes:
-      - "./data/minio:/data"
-    ports:
-      - "127.0.0.1:29000:9000"
-      - "127.0.0.1:29001:9001"
 
   # rspamd renders its worker config from MAILEZ_ENGINE: mailezine wants an
   # HTTP checkv2 scanner, postdove keeps the milter proxy.

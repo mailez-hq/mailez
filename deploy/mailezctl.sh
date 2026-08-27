@@ -4,11 +4,14 @@
 # One command manages the whole stack (mailez control plane + mail engine);
 # engine/storage is selected via compose profiles inside one "mailez" project:
 #
-#   Engine          Compose files                                   Profile
-#   --------------- ----------------------------------------------  ----------------
-#   postdove        docker-compose.dev.yml                          (default)
-#   mailezine       dev + docker-compose.mailezine.yml              --profile mailezine
-#   mailezine-tidb  dev + mailezine + docker-compose.tidb.yml       --profile mailezine
+# Storage matrix (dev = SQLite + Pebble/TiDB + local FS; prod = MySQL +
+# TiDB + MinIO/S3):
+#
+#   Engine          Dev base                      Prod (-Prod)
+#   --------------- ----------------------------  --------------------------------------------
+#   postdove        docker-compose.dev.yml        compose + mysql
+#   mailezine       dev + mailezine (Pebble+FS)    compose + mailezine + blob-s3 + mysql
+#   mailezine-tidb  dev + mailezine + tidb         compose + mailezine + tidb + blob-s3 + mysql
 #
 # Usage:
 #   ./deploy/mailezctl.sh up mailezine-tidb
@@ -40,11 +43,17 @@ case "$ENGINE" in
     PROFILE="mailezine"
     ;;
   postdove) ;;
-  *)
+  *) 
     echo "unknown engine: $ENGINE (postdove|mailezine|mailezine-tidb)" >&2
     exit 2
     ;;
 esac
+if [ "$PROD" = "1" ]; then
+  FILES+=(-f docker-compose.mysql.yml)
+  if [ "$ENGINE" != "postdove" ]; then
+    FILES+=(-f docker-compose.blob-s3.yml)
+  fi
+fi
 
 ARGS=()
 if [ -n "$PROFILE" ]; then ARGS+=(--profile "$PROFILE"); fi

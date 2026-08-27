@@ -1,8 +1,9 @@
 # TiDB 存储 profile（叠加在 docker-compose.mailezine.yml 之上）。
 #
 # 把统一栈（mailez 控制面 + mailezine 引擎）的 KV 层从本地 Pebble 换成
-# 分布式 TiDB：引擎的账号/邮箱索引、UID、配额、队列 spool 落在 TiDB，
-# 正文 blob 仍走 MinIO/S3（与 pebble 模式一致的生产形态）。
+# 分布式 TiDB：引擎的账号/邮箱索引、UID、配额、队列 spool 落在 TiDB。
+# 正文 blob 不在此文件决定：开发档为本地 FS，生产叠加
+# docker-compose.blob-s3.yml 走 MinIO/S3。
 #
 # 用法（同一 compose 项目 mailez，全部一起管理）：
 #   cd deploy
@@ -38,8 +39,8 @@ services:
       retries: 20
       start_period: 8s
 
-  # 引擎在 tidb profile 下只换 KV 后端：blob 仍用 minio（S3），其余
-  # directory/auth/端口/TLS 配置全部继承 docker-compose.mailezine.yml。
+  # 引擎在 tidb profile 下只换 KV 后端，其余 directory/auth/端口/TLS 配置
+  # 全部继承 docker-compose.mailezine.yml。
   mailezine:
     environment:
       - MAILEZINE_STORAGE_BACKEND=tidb

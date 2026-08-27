@@ -1,0 +1,44 @@
+# 生产档正文存储：MinIO/S3 blob（叠加在 docker-compose.mailezine.yml 之上）。
+#
+# 开发档引擎默认 Pebble/TiDB KV + 本地 FS blob；生产把正文/附件字节放到
+# MinIO（S3 兼容），与 TiDB 一起构成分布式数据面。
+#
+# 用法（通常经 deploy/mailezctl.[ps1|sh] 组装，无需手拼）：
+#   docker compose -f docker-compose.yml -f docker-compose.mailezine.yml \
+#       -f docker-compose.blob-s3.yml --profile mailezine up -d --build
+
+name: mailez
+
+services:
+
+  mailezine:
+    environment:
+      # MinIO/S3 blob（生产形态；S3Endpoint 为空时引擎回退本地 FS）。
+      - MAILEZINE_S3_ENDPOINT=minio:9000
+      - MAILEZINE_S3_ACCESS_KEY=mailezine
+      - MAILEZINE_S3_SECRET_KEY=mailezine-e2e-pass
+      - MAILEZINE_S3_BUCKET=mailezine
+      - MAILEZINE_S3_USE_SSL=false
+    depends_on:
+      minio:
+        condition: service_healthy
+
+  # MinIO object storage: holds message blobs.
+  minio:
+    image: minio/minio:latest
+    pull_policy: missing
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=mailezine
+      - MINIO_ROOT_PASSWORD=mailezine-e2e-pass
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - "./data/minio:/data"
+    ports:
+      - "127.0.0.1:29000:9000"
+      - "127.0.0.1:29001:9001"
