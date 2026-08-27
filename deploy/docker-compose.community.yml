@@ -1,15 +1,14 @@
-# postfix + dovecot 生产栈（可选引擎，自包含）。
+# mailez 社区版生产档（postfix + dovecot，自包含）。
 #
-# 开发/生产两档默认用 mailezine 引擎（见 docker-compose.dev.yml /
-# docker-compose.prod.yml）。本文件提供经典 postfix + dovecot 引擎的
-# 全容器化生产形态：nginx 网关做邮件端口代理（25/465/587/110/995/143/993/
-# 4190），dovecot 用 maildir（./data/mail），控制面与生产档一致用 MySQL。
+# 社区版 = 经典 postfix + dovecot 引擎的全容器化生产形态（区别于企业版
+# mailezine）：nginx 网关做邮件端口代理（25/465/587/110/995/143/993/4190），
+# dovecot 用 maildir（./data/mail），控制面与企业版一致用 MySQL。
 # 邮件存储为本地 maildir，不使用 TiDB/MinIO。
 #
 # 用法：
 #   cd deploy
-#   docker compose -f docker-compose.postdove.yml up -d --build
-#   docker compose -f docker-compose.postdove.yml ps / logs / down
+#   docker compose -f docker-compose.community.yml up -d --build
+#   docker compose -f docker-compose.community.yml ps / logs / down
 
 name: mailez
 

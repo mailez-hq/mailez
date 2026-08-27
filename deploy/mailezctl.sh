@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
-# mailezctl — management entry: dev / prod (+ optional postfix+dovecot).
+# mailezctl — management entry: dev / community / enterprise.
 #
-# Default tiers:
-#   dev  = docker-compose.dev.yml   (SQLite + Pebble + local FS)
-#   prod = docker-compose.prod.yml  (MySQL + TiDB + MinIO/S3)
-# Optional classic engine (self-contained, maildir storage):
-#   postdove = docker-compose.postdove.yml (MySQL control plane + postfix/dovecot)
+# Three self-contained compose files:
+#   dev        = docker-compose.dev.yml        (SQLite + Pebble + local FS)
+#   community  = docker-compose.community.yml  (postfix+dovecot + MySQL)
+#   enterprise = docker-compose.enterprise.yml (mailezine + MySQL + TiDB + MinIO/S3)
 #
 # Usage:
 #   ./deploy/mailezctl.sh up              # dev
-#   ./deploy/mailezctl.sh up prod         # prod
-#   ./deploy/mailezctl.sh up postdove     # postfix+dovecot prod
+#   ./deploy/mailezctl.sh up community    # community edition prod
+#   ./deploy/mailezctl.sh up enterprise   # enterprise edition prod
 #   ./deploy/mailezctl.sh ps
-#   ./deploy/mailezctl.sh logs prod mailezine -Follow
+#   ./deploy/mailezctl.sh logs enterprise mailezine -Follow
 #   ./deploy/mailezctl.sh down
 set -euo pipefail
 
@@ -23,11 +22,11 @@ SERVICE="${3:-}"
 cd "$(dirname "$0")"
 
 case "$TARGET" in
-  dev)      FILE="docker-compose.dev.yml" ;;
-  prod)     FILE="docker-compose.prod.yml" ;;
-  postdove) FILE="docker-compose.postdove.yml" ;;
+  dev)        FILE="docker-compose.dev.yml" ;;
+  community)  FILE="docker-compose.community.yml" ;;
+  enterprise) FILE="docker-compose.enterprise.yml" ;;
   *)
-    echo "unknown target: $TARGET (dev|prod|postdove)" >&2
+    echo "unknown target: $TARGET (dev|community|enterprise)" >&2
     exit 2
     ;;
 esac

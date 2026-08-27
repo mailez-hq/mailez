@@ -1,17 +1,17 @@
-# mailezctl — 管理入口：开发 / 生产（+ 可选 postfix+dovecot 引擎）。
+# mailezctl — 管理入口：开发 / 社区版 / 企业版。
 #
-# 默认两档存储：
+# 三个自包含 compose 文件：
 #   dev  = docker-compose.dev.yml   （SQLite + Pebble + 本地 FS）
-#   prod = docker-compose.prod.yml  （MySQL + TiDB + MinIO/S3）
-# 可选经典引擎（自包含，maildir 存储）：
-#   postdove = docker-compose.postdove.yml（MySQL 控制面 + postfix/dovecot）
+#   community = docker-compose.community.yml（社区版：postfix+dovecot + MySQL）
+#   enterprise = docker-compose.enterprise.yml（企业版：mailezine + MySQL +
+#                TiDB + MinIO/S3）
 #
 # 用法:
 #   powershell .\deploy\mailezctl.ps1 up              # 开发档
-#   powershell .\deploy\mailezctl.ps1 up prod         # 生产档
-#   powershell .\deploy\mailezctl.ps1 up postdove     # postfix+dovecot 生产
+#   powershell .\deploy\mailezctl.ps1 up community    # 社区版生产
+#   powershell .\deploy\mailezctl.ps1 up enterprise   # 企业版生产
 #   powershell .\deploy\mailezctl.ps1 ps
-#   powershell .\deploy\mailezctl.ps1 logs prod mailezine -Follow
+#   powershell .\deploy\mailezctl.ps1 logs enterprise mailezine -Follow
 #   powershell .\deploy\mailezctl.ps1 down
 
 param(
@@ -20,7 +20,7 @@ param(
     [string]$Action = "ps",
 
     [Parameter(Position = 1)]
-    [ValidateSet("dev", "prod", "postdove")]
+    [ValidateSet("dev", "community", "enterprise")]
     [string]$Target = "dev",
 
     [Parameter(Position = 2)]
@@ -32,9 +32,9 @@ param(
 $ErrorActionPreference = "Stop"
 $deploy = Split-Path -Parent $MyInvocation.MyCommand.Path
 $file = switch ($Target) {
-    "prod"     { "docker-compose.prod.yml" }
-    "postdove" { "docker-compose.postdove.yml" }
-    default    { "docker-compose.dev.yml" }
+    "community"  { "docker-compose.community.yml" }
+    "enterprise" { "docker-compose.enterprise.yml" }
+    default      { "docker-compose.dev.yml" }
 }
 
 $compose = @("docker", "compose", "-f", $file)

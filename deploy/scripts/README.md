@@ -3,37 +3,33 @@
 ## `mailezctl` — unified stack management
 
 `deploy/mailezctl.ps1` (Windows) / `deploy/mailezctl.sh` (Linux/macOS) is the
-single entry point for the whole stack. The default tiers are two
-self-contained compose files:
+single entry point for the whole stack. Three self-contained compose files
+cover development plus the two production editions:
 
-| File                            | Control plane | Engine KV | Message blob |
-| ------------------------------- | ------------- | --------- | ------------ |
-| `docker-compose.dev.yml`        | SQLite (host) | Pebble    | local FS     |
-| `docker-compose.prod.yml`       | MySQL         | TiDB      | MinIO/S3     |
+| File                                    | Edition      | Engine           | Storage                  |
+| --------------------------------------- | ------------ | ---------------- | ------------------------ |
+| `docker-compose.dev.yml`                | Development  | mailezine        | SQLite + Pebble + local FS |
+| `docker-compose.community.yml`          | Community    | postfix+dovecot  | MySQL + maildir          |
+| `docker-compose.enterprise.yml`         | Enterprise   | mailezine        | MySQL + TiDB + MinIO/S3  |
 
-Both files belong to one compose project (`mailez`), so `ps`/`logs`/`down`
-manage the same stack either way.
-
-Optional classic engine (self-contained, maildir storage, no TiDB/MinIO):
-
-| File                                     | Control plane | Engine              | Message storage |
-| ---------------------------------------- | ------------- | ------------------- | --------------- |
-| `docker-compose.postdove.yml`            | MySQL         | postfix + dovecot   | maildir         |
+All files belong to one compose project (`mailez`), so `ps`/`logs`/`down`
+manage the same stack whichever edition is active.
 
 ```sh
 ./deploy/mailezctl.sh up                    # dev: SQLite + Pebble + local FS
-./deploy/mailezctl.sh up prod               # prod: MySQL + TiDB + MinIO/S3
-./deploy/mailezctl.sh up postdove           # postfix + dovecot prod (maildir)
+./deploy/mailezctl.sh up community          # community: postfix+dovecot + MySQL
+./deploy/mailezctl.sh up enterprise         # enterprise: mailezine + MySQL + TiDB + MinIO/S3
 ./deploy/mailezctl.sh ps                    # status (same project regardless)
-./deploy/mailezctl.sh logs prod mailezine -Follow
+./deploy/mailezctl.sh logs enterprise mailezine -Follow
 ./deploy/mailezctl.sh down
 ```
 
 The dev tier expects the backend on the host at `:8080` (see
-`docs/dev-setup.md`); the prod tier is fully containerized. Switching tiers
-does not migrate existing mail — treat the tier as a deployment-time choice.
-The mailezine repo keeps an engine-only dev/e2e stack
-(`mailezine/deploy/docker-compose.tidb.yml`) for backend-free development.
+`docs/dev-setup.md`); both production editions are fully containerized.
+Switching editions does not migrate existing mail — treat the edition as a
+deployment-time choice. Engine-only development (no control plane) uses the
+scripts in the mailezine repo (`deploy/scripts/tidb-dev.ps1`,
+`tidb-storage-e2e.ps1`).
 
 ## `go run ./cmd/e2e` — end-to-end mail path smoke test
 
@@ -44,7 +40,7 @@ rspamd spam headers, and (optionally) alias delivery.
 
 Prerequisites:
 
-- The stack is up: `cd deploy && docker compose -f docker-compose.prod.yml up -d --build`
+- The stack is up: `cd deploy && docker compose -f docker-compose.enterprise.yml up -d --build`
 - The backend has been seeded once (creates `admin@example.com` /
   `MailezDemo2026!`). Run the seed from a container or locally:
 
