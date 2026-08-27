@@ -80,6 +80,8 @@ services:
       - MAILEZINE_ARCHIVE_ENABLED=true
       # 外发内容过滤（敏感词/审批）：提交时向 backend 查询裁决。
       - MAILEZINE_DLP_ENABLED=true
+      # 全文检索：内置附件文本抽取（PDF/Office/文本），无需 Tika。
+      - MAILEZINE_FTS_ENABLED=true
     # The image runs as unprivileged mailezine (uid 82): the host data dir
     # must be writable by that id (e.g. chown -R 82:101 data/mailezine).
     user: "82:101"

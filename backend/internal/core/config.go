@@ -16,6 +16,7 @@ type Config struct {
 	DBDSN              string
 	RedisAddr          string
 	SecretKey          string
+	StackSecret        string
 	CookieSecure       bool
 	SessionLifetime    int // seconds
 	DovecotAddress     string
@@ -90,6 +91,7 @@ func Load() Config {
 		LogLevel:           env("LOG_LEVEL", "info"),
 		FetchInsecure:      envBool("FETCH_INSECURE", false),
 		DkimSelector:       env("MAILEZ_DKIM_SELECTOR", "dkim"),
+		StackSecret:        env("MAILEZ_STACK_SECRET", ""),
 	}
 	if cfg.MailMtaAddr == "" {
 		cfg.MailMtaAddr = cfg.PostfixAddress + ":25"

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/subtle"
 	"log"
 	"net/http"
 	"time"
@@ -18,6 +19,8 @@ import (
 
 	_ "mailez/backend/docs"
 	"mailez/backend/internal/admin"
+	"mailez/backend/internal/activesync"
+	"mailez/backend/internal/agent"
 	"mailez/backend/internal/ai"
 	"mailez/backend/internal/alias"
 	"mailez/backend/internal/announcement"
@@ -212,7 +215,7 @@ func (s *Server) routes() {
 	ai.RegisterAPI(authed, app, aiMgr)
 	push.RegisterAPI(authed, app)
 
-	stackGroup := s.App.Group("/stack")
+	stackGroup := s.App.Group("/stack", requireStackSecret(s.Cfg.StackSecret))
 	s.internal.Register(stackGroup)
 	archive.New(app).RegisterStack(stackGroup)
 	dlp.New(app).RegisterStack(stackGroup)
@@ -222,6 +225,27 @@ func (s *Server) routes() {
 	dav.New(s.DB).Register(s.App.Group("/dav"))
 	s.App.Get("/.well-known/carddav", redirectDAV)
 	s.App.Get("/.well-known/caldav", redirectDAV)
+
+	// Exchange ActiveSync (iOS/Outlook mobile sync): WBXML commands at
+	// /Microsoft-Server-ActiveSync plus autodiscover.
+	activesync.New(s.DB, s.Auth, s.Cfg, app.Mail).Register(s.App)
+}
+
+// requireStackSecret guards the internal /stack API used by mailezine and
+// the mail agent. When MAILEZ_STACK_SECRET is empty (local dev) every
+// caller is accepted; otherwise the caller must present the shared secret in
+// the X-Stack-Secret header (agent.SecretHeader).
+func requireStackSecret(secret string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		if secret == "" {
+			return c.Next()
+		}
+		got := c.Get(agent.SecretHeader)
+		if subtle.ConstantTimeCompare([]byte(got), []byte(secret)) != 1 {
+			return c.SendStatus(fiber.StatusForbidden)
+		}
+		return c.Next()
+	}
 }
 
 // redirectDAV points DAV discovery clients at the server root.

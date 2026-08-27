@@ -16,6 +16,27 @@ All notable changes to mailez are documented here. The format follows
 - Frontend engineering scaffold: ESLint, Prettier, Vitest and CI jobs for
   webmail and admin
 - Shared API contract types in `frontend/packages/types`
+- Exchange ActiveSync (EAS) server at `/Microsoft-Server-ActiveSync` plus
+  autodiscover: WBXML codec, device registry, FolderSync, incremental mail
+  Sync (read/flag/delete/move), Ping long-poll, SendMail/SmartReply/
+  SmartForward, Search (mailbox + GAL), Settings, ItemOperations, meeting
+  invitations and ResolveRecipients; configure iOS/Outlook with the mailbox
+  password or an app token
+- Meeting invitations (iTIP): parse REQUEST/REPLY/CANCEL, one-click
+  accept/decline/tentative from the mail reader and the calendar, send new
+  invitations with attendees
+- Outbound DLP and approval workflow: keyword/regex rules, hold-for-approval,
+  approver console and expiry auto-reject (Coremail-style 审批)
+- Compliance email archive: engine-side capture of inbound/outbound mail,
+  retention policies, metadata search, review notes, .eml download and mbox
+  export (Coremail-style 归档)
+- AD/LDAP directory integration: authentication fallback, organization
+  address book with department tree, group mailboxes with delivery-time
+  nested expansion, and account lifecycle sync
+- Attachment full-text search in mailezine (PDF/OOXML/ODF/text extraction
+  with Tika fallback) for the mailbox search
+- Internal `/stack` API authentication via `MAILEZ_STACK_SECRET`
+  (`X-Stack-Secret` header) used by the mail agent and the mailezine engine
 
 ### Changed
 
