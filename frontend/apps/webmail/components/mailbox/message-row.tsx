@@ -148,7 +148,8 @@ export function MessageRow({
               t("noSubject")
             )}
           </span>
-          {category && (
+          {/* "其他" carries no signal in the list — only real categories get a pill. */}
+          {category && category !== "other" && (
             <span className="shrink-0 rounded-full bg-muted px-1.5 py-px text-[10px] font-medium text-muted-foreground">
               {t.has(`category${category.charAt(0).toUpperCase()}${category.slice(1)}`)
                 ? t(`category${category.charAt(0).toUpperCase()}${category.slice(1)}`)
