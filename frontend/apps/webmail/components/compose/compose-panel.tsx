@@ -150,12 +150,16 @@ export function ComposePanel(props: ComposePanelProps) {
   }
 
   return (
-    <div
-      className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-border bg-card shadow-2xl md:w-2/3"
-      role="dialog"
-      aria-modal="false"
-      aria-label={t("newMessage")}
-    >
+    <>
+      {/* Click-away scrim: tapping outside the editor closes it (the close
+          path persists the draft). */}
+      <div className="fixed inset-0 z-40 bg-black/20" onClick={onClose} aria-hidden="true" />
+      <div
+        className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-border bg-card shadow-2xl md:w-2/3"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("newMessage")}
+      >
       <form
         onSubmit={onSubmit}
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
@@ -463,7 +467,8 @@ export function ComposePanel(props: ComposePanelProps) {
           </div>
         </div>
       </form>
-      <TemplatesDialog open={templatesDialogOpen} onOpenChange={setTemplatesDialogOpen} />
-    </div>
+        <TemplatesDialog open={templatesDialogOpen} onOpenChange={setTemplatesDialogOpen} />
+      </div>
+    </>
   );
 }
