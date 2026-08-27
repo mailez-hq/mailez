@@ -34,20 +34,20 @@ func testDB(t *testing.T) *gorm.DB {
 func seedConfig(t *testing.T, db *gorm.DB, host string, port int, enabled bool) {
 	t.Helper()
 	cfg := models.LdapConfig{
-		ID:         1,
-		Enabled:    enabled,
-		Host:       host,
-		Port:       port,
-		Security:   "none",
-		BaseDN:     "ou=people,dc=example,dc=org",
-		UserFilter: "(objectClass=person)",
-		MailAttr:   "email",
-		UIDAttr:    "uid",
-		NameAttr:   "name",
-		DeptAttr:   "department",
-		TitleAttr:  "title",
-		PhoneAttr:  "telephoneNumber",
-		AutoCreate: true,
+		ID:          1,
+		Enabled:     enabled,
+		Host:        host,
+		Port:        port,
+		Security:    "none",
+		BaseDN:      "ou=people,dc=example,dc=org",
+		UserFilter:  "(objectClass=person)",
+		MailAttr:    "email",
+		UIDAttr:     "uid",
+		NameAttr:    "name",
+		DeptAttr:    "department",
+		TitleAttr:   "title",
+		PhoneAttr:   "telephoneNumber",
+		AutoCreate:  true,
 		SyncMinutes: 60,
 	}
 	if err := db.Create(&cfg).Error; err != nil {
@@ -78,7 +78,7 @@ func testUsers() []*testEntry {
 }
 
 func TestLDAPAuthenticateAndProvision(t *testing.T) {
-	host, port := newTestServer(t, testUsers())
+	host, port, _ := newTestServer(t, testUsers())
 	// Sanity: the test directory answers attribute searches.
 	conn, err := ldap.DialURL("ldap://127.0.0.1:" + fmt.Sprint(port))
 	if err != nil {
@@ -134,7 +134,7 @@ func TestLDAPAuthenticateAndProvision(t *testing.T) {
 }
 
 func TestLDAPSyncContacts(t *testing.T) {
-	host, port := newTestServer(t, testUsers())
+	host, port, _ := newTestServer(t, testUsers())
 
 	db := testDB(t)
 	seedConfig(t, db, host, port, true)
@@ -158,6 +158,73 @@ func TestLDAPSyncContacts(t *testing.T) {
 	added, updated, err = svc.SyncContacts(context.Background())
 	if err != nil || added != 0 || updated != 0 {
 		t.Fatalf("second sync: added=%d updated=%d err=%v", added, updated, err)
+	}
+}
+
+func TestLDAPSyncAccountsLifecycle(t *testing.T) {
+	host, port, td := newTestServer(t, testUsers())
+	db := testDB(t)
+	seedConfig(t, db, host, port, true)
+	if err := db.Create(&models.Domain{Name: "example.com", MaxQuotaBytes: 2_000_000_000}).Error; err != nil {
+		t.Fatal(err)
+	}
+	// A manually created account must never be touched by the lifecycle sync.
+	manual := models.User{
+		Email: "manual@example.com", Localpart: "manual", DomainName: "example.com",
+		Password: "x", Enabled: true, LdapManaged: false,
+	}
+	if err := db.Create(&manual).Error; err != nil {
+		t.Fatal(err)
+	}
+	svc := New(db, "test-secret")
+
+	// First sync provisions both directory users.
+	created, disabled, err := svc.SyncAccounts(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created != 2 || disabled != 0 {
+		t.Fatalf("first sync: created=%d disabled=%d", created, disabled)
+	}
+	var u models.User
+	if err := db.First(&u, "email = ?", "alice@example.com").Error; err != nil {
+		t.Fatal(err)
+	}
+	if !u.LdapManaged {
+		t.Fatal("provisioned account not marked ldap_managed")
+	}
+
+	// Bob leaves the directory: his managed account is disabled, alice keeps
+	// hers, and the manual account is untouched.
+	td.mu.Lock()
+	td.entries = td.entries[:1] // drop bob
+	td.mu.Unlock()
+	created, disabled, err = svc.SyncAccounts(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created != 0 || disabled != 1 {
+		t.Fatalf("after removal: created=%d disabled=%d", created, disabled)
+	}
+	var bobUser models.User
+	if err := db.First(&bobUser, "email = ?", "bob@example.com").Error; err != nil {
+		t.Fatal(err)
+	}
+	if bobUser.Enabled {
+		t.Fatal("leaver account still enabled")
+	}
+	var manualUser models.User
+	if err := db.First(&manualUser, "email = ?", "manual@example.com").Error; err != nil || !manualUser.Enabled {
+		t.Fatalf("manual account touched: %+v err=%v", manualUser, err)
+	}
+
+	// Empty directory: nothing is disabled (config-error protection).
+	td.mu.Lock()
+	td.entries = nil
+	td.mu.Unlock()
+	created, disabled, err = svc.SyncAccounts(context.Background())
+	if err != nil || created != 0 || disabled != 0 {
+		t.Fatalf("empty directory: created=%d disabled=%d err=%v", created, disabled, err)
 	}
 }
 

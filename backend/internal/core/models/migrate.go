@@ -185,6 +185,14 @@ var migrations = []migration{
 			return db.AutoMigrate(&LdapConfig{}, &OrgContact{})
 		},
 	},
+	{
+		// LDAP lifecycle: User.LdapManaged marks directory-provisioned
+		// accounts so the sync worker can disable leavers safely.
+		ID: "20260827_ldap_user_managed",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&User{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in
