@@ -193,6 +193,15 @@ var migrations = []migration{
 			return db.AutoMigrate(&User{})
 		},
 	},
+	{
+		// LDAP groups -> distribution-list aliases: LdapConfig gains AD
+		// mapping (UPN/email-domain) and group-sync settings; Alias gains the
+		// LdapGroup ownership flag.
+		ID: "20260827_ldap_groups_ad",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&LdapConfig{}, &Alias{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

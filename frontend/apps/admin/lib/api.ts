@@ -151,11 +151,18 @@ export type LdapConfigView = {
   user_filter: string;
   mail_attr: string;
   uid_attr: string;
+  upn_attr: string;
+  email_domain: string;
   name_attr: string;
   dept_attr: string;
   title_attr: string;
   phone_attr: string;
   auto_create: boolean;
+  sync_groups: boolean;
+  group_filter: string;
+  group_name_attr: string;
+  group_mail_attr: string;
+  group_member_attr: string;
   sync_minutes: number;
   updated_at?: string;
 };

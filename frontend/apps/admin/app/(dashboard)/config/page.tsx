@@ -31,8 +31,11 @@ export default function ConfigPage() {
   const [ldap, setLdap] = useState({
     enabled: false, host: "", port: 389, security: "none", base_dn: "", bind_dn: "",
     bind_password: "", user_filter: "(objectClass=person)", mail_attr: "mail", uid_attr: "uid",
+    upn_attr: "userPrincipalName", email_domain: "",
     name_attr: "displayName", dept_attr: "department", title_attr: "title", phone_attr: "telephoneNumber",
-    auto_create: true, sync_minutes: 60, has_bind_pw: false,
+    auto_create: true, sync_groups: false, group_filter: "(objectClass=groupOfNames)",
+    group_name_attr: "cn", group_mail_attr: "mail", group_member_attr: "member",
+    sync_minutes: 60, has_bind_pw: false,
   });
   const [ldapMessage, setLdapMessage] = useState("");
   const [ldapBusy, setLdapBusy] = useState(false);
@@ -52,9 +55,14 @@ export default function ConfigPage() {
           enabled: c.enabled, host: c.host, port: c.port || 389, security: c.security || "none",
           base_dn: c.base_dn, bind_dn: c.bind_dn, bind_password: "",
           user_filter: c.user_filter || "(objectClass=person)", mail_attr: c.mail_attr || "mail",
-          uid_attr: c.uid_attr || "uid", name_attr: c.name_attr || "displayName",
+          uid_attr: c.uid_attr || "uid", upn_attr: c.upn_attr || "userPrincipalName",
+          email_domain: c.email_domain || "",
+          name_attr: c.name_attr || "displayName",
           dept_attr: c.dept_attr || "department", title_attr: c.title_attr || "title",
           phone_attr: c.phone_attr || "telephoneNumber", auto_create: c.auto_create,
+          sync_groups: c.sync_groups, group_filter: c.group_filter || "(objectClass=groupOfNames)",
+          group_name_attr: c.group_name_attr || "cn", group_mail_attr: c.group_mail_attr || "mail",
+          group_member_attr: c.group_member_attr || "member",
           sync_minutes: c.sync_minutes || 60, has_bind_pw: !!c.has_bind_pw,
         }),
       )
@@ -133,8 +141,13 @@ export default function ConfigPage() {
         enabled: ldap.enabled, host: ldap.host, port: ldap.port, security: ldap.security,
         base_dn: ldap.base_dn, bind_dn: ldap.bind_dn, bind_password: ldap.bind_password,
         user_filter: ldap.user_filter, mail_attr: ldap.mail_attr, uid_attr: ldap.uid_attr,
+        upn_attr: ldap.upn_attr, email_domain: ldap.email_domain,
         name_attr: ldap.name_attr, dept_attr: ldap.dept_attr, title_attr: ldap.title_attr,
-        phone_attr: ldap.phone_attr, auto_create: ldap.auto_create, sync_minutes: ldap.sync_minutes,
+        phone_attr: ldap.phone_attr, auto_create: ldap.auto_create,
+        sync_groups: ldap.sync_groups, group_filter: ldap.group_filter,
+        group_name_attr: ldap.group_name_attr, group_mail_attr: ldap.group_mail_attr,
+        group_member_attr: ldap.group_member_attr,
+        sync_minutes: ldap.sync_minutes,
       });
       setLdap((l) => ({ ...l, bind_password: "", has_bind_pw: true }));
       setLdapMessage(t("ldapSaved"));
@@ -326,6 +339,16 @@ export default function ConfigPage() {
               </div>
             ))}
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="ldap-upn-attr">{t("ldapUpnAttr")}</Label>
+              <Input id="ldap-upn-attr" value={ldap.upn_attr} onChange={(e) => setLdap((l) => ({ ...l, upn_attr: e.target.value }))} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="ldap-email-domain">{t("ldapEmailDomain")}</Label>
+              <Input id="ldap-email-domain" value={ldap.email_domain} onChange={(e) => setLdap((l) => ({ ...l, email_domain: e.target.value }))} placeholder="example.com" />
+            </div>
+          </div>
           <div className="grid grid-cols-3 gap-3">
             {([
               ["dept_attr", t("ldapDeptAttr")],
@@ -343,6 +366,32 @@ export default function ConfigPage() {
               <Label htmlFor="ldap-auto">{t("ldapAutoCreate")}</Label>
               <Switch id="ldap-auto" checked={ldap.auto_create} onCheckedChange={(v) => setLdap((l) => ({ ...l, auto_create: v }))} />
             </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="ldap-groups">{t("ldapSyncGroups")}</Label>
+              <Switch id="ldap-groups" checked={ldap.sync_groups} onCheckedChange={(v) => setLdap((l) => ({ ...l, sync_groups: v }))} />
+            </div>
+          </div>
+          {ldap.sync_groups && (
+            <div className="space-y-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="ldap-group-filter">{t("ldapGroupFilter")}</Label>
+                <Input id="ldap-group-filter" value={ldap.group_filter} onChange={(e) => setLdap((l) => ({ ...l, group_filter: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {([
+                  ["group_name_attr", t("ldapGroupNameAttr")],
+                  ["group_mail_attr", t("ldapGroupMailAttr")],
+                  ["group_member_attr", t("ldapGroupMemberAttr")],
+                ] as const).map(([key, label]) => (
+                  <div key={key} className="grid gap-1.5">
+                    <Label htmlFor={`ldap-${key}`}>{label}</Label>
+                    <Input id={`ldap-${key}`} value={ldap[key]} onChange={(e) => setLdap((l) => ({ ...l, [key]: e.target.value }))} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <Label htmlFor="ldap-sync-min">{t("ldapSyncMinutes")}</Label>
               <Input id="ldap-sync-min" type="number" value={String(ldap.sync_minutes)} onChange={(e) => setLdap((l) => ({ ...l, sync_minutes: Number(e.target.value) }))} />

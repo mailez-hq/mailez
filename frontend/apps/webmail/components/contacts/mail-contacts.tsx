@@ -107,6 +107,7 @@ export function MailContacts({
   const [carddavSyncing, setCarddavSyncing] = useState(false);
   const [tab, setTab] = useState<"mine" | "org">("mine");
   const [orgList, setOrgList] = useState<OrgContact[]>([]);
+  const [orgDept, setOrgDept] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -249,6 +250,8 @@ export function MailContacts({
   const selected = list.find((c) => c.id === selectedId) || null;
   const groupList = [...new Set(list.flatMap((c) => (c.groups || "").split(",").map((g) => g.trim()).filter(Boolean)))];
   const visible = groupFilter ? list.filter((c) => (c.groups || "").split(",").map((g) => g.trim()).includes(groupFilter)) : list;
+  const orgDepts = [...new Set(orgList.map((c) => c.department).filter(Boolean))].sort();
+  const orgVisible = orgDept ? orgList.filter((c) => c.department === orgDept) : orgList;
 
   return (
     <>
@@ -316,30 +319,59 @@ export function MailContacts({
           </button>
         </div>
         {tab === "org" ? (
-          <ScrollArea className="max-h-[62vh]">
-            <div className="space-y-1 pr-1">
-              {orgList.length === 0 && <p className="text-sm text-muted-foreground">{t("orgEmpty")}</p>}
-              {orgList.map((c) => (
+          <div className="min-h-0">
+            {orgDepts.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1">
                 <button
-                  key={c.id}
                   type="button"
-                  onClick={() => pick(c)}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted"
+                  onClick={() => setOrgDept("")}
+                  className={cn(
+                    "rounded-full border px-2 py-0.5 text-[11px] transition-colors",
+                    orgDept === "" ? "bg-accent font-medium text-accent-foreground" : "border-border text-muted-foreground hover:bg-muted",
+                  )}
                 >
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent/60 text-xs font-semibold">
-                    {(c.name || c.email).charAt(0).toUpperCase()}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{c.name || c.email}</span>
-                    <span className="block truncate text-[11px] text-muted-foreground">
-                      {[c.department, c.title].filter(Boolean).join(" · ")}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">{c.email}</span>
+                  {t("allDepartments")}
                 </button>
-              ))}
-            </div>
-          </ScrollArea>
+                {orgDepts.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setOrgDept(orgDept === d ? "" : d)}
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[11px] transition-colors",
+                      orgDept === d ? "bg-accent font-medium text-accent-foreground" : "border-border text-muted-foreground hover:bg-muted",
+                    )}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            )}
+            <ScrollArea className="max-h-[56vh]">
+              <div className="space-y-1 pr-1">
+                {orgList.length === 0 && <p className="text-sm text-muted-foreground">{t("orgEmpty")}</p>}
+                {orgVisible.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => pick(c)}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted"
+                  >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent/60 text-xs font-semibold">
+                      {(c.name || c.email).charAt(0).toUpperCase()}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{c.name || c.email}</span>
+                      <span className="block truncate text-[11px] text-muted-foreground">
+                        {[c.department, c.title].filter(Boolean).join(" · ")}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">{c.email}</span>
+                  </button>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
         ) : (
         <div className="grid gap-4 md:grid-cols-[230px_1fr]">
           {/* left: add + list */}

@@ -104,9 +104,7 @@ func (td *testDirectory) handleSearch(w *gldap.ResponseWriter, r *gldap.Request)
 		}
 		entry := r.NewSearchResponseEntry(e.dn)
 		for name, vals := range e.attrs {
-			for _, v := range vals {
-				entry.AddAttribute(name, []string{v})
-			}
+			entry.AddAttribute(name, vals)
 		}
 		_ = w.Write(entry)
 	}
