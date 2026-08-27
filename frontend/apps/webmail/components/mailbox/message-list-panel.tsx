@@ -162,6 +162,15 @@ export function MessageListPanel({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, categories]);
+  // "其他" alone is not a useful filter (filtering it equals showing all), so
+  // the category row only appears when a real category exists on the page;
+  // "其他" is still offered when it mixes with real categories.
+  const meaningfulCategories = presentCategories.filter((c) => c !== "other");
+  const hasOther = presentCategories.includes("other");
+  const showCategoryFilter = meaningfulCategories.length > 0;
+  const categoryOptions = hasOther
+    ? [...meaningfulCategories, "other"]
+    : meaningfulCategories;
   const categoryLabel = (c: string) =>
     c === "" ? t("categoryAll") : t(`category${c.charAt(0).toUpperCase()}${c.slice(1)}`);
 
@@ -283,9 +292,9 @@ export function MessageListPanel({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        {(presentCategories.length > 0 || aiPriorityEnabled) && (
+        {(showCategoryFilter || aiPriorityEnabled) && (
           <div className="mt-1.5 flex items-center gap-1">
-            {presentCategories.length > 0 && (
+            {showCategoryFilter && (
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
@@ -300,7 +309,7 @@ export function MessageListPanel({
                     {t("categoryAll")}
                     {category === "" && <Check className="ml-auto size-4" />}
                   </DropdownMenuItem>
-                  {presentCategories.map((c) => (
+                  {categoryOptions.map((c) => (
                     <DropdownMenuItem key={c} onClick={() => onCategoryChange(c)}>
                       {categoryLabel(c)}
                       {category === c && <Check className="ml-auto size-4" />}
