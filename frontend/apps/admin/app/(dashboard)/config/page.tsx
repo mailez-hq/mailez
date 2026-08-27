@@ -11,22 +11,31 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import {
   exportConfig, getAIConfig, getLDAPConfig, importConfig, putAIConfig, putLDAPConfig, syncLDAP, testLDAP,
   type ConfigBackup, type ConfigStats,
 } from "@/lib/api";
 
+type ConfigTab = "backup" | "ai" | "ldap";
+
 export default function ConfigPage() {
   const t = useTranslations("config");
   const fileRef = useRef<HTMLInputElement>(null);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<ConfigTab>("backup");
+
+  // Each tab owns its busy/error/message state so AI or LDAP errors never
+  // leak into the backup panel (or vice versa).
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupError, setBackupError] = useState("");
+  const [backupMessage, setBackupMessage] = useState("");
   const [aiEnabled, setAiEnabled] = useState(false);
   const [aiBaseUrl, setAiBaseUrl] = useState("");
   const [aiApiKey, setAiApiKey] = useState("");
   const [aiModel, setAiModel] = useState("");
   const [aiHasKey, setAiHasKey] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState("");
   const [aiMessage, setAiMessage] = useState("");
   const [ldap, setLdap] = useState({
     enabled: false, host: "", port: 389, security: "none", base_dn: "", bind_dn: "",
@@ -37,8 +46,9 @@ export default function ConfigPage() {
     group_name_attr: "cn", group_mail_attr: "mail", group_member_attr: "member",
     sync_minutes: 60, has_bind_pw: false,
   });
-  const [ldapMessage, setLdapMessage] = useState("");
   const [ldapBusy, setLdapBusy] = useState(false);
+  const [ldapError, setLdapError] = useState("");
+  const [ldapMessage, setLdapMessage] = useState("");
 
   useEffect(() => {
     getAIConfig()
@@ -70,7 +80,7 @@ export default function ConfigPage() {
   }, []);
 
   async function onExport() {
-    setError(""); setMessage("");
+    setBackupError(""); setBackupMessage("");
     try {
       const data = await exportConfig();
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -81,24 +91,24 @@ export default function ConfigPage() {
       a.click();
       URL.revokeObjectURL(url);
       const s = data as unknown as ConfigStats;
-      setMessage(t("exported", {
+      setBackupMessage(t("exported", {
         domains: s.domains ?? 0,
         users: s.users ?? 0,
         aliases: s.aliases ?? 0,
       }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "export failed");
+      setBackupError(e instanceof Error ? e.message : "export failed");
     }
   }
 
   async function onImport(file: File) {
-    setError(""); setMessage("");
+    setBackupError(""); setBackupMessage("");
     if (!confirm(t("importConfirm", { name: file.name }))) return;
     try {
       const data = JSON.parse(await file.text()) as ConfigBackup;
-      setBusy(true);
+      setBackupBusy(true);
       const stats = await importConfig(data);
-      setMessage(t("imported", {
+      setBackupMessage(t("imported", {
         domains: stats.domains,
         users: stats.users,
         aliases: stats.aliases,
@@ -108,15 +118,16 @@ export default function ConfigPage() {
         tokens: stats.tokens,
       }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "import failed");
+      setBackupError(e instanceof Error ? e.message : "import failed");
     } finally {
-      setBusy(false);
+      setBackupBusy(false);
       if (fileRef.current) fileRef.current.value = "";
     }
   }
 
   async function onSaveAI() {
-    setError(""); setAiMessage("");
+    setAiError(""); setAiMessage("");
+    setAiBusy(true);
     try {
       const saved = await putAIConfig({
         enabled: aiEnabled,
@@ -129,12 +140,14 @@ export default function ConfigPage() {
       setAiApiKey("");
       setAiMessage(t("aiSaved"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("aiFailed"));
+      setAiError(e instanceof Error ? e.message : t("aiFailed"));
+    } finally {
+      setAiBusy(false);
     }
   }
 
   async function onSaveLDAP() {
-    setError(""); setLdapMessage("");
+    setLdapError(""); setLdapMessage("");
     setLdapBusy(true);
     try {
       await putLDAPConfig({
@@ -152,14 +165,14 @@ export default function ConfigPage() {
       setLdap((l) => ({ ...l, bind_password: "", has_bind_pw: true }));
       setLdapMessage(t("ldapSaved"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("ldapFailed"));
+      setLdapError(e instanceof Error ? e.message : t("ldapFailed"));
     } finally {
       setLdapBusy(false);
     }
   }
 
   async function onTestLDAP() {
-    setError(""); setLdapMessage("");
+    setLdapError(""); setLdapMessage("");
     setLdapBusy(true);
     try {
       await testLDAP({
@@ -168,243 +181,279 @@ export default function ConfigPage() {
       });
       setLdapMessage(t("ldapTestOk"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("ldapTestFail"));
+      setLdapError(e instanceof Error ? e.message : t("ldapTestFail"));
     } finally {
       setLdapBusy(false);
     }
   }
 
   async function onSyncLDAP() {
-    setError(""); setLdapMessage("");
+    setLdapError(""); setLdapMessage("");
     setLdapBusy(true);
     try {
       const r = await syncLDAP();
       setLdapMessage(t("ldapSynced", { added: r.added, updated: r.updated }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("ldapSyncFail"));
+      setLdapError(e instanceof Error ? e.message : t("ldapSyncFail"));
     } finally {
       setLdapBusy(false);
     }
   }
 
+  const tabs: { key: ConfigTab; label: string }[] = [
+    { key: "backup", label: t("backup") },
+    { key: "ai", label: t("ai") },
+    { key: "ldap", label: t("ldap") },
+  ];
+
   return (
     <div className="space-y-4">
       <PageHeader title={t("title")} description={t("desc")} />
-      <Card className="max-w-xl">
-        <CardHeader>
-          <CardTitle className="text-base">{t("backup")}</CardTitle>
-          <CardDescription>{t("hint")}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Button onClick={onExport} disabled={busy}>
-              <Download />
-              {t("export")}
-            </Button>
-            <Button variant="outline" disabled={busy} onClick={() => fileRef.current?.click()}>
-              <Upload />
-              {t("import")}
-            </Button>
-            <Input
-              ref={fileRef}
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onImport(f);
-              }}
-            />
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          {message && <p className="text-sm text-green-600">{message}</p>}
-        </CardContent>
-      </Card>
-      <Card className="max-w-xl">
-        <CardHeader>
-          <CardTitle className="text-base">{t("ai")}</CardTitle>
-          <CardDescription>{t("aiHint")}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="ai-enabled">{t("aiEnabled")}</Label>
-            <Switch
-              id="ai-enabled"
-              checked={aiEnabled}
-              onCheckedChange={setAiEnabled}
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="ai-base-url">{t("aiBaseUrl")}</Label>
-            <Input
-              id="ai-base-url"
-              value={aiBaseUrl}
-              onChange={(e) => setAiBaseUrl(e.target.value)}
-              placeholder={t("aiBaseUrlPlaceholder")}
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="ai-api-key">
-              {t("aiApiKey")}
-              {aiHasKey && <span className="ml-2 text-xs text-muted-foreground">({t("aiApiKeySet")})</span>}
-            </Label>
-            <Input
-              id="ai-api-key"
-              type="password"
-              value={aiApiKey}
-              onChange={(e) => setAiApiKey(e.target.value)}
-              placeholder={t("aiApiKeyPlaceholder")}
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="ai-model">{t("aiModel")}</Label>
-            <Input
-              id="ai-model"
-              value={aiModel}
-              onChange={(e) => setAiModel(e.target.value)}
-              placeholder={t("aiModelPlaceholder")}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Button onClick={onSaveAI} disabled={busy}>{t("aiSave")}</Button>
-            {aiMessage && <p className="text-sm text-green-600">{aiMessage}</p>}
-          </div>
-        </CardContent>
-      </Card>
-      <Card className="max-w-xl">
-        <CardHeader>
-          <CardTitle className="text-base">{t("ldap")}</CardTitle>
-          <CardDescription>{t("ldapHint")}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="ldap-enabled">{t("ldapEnabled")}</Label>
-            <Switch id="ldap-enabled" checked={ldap.enabled} onCheckedChange={(v) => setLdap((l) => ({ ...l, enabled: v }))} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="ldap-host">{t("ldapHost")}</Label>
-              <Input id="ldap-host" value={ldap.host} onChange={(e) => setLdap((l) => ({ ...l, host: e.target.value }))} placeholder="ldap.example.com" />
+
+      <div className="flex gap-1 border-b border-border" role="tablist">
+        {tabs.map(({ key, label }) => (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => setTab(key)}
+            className={cn(
+              "-mb-px border-b-2 px-3 py-2 text-sm transition-colors",
+              tab === key
+                ? "border-primary font-medium text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "backup" && (
+        <Card className="max-w-xl">
+          <CardHeader>
+            <CardTitle className="text-base">{t("backup")}</CardTitle>
+            <CardDescription>{t("hint")}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Button onClick={onExport} disabled={backupBusy}>
+                <Download />
+                {t("export")}
+              </Button>
+              <Button variant="outline" disabled={backupBusy} onClick={() => fileRef.current?.click()}>
+                <Upload />
+                {t("import")}
+              </Button>
+              <Input
+                ref={fileRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) onImport(f);
+                }}
+              />
+            </div>
+            {backupError && <p className="text-sm text-red-600">{backupError}</p>}
+            {backupMessage && <p className="text-sm text-green-600">{backupMessage}</p>}
+          </CardContent>
+        </Card>
+      )}
+
+      {tab === "ai" && (
+        <Card className="max-w-xl">
+          <CardHeader>
+            <CardTitle className="text-base">{t("ai")}</CardTitle>
+            <CardDescription>{t("aiHint")}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="ai-enabled">{t("aiEnabled")}</Label>
+              <Switch
+                id="ai-enabled"
+                checked={aiEnabled}
+                onCheckedChange={setAiEnabled}
+              />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="ldap-port">{t("ldapPort")}</Label>
-              <Input id="ldap-port" type="number" value={String(ldap.port)} onChange={(e) => setLdap((l) => ({ ...l, port: Number(e.target.value) }))} />
-            </div>
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="ldap-security">{t("ldapSecurity")}</Label>
-            <select
-              id="ldap-security"
-              value={ldap.security}
-              onChange={(e) => setLdap((l) => ({ ...l, security: e.target.value }))}
-              className="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            >
-              <option value="none">None</option>
-              <option value="starttls">STARTTLS</option>
-              <option value="tls">LDAPS</option>
-            </select>
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="ldap-base-dn">{t("ldapBaseDn")}</Label>
-            <Input id="ldap-base-dn" value={ldap.base_dn} onChange={(e) => setLdap((l) => ({ ...l, base_dn: e.target.value }))} placeholder="dc=example,dc=com" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="ldap-bind-dn">{t("ldapBindDn")}</Label>
-              <Input id="ldap-bind-dn" value={ldap.bind_dn} onChange={(e) => setLdap((l) => ({ ...l, bind_dn: e.target.value }))} placeholder="cn=admin,dc=example,dc=com" />
+              <Label htmlFor="ai-base-url">{t("aiBaseUrl")}</Label>
+              <Input
+                id="ai-base-url"
+                value={aiBaseUrl}
+                onChange={(e) => setAiBaseUrl(e.target.value)}
+                placeholder={t("aiBaseUrlPlaceholder")}
+              />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="ldap-bind-pw">
-                {t("ldapBindPw")}
-                {ldap.has_bind_pw && !ldap.bind_password && (
-                  <span className="ml-2 text-xs text-muted-foreground">({t("ldapPwSet")})</span>
-                )}
+              <Label htmlFor="ai-api-key">
+                {t("aiApiKey")}
+                {aiHasKey && <span className="ml-2 text-xs text-muted-foreground">({t("aiApiKeySet")})</span>}
               </Label>
-              <Input id="ldap-bind-pw" type="password" value={ldap.bind_password} onChange={(e) => setLdap((l) => ({ ...l, bind_password: e.target.value }))} placeholder={t("ldapPwPlaceholder")} />
-            </div>
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="ldap-filter">{t("ldapFilter")}</Label>
-            <Input id="ldap-filter" value={ldap.user_filter} onChange={(e) => setLdap((l) => ({ ...l, user_filter: e.target.value }))} />
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            {([
-              ["mail_attr", t("ldapMailAttr")],
-              ["uid_attr", t("ldapUidAttr")],
-              ["name_attr", t("ldapNameAttr")],
-            ] as const).map(([key, label]) => (
-              <div key={key} className="grid gap-1.5">
-                <Label htmlFor={`ldap-${key}`}>{label}</Label>
-                <Input id={`ldap-${key}`} value={ldap[key]} onChange={(e) => setLdap((l) => ({ ...l, [key]: e.target.value }))} />
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="ldap-upn-attr">{t("ldapUpnAttr")}</Label>
-              <Input id="ldap-upn-attr" value={ldap.upn_attr} onChange={(e) => setLdap((l) => ({ ...l, upn_attr: e.target.value }))} />
+              <Input
+                id="ai-api-key"
+                type="password"
+                value={aiApiKey}
+                onChange={(e) => setAiApiKey(e.target.value)}
+                placeholder={t("aiApiKeyPlaceholder")}
+              />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="ldap-email-domain">{t("ldapEmailDomain")}</Label>
-              <Input id="ldap-email-domain" value={ldap.email_domain} onChange={(e) => setLdap((l) => ({ ...l, email_domain: e.target.value }))} placeholder="example.com" />
+              <Label htmlFor="ai-model">{t("aiModel")}</Label>
+              <Input
+                id="ai-model"
+                value={aiModel}
+                onChange={(e) => setAiModel(e.target.value)}
+                placeholder={t("aiModelPlaceholder")}
+              />
             </div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            {([
-              ["dept_attr", t("ldapDeptAttr")],
-              ["title_attr", t("ldapTitleAttr")],
-              ["phone_attr", t("ldapPhoneAttr")],
-            ] as const).map(([key, label]) => (
-              <div key={key} className="grid gap-1.5">
-                <Label htmlFor={`ldap-${key}`}>{label}</Label>
-                <Input id={`ldap-${key}`} value={ldap[key]} onChange={(e) => setLdap((l) => ({ ...l, [key]: e.target.value }))} />
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2">
+              <Button onClick={onSaveAI} disabled={aiBusy}>{t("aiSave")}</Button>
+              {aiError && <p className="text-sm text-red-600">{aiError}</p>}
+              {aiMessage && <p className="text-sm text-green-600">{aiMessage}</p>}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {tab === "ldap" && (
+        <Card className="max-w-xl">
+          <CardHeader>
+            <CardTitle className="text-base">{t("ldap")}</CardTitle>
+            <CardDescription>{t("ldapHint")}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label htmlFor="ldap-auto">{t("ldapAutoCreate")}</Label>
-              <Switch id="ldap-auto" checked={ldap.auto_create} onCheckedChange={(v) => setLdap((l) => ({ ...l, auto_create: v }))} />
+              <Label htmlFor="ldap-enabled">{t("ldapEnabled")}</Label>
+              <Switch id="ldap-enabled" checked={ldap.enabled} onCheckedChange={(v) => setLdap((l) => ({ ...l, enabled: v }))} />
             </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="ldap-groups">{t("ldapSyncGroups")}</Label>
-              <Switch id="ldap-groups" checked={ldap.sync_groups} onCheckedChange={(v) => setLdap((l) => ({ ...l, sync_groups: v }))} />
-            </div>
-          </div>
-          {ldap.sync_groups && (
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="ldap-group-filter">{t("ldapGroupFilter")}</Label>
-                <Input id="ldap-group-filter" value={ldap.group_filter} onChange={(e) => setLdap((l) => ({ ...l, group_filter: e.target.value }))} />
+                <Label htmlFor="ldap-host">{t("ldapHost")}</Label>
+                <Input id="ldap-host" value={ldap.host} onChange={(e) => setLdap((l) => ({ ...l, host: e.target.value }))} placeholder="ldap.example.com" />
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                {([
-                  ["group_name_attr", t("ldapGroupNameAttr")],
-                  ["group_mail_attr", t("ldapGroupMailAttr")],
-                  ["group_member_attr", t("ldapGroupMemberAttr")],
-                ] as const).map(([key, label]) => (
-                  <div key={key} className="grid gap-1.5">
-                    <Label htmlFor={`ldap-${key}`}>{label}</Label>
-                    <Input id={`ldap-${key}`} value={ldap[key]} onChange={(e) => setLdap((l) => ({ ...l, [key]: e.target.value }))} />
-                  </div>
-                ))}
+              <div className="grid gap-1.5">
+                <Label htmlFor="ldap-port">{t("ldapPort")}</Label>
+                <Input id="ldap-port" type="number" value={String(ldap.port)} onChange={(e) => setLdap((l) => ({ ...l, port: Number(e.target.value) }))} />
               </div>
             </div>
-          )}
-          <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="ldap-sync-min">{t("ldapSyncMinutes")}</Label>
-              <Input id="ldap-sync-min" type="number" value={String(ldap.sync_minutes)} onChange={(e) => setLdap((l) => ({ ...l, sync_minutes: Number(e.target.value) }))} />
+              <Label htmlFor="ldap-security">{t("ldapSecurity")}</Label>
+              <select
+                id="ldap-security"
+                value={ldap.security}
+                onChange={(e) => setLdap((l) => ({ ...l, security: e.target.value }))}
+                className="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+              >
+                <option value="none">None</option>
+                <option value="starttls">STARTTLS</option>
+                <option value="tls">LDAPS</option>
+              </select>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button onClick={onSaveLDAP} disabled={ldapBusy}>{t("ldapSave")}</Button>
-            <Button variant="outline" onClick={onTestLDAP} disabled={ldapBusy}>{t("ldapTest")}</Button>
-            <Button variant="outline" onClick={onSyncLDAP} disabled={ldapBusy}>{t("ldapSync")}</Button>
-            {ldapMessage && <p className="text-sm text-green-600">{ldapMessage}</p>}
-          </div>
-        </CardContent>
-      </Card>
+            <div className="grid gap-1.5">
+              <Label htmlFor="ldap-base-dn">{t("ldapBaseDn")}</Label>
+              <Input id="ldap-base-dn" value={ldap.base_dn} onChange={(e) => setLdap((l) => ({ ...l, base_dn: e.target.value }))} placeholder="dc=example,dc=com" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="ldap-bind-dn">{t("ldapBindDn")}</Label>
+                <Input id="ldap-bind-dn" value={ldap.bind_dn} onChange={(e) => setLdap((l) => ({ ...l, bind_dn: e.target.value }))} placeholder="cn=admin,dc=example,dc=com" />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="ldap-bind-pw">
+                  {t("ldapBindPw")}
+                  {ldap.has_bind_pw && !ldap.bind_password && (
+                    <span className="ml-2 text-xs text-muted-foreground">({t("ldapPwSet")})</span>
+                  )}
+                </Label>
+                <Input id="ldap-bind-pw" type="password" value={ldap.bind_password} onChange={(e) => setLdap((l) => ({ ...l, bind_password: e.target.value }))} placeholder={t("ldapPwPlaceholder")} />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="ldap-filter">{t("ldapFilter")}</Label>
+              <Input id="ldap-filter" value={ldap.user_filter} onChange={(e) => setLdap((l) => ({ ...l, user_filter: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {([
+                ["mail_attr", t("ldapMailAttr")],
+                ["uid_attr", t("ldapUidAttr")],
+                ["name_attr", t("ldapNameAttr")],
+              ] as const).map(([key, label]) => (
+                <div key={key} className="grid gap-1.5">
+                  <Label htmlFor={`ldap-${key}`}>{label}</Label>
+                  <Input id={`ldap-${key}`} value={ldap[key]} onChange={(e) => setLdap((l) => ({ ...l, [key]: e.target.value }))} />
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="ldap-upn-attr">{t("ldapUpnAttr")}</Label>
+                <Input id="ldap-upn-attr" value={ldap.upn_attr} onChange={(e) => setLdap((l) => ({ ...l, upn_attr: e.target.value }))} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="ldap-email-domain">{t("ldapEmailDomain")}</Label>
+                <Input id="ldap-email-domain" value={ldap.email_domain} onChange={(e) => setLdap((l) => ({ ...l, email_domain: e.target.value }))} placeholder="example.com" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {([
+                ["dept_attr", t("ldapDeptAttr")],
+                ["title_attr", t("ldapTitleAttr")],
+                ["phone_attr", t("ldapPhoneAttr")],
+              ] as const).map(([key, label]) => (
+                <div key={key} className="grid gap-1.5">
+                  <Label htmlFor={`ldap-${key}`}>{label}</Label>
+                  <Input id={`ldap-${key}`} value={ldap[key]} onChange={(e) => setLdap((l) => ({ ...l, [key]: e.target.value }))} />
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="ldap-auto">{t("ldapAutoCreate")}</Label>
+                <Switch id="ldap-auto" checked={ldap.auto_create} onCheckedChange={(v) => setLdap((l) => ({ ...l, auto_create: v }))} />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="ldap-groups">{t("ldapSyncGroups")}</Label>
+                <Switch id="ldap-groups" checked={ldap.sync_groups} onCheckedChange={(v) => setLdap((l) => ({ ...l, sync_groups: v }))} />
+              </div>
+            </div>
+            {ldap.sync_groups && (
+              <div className="space-y-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="ldap-group-filter">{t("ldapGroupFilter")}</Label>
+                  <Input id="ldap-group-filter" value={ldap.group_filter} onChange={(e) => setLdap((l) => ({ ...l, group_filter: e.target.value }))} />
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {([
+                    ["group_name_attr", t("ldapGroupNameAttr")],
+                    ["group_mail_attr", t("ldapGroupMailAttr")],
+                    ["group_member_attr", t("ldapGroupMemberAttr")],
+                  ] as const).map(([key, label]) => (
+                    <div key={key} className="grid gap-1.5">
+                      <Label htmlFor={`ldap-${key}`}>{label}</Label>
+                      <Input id={`ldap-${key}`} value={ldap[key]} onChange={(e) => setLdap((l) => ({ ...l, [key]: e.target.value }))} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="ldap-sync-min">{t("ldapSyncMinutes")}</Label>
+                <Input id="ldap-sync-min" type="number" value={String(ldap.sync_minutes)} onChange={(e) => setLdap((l) => ({ ...l, sync_minutes: Number(e.target.value) }))} />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button onClick={onSaveLDAP} disabled={ldapBusy}>{t("ldapSave")}</Button>
+              <Button variant="outline" onClick={onTestLDAP} disabled={ldapBusy}>{t("ldapTest")}</Button>
+              <Button variant="outline" onClick={onSyncLDAP} disabled={ldapBusy}>{t("ldapSync")}</Button>
+              {ldapError && <p className="text-sm text-red-600">{ldapError}</p>}
+              {ldapMessage && <p className="text-sm text-green-600">{ldapMessage}</p>}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
