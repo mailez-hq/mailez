@@ -238,12 +238,13 @@ export const mailSend = (
   undoSeconds = 0,
   sendAt?: string,
   receiptRequested = false,
+  burnAfterMinutes = 0,
 ) =>
   api<{ queued?: boolean; outbox_id?: number; undo_seconds?: number; scheduled?: boolean }>(
     "/mail/send",
     {
       method: "POST",
-      body: JSON.stringify({ to, cc, bcc, subject, body, html, from, attachments, undo_seconds: undoSeconds, send_at: sendAt, receipt_requested: receiptRequested }),
+      body: JSON.stringify({ to, cc, bcc, subject, body, html, from, attachments, undo_seconds: undoSeconds, send_at: sendAt, receipt_requested: receiptRequested, burn_after_minutes: burnAfterMinutes }),
     },
   );
 
@@ -297,6 +298,43 @@ export const mailMerge = (input: {
 // mailReadAll marks an entire folder as read.
 export const mailReadAll = (folder: string) =>
   apiPost<void>("/mail/read-all", { folder });
+
+// mailAttachmentsZip downloads every attachment of one message as a zip.
+export async function mailAttachmentsZip(folder: string, uid: number): Promise<Blob> {
+  const res = await fetch(`${API}${mailPath(`/mail/attachments/zip?folder=${encodeURIComponent(folder)}&uid=${uid}`)}`, {
+    headers: mailHeaders(),
+  });
+  if (!res.ok) throw new Error("download failed");
+  return res.blob();
+}
+
+// uploadLargeAttachment stores a file in the large-attachment relay (超大附件)
+// and returns the token-protected download URL for embedding in the body.
+export const uploadLargeAttachment = (file: File) => {
+  const fd = new FormData();
+  fd.append("file", file);
+  return fetch(`${API}${mailPath("/uploads")}`, {
+    method: "POST",
+    headers: mailHeaders(),
+    body: fd,
+  }).then(async (res) => {
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error((body as { error?: string }).error || "upload failed");
+    }
+    return (await res.json()) as {
+      id: number;
+      filename: string;
+      size: number;
+      expires: string;
+      url: string;
+    };
+  });
+};
+
+// aiReplies returns short ready-to-send reply suggestions (Smart Reply).
+export const aiReplies = (text: string) =>
+  apiPost<{ replies: string[] }>("/ai/replies", { text });
 
 // mailUndoSend cancels a parked message within its undo window.
 export const mailUndoSend = (outboxId: number) =>

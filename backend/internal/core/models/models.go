@@ -42,6 +42,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&PendingApproval{},
 		&CalendarShare{},
 		&CalendarReminderLog{},
+		&UploadedFile{},
 		&SchemaMigration{},
 	)
 }

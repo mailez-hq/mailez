@@ -10,6 +10,7 @@ import {
   ChevronUp,
   Download,
   FileCode,
+  Flame,
   Info,
   Languages,
   Loader2,
@@ -39,7 +40,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { aiTranslate, inviteRespond, mailRaw, pgpDecrypt } from "@/lib/api";
+import { aiReplies, aiTranslate, inviteRespond, mailAttachmentsZip, mailFlag, mailRaw, pgpDecrypt } from "@/lib/api";
 import type { MailAttachment, MailInvitation, MailMessage, MailThread } from "@/lib/api";
 import { AttachmentCard } from "@/components/mailbox/reader/attachment-card";
 import { QuoteBlock } from "@/components/mailbox/reader/quote-block";
@@ -394,6 +395,7 @@ export function ReadingPane({
   onRecall,
   onSendReceipt,
   onApplyRecall,
+  onReplyWithQuote,
 }: {
   detail: MailMessage;
   detailLoading: boolean;
@@ -435,6 +437,7 @@ export function ReadingPane({
   onRecall: (folder: string, uid: number) => Promise<boolean>;
   onSendReceipt: (folder: string, uid: number) => Promise<boolean>;
   onApplyRecall: (messageId: string, folder: string, uid: number) => Promise<boolean>;
+  onReplyWithQuote: (selection: string) => void;
 }) {
   const t = useTranslations("mail");
   const fontPx = readerFont === "sm" ? 13 : readerFont === "lg" ? 16 : readerFont === "xl" ? 18 : 14;
@@ -447,6 +450,9 @@ export function ReadingPane({
   const [receiptBusy, setReceiptBusy] = useState(false);
   const [recallBusy, setRecallBusy] = useState(false);
   const [recallHandled, setRecallHandled] = useState(false);
+  const [replies, setReplies] = useState<string[]>([]);
+  const [repliesLoading, setRepliesLoading] = useState(false);
+  const [burnRevealed, setBurnRevealed] = useState(false);
   const [pgpPlaintext, setPgpPlaintext] = useState<string | null>(null);
   const [decrypting, setDecrypting] = useState(false);
   const [pgpError, setPgpError] = useState("");
@@ -457,6 +463,35 @@ export function ReadingPane({
   const [rawText, setRawText] = useState("");
   const [rawLoading, setRawLoading] = useState(false);
   const [rawError, setRawError] = useState("");
+  const [quoteSel, setQuoteSel] = useState<{ x: number; y: number; text: string } | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  // Track text selections inside the message body and offer "reply with
+  // this quote" (Gmail/Outlook 引用选中段落回复).
+  useEffect(() => {
+    if (!detail) return;
+    const onMouseUp = () => {
+      const sel = window.getSelection();
+      const text = sel?.toString().trim() || "";
+      if (!text || !sel || sel.rangeCount === 0) {
+        setQuoteSel(null);
+        return;
+      }
+      if (!bodyRef.current?.contains(sel.anchorNode)) {
+        setQuoteSel(null);
+        return;
+      }
+      const rect = sel.getRangeAt(0).getBoundingClientRect();
+      setQuoteSel({ x: rect.left + rect.width / 2, y: rect.bottom + 6, text: text.slice(0, 400) });
+    };
+    const onScroll = () => setQuoteSel(null);
+    document.addEventListener("mouseup", onMouseUp);
+    document.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mouseup", onMouseUp);
+      document.removeEventListener("scroll", onScroll, true);
+    };
+  }, [detail]);
   const [quickReplyText, setQuickReplyText] = useState("");
   const [quickReplyAll, setQuickReplyAll] = useState(false);
   const [quickSending, setQuickSending] = useState(false);
@@ -613,6 +648,45 @@ export function ReadingPane({
     }
   }
 
+  // loadReplies fetches Smart Reply suggestions for the current message.
+  async function loadReplies() {
+    const text = (detail.text_body || "").trim();
+    if (!text) return;
+    setRepliesLoading(true);
+    try {
+      const res = await aiReplies(text);
+      setReplies(res.replies || []);
+    } catch {
+      setReplies([]);
+    } finally {
+      setRepliesLoading(false);
+    }
+  }
+
+  // downloadAllAttachments packs every attachment of the message into a zip.
+  async function downloadAllAttachments() {
+    try {
+      const blob = await mailAttachmentsZip(detail.folder || folder, detail.uid);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${detail.subject || "attachments"}.zip`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      // ignore: the user can still download attachments individually
+    }
+  }
+
+  // revealBurn unlocks a burn-after-read message once (flags it $BurnRead).
+  async function revealBurn() {
+    setBurnRevealed(true);
+    try {
+      await mailFlag(detail.folder || folder, detail.uid, "$BurnRead", true);
+    } catch {
+      // non-fatal: the body is shown for this session regardless
+    }
+  }
+
   function doPrint() {
     const w = window.open("", "_blank");
     if (!w) return;
@@ -668,6 +742,21 @@ export function ReadingPane({
       className="mail-scroll min-w-0 flex-1 overflow-y-auto bg-card"
       style={paneMax ? {maxWidth: paneMax, width: "100%", marginInline: "auto"} : undefined}
     >
+      {quoteSel && (
+        <Button
+          size="xs"
+          variant="outline"
+          className="fixed z-50 shadow-md"
+          style={{ left: quoteSel.x, top: quoteSel.y, transform: "translateX(-50%)" }}
+          onClick={() => {
+            onReplyWithQuote(quoteSel.text);
+            setQuoteSel(null);
+          }}
+        >
+          <Reply className="size-3" />
+          {t("replyWithQuote")}
+        </Button>
+      )}
       {/* Subject header */}
       <div className="sticky top-0 z-10 border-b border-border bg-card/95 px-4 py-3 backdrop-blur-sm md:px-6">
         {/* Mobile back */}
@@ -744,6 +833,17 @@ export function ReadingPane({
                 className="size-8 text-muted-foreground"
               >
                 {translating ? <Loader2 className="size-4 animate-spin" /> : <Languages className="size-4" />}
+              </Button>
+            )}
+            {aiEnabled && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={loadReplies}
+                title={t("smartReply")}
+                className="size-8 text-muted-foreground"
+              >
+                {repliesLoading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
               </Button>
             )}
             <Button
@@ -1063,6 +1163,20 @@ export function ReadingPane({
 
             {/* Inline quick reply */}
             <div className="mt-4 rounded-lg border border-border p-3">
+              {replies.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {replies.map((r, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setQuickReplyText(r)}
+                      className="rounded-full border border-ai/30 bg-ai/10 px-2.5 py-1 text-left text-[11px] text-ai transition-colors hover:bg-ai/20"
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="mb-2 flex items-center gap-2">
                 <p className="text-xs font-medium text-muted-foreground">{t("quickReply")}</p>
                 <button
@@ -1149,8 +1263,28 @@ export function ReadingPane({
               </div>
             )}
 
+            {/* Burn-after-read gate: reveal once, then flag $BurnRead */}
+            {detail.burn_after_minutes && detail.burn_after_minutes > 0 &&
+              !detail.flags.includes("$BurnRead") && !burnRevealed && (
+                <div className="relative mb-4 rounded-lg border border-orange-300/60 bg-orange-50 p-6 text-center dark:border-orange-700/50 dark:bg-orange-950/30">
+                  <Flame className="mx-auto mb-2 size-6 text-orange-500" />
+                  <p className="text-sm font-medium">{t("burnNotice")}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("burnHint", { minutes: detail.burn_after_minutes })}
+                  </p>
+                  <Button className="mt-3" size="sm" onClick={revealBurn}>
+                    {t("burnReveal")}
+                  </Button>
+                </div>
+              )}
+
             {/* Message body: HTML preferred, plain text as fallback */}
-            <div className="mail-body">
+            <div className="mail-body" ref={bodyRef}>
+              {(burnRevealed || detail.flags.includes("$BurnRead")) && (
+                <div className="pointer-events-none fixed bottom-3 right-3 z-40 rounded bg-black/70 px-2 py-1 text-[10px] text-white">
+                  {meEmail} · {fmtFullDate(new Date().toISOString())}
+                </div>
+              )}
               {mounted && htmlBody ? (
                 <div dangerouslySetInnerHTML={{ __html: htmlBody }} style={{fontSize: fontPx}} />
               ) : segments.length === 0 && detailLoading ? (
@@ -1186,9 +1320,15 @@ export function ReadingPane({
             {/* Attachments */}
             {detail.attachments && detail.attachments.length > 0 && (
               <div className="mt-4 border-t border-border pt-3">
-                <p className="mb-2 text-xs font-medium text-muted-foreground">
-                  {t("attachments", { count: detail.attachments.length })}
-                </p>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {t("attachments", { count: detail.attachments.length })}
+                  </p>
+                  <Button size="xs" variant="outline" onClick={downloadAllAttachments}>
+                    <Download className="size-3" />
+                    {t("downloadAll")}
+                  </Button>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {detail.attachments.map((a, i) => (
                     <AttachmentCard key={i} attachment={a} />

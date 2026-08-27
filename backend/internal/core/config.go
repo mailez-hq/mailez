@@ -35,6 +35,8 @@ type Config struct {
 	// host-run dev backends must point it at a host-reachable mapping
 	// (e.g. 127.0.0.1:25).
 	MailMtaAddr        string
+	// UploadDir is where the large-attachment relay (超大附件) stores files.
+	UploadDir string
 	AIProvider         string
 	AIBaseURL          string
 	AIAPIKey           string
@@ -78,6 +80,7 @@ func Load() Config {
 		MailSmtpAddr:       env("MAIL_SMTP_ADDR", "gateway:1587"),
 		MailSieveAddr:      env("MAIL_SIEVE_ADDR", "gateway:11490"),
 		MailMtaAddr:        env("MAIL_MTA_ADDR", ""),
+		UploadDir:          env("MAILEZ_UPLOAD_DIR", "uploads"),
 		AIProvider:         env("AI_PROVIDER", "none"),
 		AIBaseURL:          env("AI_BASE_URL", "https://api.openai.com/v1"),
 		AIAPIKey:           env("AI_API_KEY", ""),

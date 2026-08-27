@@ -57,6 +57,9 @@ export type MailMessage = {
   receipt_to?: string;
   // Recall notice (Outlook-style X-MS-Recall) targeting an original message.
   recall?: { message_id: string; subject: string };
+  // Burn-after-read (阅后即焚): the reader shows the body once and flags the
+  // message $BurnRead. 0 or absent = normal message.
+  burn_after_minutes?: number;
 };
 
 export type MailInvitation = {

@@ -2,6 +2,7 @@ package ai
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -33,6 +34,31 @@ func (h *Handler) registerAI(r fiber.Router) {
 	r.Post("/ai/prioritize", h.aiPrioritize)
 	r.Post("/ai/search", h.aiSearch)
 	r.Post("/ai/translate", h.aiTranslate)
+	r.Post("/ai/replies", h.aiReplies)
+}
+
+// aiReplies returns short ready-to-send reply suggestions (Smart Reply).
+// @Summary Suggest quick replies
+// @Tags ai
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /ai/replies [post]
+func (h *Handler) aiReplies(c *fiber.Ctx) error {
+	if !h.AI.Enabled() {
+		return c.Status(400).JSON(fiber.Map{"error": "ai is disabled"})
+	}
+	var in struct {
+		Text string `json:"text"`
+	}
+	if err := c.BodyParser(&in); err != nil || strings.TrimSpace(in.Text) == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "text is required"})
+	}
+	replies, err := h.AI.SmartReplies(c.Context(), in.Text)
+	if err != nil {
+		return core.Fail(c, 502, err, "mail service error")
+	}
+	return c.JSON(fiber.Map{"replies": replies})
 }
 
 // aiTranslate translates an email body into a target language via the

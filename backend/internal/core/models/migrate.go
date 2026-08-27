@@ -252,6 +252,22 @@ var migrations = []migration{
 			return db.AutoMigrate(&CalendarEvent{}, &CalendarShare{}, &CalendarReminderLog{})
 		},
 	},
+	{
+		// Large-attachment relay (超大附件): token-protected uploads with a
+		// rolling expiry, cleaned by a background worker.
+		ID: "20260827_uploads",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&UploadedFile{})
+		},
+	},
+	{
+		// Login security: known-IP list on users so a sign-in from a new
+		// device/IP can raise an email alert (Gmail/Outlook-style).
+		ID: "20260827_login_alert_ips",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&User{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

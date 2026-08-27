@@ -53,6 +53,9 @@ type Message struct {
 	// Recall is set when the message is a recall notice (Outlook-style
 	// X-MS-Recall), linking to the original message by Message-ID.
 	Recall *RecallInfo `json:"recall,omitempty"`
+	// BurnAfterMinutes marks a burn-after-read (阅后即焚) message: the reader
+	// shows the body once and flags it $BurnRead. 0 = normal message.
+	BurnAfterMinutes int `json:"burn_after_minutes,omitempty"`
 	// Category is the deterministic auto-classification (work/social/
 	// newsletter/shopping/finance/other) derived from sender and headers.
 	Category string `json:"category,omitempty"`
@@ -398,6 +401,7 @@ func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, 
 			out.UnsubscribeURL, out.UnsubscribePost = parseUnsubscribe(raw)
 			out.ReceiptRequested, out.ReceiptTo = parseReceiptRequest(raw)
 			out.Recall = parseRecallNotice(raw)
+			out.BurnAfterMinutes = parseBurnAfter(raw)
 			if textBody, htmlBody, attachments, inv, err := extractBody(bytes.NewReader(raw)); err == nil {
 				out.TextBody = textBody
 				out.HTMLBody = htmlBody
@@ -407,6 +411,22 @@ func (c *Client) GetMessage(email, token, folder string, uid uint32) (*Message, 
 		}
 	}
 	return &out, nil
+}
+
+// parseBurnAfter reads X-Mailez-Burn-After (minutes) from a raw message.
+func parseBurnAfter(raw []byte) int {
+	msg, err := mail.ReadMessage(bytes.NewReader(raw))
+	if err != nil {
+		return 0
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(msg.Header.Get("X-Mailez-Burn-After")))
+	if err != nil || n <= 0 {
+		return 0
+	}
+	if n > 7*24*60 {
+		n = 7 * 24 * 60
+	}
+	return n
 }
 
 // parseReceiptRequest reads Disposition-Notification-To (RFC 3798) from the

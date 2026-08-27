@@ -145,6 +145,61 @@ func (m *Manager) DraftReply(ctx context.Context, tone DraftTone, context string
 	return p.Chat(ctx, system, context)
 }
 
+// SmartReplies returns 2-3 short, ready-to-send reply suggestions for an
+// email (Gmail-style quick replies). Each candidate is one sentence in the
+// same language as the original message.
+func (m *Manager) SmartReplies(ctx context.Context, text string) ([]string, error) {
+	p := m.load()
+	if p == nil {
+		return nil, ErrDisabled
+	}
+	system := "You are an email assistant. Suggest 2-3 short ready-to-send replies to the email below. " +
+		"Each suggestion is ONE sentence, in the same language as the email, polite and useful. " +
+		"Respond ONLY with a JSON array of strings, e.g. [\"Thanks, noted!\", \"Happy to help!\", \"Let me check and get back to you.\"]."
+	raw, err := p.Chat(ctx, system, text)
+	if err != nil {
+		return nil, err
+	}
+	raw = strings.TrimSpace(raw)
+	raw = strings.TrimPrefix(raw, "```json")
+	raw = strings.TrimPrefix(raw, "```")
+	raw = strings.TrimSuffix(raw, "```")
+	raw = strings.TrimSpace(raw)
+	if start, end := strings.Index(raw, "["), strings.LastIndex(raw, "]"); start >= 0 && end > start {
+		var out []string
+		if err := json.Unmarshal([]byte(raw[start:end+1]), &out); err == nil {
+			return cleanReplies(out), nil
+		}
+	}
+	// Fallback: bullet/numbered lines.
+	var out []string
+	for _, line := range strings.Split(raw, "\n") {
+		line = strings.TrimSpace(line)
+		line = strings.TrimPrefix(line, "-")
+		line = strings.TrimPrefix(line, "*")
+		line = strings.TrimSpace(line)
+		if line != "" {
+			out = append(out, line)
+		}
+	}
+	return cleanReplies(out), nil
+}
+
+func cleanReplies(in []string) []string {
+	var out []string
+	for _, s := range in {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		out = append(out, s)
+		if len(out) >= 3 {
+			break
+		}
+	}
+	return out
+}
+
 // PriorityItem is a lightweight mail descriptor sent for AI ranking.
 type PriorityItem struct {
 	UID     uint32 `json:"uid"`

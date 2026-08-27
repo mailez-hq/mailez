@@ -162,6 +162,7 @@ export function MailView() {
     summarizing,
     summarize,
     reply,
+    replyWithQuote,
     replyAll,
     forward,
     backToList,
@@ -186,6 +187,8 @@ export function MailView() {
     setMergeOn,
     mergeText,
     setMergeText,
+    burnAfter,
+    setBurnAfter,
     identities,
     from,
     selectIdentity,
@@ -416,6 +419,7 @@ export function MailView() {
             summarizing={summarizing}
             onSummarize={summarize}
             onReply={reply}
+            onReplyWithQuote={replyWithQuote}
             onReplyAll={replyAll}
             onForward={forward}
             onArchive={() => archiveMessage(detail)}
@@ -503,6 +507,8 @@ export function MailView() {
           onMergeOn={setMergeOn}
           mergeText={mergeText}
           onMergeText={setMergeText}
+          burnAfter={burnAfter}
+          onBurnAfter={setBurnAfter}
           signOn={signOn}
           encryptOn={encryptOn}
           onToggleSign={() => setSignOn((v: boolean) => !v)}

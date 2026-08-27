@@ -66,6 +66,11 @@ func (m *Manager) ssoLogin(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "wrong e-mail or password"})
 	}
 	m.loginSucceeded(c.Context(), user.Email)
+	// Security alert: a login from an unrecognized IP raises an email so the
+	// account owner can spot unauthorized access early.
+	if m.NotifyLogin != nil && m.rememberLoginIP(c.Context(), user.Email, c.IP()) {
+		m.NotifyLogin(user.Email, c.IP(), c.Get("User-Agent"))
+	}
 	// A 2FA user must complete the second factor before a session is issued.
 	if user.TOTPEnabled {
 		pending, err := m.CreatePending2FA(c.Context(), user.Email)
