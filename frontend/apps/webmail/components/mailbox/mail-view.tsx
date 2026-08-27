@@ -105,6 +105,7 @@ export function MailView() {
     detailLoading,
     listWidth,
     messages,
+    displayMessages,
     total,
     searching,
     loading,
@@ -284,7 +285,7 @@ export function MailView() {
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       {announcement && (
-        <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-2 bg-primary px-4 py-1.5 text-xs text-primary-foreground">
+        <div className="flex shrink-0 items-center justify-center gap-2 bg-primary px-4 py-1.5 text-xs text-primary-foreground">
           <span className="font-semibold">{announcement.subject}</span>
           {announcement.body && <span className="text-primary-foreground/85">{announcement.body}</span>}
         </div>
@@ -355,6 +356,7 @@ export function MailView() {
         <MessageListPanel
           folder={folder}
           messages={messages}
+          displayMessages={displayMessages}
           total={total}
           searching={searching}
           loading={loading}

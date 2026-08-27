@@ -36,7 +36,9 @@ func (c *Client) Snooze(email, token, folder string, uid uint32, until *time.Tim
 	if err != nil {
 		return err
 	}
-	remove := []string{SnoozeFlag, imap.SeenFlag}
+	// Use the actual keyword case from the stored flags (IMAP servers and
+	// stores canonicalize keywords to lowercase) so the removal matches.
+	remove := []string{imap.SeenFlag}
 	remove = append(remove, snoozeKeywords(msg.Flags)...)
 	return c.SetFlags(email, token, folder, uid, nil, remove)
 }
@@ -76,9 +78,11 @@ func (c *Client) SnoozedMessages(email, token string) ([]SnoozedMessage, error) 
 
 // snoozeUntilFromFlags extracts the wake-up time from a message's keywords.
 func snoozeUntilFromFlags(flags []string) (time.Time, bool) {
+	prefix := strings.ToLower(SnoozeUntilPrefix)
 	for _, f := range flags {
-		if strings.HasPrefix(f, SnoozeUntilPrefix) {
-			if n, err := strconv.ParseInt(strings.TrimPrefix(f, SnoozeUntilPrefix), 10, 64); err == nil {
+		lower := strings.ToLower(f)
+		if strings.HasPrefix(lower, prefix) {
+			if n, err := strconv.ParseInt(strings.TrimPrefix(lower, prefix), 10, 64); err == nil {
 				return time.Unix(n, 0), true
 			}
 		}
@@ -90,8 +94,11 @@ func snoozeUntilFromFlags(flags []string) (time.Time, bool) {
 // stripped together.
 func snoozeKeywords(flags []string) []string {
 	var out []string
+	flag := strings.ToLower(SnoozeFlag)
+	prefix := strings.ToLower(SnoozeUntilPrefix)
 	for _, f := range flags {
-		if f == SnoozeFlag || strings.HasPrefix(f, SnoozeUntilPrefix) {
+		lower := strings.ToLower(f)
+		if lower == flag || strings.HasPrefix(lower, prefix) {
 			out = append(out, f)
 		}
 	}

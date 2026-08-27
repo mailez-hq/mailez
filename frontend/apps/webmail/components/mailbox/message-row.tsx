@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import type { MailMessage, SnoozedMessage } from "@/lib/api";
 import type { Density } from "@/lib/preferences";
 import { Highlight } from "@/components/mailbox/highlight";
-import { labelColor } from "@/components/mailbox/mail-utils";
+import { isUserLabel, labelColor } from "@/components/mailbox/mail-utils";
 import { useMailStore } from "@/components/mailbox/mail-store";
 import { cn } from "@/lib/utils";
 
@@ -162,7 +162,7 @@ export function MessageRow({
             </span>
           )}
           {message.flags
-            .filter((f) => !f.startsWith("\\") && f !== category)
+            .filter((f) => isUserLabel(f) && f !== category)
             .slice(0, 2)
             .map((f) => {
               const color = labelColor(f, labelColors?.[f]);
