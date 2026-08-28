@@ -117,8 +117,14 @@ func (h *Handler) authBasic(c *fiber.Ctx) error {
 	if !ok {
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
+	// Keep the cheap indexed user lookup per request; memoize only the
+	// expensive credential verification so repeated webdav auth requests do
+	// not burn a bcrypt comparison every time.
 	var user models.User
-	if err := h.DB.WithContext(c.Context()).First(&user, "email = ?", email).Error; err != nil || !user.Enabled || !password.Verify(user.Password, pw) {
+	if err := h.DB.WithContext(c.Context()).First(&user, "email = ?", email).Error; err != nil || !user.Enabled {
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+	if !h.authCache.Check(email, pw, func() bool { return password.Verify(user.Password, pw) }) {
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
 	c.Set("X-User", user.Email)

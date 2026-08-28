@@ -21,6 +21,7 @@ import (
 	"gorm.io/gorm"
 
 	"mailez/backend/internal/auth"
+	"mailez/backend/internal/authcache"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/mail"
@@ -33,11 +34,17 @@ type Service struct {
 	Auth *auth.Manager
 	Cfg  core.Config
 	Mail mail.Gateway
+	// AuthCache memoizes successful Basic-auth credential checks; ActiveSync
+	// clients (and the Ping long-poll) re-authenticate on every request.
+	AuthCache *authcache.Cache
 }
 
 // New assembles the ActiveSync service.
-func New(db *gorm.DB, authMgr *auth.Manager, cfg core.Config, gw mail.Gateway) *Service {
-	return &Service{DB: db, Auth: authMgr, Cfg: cfg, Mail: gw}
+func New(db *gorm.DB, authMgr *auth.Manager, cfg core.Config, gw mail.Gateway, cache *authcache.Cache) *Service {
+	if cache == nil {
+		cache = authcache.New(0)
+	}
+	return &Service{DB: db, Auth: authMgr, Cfg: cfg, Mail: gw, AuthCache: cache}
 }
 
 // Register mounts the EAS endpoints. The command handler is registered for
@@ -240,7 +247,10 @@ func (s *Service) authenticate(c *fiber.Ctx, req *easRequest) (*models.User, str
 	var user models.User
 	err = s.DB.WithContext(c.Context()).First(&user, "email = ?", email).Error
 	if err == nil && user.Enabled {
-		if s.validCredential(&user, pw) {
+		// Cache the expensive credential verification (bcrypt / token scan)
+		// while keeping the cheap indexed user lookup per request, so a
+		// disabled account is rejected promptly.
+		if s.AuthCache.Check(email, pw, func() bool { return s.validCredential(&user, pw) }) {
 			return &user, pw, nil
 		}
 	}
@@ -262,23 +272,37 @@ func (s *Service) authenticate(c *fiber.Ctx, req *easRequest) (*models.User, str
 }
 
 // validCredential accepts the mailbox password or any app token of the user.
+// App-token credentials are detected by shape and checked first, so clients
+// configured with an app token never pay a pointless bcrypt comparison.
 func (s *Service) validCredential(u *models.User, pw string) bool {
+	if auth.IsAppToken(pw) {
+		return s.matchesToken(u, pw)
+	}
 	if password.Verify(u.Password, pw) {
 		return true
 	}
-	if auth.IsAppToken(pw) {
-		var tokens []models.Token
-		if err := s.DB.Where("user_email = ?", u.Email).Find(&tokens).Error; err != nil {
-			return false
-		}
-		for _, t := range tokens {
-			if password.VerifyPBKDF2SHA256(t.Password, pw) {
-				return true
-			}
-		}
+	// Legacy/imported tokens may not carry the 32-hex shape; keep accepting
+	// any stored token after the password check.
+	if s.matchesToken(u, pw) {
+		return true
 	}
 	if s.Auth != nil && s.Auth.LDAP != nil {
 		if ok, err := s.Auth.LDAP.Authenticate(context.Background(), u.Email, pw); err == nil && ok {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesToken reports whether pw matches one of the user's stored app
+// tokens (PBKDF2-SHA256, so no bcrypt cost on this path).
+func (s *Service) matchesToken(u *models.User, pw string) bool {
+	var tokens []models.Token
+	if err := s.DB.Where("user_email = ?", u.Email).Find(&tokens).Error; err != nil {
+		return false
+	}
+	for _, t := range tokens {
+		if password.VerifyPBKDF2SHA256(t.Password, pw) {
 			return true
 		}
 	}

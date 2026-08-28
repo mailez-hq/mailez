@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 
+	"mailez/backend/internal/authcache"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/password"
 )
@@ -41,7 +42,7 @@ func newDAVApp(t *testing.T) (*gorm.DB, *fiber.App) {
 	app := fiber.New(fiber.Config{
 		RequestMethods: append(append([]string{}, fiber.DefaultMethods...), "PROPFIND", "REPORT"),
 	})
-	New(db).Register(app.Group("/dav"))
+	New(db, authcache.New(0)).Register(app.Group("/dav"))
 	return db, app
 }
 
@@ -145,4 +146,3 @@ func TestDAVAuthAndDiscovery(t *testing.T) {
 		t.Fatalf("contact count: %d", count)
 	}
 }
-

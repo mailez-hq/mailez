@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -29,6 +31,7 @@ import (
 	"mailez/backend/internal/announcement"
 	"mailez/backend/internal/archive"
 	"mailez/backend/internal/auth"
+	"mailez/backend/internal/authcache"
 	"mailez/backend/internal/calendar"
 	"mailez/backend/internal/compose"
 	"mailez/backend/internal/contacts"
@@ -67,6 +70,9 @@ type Server struct {
 	Auth     *auth.Manager
 	LDAP     *ldap.Service
 	internal *stack.Handler
+	// basicAuthCache memoizes Basic-auth credential verification for the
+	// protocol endpoints that re-authenticate on every request.
+	basicAuthCache *authcache.Cache
 
 	bgCtx    context.Context
 	bgCancel context.CancelFunc
@@ -148,7 +154,9 @@ func New(cfg core.Config) *Server {
 	ldapSvc := ldap.New(db, cfg.SecretKey)
 	s.Auth.LDAP = ldapSvc
 	s.LDAP = ldapSvc
-	s.internal = stack.New(db, s.Auth, cfg, rdb, ldapSvc)
+	basicAuthCache := authcache.New(basicAuthCacheTTL())
+	s.basicAuthCache = basicAuthCache
+	s.internal = stack.New(db, s.Auth, cfg, rdb, ldapSvc, basicAuthCache)
 	s.routes()
 
 	// External mailbox poller (fetchmail equivalent).
@@ -175,6 +183,17 @@ func New(cfg core.Config) *Server {
 		startMetricsServer(cfg.MetricsAddr)
 	}
 	return s
+}
+
+// basicAuthCacheTTL resolves the memoization window for HTTP Basic
+// credential checks (CalDAV/CardDAV/ActiveSync/webdav), in seconds.
+func basicAuthCacheTTL() time.Duration {
+	if v := os.Getenv("MAILEZ_BASIC_AUTH_CACHE_TTL"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return time.Duration(n) * time.Second
+		}
+	}
+	return 10 * time.Minute
 }
 
 // Shutdown cancels background workers and gracefully stops the HTTP server.
@@ -302,13 +321,13 @@ func (s *Server) routes() {
 
 	// Built-in CardDAV/CalDAV servers (phone/desktop sync over Basic Auth)
 	// plus the RFC 6764 well-known discovery redirects.
-	dav.New(s.DB).Register(s.App.Group("/dav"))
+	dav.New(s.DB, s.basicAuthCache).Register(s.App.Group("/dav"))
 	s.App.Get("/.well-known/carddav", redirectDAV)
 	s.App.Get("/.well-known/caldav", redirectDAV)
 
 	// Exchange ActiveSync (iOS/Outlook mobile sync): WBXML commands at
 	// /Microsoft-Server-ActiveSync plus autodiscover.
-	activesync.New(s.DB, s.Auth, s.Cfg, app.Mail).Register(s.App)
+	activesync.New(s.DB, s.Auth, s.Cfg, app.Mail, s.basicAuthCache).Register(s.App)
 }
 
 // requireStackSecret guards the internal /stack API used by mailezine and

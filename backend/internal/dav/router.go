@@ -6,12 +6,15 @@ package dav
 import (
 	"encoding/base64"
 	"encoding/xml"
+	"log"
 	"net/url"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 
+	"mailez/backend/internal/auth"
+	"mailez/backend/internal/authcache"
 	"mailez/backend/internal/caldav"
 	"mailez/backend/internal/carddav"
 	"mailez/backend/internal/core/models"
@@ -25,17 +28,27 @@ type Server struct {
 	Card    *carddav.Server
 	Cal     *caldav.Server
 	Handler *webdav.Server
+	// AuthCache memoizes successful Basic-auth credential checks so DAV
+	// clients that poll every few seconds do not burn a bcrypt verification
+	// on every request.
+	AuthCache *authcache.Cache
 }
 
 // New assembles the DAV server stack.
-func New(db *gorm.DB) *Server {
+func New(db *gorm.DB, cache *authcache.Cache) *Server {
 	card := carddav.New(db)
 	cal := caldav.New(db)
+	if cache == nil {
+		// Never degrade to skipping credential checks: a missing cache must
+		// still verify every request, just without memoization.
+		cache = authcache.New(0)
+	}
 	return &Server{
 		DB:      db,
 		Card:    card,
 		Cal:     cal,
 		Handler: &webdav.Server{Capabilities: []string{"addressbook", "calendar-access"}},
+		AuthCache: cache,
 	}
 }
 
@@ -63,12 +76,18 @@ func (s *Server) requireAuth(c *fiber.Ctx) error {
 		c.Set("WWW-Authenticate", `Basic realm="Mailez DAV"`)
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
+	// The DB lookup stays on every request (one indexed PK read); the
+	// credential verification — the expensive bcrypt or token scan — is
+	// memoized per credential pair.
 	var user models.User
-	if err := s.DB.WithContext(c.Context()).First(&user, "email = ?", email).Error; err != nil || !user.Enabled {
+	dbErr := s.DB.WithContext(c.Context()).First(&user, "email = ?", email).Error
+	if dbErr != nil || !user.Enabled {
+		log.Printf("dav auth: user lookup email=%q err=%v enabled=%v", email, dbErr, user.Enabled)
 		c.Set("WWW-Authenticate", `Basic realm="Mailez DAV"`)
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
-	if !s.validCredential(&user, pw) {
+	if !s.AuthCache.Check(email, pw, func() bool { return s.validCredential(&user, pw) }) {
+		log.Printf("dav auth: rejected email=%q", email)
 		c.Set("WWW-Authenticate", `Basic realm="Mailez DAV"`)
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
@@ -78,10 +97,23 @@ func (s *Server) requireAuth(c *fiber.Ctx) error {
 }
 
 // validCredential accepts the mailbox password or any app token of the user.
+// App-token credentials are detected by shape and checked first, so clients
+// configured with an app token never pay a pointless bcrypt comparison.
 func (s *Server) validCredential(u *models.User, pw string) bool {
+	if auth.IsAppToken(pw) {
+		return s.matchesToken(u, pw)
+	}
 	if password.Verify(u.Password, pw) {
 		return true
 	}
+	// Legacy/imported tokens may not carry the 32-hex shape; keep accepting
+	// any stored token after the password check.
+	return s.matchesToken(u, pw)
+}
+
+// matchesToken reports whether pw matches one of the user's stored app
+// tokens (PBKDF2-SHA256, so no bcrypt cost on this path).
+func (s *Server) matchesToken(u *models.User, pw string) bool {
 	var tokens []models.Token
 	if err := s.DB.Where("user_email = ?", u.Email).Find(&tokens).Error; err != nil {
 		return false

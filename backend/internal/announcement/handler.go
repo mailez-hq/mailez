@@ -20,9 +20,11 @@ func New(app *core.App) *Handler { return &Handler{app} }
 // user (the webmail banner); writes are global-admin only.
 func (h *Handler) Register(r fiber.Router) {
 	r.Get("/announcement", h.get)
-	admin := r.Group("", h.RequireGlobalAdmin)
-	admin.Put("/announcement", h.put)
-	admin.Delete("/announcement", h.delete)
+	// Per-route middleware only: a Group("", ...) on a prefix-less router
+	// would register a global Use middleware and admin-gate every sibling
+	// route registered afterwards (calendar, drive, archive, invites, ...).
+	r.Put("/announcement", h.RequireGlobalAdmin, h.put)
+	r.Delete("/announcement", h.RequireGlobalAdmin, h.delete)
 }
 
 // get returns the active announcement, or 204 when none is published.

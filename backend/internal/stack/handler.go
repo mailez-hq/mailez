@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 
 	"mailez/backend/internal/auth"
+	"mailez/backend/internal/authcache"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/ldap"
 )
@@ -21,17 +22,24 @@ type Handler struct {
 	LDAP  *ldap.Service
 	srs   *srsCodec
 	rate  *rateLimiter
+	// authCache memoizes successful HTTP Basic verifications (webdav auth
+	// requests from nginx), which would otherwise pay bcrypt per request.
+	authCache *authcache.Cache
 }
 
-func New(db *gorm.DB, authMgr *auth.Manager, cfg core.Config, rdb *redis.Client, ldapSvc *ldap.Service) *Handler {
+func New(db *gorm.DB, authMgr *auth.Manager, cfg core.Config, rdb *redis.Client, ldapSvc *ldap.Service, cache *authcache.Cache) *Handler {
+	if cache == nil {
+		cache = authcache.New(0)
+	}
 	return &Handler{
-		DB:    db,
-		Auth:  authMgr,
-		Cfg:   cfg,
-		Redis: rdb,
-		LDAP:  ldapSvc,
-		srs:   newSRSCodec(cfg.SecretKey),
-		rate:  newRateLimiter(rdb, cfg.MessageRateLimit),
+		DB:        db,
+		Auth:      authMgr,
+		Cfg:       cfg,
+		Redis:     rdb,
+		LDAP:      ldapSvc,
+		srs:       newSRSCodec(cfg.SecretKey),
+		rate:      newRateLimiter(rdb, cfg.MessageRateLimit),
+		authCache: cache,
 	}
 }
 
