@@ -135,11 +135,19 @@ export function ComposeEditor({
     }
   }, [value, editor]);
 
-  // place the cursor above the quoted content on reply/forward so the user
-  // can start typing right away; a short delay lets the dialog finish opening
+  // Place the cursor on a fresh blank line above the quoted content on
+  // reply/forward so the user can start typing right away. Exactly one empty
+  // paragraph is inserted at the document start (no-op when the body already
+  // starts empty); a short delay lets the dialog finish opening.
   useEffect(() => {
     if (!editor || !autoFocus) return;
-    const t = setTimeout(() => editor.commands.focus("start"), 60);
+    const t = setTimeout(() => {
+      const html = editor.isEmpty ? "" : editor.getHTML();
+      if (html && !/^<p><br>\s*<\/p>/.test(html)) {
+        editor.commands.insertContentAt(0, "<p><br></p>", { updateSelection: true });
+      }
+      editor.commands.focus("start");
+    }, 60);
     return () => clearTimeout(t);
   }, [editor, autoFocus]);
 
