@@ -1262,6 +1262,32 @@ export function ReadingPane({
                 <Send className="size-3.5" />
                 {t("forward")}
               </Button>
+              <Button
+                size="sm"
+                variant={quickReplyOpen ? "secondary" : "outline"}
+                onClick={() => setQuickReplyOpen((v) => !v)}
+              >
+                <MessageSquarePlus className="size-3.5" />
+                {t("quickReply")}
+              </Button>
+              {aiEnabled && (
+                <Button
+                  size="sm"
+                  variant={summaryOpen || summarizing || summary ? "secondary" : "outline"}
+                  onClick={() => {
+                    if (summaryOpen) {
+                      setSummaryOpen(false);
+                    } else {
+                      setSummaryOpen(true);
+                      if (!summary) onSummarize();
+                    }
+                  }}
+                  disabled={summarizing}
+                >
+                  <Sparkles className="size-3.5" />
+                  {summarizing ? t("summarizing") : summary ? t("aiSummary") : t("summarize")}
+                </Button>
+              )}
               <div className="ml-auto flex items-center gap-1">
                 <Button size="sm" variant="ghost" onClick={loadRaw} title={t("viewRaw")}>
                   <FileCode className="size-3.5" />
@@ -1289,32 +1315,9 @@ export function ReadingPane({
               </div>
             </div>
 
-            {/* Inline quick reply: collapsed to a single bar by default so it
-                never competes with the message content; expand on click. */}
-            {!quickReplyOpen ? (
-              <div className="mt-4">
-                <button
-                  type="button"
-                  onClick={() => setQuickReplyOpen(true)}
-                  className="flex w-full items-center gap-2 rounded-lg border border-border px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  <MessageSquarePlus className="size-3.5 shrink-0" />
-                  {t("quickReply")}
-                  {replies.length > 0 && (
-                    <span className="ml-auto flex min-w-0 flex-wrap justify-end gap-1">
-                      {replies.slice(0, 2).map((r, i) => (
-                        <span
-                          key={i}
-                          className="truncate rounded-full border border-ai/20 bg-ai/10 px-2 py-0.5 text-[10px] text-ai"
-                        >
-                          {r}
-                        </span>
-                      ))}
-                    </span>
-                  )}
-                </button>
-              </div>
-            ) : (
+            {/* Inline quick reply: only rendered when the action-bar button
+                toggles it open. */}
+            {quickReplyOpen && (
               <div className="mt-4 rounded-lg border border-border p-3">
                 {replies.length > 0 && (
                   <div className="mb-2 flex flex-wrap gap-1.5">
@@ -1501,9 +1504,8 @@ export function ReadingPane({
           </div>
         )}
 
-        {/* AI summary: collapsed to a compact toggle by default so it never
-            competes with the message; expand to generate/view. */}
-        {aiEnabled && (summaryOpen || summarizing || summary) ? (
+        {/* AI summary: only rendered when the action-bar button toggles it. */}
+        {aiEnabled && (summaryOpen || summarizing || summary) && (
           <div className="mt-4 rounded-lg border border-ai/30 bg-ai/10 p-3">
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1 rounded bg-ai px-1.5 py-0.5 text-[11px] font-semibold text-ai-foreground">
@@ -1589,21 +1591,7 @@ export function ReadingPane({
               </>
             )}
           </div>
-        ) : aiEnabled ? (
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={() => {
-                setSummaryOpen(true);
-                if (!summary) onSummarize();
-              }}
-              className="flex w-full items-center gap-2 rounded-lg border border-border px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <Sparkles className="size-3.5 shrink-0 text-ai" />
-              {t("summarize")}
-            </button>
-          </div>
-        ) : null}
+        )}
       </div>
 
       {/* Raw message dialog */}
