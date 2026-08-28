@@ -17,6 +17,7 @@ import {
   Loader2,
   Lock,
   MailCheck,
+  MessageSquarePlus,
   MailWarning,
   PenLine,
   Printer,
@@ -456,7 +457,9 @@ export function ReadingPane({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [expandedQuotes, setExpandedQuotes] = useState<Set<number>>(new Set());
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+  const [quickReplyOpen, setQuickReplyOpen] = useState(false);
   const [receiptBusy, setReceiptBusy] = useState(false);
   const [snoozeOpen, setSnoozeOpen] = useState(false);
   const [snoozeCustom, setSnoozeCustom] = useState("");
@@ -538,7 +541,9 @@ export function ReadingPane({
     setDetailsOpen(false);
     setExpandedQuotes(new Set());
     setSummaryCollapsed(false);
+    setSummaryOpen(false);
     setFeedback(null);
+    setQuickReplyOpen(false);
     setPgpPlaintext(null);
     setPgpError("");
     setRawText("");
@@ -1284,51 +1289,85 @@ export function ReadingPane({
               </div>
             </div>
 
-            {/* Inline quick reply */}
-            <div className="mt-4 rounded-lg border border-border p-3">
-              {replies.length > 0 && (
-                <div className="mb-2 flex flex-wrap gap-1.5">
-                  {replies.map((r, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setQuickReplyText(r)}
-                      className="rounded-full border border-ai/30 bg-ai/10 px-2.5 py-1 text-left text-[11px] text-ai transition-colors hover:bg-ai/20"
-                    >
-                      {r}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div className="mb-2 flex items-center gap-2">
-                <p className="text-xs font-medium text-muted-foreground">{t("quickReply")}</p>
+            {/* Inline quick reply: collapsed to a single bar by default so it
+                never competes with the message content; expand on click. */}
+            {!quickReplyOpen ? (
+              <div className="mt-4">
                 <button
                   type="button"
-                  onClick={() => setQuickReplyAll((v) => !v)}
-                  className={cn(
-                    "rounded-full border px-2 py-0.5 text-[11px] transition-colors",
-                    quickReplyAll
-                      ? "border-primary bg-accent font-medium text-accent-foreground"
-                      : "border-border text-muted-foreground hover:bg-muted",
-                  )}
+                  onClick={() => setQuickReplyOpen(true)}
+                  className="flex w-full items-center gap-2 rounded-lg border border-border px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
-                  {quickReplyAll ? t("replyAll") : t("reply")}
+                  <MessageSquarePlus className="size-3.5 shrink-0" />
+                  {t("quickReply")}
+                  {replies.length > 0 && (
+                    <span className="ml-auto flex min-w-0 flex-wrap justify-end gap-1">
+                      {replies.slice(0, 2).map((r, i) => (
+                        <span
+                          key={i}
+                          className="truncate rounded-full border border-ai/20 bg-ai/10 px-2 py-0.5 text-[10px] text-ai"
+                        >
+                          {r}
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </button>
               </div>
-              <textarea
-                value={quickReplyText}
-                onChange={(e) => setQuickReplyText(e.target.value)}
-                placeholder={t("quickReply")}
-                rows={3}
-                className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-              <div className="mt-2 flex justify-end">
-                <Button size="sm" onClick={doQuickReply} disabled={!quickReplyText.trim() || quickSending}>
-                  {quickSending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
-                  {t("send")}
-                </Button>
+            ) : (
+              <div className="mt-4 rounded-lg border border-border p-3">
+                {replies.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {replies.map((r, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setQuickReplyText(r)}
+                        className="rounded-full border border-ai/30 bg-ai/10 px-2.5 py-1 text-left text-[11px] text-ai transition-colors hover:bg-ai/20"
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="mb-2 flex items-center gap-2">
+                  <p className="text-xs font-medium text-muted-foreground">{t("quickReply")}</p>
+                  <button
+                    type="button"
+                    onClick={() => setQuickReplyAll((v) => !v)}
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[11px] transition-colors",
+                      quickReplyAll
+                        ? "border-primary bg-accent font-medium text-accent-foreground"
+                        : "border-border text-muted-foreground hover:bg-muted",
+                    )}
+                  >
+                    {quickReplyAll ? t("replyAll") : t("reply")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickReplyOpen(false)}
+                    title={t("collapseQuote")}
+                    className="ml-auto rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <ChevronUp className="size-3.5" />
+                  </button>
+                </div>
+                <textarea
+                  value={quickReplyText}
+                  onChange={(e) => setQuickReplyText(e.target.value)}
+                  placeholder={t("quickReply")}
+                  rows={3}
+                  className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <div className="mt-2 flex justify-end">
+                  <Button size="sm" onClick={doQuickReply} disabled={!quickReplyText.trim() || quickSending}>
+                    {quickSending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+                    {t("send")}
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* PGP encrypted message */}
             {isPgpEncrypted && (
@@ -1462,8 +1501,9 @@ export function ReadingPane({
           </div>
         )}
 
-        {/* AI summary */}
-        {aiEnabled && (
+        {/* AI summary: collapsed to a compact toggle by default so it never
+            competes with the message; expand to generate/view. */}
+        {aiEnabled && (summaryOpen || summarizing || summary) ? (
           <div className="mt-4 rounded-lg border border-ai/30 bg-ai/10 p-3">
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1 rounded bg-ai px-1.5 py-0.5 text-[11px] font-semibold text-ai-foreground">
@@ -1493,6 +1533,13 @@ export function ReadingPane({
                     {t("regenerate")}
                   </Button>
                   <div className="ml-auto flex items-center gap-0.5">
+                    <button
+                      onClick={() => setSummaryOpen(false)}
+                      title={t("collapseQuote")}
+                      className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      <X className="size-3.5" />
+                    </button>
                     <button
                       onClick={() => setFeedback(feedback === "up" ? null : "up")}
                       title={t("helpful")}
@@ -1542,7 +1589,21 @@ export function ReadingPane({
               </>
             )}
           </div>
-        )}
+        ) : aiEnabled ? (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setSummaryOpen(true);
+                if (!summary) onSummarize();
+              }}
+              className="flex w-full items-center gap-2 rounded-lg border border-border px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Sparkles className="size-3.5 shrink-0 text-ai" />
+              {t("summarize")}
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {/* Raw message dialog */}
