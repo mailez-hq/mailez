@@ -24,22 +24,7 @@
     "submitting": "登录中...",
     "totp": "验证码",
     "verify": "验证",
-    "rateLimited": "尝试次数过多，请稍等片刻再试。",
-    "signupLink": "注册账号",
-    "alreadyAccount": "已有账号？"
-  },
-  "signup": {
-    "title": "注册账号",
-    "description": "选择开放的域名并设置密码",
-    "domain": "域名",
-    "selectDomain": "选择域名...",
-    "emailAddress": "邮箱地址",
-    "password": "密码",
-    "submit": "注册",
-    "submitting": "注册中...",
-    "success": "账号已创建，现在可以登录。",
-    "goToSignin": "前往登录",
-    "noOpenDomains": "当前没有接受自助注册的域名。"
+    "rateLimited": "尝试次数过多，请稍等片刻再试。"
   },
   "nav": {
     "overview": "概览",

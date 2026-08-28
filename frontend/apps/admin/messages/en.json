@@ -24,22 +24,7 @@
     "submitting": "Signing in...",
     "totp": "Verification code",
     "verify": "Verify",
-    "rateLimited": "Too many attempts, please wait a moment before trying again.",
-    "signupLink": "Create an account",
-    "alreadyAccount": "Already have an account?"
-  },
-  "signup": {
-    "title": "Create an account",
-    "description": "Pick an open domain and a password",
-    "domain": "Domain",
-    "selectDomain": "Select domain...",
-    "emailAddress": "Email address",
-    "password": "Password",
-    "submit": "Sign up",
-    "submitting": "Creating...",
-    "success": "Account created. You can now sign in.",
-    "goToSignin": "Go to sign in",
-    "noOpenDomains": "No domains currently accept self-registration."
+    "rateLimited": "Too many attempts, please wait a moment before trying again."
   },
   "nav": {
     "overview": "Overview",

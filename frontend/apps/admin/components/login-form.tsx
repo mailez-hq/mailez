@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -113,10 +112,6 @@ export function LoginForm() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? t("submitting") : t("submit")}
             </Button>
-            <p className="text-center text-sm">
-              {t("alreadyAccount")}{" "}
-              <Link href="/signup" className="underline">{t("signupLink")}</Link>
-            </p>
           </form>
         )}
       </CardContent>
