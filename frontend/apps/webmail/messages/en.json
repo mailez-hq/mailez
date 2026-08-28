@@ -9,7 +9,13 @@
     "totp": "Verification code",
     "verify": "Verify",
     "error": "Login failed",
-    "rateLimited": "Too many attempts, please wait a moment before trying again."
+    "rateLimited": "Too many attempts, please wait a moment before trying again.",
+    "mailSettings": "Mail server settings",
+    "mailSettingsHint": "Use these server details when configuring Outlook, Thunderbird or a mobile mail app:",
+    "smtpServer": "SMTP server",
+    "pop3Server": "POP3 server",
+    "imapServer": "IMAP server",
+    "serverPorts": "Ports {ports}"
   },
   "mail": {
     "write": "Write",

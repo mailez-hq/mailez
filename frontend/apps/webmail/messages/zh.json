@@ -2,6 +2,10 @@
   "login": {
     "title": "Mailez 网页邮箱",
     "description": "登录以阅读邮件",
+    "tagline": "安全、稳定、高效的企业邮箱",
+    "featSecurity": "双重验证，账号更安全",
+    "featWorkspace": "全新工作台，邮件与日程一目了然",
+    "featAnywhere": "多端同步，随时随地处理邮件",
     "email": "邮箱",
     "password": "密码",
     "submit": "登录",
@@ -9,7 +13,13 @@
     "totp": "验证码",
     "verify": "验证",
     "error": "登录失败",
-    "rateLimited": "尝试次数过多，请稍等片刻再试。"
+    "rateLimited": "尝试次数过多，请稍等片刻再试。",
+    "mailSettings": "邮箱设置（客户端配置）",
+    "mailSettingsHint": "在 Outlook / Thunderbird / 手机邮箱中配置时使用以下服务器信息：",
+    "smtpServer": "SMTP 服务器",
+    "pop3Server": "POP3 服务器",
+    "imapServer": "IMAP 服务器",
+    "serverPorts": "端口 {ports}"
   },
   "home": {
     "openMailbox": "打开邮箱",
@@ -20,13 +30,23 @@
     "greetingEvening": "晚上好，{name}",
     "unread": "收件箱未读",
     "unreadTotal": "所有文件夹未读 {count} 封",
+    "todoMail": "待办邮件",
+    "contacts": "联系人",
+    "reminders": "提醒",
+    "announcements": "公告",
+    "noAnnouncements": "今日无公告",
     "storage": "存储空间",
     "storageUsed": "已用 {used} / {total}",
     "todayEvents": "今日日程",
     "allDay": "全天",
     "noEvents": "今天没有日程",
     "recentFiles": "最近文件",
-    "noFiles": "还没有文件"
+    "noFiles": "还没有文件",
+    "security": "账号安全",
+    "recentLogins": "最近登录",
+    "noLogins": "暂无登录记录",
+    "lastPasswordChange": "上次修改密码",
+    "neverChanged": "从未修改"
   },
   "mail": {
     "write": "写邮件",
