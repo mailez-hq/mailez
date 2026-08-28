@@ -158,6 +158,56 @@ func (m *Manager) DraftNew(ctx context.Context, tone DraftTone, subject, hint st
 	return p.Chat(ctx, draftNewSystem(tone), user)
 }
 
+// ComposeDraft is a fully parsed email produced from a free-form instruction
+// (e.g. "给小明写封邮件，说我下周不去旅游了").
+type ComposeDraft struct {
+	// To are the recipient display names / addresses mentioned in the
+	// instruction. Names are resolved against the user's contacts by the
+	// client; addresses pass through.
+	To      []string `json:"to"`
+	Subject string   `json:"subject"`
+	Body    string   `json:"body"`
+}
+
+// ComposeFromInstruction turns one natural-language sentence into a complete
+// email draft (recipients, subject, body).
+func (m *Manager) ComposeFromInstruction(ctx context.Context, instruction string) (ComposeDraft, error) {
+	p := m.load()
+	if p == nil {
+		return ComposeDraft{}, ErrDisabled
+	}
+	system := "You are an email assistant. Turn the user's instruction into a complete email and respond " +
+		"ONLY with a JSON object of the form {\"to\": [\"recipient names or addresses\"], \"subject\": \"...\", \"body\": \"...\"}. " +
+		"Put every recipient mentioned in the instruction into to (keep the exact name or address the user used). " +
+		"Write a concise subject and a complete body in the same language as the instruction. " +
+		"Do not add commentary, markdown or code fences."
+	raw, err := p.Chat(ctx, system, instruction)
+	if err != nil {
+		return ComposeDraft{}, err
+	}
+	return parseComposeDraft(raw)
+}
+
+func parseComposeDraft(raw string) (ComposeDraft, error) {
+	raw = strings.TrimSpace(raw)
+	raw = strings.TrimPrefix(raw, "```json")
+	raw = strings.TrimPrefix(raw, "```")
+	raw = strings.TrimSuffix(raw, "```")
+	raw = strings.TrimSpace(raw)
+	if start, end := strings.Index(raw, "{"), strings.LastIndex(raw, "}"); start >= 0 && end > start {
+		raw = raw[start : end+1]
+	}
+	var out ComposeDraft
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		// Last resort: use the whole response as the body.
+		return ComposeDraft{Body: raw}, nil
+	}
+	for i := range out.To {
+		out.To[i] = strings.TrimSpace(out.To[i])
+	}
+	return out, nil
+}
+
 func draftReplySystem(tone DraftTone) string {
 	switch tone {
 	case ToneConcise:
