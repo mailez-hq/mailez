@@ -2,6 +2,11 @@
   "login": {
     "title": "Mailez Webmail",
     "description": "Sign in to read your mail",
+    "tagline": "Secure, stable and efficient enterprise email",
+    "subtitle": "Email System",
+    "featSecurity": "Two-factor verification keeps your account safe",
+    "featWorkspace": "A modern workspace for mail, calendar and files",
+    "featAnywhere": "Multi-device sync, work wherever you are",
     "email": "Email",
     "password": "Password",
     "submit": "Sign in",

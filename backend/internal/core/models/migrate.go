@@ -290,6 +290,14 @@ var migrations = []migration{
 			return db.AutoMigrate(&Alias{})
 		},
 	},
+	{
+		// Login-page branding (登录页品牌): enterprise-configurable top-left
+		// logo, left hero image and copy shown on the webmail sign-in page.
+		ID: "20260828_login_branding",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&BrandingConfig{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

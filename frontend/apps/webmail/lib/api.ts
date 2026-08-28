@@ -392,6 +392,21 @@ export type ServerSettings = {
   smtp: { plain: number; submission: number; ssl: number };
   pop3: { plain: number; ssl: number };
   imap: { plain: number; ssl: number };
+  branding?: BrandingConfig;
+};
+
+// BrandingConfig is the enterprise-customizable login-page brand. Empty
+// fields fall back to the built-in Mailez brand.
+export type BrandingConfig = {
+  title?: string;
+  subtitle?: string;
+  tagline?: string;
+  feature1?: string;
+  feature2?: string;
+  feature3?: string;
+  logo_url?: string;
+  hero_url?: string;
+  copyright?: string;
 };
 
 export const serverSettings = () => api<ServerSettings>("/server/settings");

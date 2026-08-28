@@ -21,6 +21,7 @@ var currentUser = core.CurrentUser
 func (h *Handler) Register(r fiber.Router) {
 	h.registerAudit(r, h.RequireGlobalAdmin)
 	h.registerConfig(r, h.RequireGlobalAdmin)
+	h.registerBranding(r, h.RequireGlobalAdmin)
 	h.registerAI(r, h.RequireGlobalAdmin)
 	h.registerLDAP(r, h.RequireGlobalAdmin)
 	h.registerOverview(r, h.RequireGlobalAdmin)
