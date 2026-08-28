@@ -132,6 +132,7 @@
     "aiDraftHintPlaceholder": "What to say? e.g. confirm attendance, explain the delay…",
     "aiDraftNeedsInput": "Fill in the subject or describe what you want to say in the hint field first",
     "aiCompose": "AI compose",
+    "aiComposeQuickPlaceholder": "AI compose: describe the email, e.g. “email Xiaoming that I won’t go on the trip next week”…",
     "aiComposeHint": "Describe the email in one sentence, e.g. “Write an email to Xiaoming saying I won’t go on the trip next week.”",
     "aiComposePlaceholder": "Describe the email…",
     "aiComposeGenerate": "Generate",
