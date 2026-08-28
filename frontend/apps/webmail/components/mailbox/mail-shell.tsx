@@ -383,8 +383,8 @@ export function MailShell({ children }: { children: React.ReactNode }) {
                   openCompose(
                     m.from[0]?.email || "",
                     m.subject.startsWith("Re:") ? m.subject : `Re: ${m.subject}`,
-                    textToHtml(quoteText(m)),
-                    quoteText(m),
+                    `<p><br></p>${textToHtml(quoteText(m))}`,
+                    `\n\n${quoteText(m)}`,
                     "editor",
                   );
                 }}
@@ -407,8 +407,8 @@ export function MailShell({ children }: { children: React.ReactNode }) {
                   openCompose(
                     "",
                     m.subject.startsWith("Fwd:") ? m.subject : `Fwd: ${m.subject}`,
-                    textToHtml(quoteText(m)),
-                    quoteText(m),
+                    `<p><br></p>${textToHtml(quoteText(m))}`,
+                    `\n\n${quoteText(m)}`,
                     "to",
                   );
                 }}
