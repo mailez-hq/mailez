@@ -53,6 +53,7 @@ type Config struct {
 	MessageRateLimit   int // outbound messages per user per hour
 	FetchInterval      int // seconds between external mailbox polls
 	PushInterval       int // seconds between push notifier polls (0 disables)
+	EventsInterval     int // seconds between webmail SSE mailbox checks (0 disables)
 	LoginRateLimit     int // login attempts per IP per window
 	LoginFailLimit     int // failed logins per email before lockout
 	CORSOrigins        string
@@ -119,6 +120,7 @@ func Load() Config {
 		MessageRateLimit:   envInt("MAILEZ_MESSAGE_RATELIMIT", 200),
 		FetchInterval:      envInt("FETCH_INTERVAL", 300),
 		PushInterval:       envInt("PUSH_INTERVAL", 60),
+		EventsInterval:     envInt("MAILEZ_EVENTS_INTERVAL", 20),
 		LoginRateLimit:     envInt("LOGIN_RATELIMIT", 30),
 		LoginFailLimit:     envInt("LOGIN_FAIL_LIMIT", 10),
 		CORSOrigins:        env("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001"),

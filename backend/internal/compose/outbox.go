@@ -8,6 +8,7 @@ import (
 	"net/smtp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -23,6 +24,12 @@ import (
 // maxUndoSeconds bounds the send-undo window the client may request.
 const maxUndoSeconds = 30
 
+// sentSaver is the narrow IMAP-append surface the outbox worker needs to keep
+// a copy in the sender's Sent folder; *mail.Client implements it.
+type sentSaver interface {
+	AppendRaw(email, token, folder, raw string, flags []string) error
+}
+
 // OutboxWorker delivers due outbox entries through the local MTA. Submitting
 // straight to the MTA port (like the fetch poller) needs no per-session SMTP
 // token, so parked messages survive page reloads and backend restarts. Entries
@@ -33,10 +40,21 @@ type OutboxWorker struct {
 	MtaAddr   string
 	SecretKey string
 	DLP       *dlp.Service // optional outbound content filter (审批/DLP)
+	Mail      sentSaver    // internal gateway client used to save Sent copies
+
+	mu     sync.Mutex
+	tokens map[string]string // per-user worker app token cache (email → secret)
 }
 
-func NewOutboxWorker(db *gorm.DB, mtaAddr, secretKey string, dlpSvc *dlp.Service) *OutboxWorker {
-	return &OutboxWorker{DB: db, MtaAddr: mtaAddr, SecretKey: secretKey, DLP: dlpSvc}
+func NewOutboxWorker(db *gorm.DB, mtaAddr, secretKey string, dlpSvc *dlp.Service, mailClient sentSaver) *OutboxWorker {
+	return &OutboxWorker{
+		DB:        db,
+		MtaAddr:   mtaAddr,
+		SecretKey: secretKey,
+		DLP:       dlpSvc,
+		Mail:      mailClient,
+		tokens:    map[string]string{},
+	}
 }
 
 // Run polls for due messages until the context is cancelled.
@@ -94,9 +112,49 @@ func (w *OutboxWorker) flush() {
 				Updates(map[string]any{"status": "failed", "error": err.Error()})
 			continue
 		}
+		// The engine does not auto-copy submissions, so the worker mirrors
+		// the direct-send path (mail.Send) and keeps a copy in the sender's
+		// Sent folder once the parked message is actually delivered.
+		w.saveSent(context.Background(), o)
 		w.DB.Model(&models.Outbox{}).Where("id = ?", o.ID).
 			Updates(map[string]any{"status": "sent", "error": ""})
 	}
+}
+
+// saveSent appends the delivered message to the sender's Sent folder,
+// best-effort like the direct-send path: a failed copy must not fail the
+// delivery itself (the SMTP acceptance already happened).
+func (w *OutboxWorker) saveSent(ctx context.Context, o models.Outbox) {
+	if w.Mail == nil || o.AccountID != 0 {
+		// External aggregated accounts mirror the direct-send path: their
+		// own provider is responsible for the Sent copy.
+		return
+	}
+	token, err := w.workerToken(ctx, o.AccountEmail)
+	if err != nil {
+		log.Printf("outbox %d: sent-token for %s: %v", o.ID, o.AccountEmail, err)
+		return
+	}
+	if err := w.Mail.AppendRaw(o.AccountEmail, token, "Sent", o.RawMessage, nil); err != nil {
+		log.Printf("outbox %d: save sent copy for %s: %v", o.ID, o.AccountEmail, err)
+	}
+}
+
+// workerToken returns the user's background-worker app token, minting and
+// persisting one on first use. The encrypted secret is stored in worker_token
+// so a restart keeps the same credential; the plaintext is cached in memory.
+func (w *OutboxWorker) workerToken(ctx context.Context, email string) (string, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if t, ok := w.tokens[email]; ok {
+		return t, nil
+	}
+	secret, err := core.EnsureWorkerToken(ctx, w.DB, w.SecretKey, email)
+	if err != nil {
+		return "", err
+	}
+	w.tokens[email] = secret
+	return secret, nil
 }
 
 // deliverExternal submits a parked message through an aggregated account's own

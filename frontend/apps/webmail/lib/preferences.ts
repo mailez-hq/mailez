@@ -39,6 +39,9 @@ export type Preferences = {
   conversation: boolean;
   // autoSignature appends the personal signature to new compose automatically.
   autoSignature: boolean;
+  // collapseReplyQuote folds the quoted original into a "…" row in reply
+  // compose (Gmail-style); off shows the full quote expanded (Fastmail-style).
+  collapseReplyQuote: boolean;
   landing: Landing;
 };
 
@@ -56,6 +59,7 @@ export const DEFAULT_PREFS: Preferences = {
   paneWidth: "md",
   conversation: true,
   autoSignature: true,
+  collapseReplyQuote: true,
   landing: "home",
 };
 
@@ -94,6 +98,7 @@ export function readPreferences(): Preferences {
         : "md",
       conversation: parsed.conversation !== false,
       autoSignature: parsed.autoSignature !== false,
+      collapseReplyQuote: parsed.collapseReplyQuote !== false,
       landing: parsed.landing === "inbox" ? "inbox" : "home",
     };
   } catch {

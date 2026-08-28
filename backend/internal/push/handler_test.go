@@ -40,7 +40,7 @@ func newTestApp(t *testing.T) *fiber.App {
 		c.Locals("user", &models.User{Email: "a@example.com", DomainName: "example.com", Enabled: true})
 		return c.Next()
 	})
-	RegisterAPI(authed, app)
+	RegisterAPI(authed, app, NewHub())
 	return f
 }
 

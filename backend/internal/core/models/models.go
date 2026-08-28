@@ -35,9 +35,9 @@ func AutoMigrate(db *gorm.DB) error {
 		&CalendarEvent{},
 		&LdapConfig{},
 		&OrgContact{},
-	&Announcement{},
-	&BrandingConfig{},
-	&ArchiveSettings{},
+		&Announcement{},
+		&BrandingConfig{},
+		&ArchiveSettings{},
 		&ArchivedMessage{},
 		&DlpRule{},
 		&PendingApproval{},
@@ -45,6 +45,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&CalendarReminderLog{},
 		&UploadedFile{},
 		&DriveFile{},
+		&WorkerToken{},
 		&SchemaMigration{},
 	)
 }

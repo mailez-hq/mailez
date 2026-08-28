@@ -16,6 +16,7 @@
     "@base-ui/react": "^1.7.0",
     "@mailez/types": "file:../../packages/types",
     "@mailez/ui": "file:../../packages/ui",
+    "@tiptap/extension-blockquote": "^3.30.5",
     "@tiptap/extension-color": "^3.30.5",
     "@tiptap/extension-font-family": "^3.30.5",
     "@tiptap/extension-highlight": "^3.30.5",

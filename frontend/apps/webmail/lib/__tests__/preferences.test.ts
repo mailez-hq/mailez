@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { DEFAULT_PREFS, readPreferences, writePreferences } from "@/lib/preferences";
+import { DEFAULT_PREFS, PREF_KEY, readPreferences, writePreferences } from "@/lib/preferences";
 
 describe("preferences", () => {
   beforeEach(() => {
@@ -47,5 +47,33 @@ describe("preferences", () => {
     );
     const p = readPreferences();
     expect(p.undoSendSeconds).toBe(5);
+  });
+});
+
+describe("collapseReplyQuote preference", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("defaults to Gmail-style collapsed quotes", () => {
+    expect(DEFAULT_PREFS.collapseReplyQuote).toBe(true);
+    expect(readPreferences().collapseReplyQuote).toBe(true);
+  });
+
+  it("reads an explicit false (Fastmail-style expanded quotes)", () => {
+    window.localStorage.setItem(PREF_KEY, JSON.stringify({ collapseReplyQuote: false }));
+    expect(readPreferences().collapseReplyQuote).toBe(false);
+  });
+
+  it("treats malformed stored values as collapsed (safe default)", () => {
+    window.localStorage.setItem(PREF_KEY, JSON.stringify({ collapseReplyQuote: "yes" }));
+    expect(readPreferences().collapseReplyQuote).toBe(true);
+    window.localStorage.setItem(PREF_KEY, "not json");
+    expect(readPreferences().collapseReplyQuote).toBe(true);
+  });
+
+  it("round-trips through writePreferences", () => {
+    writePreferences({ ...DEFAULT_PREFS, collapseReplyQuote: false });
+    expect(readPreferences().collapseReplyQuote).toBe(false);
   });
 });

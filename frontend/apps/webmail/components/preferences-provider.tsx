@@ -27,6 +27,7 @@ type PreferencesContextValue = {
   paneWidth: ReadingPaneWidth;
   conversation: boolean;
   autoSignature: boolean;
+  collapseReplyQuote: boolean;
   landing: Landing;
   setTheme: (theme: Theme) => void;
   setDensity: (density: Density) => void;
@@ -39,6 +40,7 @@ type PreferencesContextValue = {
   setPaneWidth: (width: ReadingPaneWidth) => void;
   setConversation: (enabled: boolean) => void;
   setAutoSignature: (enabled: boolean) => void;
+  setCollapseReplyQuote: (enabled: boolean) => void;
   setLanding: (landing: Landing) => void;
   resolvedDark: boolean;
 };
@@ -121,6 +123,10 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     (autoSignature: boolean) => update({ ...prefs, autoSignature }),
     [prefs, update],
   );
+  const setCollapseReplyQuote = useCallback(
+    (collapseReplyQuote: boolean) => update({ ...prefs, collapseReplyQuote }),
+    [prefs, update],
+  );
   const setLanding = useCallback(
     (landing: Landing) => update({ ...prefs, landing }),
     [prefs, update],
@@ -137,6 +143,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       paneWidth: prefs.paneWidth,
       conversation: prefs.conversation,
       autoSignature: prefs.autoSignature,
+      collapseReplyQuote: prefs.collapseReplyQuote,
       landing: prefs.landing,
       setTheme,
       setDensity,
@@ -149,10 +156,11 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       setPaneWidth,
       setConversation,
       setAutoSignature,
+      setCollapseReplyQuote,
       setLanding,
       resolvedDark,
     }),
-    [prefs, setTheme, setDensity, setAccent, setAi, setNotifications, setUndoSend, setSpellcheck, setReaderFont, setPaneWidth, setConversation, setAutoSignature, setLanding, resolvedDark],
+    [prefs, setTheme, setDensity, setAccent, setAi, setNotifications, setUndoSend, setSpellcheck, setReaderFont, setPaneWidth, setConversation, setAutoSignature, setCollapseReplyQuote, setLanding, resolvedDark],
   );
 
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;

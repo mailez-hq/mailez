@@ -12,6 +12,7 @@ import { usePaletteActions } from "@/components/palette/palette-actions";
 import { usePreferences } from "@/components/preferences-provider";
 import { useNewMailNotification } from "@/components/mailbox/use-new-mail-notification";
 import { setupPushSubscription, teardownPushSubscription } from "@/lib/push";
+import { subscribeMailEvents } from "@/lib/events";
 import { writeLastFolder } from "@/lib/preferences";
 import { parseMergeRecipients } from "@/lib/mail-merge";
 import {
@@ -44,7 +45,9 @@ import {
   type SavedSearch,
   MAX_ATTACHMENT_BYTES,
   escHtml,
+  normalizeQuoteBody,
   readFileAsBase64,
+  stripCollapseMarkers,
   textToHtml,
 } from "@/components/mailbox/mail-utils";
 
@@ -1020,6 +1023,33 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     }
   }, [me.email, prefs.notifications]);
 
+  // Real-time mailbox updates: the backend pushes a "mail" event over SSE when
+  // new mail arrives in a watched folder. The current folder is read through a
+  // ref so switching folders doesn't tear down and recreate the connection.
+  const folderRef = useRef(folder);
+  folderRef.current = folder;
+  useEffect(() => {
+    if (!me.email) return;
+    return subscribeMailEvents({
+      onReady: () => {
+        // (Re)connected: pick up anything that arrived while offline.
+        refreshUnseen();
+        void loadMessages(folderRef.current, 0, true);
+      },
+      onMail: (ev) => {
+        refreshUnseen();
+        const folders = ev.folders || [];
+        const cur = folderRef.current;
+        if (
+          folders.length === 0 ||
+          folders.some((f) => f.toLowerCase() === cur.toLowerCase())
+        ) {
+          void loadMessages(cur, 0, true);
+        }
+      },
+    });
+  }, [me.email, refreshUnseen, loadMessages]);
+
   // connection status banner
   useEffect(() => {
     if (typeof navigator === "undefined") return;
@@ -1325,7 +1355,15 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       detailCache.delete(`${srcFolder}\x00${m.id || m.uid}`);
       mailFlag(srcFolder, m.uid, "\\Seen", true).then(refreshUnseen).catch(() => {});
       m.flags.push("\\Seen");
-      setMessages((ms) => ms.map((x) => (x.uid === m.uid ? m : x)));
+      setMessages((ms) => ms.map((x) => (x.uid === m.uid ? applySeenState(x, true) : x)));
+      // A multi-member thread's unread dot is a server-side aggregate that
+      // cannot be derived from the opened message alone: reload the folder so
+      // reading the last unread member clears the row's unread indicator.
+      // Skipped while searching (results are not the folder list).
+      const row = messages.find((x) => x.uid === m.uid);
+      if (!searching && row?.thread_unread && row.thread_count && row.thread_count > 1) {
+        void loadMessages(folder, 0, true);
+      }
     }
     // Navigate to the message route; MailView follows the /mail/[folder]/[id]
     // URL (pathId effect) to load and show the reading pane. The stable id
@@ -1392,33 +1430,31 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     try {
       await mailFlag(folder, m.uid, "\\Seen", value);
       refreshUnseen();
-      setMessages((ms) =>
-        ms.map((x) =>
-          x.uid === m.uid
-            ? {
-                ...x,
-                flags: value
-                  ? [...new Set([...x.flags, "\\Seen"])]
-                  : x.flags.filter((f) => f !== "\\Seen"),
-              }
-            : x,
-        ),
-      );
-      if (detail?.uid === m.uid) {
-        setDetail((d) =>
-          d
-            ? {
-                ...d,
-                flags: value
-                  ? [...new Set([...d.flags, "\\Seen"])]
-                  : d.flags.filter((f) => f !== "\\Seen"),
-              }
-            : d,
-        );
-      }
+      const apply = (x: MailMessage) => (x.uid === m.uid ? applySeenState(x, value) : x);
+      setMessages((ms) => ms.map(apply));
+      setDetail((d) => (d ? apply(d) : d));
     } catch (e) {
       setError(e instanceof Error ? e.message : "flag failed");
     }
+  }
+
+  // applySeenState returns a list row with the \Seen flag applied and, for
+  // conversation rows, the thread aggregate resolved when it can be computed
+  // locally: a single-message thread turns read/unread with the row. Rows of
+  // multi-member threads keep their server-side aggregate until the folder
+  // is reloaded (see openMessage).
+  function applySeenState(x: MailMessage, seen: boolean): MailMessage {
+    const flags = seen
+      ? x.flags.includes("\\Seen")
+        ? x.flags
+        : [...x.flags, "\\Seen"]
+      : x.flags.filter((f) => f !== "\\Seen");
+    let thread_unread = x.thread_unread;
+    if (x.thread_unread !== undefined) {
+      if (!seen) thread_unread = true;
+      else if (!x.thread_count || x.thread_count <= 1) thread_unread = false;
+    }
+    return {...x, flags, thread_unread};
   }
 
   async function toggleStar(m: MailMessage) {
@@ -1562,7 +1598,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   // quoteText builds the quoted original message used in replies/forwards.
   const quoteText = (d: MailMessage) => {
     const from = d.from.map((a) => a.name || a.email).join(", ");
-    const lines = (d.text_body || "").trim();
+    const lines = normalizeQuoteBody(d.text_body || "").trim();
     if (!lines) return "";
     const quoted = lines.split("\n").map((l) => `> ${l}`).join("\n");
     return `\n\nOn ${fmtDate(d.date)}, ${from} wrote:\n${quoted}`;
@@ -1574,7 +1610,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     const sel = typeof window !== "undefined" ? window.getSelection()?.toString().trim() : "";
     if (sel && sel.length > 1 && !/^[\r\n\s]+$/.test(sel)) {
       const from = d.from.map((a) => a.name || a.email).join(", ");
-      const quoted = sel.split("\n").map((l) => `> ${l}`).join("\n");
+      const quoted = normalizeQuoteBody(sel).split("\n").map((l) => `> ${l}`).join("\n");
       return `\n\nOn ${fmtDate(d.date)}, ${from} wrote:\n${quoted}`;
     }
     return quoteText(d);
@@ -1699,10 +1735,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     const value = !m.flags.includes("\\Seen");
     try {
       await mailFlag(m.folder || folder, m.uid, "\\Seen", value);
-      const apply = (x: MailMessage) =>
-        x.uid === m.uid
-          ? { ...x, flags: value ? [...x.flags, "\\Seen"] : x.flags.filter((f) => f !== "\\Seen") }
-          : x;
+      const apply = (x: MailMessage) => (x.uid === m.uid ? applySeenState(x, value) : x);
       setMessages((ms) => ms.map(apply));
       setDetail((d) => (d && d.uid === m.uid ? apply(d) : d));
     } catch (e) {
@@ -1723,9 +1756,38 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     openCompose(
       [...recipients].join(", "),
       m.subject.startsWith("Re:") ? m.subject : `Re: ${m.subject}`,
-      textToHtml(quoteText(m)),
+      textToHtml(quoteText(m), {collapseQuote: prefs.collapseReplyQuote}),
       quoteText(m),
       "editor",
+      true,
+    );
+  }
+
+  // replyFrom / forwardFrom open compose for an arbitrary message (thread
+  // members, row context menus) without first swapping the open detail, so
+  // the thread reading-pane action buttons work on the clicked message.
+  function replyFrom(m: MailMessage) {
+    const quote = quoteText(m);
+    openCompose(
+      m.from[0]?.email || "",
+      m.subject.startsWith("Re:") ? m.subject : `Re: ${m.subject}`,
+      textToHtml(quote, {collapseQuote: prefs.collapseReplyQuote}),
+      quote,
+      "editor",
+      true,
+    );
+  }
+
+  function forwardFrom(m: MailMessage) {
+    const from = m.from.map((a) => a.name || a.email).join(", ");
+    const head = `---------- Forwarded message ----------\nFrom: ${from}\nDate: ${fmtDate(m.date)}\nSubject: ${m.subject}\n\n`;
+    const quote = head + normalizeQuoteBody(m.text_body || "");
+    openCompose(
+      "",
+      m.subject.startsWith("Fwd:") ? m.subject : `Fwd: ${m.subject}`,
+      textToHtml(quote),
+      quote,
+      "to",
       true,
     );
   }
@@ -1783,7 +1845,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     openCompose(
       detail.from[0]?.email || "",
       detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`,
-      textToHtml(quote),
+      textToHtml(quote, {collapseQuote: prefs.collapseReplyQuote}),
       quote,
       "editor",
       true,
@@ -1850,7 +1912,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     openCompose(
       [...recipients].join(", "),
       detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`,
-      textToHtml(quote),
+      textToHtml(quote, {collapseQuote: prefs.collapseReplyQuote}),
       quote,
       "editor",
       true,
@@ -1861,7 +1923,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     if (!detail) return;
     const from = detail.from.map((a) => a.name || a.email).join(", ");
     const head = `---------- Forwarded message ----------\nFrom: ${from}\nDate: ${fmtDate(detail.date)}\nSubject: ${detail.subject}\n\n`;
-    const quote = head + (detail.text_body || "");
+    const quote = head + normalizeQuoteBody(detail.text_body || "");
     openCompose(
       "",
       detail.subject.startsWith("Fwd:") ? detail.subject : `Fwd: ${detail.subject}`,
@@ -2096,7 +2158,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     setComposeError("");
     try {
       let text = bodyText;
-      let html = body;
+      let html = stripCollapseMarkers(body);
       if (signOn) {
         const { signature } = await pgpSign(text || " ");
         text = `${text}\n\n${signature}`;
@@ -2792,6 +2854,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     setCtxMenu,
     quoteText,
     replyAllFrom,
+    replyFrom,
+    forwardFrom,
     toggleRead,
     spamMessage,
     toast,

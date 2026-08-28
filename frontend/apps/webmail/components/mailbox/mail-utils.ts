@@ -1,3 +1,4 @@
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { MailSearchSpec, OutboundAttachment } from "@/lib/api";
 
 // System IMAP flags and reserved keywords are excluded from the label list;
@@ -136,14 +137,23 @@ export function playChime() {
 // TipTap's plain-text readback (block separator "\n\n", hard break "\n")
 // round-trips the original newlines exactly — per-line <p>s with empty
 // <p><br></p> blocks would double every blank line on readback.
-export function textToHtml(text: string): string {
+// collapseQuote marks the quote blockquote with data-collapsed="true" so the
+// compose editor renders it Gmail-style (folded "…" until clicked), while the
+// full quoted text still travels with the sent message.
+export function textToHtml(text: string, opts?: { collapseQuote?: boolean }): string {
   const out: string[] = [];
   let run: {quote: boolean; lines: string[]} | null = null;
   const flush = () => {
     if (!run) return;
     const inner = run.lines.map((l) => escHtml(l)).join("<br>") || "<br>";
     const p = `<p>${inner}</p>`;
-    out.push(run.quote ? `<blockquote>${p}</blockquote>` : p);
+    out.push(
+      run.quote
+        ? opts?.collapseQuote
+          ? `<blockquote data-collapsed="true">${p}</blockquote>`
+          : `<blockquote>${p}</blockquote>`
+        : p,
+    );
     run = null;
   };
   for (const raw of text.replace(/\r\n/g, "\n").split("\n")) {
@@ -158,4 +168,52 @@ export function textToHtml(text: string): string {
   }
   flush();
   return out.join("");
+}
+
+// stripCollapseMarkers removes the compose-only data-collapsed attribute
+// before a message goes on the wire. The folded state is a UI affordance of
+// the composer; recipients must always see the full quote in the HTML body.
+export function stripCollapseMarkers(html: string): string {
+  return html.replace(/\sdata-collapsed="true"/g, "");
+}
+
+// serializeBlockquote is the inverse of textToHtml's quote parsing. TipTap's
+// getTextBetween inserts a "\n\n" block separator for EVERY block node —
+// including the <blockquote> wrapper and each <p> inside it — so serializing
+// a quote as bare text would add blank lines on every reply round trip.
+// Rendering quoted content as "> " prefixed lines (the standard email quote
+// format) keeps the stored plain-text body stable across reply cycles.
+// The caller feeds it the blockquote's text content (with hard breaks already
+// expanded to "\n").
+export function serializeBlockquote(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => `> ${line}`)
+    .join("\n");
+}
+
+// normalizeQuoteBody cleans a quoted original before it becomes "> " lines:
+// CRLF/CR line endings become LF, and runs of 3+ consecutive blank lines
+// collapse to a single blank line. The blank-line collapse neutralizes the
+// runs accumulated by older reply pipelines inside stored messages, so
+// replying to an old polluted message no longer reproduces them. Ordinary
+// single (and double) blank lines are left untouched.
+export function normalizeQuoteBody(text: string): string {
+  return text
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\n{3,}/g, "\n\n");
+}
+
+// quoteBlockText extracts a blockquote node's plain text for the compose
+// editor's text serializer: hard breaks become single newlines, paragraphs
+// inside the quote are separated by "\n\n", then every line is prefixed with
+// "> " (see serializeBlockquote). Using textBetween instead of textContent
+// keeps hard breaks from vanishing.
+export function quoteBlockText(node: ProseMirrorNode): string {
+  return serializeBlockquote(
+    node.textBetween(0, node.content.size, "\n\n", (leaf) =>
+      leaf.type.name === "hardBreak" ? "\n" : "",
+    ),
+  );
 }

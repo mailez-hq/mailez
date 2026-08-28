@@ -108,6 +108,7 @@
     "back": "Back",
     "expandQuote": "Expand quote",
     "collapseQuote": "Collapse quote",
+    "collapseMessage": "Collapse message",
     "quoteLines": "Quoted {count} lines",
     "threadCount": "Thread ({count})",
     "remoteImages": "This message contains remote images",
@@ -563,9 +564,14 @@
     "paneNarrow": "Narrow",
     "paneMd": "Medium",
     "paneWide": "Wide",
+    "landing": "After sign-in",
+    "landingHome": "Dashboard",
+    "landingInbox": "Inbox",
     "spellcheck": "Spell check",
     "conversationView": "Conversation view (Gmail-style)",
-    "conversationViewHint": "Group messages by thread into a single list row; click to expand the full conversation."
+    "conversationViewHint": "Group messages by thread into a single list row; click to expand the full conversation.",
+    "collapseReplyQuote": "Collapse quoted text in replies",
+    "collapseReplyQuoteHint": "Fold the quoted original into a single … row that expands on click (Gmail-style); turn off to always show the full quote (Fastmail-style)."
   },
   "home": {
     "openMailbox": "Open mailbox",

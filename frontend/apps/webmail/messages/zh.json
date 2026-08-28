@@ -135,6 +135,7 @@
     "back": "返回",
     "expandQuote": "展开引用",
     "collapseQuote": "收起引用",
+    "collapseMessage": "收起邮件",
     "quoteLines": "引用 {count} 行",
     "threadCount": "会话（{count}）",
     "remoteImages": "此邮件包含远程图片",
@@ -595,7 +596,9 @@
     "paneWide": "宽",
     "spellcheck": "拼写检查",
     "conversationView": "会话视图（Gmail 风格）",
-    "conversationViewHint": "同一主题的往来邮件在列表中合并为一行，点击展开查看完整会话。"
+    "conversationViewHint": "同一主题的往来邮件在列表中合并为一行，点击展开查看完整会话。",
+    "collapseReplyQuote": "回复时折叠引用",
+    "collapseReplyQuoteHint": "把被引用的原文折叠成一个 …，点击展开（Gmail 风格）；关闭则始终显示完整引用（Fastmail 风格）。"
   },
   "contacts": {
     "title": "通讯录",
