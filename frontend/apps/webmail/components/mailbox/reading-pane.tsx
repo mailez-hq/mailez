@@ -544,6 +544,7 @@ export function ReadingPane({
     setSummaryOpen(false);
     setFeedback(null);
     setQuickReplyOpen(false);
+    setReplies([]);
     setPgpPlaintext(null);
     setPgpError("");
     setRawText("");
@@ -883,17 +884,6 @@ export function ReadingPane({
                 className="size-8 text-muted-foreground"
               >
                 {translating ? <Loader2 className="size-4 animate-spin" /> : <Languages className="size-4" />}
-              </Button>
-            )}
-            {aiEnabled && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={loadReplies}
-                title={t("smartReply")}
-                className="size-8 text-muted-foreground"
-              >
-                {repliesLoading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
               </Button>
             )}
             <Button
@@ -1347,6 +1337,18 @@ export function ReadingPane({
                   >
                     {quickReplyAll ? t("replyAll") : t("reply")}
                   </button>
+                  {aiEnabled && (
+                    <button
+                      type="button"
+                      onClick={loadReplies}
+                      disabled={repliesLoading}
+                      title={t("smartReply")}
+                      className="flex items-center gap-1 rounded-full border border-ai/20 bg-ai/10 px-2 py-0.5 text-[11px] text-ai transition-colors hover:bg-ai/20"
+                    >
+                      {repliesLoading ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+                      {t("smartReply")}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setQuickReplyOpen(false)}
