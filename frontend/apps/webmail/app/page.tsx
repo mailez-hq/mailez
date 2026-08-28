@@ -50,7 +50,8 @@ export default function Home() {
         : t("error");
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [email, setEmail] = useState("");
+  const [loginId, setLoginId] = useState("");
+  const [domain, setDomain] = useState("");
   const [pw, setPw] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -90,15 +91,37 @@ export default function Home() {
 
   useEffect(() => {
     serverSettings()
-      .then(setSettings)
+      .then((s) => {
+        setSettings(s);
+        setDomain((d) => d || s.default_domain || s.domain || "");
+      })
       .catch(() => setSettings(null));
   }, []);
+
+  const domains = settings?.domains?.length ? settings.domains : [];
+  const defaultDomain = settings?.default_domain || settings?.domain || "";
+
+  // The sign-in box accepts just a username (single/multi domain): the
+  // selected (or default) domain is appended here. A full address typed
+  // directly always wins, matching how desktop clients log in.
+  function resolveEmail(): string {
+    const id = loginId.trim();
+    if (!id) return "";
+    if (id.includes("@")) return id.toLowerCase();
+    return `${id}@${domain || defaultDomain}`.toLowerCase();
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setBusy(true);
     try {
+      const email = resolveEmail();
+      if (!email) {
+        setError(t("error"));
+        setBusy(false);
+        return;
+      }
       const res = await login(email, pw);
       if (res.totp_required && res.pending_token) {
         setPendingToken(res.pending_token);
@@ -239,8 +262,37 @@ export default function Home() {
           ) : (
             <form onSubmit={onSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">{t("email")}</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <Label htmlFor="login-id">{t("account")}</Label>
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    id="login-id"
+                    type="text"
+                    value={loginId}
+                    onChange={(e) => setLoginId(e.target.value)}
+                    placeholder={t("usernameHint")}
+                    autoComplete="username"
+                    className="min-w-0 flex-1"
+                    required
+                  />
+                  {domains.length > 1 && (
+                    <>
+                      <span className="text-muted-foreground">@</span>
+                      <select
+                        aria-label={t("domainLabel")}
+                        value={domain || defaultDomain}
+                        onChange={(e) => setDomain(e.target.value)}
+                        className="h-8 max-w-[180px] rounded-lg border border-input bg-background px-2 text-sm"
+                      >
+                        {domains.map((d) => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                </div>
+                {domains.length > 1 && (
+                  <p className="text-xs text-muted-foreground">{t("domainHint")}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="pw">{t("password")}</Label>
