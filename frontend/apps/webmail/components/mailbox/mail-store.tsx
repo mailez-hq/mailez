@@ -15,7 +15,7 @@ import { setupPushSubscription, teardownPushSubscription } from "@/lib/push";
 import { writeLastFolder } from "@/lib/preferences";
 import { parseMergeRecipients } from "@/lib/mail-merge";
 import {
-  aiComposeDraft, aiDraft, aiDraftNew, aiStatus, aiSummarize,
+  aiComposeStream, aiDraft, aiDraftNew, aiStatus, aiSummarize,
   aiPrioritize, aiSearch,
   accounts, delegations, setActiveAccountId, setActiveDelegateEmail,
   contacts, mailFlag, mailMove, mailIdentities,
@@ -1815,13 +1815,25 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   }
 
   // aiCompose turns a free-form instruction ("给小明写封邮件，说我下周不去
-  // 旅游了") into a complete compose: recipients are resolved against the
-  // address book, then subject/body are filled in.
+  // 旅游了") into a complete compose. The panel opens immediately and the
+  // recipients/subject/body stream in while the model is still writing.
   async function aiCompose(instruction: string) {
     setError("");
     setAiComposeBusy(true);
+    // Fresh compose: clear the form, then open the panel so the user watches
+    // the email being written.
+    setTo([]);
+    setCc([]);
+    setBcc([]);
+    setSubject("");
+    setBody("");
+    setBodyText("");
+    draftBaselineRef.current = composeSignature({
+      to: [], cc: [], bcc: [], subject: "", body: "", bodyText: "", attachments,
+    });
+    setComposeOpen(true);
+    setComposeFocus("editor");
     try {
-      const draft = await aiComposeDraft(instruction);
       let contactsList = allContacts;
       if (!contactsList) {
         try {
@@ -1830,34 +1842,49 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
           contactsList = [];
         }
       }
-      const resolved: string[] = [];
-      const unresolved: string[] = [];
-      for (const raw of draft.to || []) {
-        const name = (raw || "").trim();
-        if (!name) continue;
-        if (name.includes("@")) {
-          resolved.push(name);
-          continue;
+      const bodyParts: string[] = [];
+      let subjectAcc = "";
+      const flushBody = () => {
+        const text = bodyParts.join("");
+        setBodyText(text);
+        setBody(textToHtml(text));
+      };
+      // Throttle editor updates so long outputs stay smooth.
+      const timer = setInterval(flushBody, 80);
+      await aiComposeStream(instruction, (ev) => {
+        if (ev.type === "to" && ev.text) {
+          const resolved: string[] = [];
+          const unresolved: string[] = [];
+          for (const raw of ev.text.split(",")) {
+            const name = (raw || "").trim();
+            if (!name) continue;
+            if (name.includes("@")) {
+              resolved.push(name);
+              continue;
+            }
+            const hit = (contactsList || []).find(
+              (c) =>
+                (c.name || "").toLowerCase() === name.toLowerCase() ||
+                (c.name || "").toLowerCase().includes(name.toLowerCase()),
+            );
+            if (hit) resolved.push(hit.email);
+            else unresolved.push(name);
+          }
+          if (resolved.length > 0) setTo(resolved);
+          if (unresolved.length > 0) {
+            setError(t("aiComposeUnresolved", { names: unresolved.join("、") }));
+          }
+        } else if (ev.type === "subject" && ev.text) {
+          subjectAcc += ev.text;
+          setSubject(subjectAcc);
+        } else if (ev.type === "body" && ev.text) {
+          bodyParts.push(ev.text);
+        } else if (ev.type === "error" && ev.text) {
+          setError(ev.text);
         }
-        const hit = (contactsList || []).find(
-          (c) =>
-            (c.name || "").toLowerCase() === name.toLowerCase() ||
-            (c.name || "").toLowerCase().includes(name.toLowerCase()),
-        );
-        if (hit) resolved.push(hit.email);
-        else unresolved.push(name);
-      }
-      if (resolved.length > 0) setTo(resolved);
-      if (draft.subject) setSubject(draft.subject);
-      if (draft.body) {
-        setBody(textToHtml(draft.body));
-        setBodyText(draft.body);
-      }
-      setComposeFocus("editor");
-      setComposeOpen(true);
-      if (unresolved.length > 0) {
-        setError(t("aiComposeUnresolved", { names: unresolved.join("、") }));
-      }
+      });
+      clearInterval(timer);
+      flushBody();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("aiComposeFailed"));
     } finally {
