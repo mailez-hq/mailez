@@ -2607,6 +2607,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     setCcExpanded,
     subject,
     body,
+    bodyText,
     setBody,
     setBodyText,
     attachments,
