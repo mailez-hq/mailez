@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ export function RecipientInput({
   suggestions?: RecipientSuggestion[];
   inputRef?: React.RefObject<HTMLInputElement | null>;
 }) {
+  const t = useTranslations("mail");
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   const localRef = useRef<HTMLInputElement>(null);
@@ -72,9 +74,12 @@ export function RecipientInput({
         autoFocus={autoFocus}
         onChange={(e) => {
           setText(e.target.value);
-          setOpen(true);
+          // Only open the suggestion popover once the user types a query —
+          // with a large address book, auto-opening on focus dumps every
+          // contact into the dropdown.
+          setOpen(e.target.value.trim().length > 0);
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => setOpen((o) => o || text.trim().length > 0)}
         onBlur={() => {
           setTimeout(() => setOpen(false), 150);
           add(text);
@@ -95,9 +100,22 @@ export function RecipientInput({
       {open && filtered.length > 0 && (
         <div
           className={cn(
-            "absolute left-0 right-0 top-full z-20 mt-1 rounded-lg border border-border bg-popover p-1 shadow-lg",
+            "absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-lg",
           )}
         >
+          <div className="sticky top-0 z-10 flex items-center justify-between bg-popover px-1.5 py-0.5">
+            <span className="text-[11px] text-muted-foreground">
+              {t("matchCount", { n: filtered.length })}
+            </span>
+            <button
+              type="button"
+              aria-label="close suggestions"
+              onClick={() => setOpen(false)}
+              className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
           {filtered.map((s) => (
             <button
               key={s.email}

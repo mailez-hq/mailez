@@ -256,7 +256,9 @@ export function MailContacts({
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] sm:max-w-2xl">
+      {/* Fixed dialog height: both tabs share the same body area so switching
+          between 我的联系人 / 组织通讯录 never changes the dialog size. */}
+      <DialogContent className="flex h-[75vh] flex-col sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {t("title")}
@@ -318,10 +320,11 @@ export function MailContacts({
             {t("orgContacts")}
           </button>
         </div>
+        <div className="min-h-0 flex-1">
         {tab === "org" ? (
-          <div className="min-h-0">
+          <div className="flex h-full min-h-0 flex-col">
             {orgDepts.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-1">
+              <div className="mb-2 flex shrink-0 flex-wrap gap-1">
                 <button
                   type="button"
                   onClick={() => setOrgDept("")}
@@ -347,7 +350,7 @@ export function MailContacts({
                 ))}
               </div>
             )}
-            <ScrollArea className="max-h-[56vh]">
+            <ScrollArea className="min-h-0 flex-1">
               <div className="space-y-1 pr-1">
                 {orgList.length === 0 && <p className="text-sm text-muted-foreground">{t("orgEmpty")}</p>}
                 {orgVisible.map((c) => (
@@ -373,11 +376,11 @@ export function MailContacts({
             </ScrollArea>
           </div>
         ) : (
-        <div className="grid gap-4 md:grid-cols-[230px_1fr]">
+        <div className="grid h-full min-h-0 gap-4 md:grid-cols-[230px_1fr]">
           {/* left: add + list */}
-          <div className="min-w-0">
+          <div className="flex min-h-0 min-w-0 flex-col">
             {groupList.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-1">
+              <div className="mb-2 flex shrink-0 flex-wrap gap-1">
                 <button
                   type="button"
                   onClick={() => setGroupFilter("")}
@@ -430,7 +433,7 @@ export function MailContacts({
                 className="h-8"
               />
             </form>
-            <ScrollArea className="mt-2 max-h-72">
+            <ScrollArea className="mt-2 min-h-0 flex-1">
               <div className="space-y-1 pr-1">
                 {visible.map((c) => (
                   <button
@@ -467,19 +470,21 @@ export function MailContacts({
           </div>
 
           {/* right: contact detail */}
-          <div className="min-w-0">
+          <div className="min-h-0 min-w-0">
             {selected ? (
-              <ContactDetail
-                key={selected.id}
-                contact={selected}
-                onPick={() => pick(selected)}
-                onDelete={() => remove(selected.id)}
-                onOpenMessage={onOpenMessage}
-                onSaved={(c) => {
-                  setList((prev) => prev.map((x) => (x.id === c.id ? c : x)));
-                  setInfo(t("saved"));
-                }}
-              />
+              <ScrollArea className="h-full min-h-0">
+                <ContactDetail
+                  key={selected.id}
+                  contact={selected}
+                  onPick={() => pick(selected)}
+                  onDelete={() => remove(selected.id)}
+                  onOpenMessage={onOpenMessage}
+                  onSaved={(c) => {
+                    setList((prev) => prev.map((x) => (x.id === c.id ? c : x)));
+                    setInfo(t("saved"));
+                  }}
+                />
+              </ScrollArea>
             ) : (
               <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
                 <MessageSquare className="mr-2 size-4 opacity-50" />
@@ -489,6 +494,7 @@ export function MailContacts({
           </div>
         </div>
         )}
+        </div>
         <DialogFooter />
       </DialogContent>
     </Dialog>
