@@ -533,13 +533,14 @@ export function FolderNav({
           {aiComposeEnabled && (
             <Button
               variant="outline"
-              className="shrink-0 gap-1"
+              size="icon"
+              className="shrink-0"
               onClick={onAiCompose}
               disabled={aiComposeBusy}
               title={t("aiCompose")}
             >
               <Sparkles className={cn("size-3.5 shrink-0 text-ai", aiComposeBusy && "animate-pulse")} />
-              {t("aiCompose")}
+              <span className="sr-only">{t("aiCompose")}</span>
             </Button>
           )}
         </div>
