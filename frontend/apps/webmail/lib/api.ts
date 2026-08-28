@@ -707,6 +707,12 @@ export const aiDraft = (context: string, tone: DraftTone = "formal") =>
     body: JSON.stringify({ context, tone }),
   });
 
+export const aiDraftNew = (subject: string, hint: string, tone: DraftTone = "formal") =>
+  api<{ draft: string }>("/ai/draft", {
+    method: "POST",
+    body: JSON.stringify({ subject, hint, tone }),
+  });
+
 export const aiPrioritize = (messages: { uid: number; subject: string; from: string }[]) =>
   api<{ scores: Record<string, number>; categories?: Record<string, string> }>("/ai/prioritize", {
     method: "POST",

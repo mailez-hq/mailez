@@ -147,12 +147,25 @@ func (h *Handler) aiDraft(c *fiber.Ctx) error {
 	}
 	var in struct {
 		Context string `json:"context"`
+		Subject string `json:"subject"`
+		Hint    string `json:"hint"`
 		Tone    string `json:"tone"`
 	}
-	if err := c.BodyParser(&in); err != nil || in.Context == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "context is required"})
+	if err := c.BodyParser(&in); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
 	}
-	draft, err := h.AI.DraftReply(c.Context(), DraftTone(in.Tone), in.Context)
+	var draft string
+	var err error
+	switch {
+	case strings.TrimSpace(in.Context) != "":
+		// Reply/forward: the original email body is the context.
+		draft, err = h.AI.DraftReply(c.Context(), DraftTone(in.Tone), in.Context)
+	case strings.TrimSpace(in.Subject) != "" || strings.TrimSpace(in.Hint) != "":
+		// New mail: write from the subject + sender's hints.
+		draft, err = h.AI.DraftNew(c.Context(), DraftTone(in.Tone), in.Subject, in.Hint)
+	default:
+		return c.Status(400).JSON(fiber.Map{"error": "context or subject is required"})
+	}
 	if err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}

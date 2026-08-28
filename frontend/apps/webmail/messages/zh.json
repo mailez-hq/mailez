@@ -156,6 +156,8 @@
     "toneFormal": "正式",
     "toneConcise": "简洁",
     "toneFriendly": "友好",
+    "aiDraftHintPlaceholder": "要点：想写什么？例如：确认参会、说明延期原因…",
+    "aiDraftNeedsInput": "请先填写主题，或在「要点」里描述你想写的内容",
     "viewAll": "全部",
     "viewUnread": "未读",
     "viewFlagged": "星标",

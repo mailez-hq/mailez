@@ -15,7 +15,7 @@ import { setupPushSubscription, teardownPushSubscription } from "@/lib/push";
 import { writeLastFolder } from "@/lib/preferences";
 import { parseMergeRecipients } from "@/lib/mail-merge";
 import {
-  aiDraft, aiStatus, aiSummarize,
+  aiDraft, aiDraftNew, aiStatus, aiSummarize,
   aiPrioritize, aiSearch,
   accounts, delegations, setActiveAccountId, setActiveDelegateEmail,
   contacts, mailFlag, mailMove, mailIdentities,
@@ -311,6 +311,11 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   // Where the initial focus should land when the compose dialog opens:
   // "to" (new message / forward) or "editor" (reply / reply all).
   const [composeFocus, setComposeFocus] = useState<"to" | "editor">("to");
+  // hasReplyTarget marks a reply/forward compose (original email available as
+  // AI context). New-mail compose leaves it false and AI drafts from subject
+  // + hints instead.
+  const [hasReplyTarget, setHasReplyTarget] = useState(false);
+  const [aiDraftHint, setAiDraftHint] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   // The settings section to land on when the dialog opens (e.g. "accounts"
   // from the sidebar account manager); defaults to the first section.
@@ -1492,7 +1497,15 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     return () => clearTimeout(tm);
   }, [composeOpen, composeFocus]);
 
-  function openCompose(toAddr = "", subj = "", html = "", text = "", focus: "to" | "editor" = "to") {
+  function openCompose(
+    toAddr = "",
+    subj = "",
+    html = "",
+    text = "",
+    focus: "to" | "editor" = "to",
+    replyTarget = false,
+  ) {
+    setHasReplyTarget(replyTarget);
     // A bare "Write" right after closing a draft restores the saved content
     // instead of starting from scratch (the close path persisted it).
     if (!toAddr && !subj && !html && !text && lastDraftRef.current) {
@@ -1676,6 +1689,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       textToHtml(quote),
       quote,
       "editor",
+      true,
     );
   }
 
@@ -1722,6 +1736,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       textToHtml(quote),
       quote,
       "editor",
+      true,
     );
   }
 
@@ -1741,6 +1756,7 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       textToHtml(quote),
       quote,
       "editor",
+      true,
     );
   }
 
@@ -1753,6 +1769,8 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
       detail.subject.startsWith("Fwd:") ? detail.subject : `Fwd: ${detail.subject}`,
       textToHtml(head + (detail.text_body || "")),
       head + (detail.text_body || ""),
+      "to",
+      true,
     );
   }
 
@@ -1770,11 +1788,22 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
   }
 
   async function aiDraftReply() {
-    if (!detail) return;
     setDrafting(true);
     setError("");
     try {
-      const res = await aiDraft(detail.text_body || detail.html_body || "", draftTone);
+      let res: { draft: string };
+      if (hasReplyTarget && detail) {
+        // Reply/forward: the original email body is the AI context.
+        res = await aiDraft(detail.text_body || detail.html_body || "", draftTone);
+      } else {
+        // New mail: draft from the subject + what the sender wants to say.
+        if (!subject.trim() && !aiDraftHint.trim()) {
+          setError(t("aiDraftNeedsInput"));
+          setDrafting(false);
+          return;
+        }
+        res = await aiDraftNew(subject, aiDraftHint, draftTone);
+      }
       setBody(textToHtml(res.draft));
       setBodyText(res.draft);
     } catch (e) {
@@ -2502,6 +2531,9 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     setDraftTone,
     drafting,
     aiDraftReply,
+    hasReplyTarget,
+    aiDraftHint,
+    setAiDraftHint,
     prefs,
     setUndoSend,
     scheduleAt,

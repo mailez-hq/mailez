@@ -129,6 +129,8 @@
     "toneFormal": "Formal",
     "toneConcise": "Concise",
     "toneFriendly": "Friendly",
+    "aiDraftHintPlaceholder": "What to say? e.g. confirm attendance, explain the delay…",
+    "aiDraftNeedsInput": "Fill in the subject or describe what you want to say in the hint field first",
     "viewAll": "All",
     "viewUnread": "Unread",
     "viewFlagged": "Starred",
