@@ -183,7 +183,7 @@ export default function Home() {
               <div className="pointer-events-none absolute -bottom-24 -left-24 size-72 rounded-full bg-white/5" />
             </>
           )}
-          <div className="absolute inset-x-0 bottom-0 space-y-8 p-8">
+          <div className="absolute inset-0 flex flex-col justify-center space-y-8 p-8">
             <h1 className="max-w-md text-4xl leading-tight font-bold">
               {brand.tagline?.trim() || t("tagline")}
             </h1>
