@@ -798,11 +798,12 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
 
   // Auto-load the conversation when a message that belongs to a thread
   // opens, so the reading pane shows the Gmail-style thread view without any
-  // extra click (the wiring existed but had no entry point before).
+  // extra click. The previous conversation is dropped immediately so
+  // switching between threads never renders stale members.
   useEffect(() => {
+    setThread(null);
+    setThreadOpen(false);
     if (!detail?.thread_id) {
-      setThread(null);
-      setThreadOpen(false);
       return;
     }
     let cancelled = false;

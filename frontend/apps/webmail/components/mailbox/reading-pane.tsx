@@ -634,9 +634,13 @@ export function ReadingPane({
   const sender = detail.from[0];
   const senderName = sender?.name || sender?.email || "?";
 
-  // Determine thread messages to display
-  const threadMessages = thread?.messages ?? [detail];
+  // Only trust the loaded conversation when it belongs to the opened message.
+  // While a new conversation loads, show a loading placeholder instead of a
+  // stale thread or a flash of the single-message view.
+  const threadForDetail = thread?.thread_id === detail.thread_id ? thread : null;
+  const threadMessages = threadForDetail?.messages ?? [detail];
   const isThreadView = threadMessages.length > 1;
+  const isConversation = !!detail.thread_id;
 
   function handleToggleMessage(uid: number) {
     setExpandedUid((prev) => (prev === uid ? null : uid));
@@ -1080,8 +1084,13 @@ export function ReadingPane({
 
       {/* Message content area */}
       <div className="px-4 py-4 md:px-6">
-        {/* Thread view */}
-        {isThreadView ? (
+        {/* Conversation view: loading placeholder, full thread, or single */}
+        {isConversation && !threadForDetail ? (
+          <p className="flex items-center gap-1.5 py-4 text-sm text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin" />
+            {t("loading")}
+          </p>
+        ) : isThreadView ? (
           <div className="space-y-0">
             {threadMessages.map((msg) => (
               <ThreadMessage
