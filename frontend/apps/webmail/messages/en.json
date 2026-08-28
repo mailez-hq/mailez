@@ -37,6 +37,7 @@
     "search": "Search",
     "searchPlaceholder": "Search {folder}",
     "folderInbox": "Inbox",
+    "workspace": "Workspace",
     "folderSent": "Sent",
     "folderDrafts": "Drafts",
     "folderTrash": "Trash",
