@@ -21,6 +21,7 @@ import {
   Search,
   Send,
   ShieldAlert,
+  Sparkles,
   Trash2,
   Filter,
   Folder as FolderIcon,
@@ -120,6 +121,9 @@ export function FolderNav({
   onDeleteFolder,
   onClearFolder,
   onCompose,
+  aiComposeEnabled,
+  aiComposeBusy,
+  onAiCompose,
   onSettings,
   onContacts,
   onSieve,
@@ -160,6 +164,9 @@ export function FolderNav({
   onDeleteFolder: (name: string) => void;
   onClearFolder: (name: string) => void;
   onCompose: () => void;
+  aiComposeEnabled: boolean;
+  aiComposeBusy: boolean;
+  onAiCompose: () => void;
   onSettings: () => void;
   onContacts: () => void;
   onSieve: () => void;
@@ -518,11 +525,23 @@ export function FolderNav({
           </div>
         )}
 
-        <div className="px-3 pb-2">
-          <Button className="w-full" onClick={onCompose}>
+        <div className="flex gap-1.5 px-3 pb-2">
+          <Button className="min-w-0 flex-1" onClick={onCompose}>
             <PenLine className="size-4" />
             {t("write")}
           </Button>
+          {aiComposeEnabled && (
+            <Button
+              variant="outline"
+              className="shrink-0 gap-1"
+              onClick={onAiCompose}
+              disabled={aiComposeBusy}
+              title={t("aiCompose")}
+            >
+              <Sparkles className={cn("size-3.5 shrink-0 text-ai", aiComposeBusy && "animate-pulse")} />
+              {t("aiCompose")}
+            </Button>
+          )}
         </div>
 
         <nav className="mail-scroll flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">

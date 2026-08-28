@@ -159,7 +159,6 @@
     "aiDraftHintPlaceholder": "要点：想写什么？例如：确认参会、说明延期原因…",
     "aiDraftNeedsInput": "请先填写主题，或在「要点」里描述你想写的内容",
     "aiCompose": "AI 写邮件",
-    "aiComposeQuickPlaceholder": "AI 写邮件：输入一句话，例如：给小明写封邮件，说我下周不去旅游了…",
     "aiComposeHint": "用一句话描述你想写的邮件，例如：给 小明 写封邮件，说我下周不去旅游了。",
     "aiComposePlaceholder": "输入你的要求…",
     "aiComposeGenerate": "生成",
