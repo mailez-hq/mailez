@@ -26,6 +26,7 @@ type PreferencesContextValue = {
   readerFont: ReaderFontSize;
   paneWidth: ReadingPaneWidth;
   conversation: boolean;
+  autoSignature: boolean;
   landing: Landing;
   setTheme: (theme: Theme) => void;
   setDensity: (density: Density) => void;
@@ -37,6 +38,7 @@ type PreferencesContextValue = {
   setReaderFont: (size: ReaderFontSize) => void;
   setPaneWidth: (width: ReadingPaneWidth) => void;
   setConversation: (enabled: boolean) => void;
+  setAutoSignature: (enabled: boolean) => void;
   setLanding: (landing: Landing) => void;
   resolvedDark: boolean;
 };
@@ -115,6 +117,10 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     (conversation: boolean) => update({ ...prefs, conversation }),
     [prefs, update],
   );
+  const setAutoSignature = useCallback(
+    (autoSignature: boolean) => update({ ...prefs, autoSignature }),
+    [prefs, update],
+  );
   const setLanding = useCallback(
     (landing: Landing) => update({ ...prefs, landing }),
     [prefs, update],
@@ -130,6 +136,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       readerFont: prefs.readerFont,
       paneWidth: prefs.paneWidth,
       conversation: prefs.conversation,
+      autoSignature: prefs.autoSignature,
       landing: prefs.landing,
       setTheme,
       setDensity,
@@ -141,10 +148,11 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       setReaderFont,
       setPaneWidth,
       setConversation,
+      setAutoSignature,
       setLanding,
       resolvedDark,
     }),
-    [prefs, setTheme, setDensity, setAccent, setAi, setNotifications, setUndoSend, setSpellcheck, setReaderFont, setPaneWidth, setConversation, setLanding, resolvedDark],
+    [prefs, setTheme, setDensity, setAccent, setAi, setNotifications, setUndoSend, setSpellcheck, setReaderFont, setPaneWidth, setConversation, setAutoSignature, setLanding, resolvedDark],
   );
 
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;
