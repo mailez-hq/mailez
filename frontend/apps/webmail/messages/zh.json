@@ -20,7 +20,9 @@
     "smtpServer": "SMTP 服务器",
     "pop3Server": "POP3 服务器",
     "imapServer": "IMAP 服务器",
-    "serverPorts": "端口 {ports}"
+    "serverPorts": "端口 {ports}",
+    "noticeClassified": "温馨提示：禁止使用{product}处理涉密信息",
+    "noticeSecurity": "为保护您的计算机安全，请勿随意打开陌生邮件及链接。"
   },
   "home": {
     "openMailbox": "打开邮箱",

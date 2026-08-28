@@ -163,7 +163,7 @@ export default function Home() {
 
       {/* Middle: left brand image + right sign-in card */}
       <main className="flex flex-1">
-        <div className="mx-auto flex w-full max-w-[1140px] items-center justify-center gap-10 px-5 py-8 md:px-10 lg:py-12 min-[1440px]:max-w-[1320px]">
+        <div className="mx-auto flex w-full max-w-[1140px] items-start justify-center gap-10 px-5 py-8 md:px-10 lg:py-12 min-[1440px]:max-w-[1320px]">
         {/* Left brand image, hidden on small screens */}
         <div className="relative hidden h-[540px] min-w-0 flex-1 overflow-hidden rounded-3xl text-white shadow-xl lg:block">
           {brand.hero_url ? (
@@ -217,6 +217,11 @@ export default function Home() {
               <CardDescription>{t("description")}</CardDescription>
             </CardHeader>
             <CardContent>
+            {/* Security notice, shown above the form */}
+            <div className="mb-4 rounded-md bg-muted/60 px-3 py-2 text-left text-xs leading-relaxed text-muted-foreground">
+              <p>{t("noticeClassified", { product: brandTitle })}</p>
+              <p>{t("noticeSecurity")}</p>
+            </div>
           {pendingToken ? (
             <form onSubmit={onSubmitTotp} className="space-y-4">
               <div className="space-y-2">
