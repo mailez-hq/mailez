@@ -19,6 +19,13 @@ describe("preferences", () => {
     expect(p.undoSendSeconds).toBe(20);
   });
 
+  it("round-trips the landing preference", () => {
+    writePreferences({ ...DEFAULT_PREFS, landing: "inbox" });
+    expect(readPreferences().landing).toBe("inbox");
+    writePreferences({ ...DEFAULT_PREFS, landing: "home" });
+    expect(readPreferences().landing).toBe("home");
+  });
+
   it("falls back to defaults on invalid values", () => {
     window.localStorage.setItem(
       "mailez.prefs",
