@@ -181,9 +181,9 @@ export const mailFolderClear = (name: string) =>
 
 export const mailUnseen = () => api<Record<string, number>>("/mail/unseen");
 
-export async function mailMessages(folder: string, page = 0, sort = "date", dir = ""): Promise<MailPage> {
+export async function mailMessages(folder: string, page = 0, sort = "date", dir = "", conversation = false): Promise<MailPage> {
   const res = await fetch(
-    `${API}${mailPath(`/mail/messages?folder=${encodeURIComponent(folder)}&page=${page}&sort=${encodeURIComponent(sort)}&dir=${encodeURIComponent(dir)}`)}`,
+    `${API}${mailPath(`/mail/messages?folder=${encodeURIComponent(folder)}&page=${page}&sort=${encodeURIComponent(sort)}&dir=${encodeURIComponent(dir)}${conversation ? "&conversation=1" : ""}`)}`,
     { headers: { "Content-Type": "application/json", ...mailHeaders() } },
   );
   if (!res.ok) {

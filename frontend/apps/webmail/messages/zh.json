@@ -591,7 +591,9 @@
     "paneNarrow": "窄",
     "paneMd": "中",
     "paneWide": "宽",
-    "spellcheck": "拼写检查"
+    "spellcheck": "拼写检查",
+    "conversationView": "会话视图（Gmail 风格）",
+    "conversationViewHint": "同一主题的往来邮件在列表中合并为一行，点击展开查看完整会话。"
   },
   "contacts": {
     "title": "通讯录",

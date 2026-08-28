@@ -12,6 +12,7 @@ import (
 	"mime/multipart"
 	"mime/quotedprintable"
 	"net/mail"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -37,6 +38,13 @@ type Message struct {
 	ThreadID      string       `json:"thread_id,omitempty"`
 	ThreadCount   int          `json:"thread_count,omitempty"`
 	ThreadLatest  bool         `json:"thread_latest,omitempty"`
+	// ThreadUnread / ThreadFlagged are conversation-level aggregates: any
+	// member unread / starred (conversation view rows only).
+	ThreadUnread  bool     `json:"thread_unread,omitempty"`
+	ThreadFlagged bool     `json:"thread_flagged,omitempty"`
+	// ThreadSenders lists the distinct senders of the conversation
+	// (conversation view rows only).
+	ThreadSenders []string `json:"thread_senders,omitempty"`
 	Folder        string       `json:"folder,omitempty"`
 	TextBody      string       `json:"text_body,omitempty"`
 	HTMLBody      string       `json:"html_body,omitempty"`
@@ -313,6 +321,135 @@ func (c *Client) listDateAsc(cli *pooledConn, total uint32, page int) ([]Message
 		return out[i].Date.Before(out[j].Date)
 	})
 	return out, int(total), nil
+}
+
+// conversationWindow bounds how many recent messages are scanned to build
+// the conversation list, matching the thread-metadata window.
+const conversationWindow = 300
+
+// ListConversationsSorted returns one page of conversations (Gmail-style):
+// messages sharing a thread id collapse into a single row represented by the
+// newest member, carrying aggregated unread/flagged state, the distinct
+// senders and the member count. Rows are ordered by the requested field of
+// the representative (date desc = newest conversation first).
+func (c *Client) ListConversationsSorted(email, token, folder string, page int, sortBy, dir string) ([]Message, int, error) {
+	cli, err := c.openIMAP(email, token)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cli.Logout()
+
+	mbox, err := c.selectFolder(cli, folder, true)
+	if err != nil {
+		return nil, 0, fmt.Errorf("imap select %q: %w", folder, err)
+	}
+	if mbox.Messages == 0 || page < 0 {
+		return []Message{}, int(mbox.Messages), nil
+	}
+	start := uint32(1)
+	if mbox.Messages > conversationWindow {
+		start = mbox.Messages - conversationWindow + 1
+	}
+	seqset := new(imap.SeqSet)
+	seqset.AddRange(start, mbox.Messages)
+	headerSection := &imap.BodySectionName{Peek: true, BodyPartName: imap.BodyPartName{Specifier: imap.HeaderSpecifier}}
+	messages := make(chan *imap.Message, 50)
+	done := make(chan error, 1)
+	go func() {
+		done <- cli.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure, imap.FetchRFC822Size, headerSection.FetchItem()}, messages)
+	}()
+
+	groups := map[string][]Message{}
+	for msg := range messages {
+		m := envelopeToMessage(msg)
+		m.ThreadID = threadID(m.Subject)
+		m.Category = classifyFetched(msg, headerSection)
+		key := m.ThreadID
+		if key == "" {
+			// Messages without a subject never group; keep them as singletons.
+			key = "uid:" + strconv.FormatUint(uint64(msg.Uid), 10)
+		}
+		groups[key] = append(groups[key], m)
+	}
+	if err := <-done; err != nil {
+		return nil, 0, fmt.Errorf("imap fetch: %w", err)
+	}
+
+	reps := make([]Message, 0, len(groups))
+	for _, members := range groups {
+		sort.SliceStable(members, func(i, j int) bool {
+			if members[i].Date.Equal(members[j].Date) {
+				return members[i].UID < members[j].UID
+			}
+			return members[i].Date.Before(members[j].Date)
+		})
+		rep := members[len(members)-1] // newest member represents the row
+		rep.ThreadCount = len(members)
+		rep.ThreadLatest = true
+		rep.ThreadUnread = false
+		rep.ThreadFlagged = false
+		senders := map[string]bool{}
+		for i := range members {
+			if !slices.Contains(members[i].Flags, imap.SeenFlag) {
+				rep.ThreadUnread = true
+			}
+			if slices.Contains(members[i].Flags, imap.FlaggedFlag) {
+				rep.ThreadFlagged = true
+			}
+			if len(members[i].From) > 0 {
+				n := members[i].From[0].Name
+				if n == "" {
+					n = members[i].From[0].Email
+				}
+				if n != "" && !senders[n] {
+					senders[n] = true
+					rep.ThreadSenders = append(rep.ThreadSenders, n)
+				}
+			}
+		}
+		reps = append(reps, rep)
+	}
+
+	lessAsc := func(i, j int) bool {
+		switch sortBy {
+		case "from":
+			return senderKey(reps[i]) < senderKey(reps[j])
+		case "subject":
+			return strings.ToLower(reps[i].Subject) < strings.ToLower(reps[j].Subject)
+		case "size":
+			return reps[i].Size < reps[j].Size
+		default:
+			return reps[i].Date.Before(reps[j].Date)
+		}
+	}
+	sort.SliceStable(reps, lessAsc)
+	if dir == "desc" {
+		for i, j := 0, len(reps)-1; i < j; i, j = i+1, j-1 {
+			reps[i], reps[j] = reps[j], reps[i]
+		}
+	}
+
+	total := len(reps)
+	skip := page * PageSize
+	if skip >= total {
+		return []Message{}, total, nil
+	}
+	end := skip + PageSize
+	if end > total {
+		end = total
+	}
+	return reps[skip:end], total, nil
+}
+
+func senderKey(m Message) string {
+	if len(m.From) == 0 {
+		return ""
+	}
+	n := m.From[0].Name
+	if n == "" {
+		n = m.From[0].Email
+	}
+	return strings.ToLower(n)
 }
 
 // listAllSorted fetches every message of the folder, sorts by the requested

@@ -37,6 +37,11 @@ export type MailMessage = {
   thread_id?: string;
   thread_count?: number;
   thread_latest?: boolean;
+  // Conversation-view aggregates: any member unread/starred, and the distinct
+  // senders of the conversation (populated on grouped list rows).
+  thread_unread?: boolean;
+  thread_flagged?: boolean;
+  thread_senders?: string[];
   folder?: string;
   text_body?: string;
   html_body?: string;

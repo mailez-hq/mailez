@@ -561,7 +561,9 @@
     "paneNarrow": "Narrow",
     "paneMd": "Medium",
     "paneWide": "Wide",
-    "spellcheck": "Spell check"
+    "spellcheck": "Spell check",
+    "conversationView": "Conversation view (Gmail-style)",
+    "conversationViewHint": "Group messages by thread into a single list row; click to expand the full conversation."
   },
   "home": {
     "openMailbox": "Open mailbox",

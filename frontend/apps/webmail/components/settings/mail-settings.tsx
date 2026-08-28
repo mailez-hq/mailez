@@ -58,7 +58,7 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
   const {
     theme, setTheme, density, setDensity, accent, setAccent,
     spellcheck, setSpellcheck, readerFont, setReaderFont, paneWidth, setPaneWidth,
-    landing, setLanding,
+    conversation, setConversation, landing, setLanding,
     prefs, setAi, setNotifications,
   } = usePreferences();
   const [profile, setProfile] = useState<MeSettings | null>(null);
@@ -609,6 +609,8 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
               setReaderFont={setReaderFont}
               paneWidth={paneWidth}
               setPaneWidth={setPaneWidth}
+              conversation={conversation}
+              setConversation={setConversation}
               landing={landing}
               setLanding={setLanding}
               prefs={prefs}

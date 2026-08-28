@@ -26,6 +26,9 @@ type Gateway interface {
 	UnseenCounts(email, token string) (map[string]int, error)
 	ListMessages(email, token, folder string, page int) ([]Message, int, error)
 	ListMessagesSorted(email, token, folder string, page int, sort, dir string) ([]Message, int, error)
+	// ListConversationsSorted returns a Gmail-style conversation page:
+	// messages sharing a thread id collapse into one representative row.
+	ListConversationsSorted(email, token, folder string, page int, sort, dir string) ([]Message, int, error)
 	// ListAllMessages returns envelope+flags for every message of a folder
 	// (no bodies), for ActiveSync snapshots and export walks.
 	ListAllMessages(email, token, folder string) ([]Message, error)

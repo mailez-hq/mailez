@@ -7,6 +7,9 @@ export type Density = "compact" | "cozy" | "relaxed";
 export type Accent = "blue" | "green" | "purple" | "orange" | "rose";
 export type ReaderFontSize = "sm" | "md" | "lg" | "xl";
 export type ReadingPaneWidth = "narrow" | "md" | "wide";
+// Conversation view groups the message list by thread (Gmail-style); turning
+// it off falls back to one row per message.
+export type ConversationPref = boolean;
 // Where a signed-in user lands: the workspace dashboard or straight into
 // the mailbox (their last folder / inbox).
 export type Landing = "home" | "inbox";
@@ -33,6 +36,7 @@ export type Preferences = {
   // Reading pane typography / width presets.
   readerFont: ReaderFontSize;
   paneWidth: ReadingPaneWidth;
+  conversation: boolean;
   landing: Landing;
 };
 
@@ -48,6 +52,7 @@ export const DEFAULT_PREFS: Preferences = {
   spellcheck: true,
   readerFont: "md",
   paneWidth: "md",
+  conversation: true,
   landing: "home",
 };
 
@@ -84,6 +89,7 @@ export function readPreferences(): Preferences {
       paneWidth: ["narrow", "wide"].includes(parsed.paneWidth ?? "")
         ? (parsed.paneWidth as ReadingPaneWidth)
         : "md",
+      conversation: parsed.conversation !== false,
       landing: parsed.landing === "inbox" ? "inbox" : "home",
     };
   } catch {
