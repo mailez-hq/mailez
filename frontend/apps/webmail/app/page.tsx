@@ -297,6 +297,7 @@ export default function Home() {
                 <Label htmlFor="pw">{t("password")}</Label>
                 <Input id="pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} required />
               </div>
+              <p className="text-right text-xs text-muted-foreground">{t("forgotPasswordHint")}</p>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full" disabled={busy}>
                 {busy ? t("submitting") : t("submit")}

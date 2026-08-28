@@ -25,6 +25,7 @@
     "pop3Server": "POP3 server",
     "imapServer": "IMAP server",
     "serverPorts": "Ports {ports}",
+    "forgotPasswordHint": "Forgot your password? Contact your administrator",
     "noticeClassified": "Notice: do not use {product} to process classified information",
     "noticeSecurity": "For your security, do not open unfamiliar emails or links."
   },
