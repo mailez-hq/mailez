@@ -796,6 +796,34 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     return hit || "Junk";
   }, [folders]);
 
+  // Auto-load the conversation when a message that belongs to a thread
+  // opens, so the reading pane shows the Gmail-style thread view without any
+  // extra click (the wiring existed but had no entry point before).
+  useEffect(() => {
+    if (!detail?.thread_id) {
+      setThread(null);
+      setThreadOpen(false);
+      return;
+    }
+    let cancelled = false;
+    setThreadLoading(true);
+    mailThread(folder, detail.thread_id)
+      .then((th) => {
+        if (cancelled) return;
+        setThread(th);
+        setThreadOpen(true);
+      })
+      .catch(() => {
+        if (!cancelled) setThread(null);
+      })
+      .finally(() => {
+        if (!cancelled) setThreadLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detail?.thread_id, folder]);
+
   // Collect user labels (custom IMAP keywords) from loaded messages so the
   // sidebar and reader can offer them for quick tagging/filtering; the list
   // is merged with the server-side definitions in knownLabels below.
