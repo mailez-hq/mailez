@@ -298,6 +298,13 @@ var migrations = []migration{
 			return db.AutoMigrate(&BrandingConfig{})
 		},
 	},
+	{
+		// Login-page branding contact line: footer shows copyright + contact.
+		ID: "20260828_login_branding_contact",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&BrandingConfig{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

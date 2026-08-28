@@ -210,6 +210,7 @@ export type BrandingConfigView = {
   logo_url: string;
   hero_url: string;
   copyright: string;
+  contact: string;
   updated_at?: string;
 };
 

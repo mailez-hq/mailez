@@ -136,87 +136,67 @@ export default function Home() {
   }
 
   return (
-    <div className="relative flex min-h-screen overflow-hidden">
-      {/* Ambient brand-color glows on the form side so the two halves melt
-          into each other instead of meeting at a hard vertical seam. */}
-      <div className="pointer-events-none absolute top-1/4 -left-24 size-96 rounded-full bg-[#2F8E6C]/10 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 left-1/2 size-80 rounded-full bg-[#2E6E8E]/10 blur-3xl" />
-
-      {/* Brand panel: hero image / gradient showcase, hidden on small screens */}
-      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-gradient-to-br from-[#2F8E6C] to-[#2E6E8E] p-10 text-white lg:flex xl:w-[55%]">
-        {brand.hero_url ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={brand.hero_url}
-              alt=""
-              className="absolute inset-0 size-full object-cover"
-            />
-            <div className="absolute inset-0 bg-black/45" />
-          </>
-        ) : (
-          <>
-            <Mail className="pointer-events-none absolute -top-12 -right-12 size-72 text-white/10" />
-            <div className="pointer-events-none absolute -bottom-24 -left-24 size-72 rounded-full bg-white/5" />
-          </>
-        )}
-        {/* Right-edge fade: dissolves the panel boundary into the page
-            background for a smooth left-to-right transition. */}
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-20 bg-gradient-to-r from-transparent to-background md:w-28" />
-        <div className="relative flex items-center gap-3">
+    <div className="flex min-h-screen flex-col">
+      {/* Top bar: enterprise logo + brand name, language switcher on the right */}
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-5 py-4 md:px-10">
+        <div className="flex items-center gap-3">
           {brand.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={brand.logo_url} alt={brandTitle} className="h-10 w-auto" />
+            <img src={brand.logo_url} alt={brandTitle} className="h-9 w-auto" />
           ) : (
-            <span className="text-2xl font-extrabold tracking-tight">Mailez</span>
+            <span className="text-2xl font-extrabold tracking-tight">
+              Mail
+              <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
+                ez
+              </span>
+            </span>
           )}
           <div className="leading-tight">
-            <p className="text-xl font-bold">{brandTitle}</p>
-            {brandSubtitle && <p className="text-sm text-white/80">{brandSubtitle}</p>}
+            <p className="text-base font-bold">{brandTitle}</p>
+            {brandSubtitle && <p className="text-xs text-muted-foreground">{brandSubtitle}</p>}
           </div>
         </div>
-        <div className="relative space-y-8">
-          <h1 className="max-w-md text-4xl leading-tight font-bold">
-            {brand.tagline?.trim() || t("tagline")}
-          </h1>
-          <ul className="space-y-3">
-            {features.map(({ icon: Icon, text }) => (
-              <li key={text} className="flex items-center gap-3 text-white/85">
-                <Icon className="size-5 shrink-0" />
-                {text}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <p className="relative text-sm text-white/60">
-          {brand.copyright?.trim() || `© ${new Date().getFullYear()} Mailez`}
-        </p>
-      </div>
+        <LocaleSwitcher />
+      </header>
 
-      {/* Sign-in form panel */}
-      <div className="relative flex min-w-0 flex-1 justify-center p-4">
-        <div className="absolute top-4 right-4">
-          <LocaleSwitcher />
-        </div>
-        <div className="w-full max-w-sm pt-[7vh]">
-          {/* Compact brand header on small screens (brand panel is hidden) */}
-          <div className="mb-5 flex items-center justify-center gap-2.5 lg:hidden">
-            {brand.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={brand.logo_url} alt={brandTitle} className="h-8 w-auto" />
-            ) : (
-              <span className="text-2xl font-extrabold tracking-tight">
-                Mail
-                <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
-                  ez
-                </span>
-              </span>
-            )}
-            <div className="text-left leading-tight">
-              <p className="text-base font-bold">{brandTitle}</p>
-              {brandSubtitle && <p className="text-xs text-muted-foreground">{brandSubtitle}</p>}
-            </div>
+      {/* Middle: left brand image + right sign-in card */}
+      <main className="flex flex-1 items-center justify-center gap-10 px-5 py-8 md:px-10 lg:py-12">
+        {/* Left brand image, hidden on small screens */}
+        <div className="relative hidden h-[540px] w-full max-w-xl overflow-hidden rounded-3xl text-white shadow-xl lg:block">
+          {brand.hero_url ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={brand.hero_url}
+                alt=""
+                className="absolute inset-0 size-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/45" />
+            </>
+          ) : (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-br from-[#2F8E6C] to-[#2E6E8E]" />
+              <Mail className="pointer-events-none absolute -top-12 -right-12 size-72 text-white/10" />
+              <div className="pointer-events-none absolute -bottom-24 -left-24 size-72 rounded-full bg-white/5" />
+            </>
+          )}
+          <div className="absolute inset-x-0 bottom-0 space-y-8 p-8">
+            <h1 className="max-w-md text-4xl leading-tight font-bold">
+              {brand.tagline?.trim() || t("tagline")}
+            </h1>
+            <ul className="space-y-3">
+              {features.map(({ icon: Icon, text }) => (
+                <li key={text} className="flex items-center gap-3 text-white/85">
+                  <Icon className="size-5 shrink-0" />
+                  {text}
+                </li>
+              ))}
+            </ul>
           </div>
+        </div>
+
+        {/* Right sign-in form */}
+        <div className="w-full max-w-sm">
           <Card>
             <CardHeader className="items-center text-center">
               {brand.logo_url ? (
@@ -269,7 +249,7 @@ export default function Home() {
               </Button>
             </form>
           )}
-          </CardContent>
+            </CardContent>
           </Card>
           {settings && (
             <details className="mt-4 rounded-lg border border-border p-3 text-xs text-muted-foreground">
@@ -294,7 +274,13 @@ export default function Home() {
             </details>
           )}
         </div>
-      </div>
+      </main>
+
+      {/* Bottom bar: copyright + contact */}
+      <footer className="flex flex-col items-center gap-1 border-t border-border/60 px-5 py-4 text-center text-xs text-muted-foreground md:flex-row md:justify-between md:px-10 md:text-left">
+        <p>{brand.copyright?.trim() || `© ${new Date().getFullYear()} Mailez`}</p>
+        {brand.contact?.trim() && <p>{brand.contact.trim()}</p>}
+      </footer>
     </div>
   );
 }
