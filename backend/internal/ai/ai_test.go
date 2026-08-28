@@ -2,7 +2,14 @@ package ai
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
+
+	"github.com/glebarez/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
+
+	"mailez/backend/internal/core/models"
 )
 
 type fakeProvider struct{ out string }
@@ -109,6 +116,90 @@ func TestSmartRepliesDisabled(t *testing.T) {
 	m := &Manager{}
 	if _, err := m.SmartReplies(context.Background(), "hi"); err != ErrDisabled {
 		t.Fatalf("expected ErrDisabled, got %v", err)
+	}
+}
+
+func TestLoadPrefersDefaultEnabledProvider(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "ai.db")), &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{SingularTable: true},
+	})
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	if sqlDB, err := db.DB(); err == nil {
+		t.Cleanup(func() { sqlDB.Close() })
+	}
+	if err := models.AutoMigrate(db); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	seed := []models.AiConfig{
+		{Name: "b", Enabled: true, IsDefault: false, Provider: "openai", BaseURL: "https://b.invalid", Model: "m"},
+		{Name: "a", Enabled: true, IsDefault: true, Provider: "openai", BaseURL: "https://a.invalid", Model: "m"},
+		{Name: "off", Enabled: false, IsDefault: false, Provider: "openai", BaseURL: "https://off.invalid", Model: "m"},
+	}
+	for i := range seed {
+		if err := db.Create(&seed[i]).Error; err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+	m := &Manager{db: db, secretKey: "test-secret"}
+	p := m.load()
+	if p == nil {
+		t.Fatal("load returned nil")
+	}
+	if got := p.(*OpenAI).baseURL; got != "https://a.invalid" {
+		t.Fatalf("default provider base = %q, want https://a.invalid", got)
+	}
+}
+
+func TestLoadFallsBackToFirstEnabled(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "ai.db")), &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{SingularTable: true},
+	})
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	if sqlDB, err := db.DB(); err == nil {
+		t.Cleanup(func() { sqlDB.Close() })
+	}
+	if err := models.AutoMigrate(db); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	if err := db.Create(&models.AiConfig{Name: "x", Enabled: true, IsDefault: false, Provider: "openai", BaseURL: "https://x.invalid", Model: "m"}).Error; err != nil {
+		t.Fatalf("seed x: %v", err)
+	}
+	if err := db.Create(&models.AiConfig{Name: "y", Enabled: true, IsDefault: false, Provider: "openai", BaseURL: "https://y.invalid", Model: "m"}).Error; err != nil {
+		t.Fatalf("seed y: %v", err)
+	}
+	m := &Manager{db: db, secretKey: "test-secret"}
+	p := m.load()
+	if p == nil {
+		t.Fatal("load returned nil")
+	}
+	if got := p.(*OpenAI).baseURL; got != "https://x.invalid" {
+		t.Fatalf("fallback base = %q, want https://x.invalid", got)
+	}
+}
+
+func TestLoadDisabledReturnsNil(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "ai.db")), &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{SingularTable: true},
+	})
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	if sqlDB, err := db.DB(); err == nil {
+		t.Cleanup(func() { sqlDB.Close() })
+	}
+	if err := models.AutoMigrate(db); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	if err := db.Create(&models.AiConfig{Name: "off", Enabled: false, Provider: "openai", BaseURL: "https://off.invalid", Model: "m"}).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	m := &Manager{db: db, secretKey: "test-secret"}
+	if m.load() != nil {
+		t.Fatal("disabled row must not produce a provider")
 	}
 }
 
