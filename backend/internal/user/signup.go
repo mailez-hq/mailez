@@ -2,6 +2,7 @@ package user
 
 import (
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -104,12 +105,14 @@ func (h *Handler) signup(c *fiber.Ctx) error {
 	if err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
+	now := time.Now()
 	u := models.User{
-		Email:         in.Email,
-		Localpart:     localpart,
-		DomainName:    domainName,
-		Password:      hash,
-		DisplayedName: in.DisplayedName,
+		Email:             in.Email,
+		Localpart:         localpart,
+		DomainName:        domainName,
+		Password:          hash,
+		DisplayedName:     in.DisplayedName,
+		PasswordChangedAt: &now,
 	}
 	if in.SpamEnabled != nil {
 		u.SpamEnabled = *in.SpamEnabled

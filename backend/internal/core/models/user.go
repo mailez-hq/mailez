@@ -49,6 +49,10 @@ type User struct {
 	// KnownIPs is the rolling list of IPs this account has logged in from;
 	// a login from a new IP triggers the security alert email.
 	KnownIPs string `gorm:"type:text" json:"-"`
+	// PasswordChangedAt is when the password hash was last set (initial
+	// provisioning, self-service change or admin reset); surfaced on the
+	// workspace home. Nil for accounts that predate the column.
+	PasswordChangedAt *time.Time `json:"password_changed_at"`
 
 	Tokens  []Token `gorm:"foreignKey:UserEmail" json:"-"`
 	Fetches []Fetch `gorm:"foreignKey:UserEmail" json:"-"`
