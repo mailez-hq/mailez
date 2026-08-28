@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"time"
+
 	"github.com/gofiber/fiber/v2"
 	"mailez/backend/internal/core/models"
 )
@@ -56,6 +58,7 @@ func (h *Handler) overview(c *fiber.Ctx) error {
 	out["db_driver"] = h.Cfg.DBDriver
 	out["kv_backend"] = h.Cfg.KVBackend
 	out["blob_backend"] = h.Cfg.BlobBackend
+	out["service"] = h.Service.Status(time.Now())
 	out["license"] = h.License.Status(db)
 	return c.JSON(out)
 }
