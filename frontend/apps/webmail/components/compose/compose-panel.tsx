@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type RefObject } from "react";
-import { CalendarClock, Check, Flame, LayoutTemplate, Lock, Paperclip, PenLine, Sparkles, Undo2, X } from "lucide-react";
+import { CalendarClock, Check, Flame, LayoutTemplate, Loader2, Lock, Paperclip, PenLine, Sparkles, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -368,6 +368,12 @@ export function ComposePanel(props: ComposePanelProps) {
           </div>
           {composeError && <p className="mt-2 text-sm text-destructive">{composeError}</p>}
           {composeNotice && <p className="mt-2 text-sm text-amber-600">{composeNotice}</p>}
+          {aiComposeBusy && (
+            <div className="mt-2 flex items-center gap-2 rounded-md border border-ai/30 bg-ai/5 px-3 py-2 text-xs text-ai">
+              <Loader2 className="size-3.5 shrink-0 animate-spin" />
+              <span>{t("aiComposeStreaming")}</span>
+            </div>
+          )}
           {draftSaved && !composeError && (
             <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
               <Check className="size-3" />
@@ -571,7 +577,9 @@ export function ComposePanel(props: ComposePanelProps) {
             <Button type="button" variant="outline" onClick={onSaveDraft}>
               {t("saveDraft")}
             </Button>
-            <Button type="submit">{scheduleAt ? t("schedule") : t("send")}</Button>
+            <Button type="submit" disabled={aiComposeBusy}>
+              {aiComposeBusy ? t("aiComposeBusy") : scheduleAt ? t("schedule") : t("send")}
+            </Button>
           </div>
         </div>
       </form>

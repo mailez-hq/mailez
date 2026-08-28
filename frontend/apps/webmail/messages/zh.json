@@ -163,6 +163,7 @@
     "aiComposePlaceholder": "输入你的要求…",
     "aiComposeGenerate": "生成",
     "aiComposeBusy": "生成中…",
+    "aiComposeStreaming": "AI 正在写邮件，内容会实时显示在正文中，请稍候…",
     "aiComposeFailed": "AI 写邮件失败",
     "aiComposeUnresolved": "未找到联系人：{names}，请手动补充收件人",
     "viewAll": "全部",

@@ -136,6 +136,7 @@
     "aiComposePlaceholder": "Describe the email…",
     "aiComposeGenerate": "Generate",
     "aiComposeBusy": "Generating…",
+    "aiComposeStreaming": "AI is writing — the email will appear here in real time…",
     "aiComposeFailed": "AI compose failed",
     "aiComposeUnresolved": "Contact not found: {names}. Add recipients manually.",
     "viewAll": "All",
