@@ -62,6 +62,16 @@ export type AdminOverview = {
   upload_bytes: number;
   drive_bytes: number;
   drive_files: number;
+  license?: {
+    edition: string;
+    licensee?: string;
+    max_mailboxes: number;
+    used: number;
+    expires_at?: string;
+    valid: boolean;
+    required: boolean;
+    features?: string[];
+  };
 };
 
 export const adminOverview = () => api<AdminOverview>("/admin/overview");

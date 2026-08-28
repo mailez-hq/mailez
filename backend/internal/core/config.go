@@ -59,6 +59,9 @@ type Config struct {
 	LogLevel           string
 	FetchInsecure      bool // skip TLS verification for external fetch (opt-out)
 	DkimSelector       string
+	LicenseFile        string
+	License            string
+	LicenseRequired    bool
 }
 
 // SupportedMailEngines are the mail engines the control plane can drive.
@@ -110,6 +113,9 @@ func Load() Config {
 		FetchInsecure:      envBool("FETCH_INSECURE", false),
 		DkimSelector:       env("MAILEZ_DKIM_SELECTOR", "dkim"),
 		StackSecret:        env("MAILEZ_STACK_SECRET", ""),
+		LicenseFile:        env("MAILEZ_LICENSE_FILE", ""),
+		License:            env("MAILEZ_LICENSE", ""),
+		LicenseRequired:    envBool("MAILEZ_LICENSE_REQUIRED", false),
 	}
 	if cfg.MailMtaAddr == "" {
 		cfg.MailMtaAddr = cfg.PostfixAddress + ":25"

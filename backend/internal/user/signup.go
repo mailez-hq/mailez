@@ -97,6 +97,9 @@ func (h *Handler) signup(c *fiber.Ctx) error {
 			return c.Status(403).JSON(fiber.Map{"error": "domain user limit reached"})
 		}
 	}
+	if err := h.License.CheckCapacity(h.DB); err != nil {
+		return c.Status(403).JSON(fiber.Map{"error": err.Error()})
+	}
 	hash, err := password.Hash(in.Password)
 	if err != nil {
 		return core.Fail(c, 500, err, "internal error")

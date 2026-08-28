@@ -30,6 +30,9 @@ import (
 type Service struct {
 	DB        *gorm.DB
 	SecretKey string
+	// CheckCapacity, when set, is consulted before auto-provisioning a
+	// mailbox so directory sync cannot bypass the license's mailbox cap.
+	CheckCapacity func(db *gorm.DB) error
 
 	// groupCache memoizes delivery-time member expansion for a short TTL so
 	// directory changes land within a minute without hammering LDAP on every
@@ -213,6 +216,11 @@ func (s *Service) EnsureLocalUser(ctx context.Context, email string) error {
 	}
 	if !cfg.AutoCreate {
 		return errors.New("ldap: user not provisioned locally")
+	}
+	if s.CheckCapacity != nil {
+		if err := s.CheckCapacity(s.DB); err != nil {
+			return fmt.Errorf("ldap: %w", err)
+		}
 	}
 	local, domain, ok := strings.Cut(email, "@")
 	if !ok || local == "" || domain == "" {
