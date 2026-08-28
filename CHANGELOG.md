@@ -4,7 +4,7 @@ All notable changes to mailez are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and adheres to
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.0.0-rc.1] - 2026-08-28
 
 ### Added
 
@@ -89,9 +89,38 @@ All notable changes to mailez are documented here. The format follows
 
 ### Fixed
 
+- EAS Sync window off-by-one: the declared WindowSize emitted only half the
+  commands, and MoreAvailable paging reused the old SyncKey without
+  persisting progress, so folders larger than the window could never be
+  fully synced (both fixed; paging now returns a fresh key with a partial
+  snapshot)
+- `mail.received` webhooks only fired for users with a browser push
+  subscription; webhook-only users never received events (notifier now
+  polls webhook users with a per-webhook token)
+- Compliance archive capture failed with "invalid blob id": the engine's
+  spool used `arch/<id>` as a blob key but the store rejects `/`
+- Opening a saved draft had no edit action and sending it left the draft
+  behind (`mailDelete` was not wired into the send flow)
+- Snoozed messages were not hidden from the inbox (the displayMessages
+  filter was never consumed by the list), and the internal `$Snoozed*`/
+  `$Muted`/`$Pin` keywords surfaced as user labels case-sensitively
+- Snooze keywords were matched case-sensitively across the stack while
+  go-imap canonicalizes keywords to lowercase, so wake-up times were lost
+  (until became "now+365d") and unsnoozing never stripped the flag
+- Search builder: conditions persisted across dialog opens (leaking stale
+  filters into saved searches) and Apply dropped an in-progress condition;
+  Apply also stayed disabled while editing the first condition
+- A slow folder load could overwrite a fresh search result (search now
+  invalidates in-flight folder loads)
+- The announcement banner was a fixed z-50 overlay that covered the search
+  box; it now flows with the layout
+- Sending with the undo window never refreshed the inbox after delivery
+- The static `manifest.webmanifest` collided with the generated route (500)
 - Multipart message builder emitted a duplicate boundary, corrupting the
   first body part when attachments were present
 - Attachments larger than 4 MiB were rejected by the default HTTP body limit
+
+## [Unreleased]
 - External POP3/IMAP fetch disabled TLS verification (now verified by default;
   `FETCH_INSECURE` opts out)
 
