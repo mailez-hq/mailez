@@ -40,11 +40,11 @@ export default function OverviewPage() {
             data.license.max_mailboxes > 0
               ? t("licenseUsage", { used: data.license.used, max: data.license.max_mailboxes })
               : t("licenseUnlimited"),
-            data.license.valid
+            data.license.service_valid
               ? data.license.expires_at
-                ? t("licenseExpires", { date: data.license.expires_at.slice(0, 10) })
+                ? t("licenseServiceEnds", { date: data.license.expires_at.slice(0, 10) })
                 : ""
-              : t("licenseExpired"),
+              : t("licenseServiceExpired"),
             data.license.licensee ? t("licenseLicensee", { name: data.license.licensee }) : "",
           ]
             .filter(Boolean)
