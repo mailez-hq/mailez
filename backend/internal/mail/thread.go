@@ -115,7 +115,7 @@ func (c *Client) Thread(email, token, folder, tid string) ([]Message, error) {
 	}
 	defer cli.Logout()
 
-	mbox, err := cli.Select(folder, true)
+	mbox, err := c.selectFolder(cli, folder, true)
 	if err != nil {
 		return nil, fmt.Errorf("imap select %q: %w", folder, err)
 	}
