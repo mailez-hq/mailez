@@ -237,8 +237,10 @@ export function MailShell({ children }: { children: React.ReactNode }) {
         onClose={() => setSidebarOpen(false)}
       />
 
-      {/* Content area: MailView on /mail, the workspace dashboard on /home. */}
-      <div className="min-w-0 flex-1">{children}</div>
+      {/* Content area: MailView on /mail, the workspace dashboard on /home.
+          Must stay a flex row so MailView's list + reading pane sit side by
+          side; without it the reading pane stacks below the list (blank). */}
+      <div className="flex min-w-0 flex-1">{children}</div>
 
       {/* Compose panel — non-modal right-side sheet */}
       {composeOpen && (
