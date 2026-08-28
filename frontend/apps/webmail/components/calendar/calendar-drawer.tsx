@@ -5,11 +5,18 @@ import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { CalendarView } from "@/components/calendar/calendar-view";
+import type { CalendarEvent } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // CalendarDrawer slides the calendar in from the right edge of the mailbox
 // (Gmail-style side panel) so the user never leaves the message view.
-export function CalendarDrawer({ onClose }: { onClose: () => void }) {
+export function CalendarDrawer({
+  onClose,
+  initialEvent,
+}: {
+  onClose: () => void;
+  initialEvent?: CalendarEvent | null;
+}) {
   const t = useTranslations("calendar");
   const [visible, setVisible] = useState(false);
 
@@ -43,10 +50,9 @@ export function CalendarDrawer({ onClose }: { onClose: () => void }) {
           </Button>
         </div>
         <div className="min-h-0 flex-1">
-          <CalendarView />
+          <CalendarView initialEvent={initialEvent} />
         </div>
       </div>
     </div>
   );
 }
-

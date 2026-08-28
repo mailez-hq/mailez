@@ -54,7 +54,7 @@ function dayEvents(events: CalendarEvent[]): Map<string, CalendarEvent[]> {
   return map;
 }
 
-export function CalendarView() {
+export function CalendarView({ initialEvent }: { initialEvent?: CalendarEvent | null }) {
   const t = useTranslations("calendar");
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [view, setView] = useState<"month" | "week">("month");
@@ -94,6 +94,22 @@ export function CalendarView() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // When the drawer is opened from the workspace home with a focused event
+  // (clicking a row in "today's schedule"), jump to its month and pop the
+  // event dialog immediately. Consumed once on mount.
+  useEffect(() => {
+    if (!initialEvent) return;
+    const d = new Date(initialEvent.start);
+    if (!Number.isNaN(d.getTime())) {
+      setMonth(startOfMonth(d));
+      setWeekAnchor(d);
+    }
+    setEditing(initialEvent);
+    setDefaultDate(undefined);
+    setDialogOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const grid = useMemo(() => {
     const first = startOfMonth(month);
