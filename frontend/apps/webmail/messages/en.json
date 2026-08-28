@@ -16,7 +16,7 @@
     "error": "Login failed",
     "rateLimited": "Too many attempts, please wait a moment before trying again.",
     "mailSettings": "Mail server settings",
-    "mailSettingsHint": "Use these server details when configuring Outlook, Thunderbird or a mobile mail app:",
+    "mailSettingsHint": "When configuring a desktop email client or mobile mail app, use these server details:",
     "smtpServer": "SMTP server",
     "pop3Server": "POP3 server",
     "imapServer": "IMAP server",
