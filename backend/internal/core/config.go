@@ -72,9 +72,10 @@ type Config struct {
 }
 
 // SupportedMailEngines are the mail engines the control plane can drive.
-// The engine selects which adapter consumes the directory contract; the
-// postdove engine is the only implementation today.
-var SupportedMailEngines = []string{"postdove"}
+// postdove = community edition (Postfix + Dovecot), mailezine = enterprise
+// edition engine. The gateway speaks IMAP to either, so switching the
+// identifier only changes edition semantics (license) and the overview.
+var SupportedMailEngines = []string{"postdove", "mailezine"}
 
 // Load reads configuration from the environment.
 func Load() Config {

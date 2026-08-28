@@ -35,6 +35,9 @@ import (
 const (
 	EditionDev        = "dev"
 	EditionEnterprise = "enterprise"
+	// EditionCommunity marks the free community edition (postdove engine):
+	// no license is loaded, required or enforced.
+	EditionCommunity = "community"
 )
 
 // License is the signed payload carried by a license file. ExpiresAt is the
@@ -72,6 +75,13 @@ func DevLicense() License {
 		Licensee:     "development",
 		MaxMailboxes: 0, // 0 = unlimited
 	}
+}
+
+// Community returns the community-edition manager. The community edition is
+// free: it never loads, requires or enforces a license, and reports no
+// license on the admin overview.
+func Community() *Manager {
+	return &Manager{lic: License{Version: 1, Edition: EditionCommunity}}
 }
 
 // Load builds a Manager from MAILEZ_LICENSE_FILE / MAILEZ_LICENSE contents.
@@ -166,6 +176,9 @@ func (m *Manager) ExpiresAt() (time.Time, error) {
 
 // IsEnterprise reports whether the loaded license is the paid edition.
 func (m *Manager) IsEnterprise() bool { return m.lic.Edition == EditionEnterprise }
+
+// IsCommunity reports whether the free community edition is active.
+func (m *Manager) IsCommunity() bool { return m.lic.Edition == EditionCommunity }
 
 // ServiceExpired reports whether the annual service (support/upgrades) is
 // past its end date. The dev edition never expires. A true result does not
