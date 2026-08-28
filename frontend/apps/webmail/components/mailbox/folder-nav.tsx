@@ -55,7 +55,7 @@ import { Logo } from "@/components/logo";
 import { FolderACLDialog } from "@/components/mailbox/folder-acl-dialog";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import {
-  SYSTEM_FOLDERS,
+  isSystemFolder,
   buildFolderTree,
   folderLabel,
   type FolderNode,
@@ -263,7 +263,7 @@ export function FolderNav({
   const renderFolderNodes = (nodes: FolderNode[]): ReactNode =>
     nodes.map((node) => {
       const active = node.name === current;
-      const system = SYSTEM_FOLDERS.has(node.name.toUpperCase());
+      const system = isSystemFolder(node.name);
       const icon =
         FOLDER_ICON[node.name.toUpperCase()] || <FolderIcon className="size-4" />;
       const hasChildren = node.children.length > 0;
