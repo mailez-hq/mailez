@@ -1016,6 +1016,11 @@ export function MailStoreProvider({ me, children }: MailStoreProviderProps) {
     // (rapid saved-search / label / typing transitions fire overlapping
     // requests).
     const seq = ++searchSeq.current;
+    // Invalidate any in-flight folder load: without this, a slow
+    // loadMessages response landing after the search result would overwrite
+    // the filtered list with the full folder (the two seq guards are
+    // independent).
+    loadSeq.current++;
     setSearching(true);
     setSelected(null);
     setDetail(null);

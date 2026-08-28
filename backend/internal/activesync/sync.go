@@ -214,14 +214,15 @@ func (s *Service) syncOne(c *fiber.Ctx, req *easRequest, user *models.User, cred
 	window := col.windowSize
 	more := false
 	total := len(adds) + len(changes) + len(deletes)
+	log.Printf("activesync: sync %s window=%d adds=%d changes=%d deletes=%d total=%d", col.id, window, len(adds), len(changes), len(deletes), total)
 	if total > window {
 		more = true
 	}
 	if col.getChanges {
 		remaining := window
 		var commandEls []*Element
-		for i, m := range adds {
-			if i >= remaining {
+		for _, m := range adds {
+			if remaining <= 0 {
 				more = true
 				break
 			}
@@ -234,8 +235,8 @@ func (s *Service) syncOne(c *fiber.Ctx, req *easRequest, user *models.User, cred
 		}
 		usedAdds := window - remaining
 		remaining = window - usedAdds
-		for i, m := range changes {
-			if i >= remaining {
+		for _, m := range changes {
+			if remaining <= 0 {
 				more = true
 				break
 			}
@@ -259,8 +260,8 @@ func (s *Service) syncOne(c *fiber.Ctx, req *easRequest, user *models.User, cred
 		}
 		used := window - remaining
 		remaining = window - used
-		for i, uidKey := range deletes {
-			if i >= remaining {
+		for _, uidKey := range deletes {
+			if remaining <= 0 {
 				more = true
 				break
 			}
@@ -273,9 +274,36 @@ func (s *Service) syncOne(c *fiber.Ctx, req *easRequest, user *models.User, cred
 			commands := out.Add(nsAirSync, "Commands", "")
 			commands.Children = append(commands.Children, commandEls...)
 		}
+		log.Printf("activesync: sync %s emitted=%d more=%v", col.id, len(commandEls), more)
 		if more {
+			log.Printf("activesync: sync %s PAGING window=%d (partial snapshot)", col.id, window)
 			out.Add(nsAirSync, "MoreAvailable", "")
-			out.Add(nsAirSync, "SyncKey", col.syncKey)
+			// Persist the window already handed out so the client's follow-up
+			// Sync with the new key advances to the next batch instead of
+			// repeating the same window forever (Exchange semantics: every
+			// Sync response returns a fresh key and the server tracks what
+			// was already sent).
+			partial := syncSnapshot{UIDValidity: uidValidity, Items: map[string]snapshotItem{}}
+			for k, v := range snap.Items {
+				partial.Items[k] = v
+			}
+			emitted := 0
+			for _, m := range adds {
+				if emitted >= window {
+					break
+				}
+				partial.Items[strconv.FormatUint(uint64(m.UID), 10)] = snapshotItem{
+					Read:     hasFlag(m.Flags, `\Seen`),
+					Flagged:  hasFlag(m.Flags, `\Flagged`),
+					Answered: hasFlag(m.Flags, `\Answered`),
+				}
+				emitted++
+			}
+			key, kerr := s.saveSyncState(c.Context(), user.Email, req.deviceID, col.id, folder, partial)
+			if kerr != nil {
+				log.Printf("activesync: save partial state: %v", kerr)
+			}
+			out.Add(nsAirSync, "SyncKey", key)
 		} else {
 			next := syncSnapshot{UIDValidity: uidValidity, Items: map[string]snapshotItem{}}
 			for uid, m := range current {

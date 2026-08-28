@@ -12,6 +12,10 @@ type Webhook struct {
 	Secret     string     `gorm:"type:text;not null" json:"secret"`
 	Events     string     `gorm:"type:text;not null" json:"events"` // comma-separated: mail.received
 	Enabled    bool       `gorm:"not null;default:true" json:"enabled"`
+	// TokenEnc/TokenID back the background notifier poller for users without
+	// a browser push subscription (webhook-only mail.received delivery).
+	TokenEnc   string     `gorm:"type:text" json:"-"`
+	TokenID    uint       `json:"-"`
 	LastStatus int        `json:"last_status"` // 0 = never fired yet
 	LastError  string     `gorm:"type:text" json:"last_error"`
 	LastSentAt *time.Time `json:"last_sent_at"`

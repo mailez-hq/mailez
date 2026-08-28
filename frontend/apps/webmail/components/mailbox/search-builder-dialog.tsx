@@ -274,7 +274,7 @@ export function SearchBuilderDialog({
               <span />
             )}
           </div>
-          <Button type="button" onClick={apply} disabled={activeCount === 0}>
+          <Button type="button" onClick={apply} disabled={activeCount === 0 && !(editing && draft.trim())}>
             {t("sbApply")}
           </Button>
         </DialogFooter>
