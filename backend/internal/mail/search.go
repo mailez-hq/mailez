@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/emersion/go-imap"
-	"github.com/emersion/go-imap/client"
 )
 
 // SearchQuery is the structured form of an advanced search expression such as
@@ -163,7 +162,7 @@ func (c *Client) SearchMessagesSpec(email, token, folder string, sel SearchQuery
 
 // filterAttachmentName keeps only UIDs whose attachments carry a filename
 // matching any of the given terms (case-insensitive substring).
-func (c *Client) filterAttachmentName(cli *client.Client, uids []uint32, terms []string) ([]uint32, error) {
+func (c *Client) filterAttachmentName(cli *pooledConn, uids []uint32, terms []string) ([]uint32, error) {
 	if len(uids) == 0 || len(terms) == 0 {
 		return uids, nil
 	}
@@ -264,7 +263,7 @@ func (c *Client) SearchAllMessagesSpec(email, token string, sel SearchQuery) ([]
 
 // filterHasAttachment keeps only UIDs whose body structure carries an
 // attachment (standard IMAP has no direct "has attachment" search key).
-func (c *Client) filterHasAttachment(cli *client.Client, uids []uint32) ([]uint32, error) {
+func (c *Client) filterHasAttachment(cli *pooledConn, uids []uint32) ([]uint32, error) {
 	if len(uids) == 0 {
 		return uids, nil
 	}

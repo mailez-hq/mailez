@@ -84,8 +84,11 @@ type Address struct {
 	Email string `json:"email"`
 }
 
-// Client is a stateless IMAP gateway. Each operation opens its own connection
-// authenticated with a per-session temp token (never the user's password).
+// Client is an IMAP gateway. Each operation borrows a connection from the
+// per-account pool (authenticated with a per-session temp token, never the
+// user's password) so hot webmail requests skip the dial/TLS/login round trip;
+// the pool falls back to a fresh connection exactly like the old stateless
+// behaviour when nothing is reusable.
 type Client struct {
 	IMAPAddr  string // host:port, e.g. gateway:1143
 	SMTPAddr  string // host:port, e.g. gateway:1587
@@ -99,24 +102,49 @@ type Client struct {
 	// the reverse lookup served by UIDByMessageID is O(1) for hot messages
 	// instead of scanning the whole mailbox every time.
 	msgIDToUID msgIDCache
+
+	// pool reuses authenticated IMAP connections per account. nil disables
+	// pooling (defensive zero-value Client), keeping the stateless gateway.
+	pool *poolRegistry
 }
 
 // New creates a mail gateway client.
 func New(imapAddr, smtpAddr, sieveAddr string) *Client {
-	return &Client{IMAPAddr: imapAddr, SMTPAddr: smtpAddr, SieveAddr: sieveAddr}
+	return &Client{
+		IMAPAddr:  imapAddr,
+		SMTPAddr:  smtpAddr,
+		SieveAddr: sieveAddr,
+		pool:      newPoolRegistry(),
+	}
 }
 
 func (c *Client) tlsConfig() *tls.Config {
 	return &tls.Config{InsecureSkipVerify: true} // internal connections only
 }
 
-// openIMAP dials the mail server, upgrades to TLS when required and logs in.
-// External (aggregated) accounts dial their own server with the stored
-// credentials; internal accounts use the gateway and the temp token.
-func (c *Client) openIMAP(email, token string) (*client.Client, error) {
+// openIMAP returns an authenticated IMAP connection. Internal accounts get a
+// pooled connection (reused across requests); external (aggregated) accounts
+// dial their own server with the stored credentials, unpooled.
+func (c *Client) openIMAP(email, token string) (*pooledConn, error) {
 	if c.dial.External {
-		return openExternalIMAP(c.dial)
+		cli, err := openExternalIMAP(c.dial)
+		if err != nil {
+			return nil, err
+		}
+		return &pooledConn{Client: cli}, nil
 	}
+	if c.pool == nil {
+		cli, err := c.dialIMAP(email, token)
+		if err != nil {
+			return nil, err
+		}
+		return &pooledConn{Client: cli}, nil
+	}
+	return c.pool.acquire(c, email, token)
+}
+
+// dialIMAP dials the gateway, upgrades to TLS when required and logs in.
+func (c *Client) dialIMAP(email, token string) (*client.Client, error) {
 	cli, err := client.Dial(c.IMAPAddr)
 	if err != nil {
 		return nil, fmt.Errorf("imap dial: %w", err)
@@ -246,7 +274,7 @@ func (c *Client) ListMessagesSorted(email, token, folder string, page int, sortB
 
 // listAllSorted fetches every message of the folder, sorts by the requested
 // field and returns the requested page.
-func (c *Client) listAllSorted(cli *client.Client, folder string, total uint32, page int, sortBy, dir string) ([]Message, int, error) {
+func (c *Client) listAllSorted(cli *pooledConn, folder string, total uint32, page int, sortBy, dir string) ([]Message, int, error) {
 	seqset := new(imap.SeqSet)
 	seqset.AddRange(1, total)
 	headerSection := &imap.BodySectionName{Peek: true, BodyPartName: imap.BodyPartName{Specifier: imap.HeaderSpecifier}}

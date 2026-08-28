@@ -42,6 +42,7 @@ type Manager struct {
 
 const sessionKeyPrefix = "mailez:session:"
 const tokenKeyPrefix = "mailez:token:"
+const sessionTokenPrefix = "mailez:session-token:"
 const pending2faPrefix = "mailez:pending2fa:"
 const totpFailPrefix = "mailez:totpfail:"
 
@@ -151,8 +152,10 @@ func (m *Manager) UserFromSession(ctx context.Context, sid string) (*models.User
 	return &user, nil
 }
 
-// Logout invalidates a session.
+// Logout invalidates a session and its stable temp token, so pooled or cached
+// credentials tied to that session stop being accepted on the next login.
 func (m *Manager) Logout(ctx context.Context, sid string) error {
+	_ = m.Store.Delete(ctx, sessionTokenPrefix+sid)
 	return m.Store.Delete(ctx, sessionKeyPrefix+sid)
 }
 
@@ -166,6 +169,39 @@ func (m *Manager) CreateTempToken(ctx context.Context, email, sid string) (strin
 	full := "token-" + token
 	if err := m.Store.Set(ctx, tokenKeyPrefix+full, sid, m.TokenTTL); err != nil {
 		return "", err
+	}
+	return full, nil
+}
+
+// SessionToken returns the session's stable temp token, minting it on first
+// use and reusing it for the lifetime of the session. Reusing one credential
+// keeps the engine-side authentication cache (keyed by email + token) hot:
+// every webmail request after the first skips the control-plane auth round
+// trip entirely. The token stays bound to the session — Logout deletes the
+// mapping and VerifyTempToken re-checks the session on every login — so a
+// rotated or logged-out session cannot ride a cached success.
+func (m *Manager) SessionToken(ctx context.Context, email, sid string) (string, error) {
+	if sid != "" {
+		if tok, ok, _ := m.Store.Get(ctx, sessionTokenPrefix+sid); ok && tok != "" {
+			// Re-validate before reuse: the token must still resolve back to
+			// this session, otherwise a stale mapping (e.g. after an external
+			// store evicted the token row) must not be replayed.
+			if s, ok2, _ := m.Store.Get(ctx, tokenKeyPrefix+tok); ok2 && s == sid {
+				return tok, nil
+			}
+			_ = m.Store.Delete(ctx, sessionTokenPrefix+sid)
+		}
+	}
+	full, err := m.CreateTempToken(ctx, email, sid)
+	if err != nil {
+		return "", err
+	}
+	if sid != "" {
+		if err := m.Store.Set(ctx, sessionTokenPrefix+sid, full, m.TokenTTL); err != nil {
+			// The token itself is still valid; losing the mapping only means
+			// the next call mints a fresh one.
+			return full, nil
+		}
 	}
 	return full, nil
 }

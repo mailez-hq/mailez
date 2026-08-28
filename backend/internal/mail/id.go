@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/emersion/go-imap"
-	"github.com/emersion/go-imap/client"
 )
 
 // msgIDCache is a small in-memory TTL cache keyed by "folder \x00 Message-ID"
@@ -102,7 +101,7 @@ func inboxPath(folder string) string {
 // created with a literal "Inbox/" prefix (a folder literally named "Inbox"):
 // the case-insensitive display normalization would rewrite such a name onto
 // the special INBOX and SELECT would then report "No such mailbox".
-func (c *Client) selectFolder(cli *client.Client, folder string, readonly bool) (*imap.MailboxStatus, error) {
+func (c *Client) selectFolder(cli *pooledConn, folder string, readonly bool) (*imap.MailboxStatus, error) {
 	norm := inboxName(folder)
 	mbox, err := cli.Select(norm, readonly)
 	if err == nil || norm == folder {

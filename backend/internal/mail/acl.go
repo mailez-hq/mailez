@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/emersion/go-imap"
-	"github.com/emersion/go-imap/client"
 )
 
 // ACLEntry pairs a mailbox identifier (a login or a group) with the rights
@@ -38,7 +37,7 @@ func (c *aclCollector) Handle(resp imap.Resp) error {
 }
 
 // aclExec runs one ACL command and returns its untagged data responses.
-func (c *Client) aclExec(cli *client.Client, name string, args ...interface{}) ([]*imap.DataResp, error) {
+func (c *Client) aclExec(cli *pooledConn, name string, args ...interface{}) ([]*imap.DataResp, error) {
 	h := &aclCollector{}
 	if _, err := cli.Execute(&aclCmd{name: name, args: args}, h); err != nil {
 		return nil, fmt.Errorf("imap %s: %w", name, err)
@@ -49,7 +48,7 @@ func (c *Client) aclExec(cli *client.Client, name string, args ...interface{}) (
 // aclFolder runs one ACL command against a folder, trying the canonical
 // protocol spelling first and falling back to the literal name for legacy
 // "Inbox/..." mailboxes (same rationale as selectFolder).
-func (c *Client) aclFolder(cli *client.Client, name, folder string, extra ...interface{}) ([]*imap.DataResp, error) {
+func (c *Client) aclFolder(cli *pooledConn, name, folder string, extra ...interface{}) ([]*imap.DataResp, error) {
 	norm := inboxName(folder)
 	args := append([]interface{}{imap.RawString(norm)}, extra...)
 	resps, err := c.aclExec(cli, name, args...)

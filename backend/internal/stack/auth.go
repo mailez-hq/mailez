@@ -75,14 +75,15 @@ var statuses = map[string]map[string]string{
 }
 
 // authUser is the SSO gate for webmail and other authenticated surfaces.
-// Returns X-User / X-User-Token headers when a valid session cookie is present.
+// Returns X-User / X-User-Token headers when a valid session cookie is
+// present; the token is stable per session so engine-side auth caching works.
 func (h *Handler) authUser(c *fiber.Ctx) error {
 	sid := c.Cookies(h.Auth.SessionName)
 	user, err := h.Auth.UserFromSession(c.Context(), sid)
 	if err != nil || user == nil || !user.Enabled {
 		return c.SendStatus(fiber.StatusForbidden)
 	}
-	token, err := h.Auth.CreateTempToken(c.Context(), user.Email, sid)
+	token, err := h.Auth.SessionToken(c.Context(), user.Email, sid)
 	if err != nil {
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}

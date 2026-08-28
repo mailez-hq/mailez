@@ -57,6 +57,7 @@ func (c *Client) With(d Dial) Gateway {
 		SMTPAddr:  c.SMTPAddr,
 		SieveAddr: c.SieveAddr,
 		dial:      d,
+		pool:      c.pool,
 	}
 }
 
