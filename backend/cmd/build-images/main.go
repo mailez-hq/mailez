@@ -3,8 +3,8 @@
 // deploy/engines/<engine>/<component> (engine-specific services).
 //
 // Components are discovered from the directory layout, so adding a new
-// engine (e.g. engines/stalwart) requires no changes to this command other
-// than registering its image names below.
+// engine directory requires no changes to this command other than
+// registering its image names below.
 package main
 
 import (
@@ -20,17 +20,14 @@ import (
 
 // imageName maps component directory names to docker image names.
 // Shared infrastructure directories describe the component's role (gateway,
-// mail-filter, ...) while engine directories use the software name directly
-// (postfix, dovecot). Image names are the stable compose contract
-// (mailez/nginx, mailez/postfix, ...) and must not change without updating
-// the compose files.
+// mail-filter, ...) while engine directories use the software name directly.
+// Image names are the stable compose contract (mailez/nginx, mailez/mailezine,
+// ...) and must not change without updating the compose files.
 var imageName = map[string]string{
 	"gateway":       "nginx",
 	"mail-filter":   "rspamd",
 	"resolver":      "unbound",
 	"macro-scanner": "macro-scanner",
-	"postfix":       "postfix",
-	"dovecot":       "dovecot",
 	"mailezine":     "mailezine",
 }
 

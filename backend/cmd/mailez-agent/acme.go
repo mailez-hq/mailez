@@ -1,5 +1,3 @@
-//go:build mailez_ee
-
 package main
 
 import (
@@ -21,7 +19,7 @@ import (
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/registration"
 
-	"mailez/backend/internal/ee/agent"
+	"mailez/backend/internal/agent"
 )
 
 const acmeAccountKey = "/certs/letsencrypt/account.key"

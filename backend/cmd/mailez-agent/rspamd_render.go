@@ -1,5 +1,3 @@
-//go:build mailez_ee
-
 package main
 
 import (
@@ -11,7 +9,7 @@ import (
 	"strings"
 	"text/template"
 
-	"mailez/backend/internal/ee/agent"
+	"mailez/backend/internal/agent"
 )
 
 //go:embed templates/rspamd/*.tmpl

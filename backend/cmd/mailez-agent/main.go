@@ -1,7 +1,5 @@
-//go:build mailez_ee
-
-// mailez-agent drives every mail container (gateway / postfix / dovecot /
-// mail-filter / macro-scanner / resolver) with a single static Go binary.
+// mailez-agent drives every shared mail container (gateway / mail-filter /
+// macro-scanner / resolver) with a single static Go binary.
 package main
 
 import (
@@ -20,16 +18,12 @@ func main() {
 		err = runUnbound()
 	case "nginx":
 		err = runNginx()
-	case "dovecot":
-		err = runDovecot()
-	case "postfix":
-		err = runPostfix()
 	case "rspamd":
 		err = runRspamd()
 	case "macro-scanner":
 		err = runMacroScanner()
 	case "version":
-		fmt.Println("mailez-agent (unbound + nginx + dovecot + postfix + rspamd + macro-scanner)")
+		fmt.Println("mailez-agent (unbound + nginx + rspamd + macro-scanner)")
 		return
 	default:
 		usage()
@@ -43,5 +37,5 @@ func main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: mailez-agent <component>")
-	fmt.Fprintln(os.Stderr, "components: unbound nginx dovecot postfix rspamd macro-scanner")
+	fmt.Fprintln(os.Stderr, "components: unbound nginx rspamd macro-scanner")
 }

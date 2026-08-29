@@ -1,5 +1,3 @@
-//go:build mailez_ee
-
 package main
 
 import (
@@ -41,8 +39,8 @@ func TestNginxRenderNotls(t *testing.T) {
 	}
 	nginx := string(files["/etc/nginx/nginx.conf"])
 	for _, want := range []string{
-		"resolver ", "listen 25", "listen 80",
-		"location /stack {", "auth_http http://127.0.0.1:8000/auth/email",
+		"resolver ", "listen 80",
+		"location /stack {",
 	} {
 		if !strings.Contains(nginx, want) {
 			t.Errorf("nginx.conf missing %q", want)
@@ -55,22 +53,6 @@ func TestNginxRenderNotls(t *testing.T) {
 	}
 	if _, ok := files["/etc/nginx/tls.conf"]; ok {
 		t.Errorf("tls.conf must not be rendered in off mode")
-	}
-
-	dovecot := string(files["/etc/dovecot/proxy.conf"])
-	if !strings.Contains(dovecot, "ssl = no") || strings.Contains(dovecot, "ssl = required") {
-		t.Errorf("dovecot proxy TLS wrong in off mode:\n%s", dovecot)
-	}
-	if !strings.Contains(dovecot, "listen = *") {
-		t.Errorf("dovecot proxy should listen on IPv4 only without MAILEZ_SUBNET6:\n%s", dovecot)
-	}
-	if !strings.Contains(dovecot, "port = 4190") {
-		t.Errorf("managesieve 4190 missing in dovecot proxy:\n%s", dovecot)
-	}
-
-	lua := string(files["/etc/dovecot/login.lua"])
-	if !strings.Contains(lua, `url = "http://backend:8080/stack/auth/email"`) {
-		t.Errorf("login.lua admin address wrong:\n%s", lua)
 	}
 }
 
@@ -126,28 +108,28 @@ func TestNginxPortsDerivation(t *testing.T) {
 	t.Setenv("MAILEZ_HOSTNAMES", "mail.example.com")
 	t.Setenv("MAILEZ_DOMAIN", "example.com")
 	t.Setenv("MAILEZ_TLS", "off")
-	t.Setenv("MAILEZ_PORTS", "25,143,110,587,4190,80")
+	t.Setenv("MAILEZ_PORTS", "80,443,25,143")
 	t.Setenv("MAILEZ_RESOLVER_ADDRESS", "192.168.206.254")
 
 	cfg, err := loadNginxConfig()
 	if err != nil {
 		t.Fatalf("loadNginxConfig: %v", err)
 	}
-	if !cfg.Port143 || !cfg.Port110 || !cfg.Port587 || !cfg.Port4190 || !cfg.Port80 {
-		t.Errorf("expected plain ports on, got %+v", cfg)
+	if !cfg.Port80 {
+		t.Errorf("expected port 80 on, got %+v", cfg)
 	}
-	if cfg.Port995 {
-		t.Errorf("995 requires TLS and must be off in off mode")
+	if cfg.TLS443 {
+		t.Errorf("443 requires TLS and must be off in off mode")
 	}
 
 	t.Setenv("MAILEZ_TLS", "letsencrypt")
-	t.Setenv("MAILEZ_PORTS", "25,80,443,465,993,995,4190")
+	t.Setenv("MAILEZ_PORTS", "80,443")
 	cfg, err = loadNginxConfig()
 	if err != nil {
 		t.Fatalf("loadNginxConfig: %v", err)
 	}
-	if !cfg.TLS443 || !cfg.TLS993 || !cfg.TLS995 || !cfg.TLS465 {
-		t.Errorf("expected TLS ports on for letsencrypt, got %+v", cfg)
+	if !cfg.Port80 || !cfg.TLS443 {
+		t.Errorf("expected 80 + TLS 443 for letsencrypt, got %+v", cfg)
 	}
 }
 

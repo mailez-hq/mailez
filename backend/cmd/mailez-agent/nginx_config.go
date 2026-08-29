@@ -1,5 +1,3 @@
-//go:build mailez_ee
-
 package main
 
 import (
@@ -9,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"mailez/backend/internal/ee/agent"
+	"mailez/backend/internal/agent"
 )
 
 // TLSPaths holds the certificate paths rendered into the TLS configs.
@@ -20,39 +18,24 @@ type TLSPaths struct {
 	AltKey  string
 }
 
-// NginxConfig is the typed, validated view of the environment consumed by the
-// nginx/dovecot-proxy templates.
+// NginxConfig is the typed, validated view of the environment consumed by
+// the nginx templates (HTTP/ACME gateway only; the engine owns the mail
+// ports).
 type NginxConfig struct {
 	Resolver             string
 	Hostname             string
 	RealIPHeader         string
 	RealIPFrom           string
 	RealIPFromList       []string
-	ProxyProtocol25      bool
 	ProxyProtocol80      bool
-	ProxyProtocol110     bool
-	ProxyProtocol143     bool
 	ProxyProtocol443     bool
-	ProxyProtocol465     bool
-	ProxyProtocol587     bool
-	ProxyProtocol993     bool
-	ProxyProtocol995     bool
-	ProxyProtocol4190    bool
 	Subnet6              bool
 	TLSFlavor            string
 	TLSError             bool
 	TLSPermissive        bool
 	TLS                  *TLSPaths
 	Port80               bool
-	Port143              bool
-	Port110              bool
-	Port587              bool
-	Port4190             bool
-	Port995              bool
 	TLS443               bool
-	TLS993               bool
-	TLS995               bool
-	TLS465               bool
 	BackendAddress       string
 	MailFilterAddress    string
 	MessageSizeLimit     int
@@ -61,24 +44,21 @@ type NginxConfig struct {
 	API                  bool
 	Postmaster           string
 	Domain               string
-	PostfixAddress       string
-	Engine               string // postdove (default) | mailezine
+	Engine               string // mailezine (the only engine; kept for template compat)
 	RecipientDelimiter   string
 }
 
 var (
-	protoMail         = []string{"25", "110", "995", "143", "993", "587", "465", "4190"}
-	portsRequiringTLS = []string{"443", "465", "993", "995"}
-	defaultPorts      = "25,80,443,465,993,995,4190"
-	defaultTLS        = "25,80,443,465,993,995,4190"
+	portsRequiringTLS = []string{"443"}
+	defaultPorts      = "80,443"
+	defaultTLS        = "80,443"
 )
 
 func loadNginxConfig() (NginxConfig, error) {
 	cfg := NginxConfig{
 		BackendAddress:     agent.Getenv("MAILEZ_BACKEND_ADDRESS", "backend"),
 		MailFilterAddress:  agent.Getenv("MAIL_FILTER_ADDRESS", "mail-filter"),
-		PostfixAddress:     agent.Getenv("POSTFIX_ADDRESS", "postfix"),
-		Engine:             agent.Getenv("MAILEZ_ENGINE", "postdove"),
+		Engine:             agent.Getenv("MAILEZ_ENGINE", "mailezine"),
 		RecipientDelimiter: agent.Getenv("MAILEZ_RECIPIENT_DELIMITER", "+"),
 		RealIPHeader:       os.Getenv("REAL_IP_HEADER"),
 		RealIPFrom:         os.Getenv("REAL_IP_FROM"),
@@ -124,52 +104,31 @@ func loadNginxConfig() (NginxConfig, error) {
 	applyProxyProtocol(&cfg)
 	applyPorts(&cfg)
 	applyTLS(&cfg)
-	if cfg.Engine != "postdove" && cfg.Engine != "mailezine" {
-		return cfg, fmt.Errorf("MAILEZ_ENGINE must be postdove or mailezine, got %q", cfg.Engine)
+	if cfg.Engine != "mailezine" {
+		return cfg, fmt.Errorf("MAILEZ_ENGINE must be mailezine, got %q", cfg.Engine)
 	}
 	return cfg, nil
 }
 
 // applyProxyProtocol reproduces the PROXY_PROTOCOL handling from the
-// environment (per-port proxy-protocol flags).
+// environment (per-port proxy-protocol flags; HTTP ports only — the mail
+// ports belong to the mailezine engine now).
 func applyProxyProtocol(cfg *NginxConfig) {
 	set := func(port string, v bool) {
 		switch port {
-		case "25":
-			cfg.ProxyProtocol25 = v
 		case "80":
 			cfg.ProxyProtocol80 = v
-		case "110":
-			cfg.ProxyProtocol110 = v
-		case "143":
-			cfg.ProxyProtocol143 = v
 		case "443":
 			cfg.ProxyProtocol443 = v
-		case "465":
-			cfg.ProxyProtocol465 = v
-		case "587":
-			cfg.ProxyProtocol587 = v
-		case "993":
-			cfg.ProxyProtocol993 = v
-		case "995":
-			cfg.ProxyProtocol995 = v
-		case "4190":
-			cfg.ProxyProtocol4190 = v
-		}
-	}
-	all := func(ports []string) {
-		for _, p := range ports {
-			set(p, true)
 		}
 	}
 	for _, item := range strings.Split(os.Getenv("MAILEZ_PROXY_PROTOCOL"), ",") {
 		switch strings.TrimSpace(item) {
-		case "mail":
-			all(protoMail)
 		case "all-but-http":
-			all(append(append([]string{}, protoMail...), "443"))
+			set("443", true)
 		case "all":
-			all(append(append(append([]string{}, protoMail...), "443"), "80"))
+			set("443", true)
+			set("80", true)
 		case "":
 		default:
 			if isPort(item) {
@@ -182,22 +141,6 @@ func applyProxyProtocol(cfg *NginxConfig) {
 // applyPorts reproduces the port selection from the environment.
 func applyPorts(cfg *NginxConfig) {
 	plain := cfg.TLSFlavor == "off"
-	setPort := func(port string) {
-		switch port {
-		case "80":
-			cfg.Port80 = true
-		case "110":
-			cfg.Port110 = true
-		case "143":
-			cfg.Port143 = true
-		case "587":
-			cfg.Port587 = true
-		case "4190":
-			cfg.Port4190 = true
-		case "995":
-			cfg.Port995 = true
-		}
-	}
 	for _, item := range strings.Split(agent.Getenv("MAILEZ_PORTS", defaultPorts), ",") {
 		item = strings.TrimSpace(item)
 		if !isPort(item) {
@@ -206,23 +149,15 @@ func applyPorts(cfg *NginxConfig) {
 		if plain && contains(portsRequiringTLS, item) {
 			continue
 		}
-		setPort(item)
+		if item == "80" {
+			cfg.Port80 = true
+		}
 	}
 	if cfg.TLSFlavor != "off" {
 		for _, item := range strings.Split(agent.Getenv("MAILEZ_TLS_PORTS", defaultTLS), ",") {
 			item = strings.TrimSpace(item)
-			if !isPort(item) || !contains(portsRequiringTLS, item) {
-				continue
-			}
-			switch item {
-			case "443":
+			if item == "443" {
 				cfg.TLS443 = true
-			case "993":
-				cfg.TLS993 = true
-			case "995":
-				cfg.TLS995 = true
-			case "465":
-				cfg.TLS465 = true
 			}
 		}
 	}

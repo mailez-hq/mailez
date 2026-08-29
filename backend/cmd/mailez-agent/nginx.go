@@ -1,16 +1,12 @@
-//go:build mailez_ee
-
 package main
 
 import (
 	"context"
-	"fmt"
 	"os"
-	"os/exec"
 	"os/signal"
 	"syscall"
 
-	"mailez/backend/internal/ee/agent"
+	"mailez/backend/internal/agent"
 )
 
 func runNginx() error {
@@ -49,14 +45,8 @@ func runNginx() error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	// postdove mode: the dovecot login proxy daemonizes itself; in mailezine
-	// mode the engine authenticates by itself, so only nginx runs. Either
-	// way nginx (HTTP + ACME) stays in the foreground.
-	if cfg.Engine != "mailezine" {
-		if err := exec.Command("/usr/sbin/dovecot", "-c", "/etc/dovecot/proxy.conf").Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "nginx: dovecot proxy failed to start: %v\n", err)
-		}
-	}
+	// The mailezine engine authenticates by itself; the gateway runs
+	// nginx (HTTP + ACME) in the foreground only.
 	return agent.RunChild(ctx, []string{"/usr/sbin/nginx", "-g", "daemon off;"})
 }
 

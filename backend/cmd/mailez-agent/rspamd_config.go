@@ -1,11 +1,9 @@
-//go:build mailez_ee
-
 package main
 
 import (
 	"os"
 
-	"mailez/backend/internal/ee/agent"
+	"mailez/backend/internal/agent"
 )
 
 // RspamdConfig is the typed view of the environment consumed by the rspamd
@@ -26,8 +24,8 @@ type RspamdConfig struct {
 	Domain              string
 	Sitename            string
 	DmarcSendReports    bool
-	PostfixAddress      string
-	Engine              string // postdove (default) | mailezine
+	SmtpAddress         string
+	Engine              string // mailezine (the only engine)
 	StackSecret         string
 }
 
@@ -48,8 +46,8 @@ func loadRspamdConfig() (RspamdConfig, error) {
 		Domain:              agent.Getenv("MAILEZ_DOMAIN", "example.com"),
 		Sitename:            agent.Getenv("MAILEZ_SITENAME", ""),
 		DmarcSendReports:    envTrue("MAILEZ_DMARC_SEND_REPORTS", false),
-		PostfixAddress:      agent.Getenv("POSTFIX_ADDRESS", "postfix"),
-		Engine:              agent.Getenv("MAILEZ_ENGINE", "postdove"),
+		SmtpAddress:         agent.Getenv("SMTP_ADDRESS", "mailezine"),
+		Engine:              agent.Getenv("MAILEZ_ENGINE", "mailezine"),
 		StackSecret:         agent.StackSecret(),
 	}
 	if cfg.Subnet == "" {
