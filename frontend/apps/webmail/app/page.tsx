@@ -14,6 +14,7 @@ import {
   type BrandingConfig, type ServerSettings,
 } from "@/lib/api";
 import { readLastFolder, readPreferences } from "@/lib/preferences";
+import { prefetchFolders } from "@/lib/folders-cache";
 
 // Where to send a signed-in user: the deep link they asked for (?next=), else
 // the workspace dashboard (unless they opted out), else their last-visited
@@ -64,6 +65,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [pendingToken, setPendingToken] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
   const [code, setCode] = useState("");
   const [settings, setSettings] = useState<ServerSettings | null>(null);
   // ?expired=1 is set by the API layer when a 401 bounced the user here:
@@ -94,7 +96,10 @@ export default function Home() {
       return;
     }
     me()
-      .then(() => router.replace(mailboxTarget()))
+      .then((u) => {
+        prefetchFolders(u.email);
+        router.replace(mailboxTarget());
+      })
       .catch(() => {
         // not authenticated: stay on the sign-in form
       })
@@ -139,7 +144,11 @@ export default function Home() {
       const res = await login(email, pw);
       if (res.totp_required && res.pending_token) {
         setPendingToken(res.pending_token);
+        setPendingEmail(email);
       } else {
+        // Warm the folder-list cache while the router navigates, so the
+        // sidebar's first paint already has the folders.
+        prefetchFolders(email);
         router.replace(mailboxTarget());
       }
     } catch (err) {
@@ -155,6 +164,7 @@ export default function Home() {
     setBusy(true);
     try {
       await loginTotp(pendingToken, code);
+      prefetchFolders(pendingEmail);
       router.replace(mailboxTarget());
     } catch (err) {
       setError(loginError(err));
