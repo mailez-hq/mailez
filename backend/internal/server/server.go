@@ -164,7 +164,14 @@ func New(cfg core.Config) *Server {
 	s.LDAP = ldapSvc
 	basicAuthCache := authcache.New(basicAuthCacheTTL())
 	s.basicAuthCache = basicAuthCache
+	// Push notifier (new-mail notifications for subscribed clients) and the
+	// webmail SSE watcher are created before the stack handler so engine
+	// delivery receipts can kick either one immediately.
+	notifier := push.NewNotifier(db, cfg)
+	eventWatcher := push.NewEventWatcher(cfg, s.events)
 	s.internal = stack.New(db, s.Auth, cfg, rdb, ldapSvc, basicAuthCache)
+	s.internal.Notifier = notifier
+	s.internal.EventWatcher = eventWatcher
 	s.routes()
 
 	// External mailbox poller (fetchmail equivalent).
@@ -184,13 +191,12 @@ func New(cfg core.Config) *Server {
 	go uploads.New(db, cfg).RunCleanup(bgCtx)
 	// Push notifier (new-mail notifications for subscribed clients).
 	if cfg.PushInterval > 0 {
-		notifier := push.NewNotifier(db, cfg)
 		go notifier.Run(bgCtx)
 	}
 	// Webmail mailbox-change stream: polls connected users' folders and pushes
 	// a "mail" event down their SSE connections when new mail arrives.
 	if cfg.EventsInterval > 0 {
-		go push.NewEventWatcher(cfg, s.events).Run(bgCtx)
+		go eventWatcher.Run(bgCtx)
 	}
 	if cfg.MetricsAddr != "" {
 		startMetricsServer(cfg.MetricsAddr)

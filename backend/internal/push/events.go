@@ -140,6 +140,7 @@ type EventWatcher struct {
 
 	mu       sync.Mutex
 	baseline map[string]map[string]mail.FolderStat
+	kicks    map[string]time.Time
 }
 
 // NewEventWatcher builds a watcher for the given hub.
@@ -193,50 +194,80 @@ func (w *EventWatcher) pollOnce() {
 		return
 	}
 	for _, email := range emails {
-		token := w.Hub.Token(email)
-		if token == "" {
-			continue
-		}
-		stats := make(map[string]mail.FolderStat, len(watchedFolders))
-		for _, folder := range watchedFolders {
-			st, err := w.Mail.FolderStat(email, token, folder)
-			if err != nil {
-				// Transient IMAP errors (e.g. the engine restarting) are
-				// common; keep the old baseline and retry next tick.
-				log.Printf("events: stat %s/%s: %v", email, folder, err)
-				continue
-			}
-			stats[folder] = st
-		}
-		if len(stats) == 0 {
-			continue
-		}
-
-		var changed []string
-		w.mu.Lock()
-		prev, ok := w.baseline[email]
-		if ok {
-			for _, folder := range watchedFolders {
-				cur, haveCur := stats[folder]
-				old, haveOld := prev[folder]
-				if !haveCur || !haveOld {
-					continue
-				}
-				// New mail advances UIDNEXT (and usually the message count)
-				// regardless of read state; flag-only changes don't fire.
-				if cur.UidNext > old.UidNext || cur.Messages > old.Messages {
-					changed = append(changed, folder)
-				}
-			}
-		}
-		w.baseline[email] = stats
-		w.mu.Unlock()
-
-		if len(changed) > 0 {
-			w.Hub.Publish(email, MailEvent{Type: "mail", Folders: changed, At: time.Now()})
-		}
+		w.checkEmail(email)
 	}
 }
+
+// checkEmail diffs one connected user's watched folders against the baseline
+// and publishes a mail event on growth. The poll tick and the delivery-receipt
+// Kick share it.
+func (w *EventWatcher) checkEmail(email string) {
+	token := w.Hub.Token(email)
+	if token == "" {
+		return
+	}
+	stats := make(map[string]mail.FolderStat, len(watchedFolders))
+	for _, folder := range watchedFolders {
+		st, err := w.Mail.FolderStat(email, token, folder)
+		if err != nil {
+			// Transient IMAP errors (e.g. the engine restarting) are
+			// common; keep the old baseline and retry next tick.
+			log.Printf("events: stat %s/%s: %v", email, folder, err)
+			continue
+		}
+		stats[folder] = st
+	}
+	if len(stats) == 0 {
+		return
+	}
+
+	var changed []string
+	w.mu.Lock()
+	prev, ok := w.baseline[email]
+	if ok {
+		for _, folder := range watchedFolders {
+			cur, haveCur := stats[folder]
+			old, haveOld := prev[folder]
+			if !haveCur || !haveOld {
+				continue
+			}
+			// New mail advances UIDNEXT (and usually the message count)
+			// regardless of read state; flag-only changes don't fire.
+			if cur.UidNext > old.UidNext || cur.Messages > old.Messages {
+				changed = append(changed, folder)
+			}
+		}
+	}
+	w.baseline[email] = stats
+	w.mu.Unlock()
+
+	if len(changed) > 0 {
+		w.Hub.Publish(email, MailEvent{Type: "mail", Folders: changed, At: time.Now()})
+	}
+}
+
+// Kick rechecks one user immediately (engine delivery receipt). Coalesced
+// per user so a delivery burst costs one IMAP pass; skipped entirely when
+// the user has no open SSE connection (the next poll would be a no-op too).
+func (w *EventWatcher) Kick(email string) {
+	if w.Hub.Token(email) == "" {
+		return
+	}
+	w.mu.Lock()
+	if w.kicks == nil {
+		w.kicks = make(map[string]time.Time)
+	}
+	if t, ok := w.kicks[email]; ok && time.Since(t) < eventsKickWindow {
+		w.mu.Unlock()
+		return
+	}
+	w.kicks[email] = time.Now()
+	w.mu.Unlock()
+
+	go w.checkEmail(email)
+}
+
+const eventsKickWindow = 2 * time.Second
 
 // mailEvents streams mailbox-change events to the open webmail tab (SSE).
 // The endpoint is authenticated like every other API route; EventSource
