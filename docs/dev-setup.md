@@ -66,7 +66,8 @@ MinIO/S3），见 `deploy/scripts/README.md`。
 后端（终端 1）：
 ```
 cd backend
-powershell -File .\dev-start.ps1    # 内含 SQLite DSN + 引擎端口直连配置
+powershell -File .\dev-start.ps1    # 默认企业版全功能；内含 SQLite DSN + 引擎端口直连配置
+powershell -File .\dev-start.ps1 -Ce  # 社区版（企业功能位显示降级提示）
 ```
 
 等效的手动环境变量（与 `dev-start.ps1` 一致）：
