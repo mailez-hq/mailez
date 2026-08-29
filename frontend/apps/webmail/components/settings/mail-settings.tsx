@@ -67,10 +67,13 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
   const [section, setSection] = useState<string>("appearance");
 
   // Land on the requested section each time the dialog opens (e.g. "accounts"
-  // from the sidebar account manager).
-  useEffect(() => {
+  // from the sidebar account manager) — render-phase adjustment, React-
+  // recommended over an effect and catches every open path.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) setSection(initialSection);
-  }, [open, initialSection]);
+  }
 
   const [displayedName, setDisplayedName] = useState("");
   const [signature, setSignature] = useState("");
@@ -161,9 +164,20 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
   const [davNewToken, setDavNewToken] = useState<AppTokenResult | null>(null);
   const [davTokenBusy, setDavTokenBusy] = useState(false);
 
+  // Clear per-open transient state synchronously (render-phase adjustment —
+  // React-recommended over synchronous setState in an effect); everything
+  // else below reloads asynchronously.
+  const [prevOpenSync, setPrevOpenSync] = useState(open);
+  if (open !== prevOpenSync) {
+    setPrevOpenSync(open);
+    if (open) {
+      setError("");
+      setDavNewToken(null);
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
-    setError("");
     totpStatus().then(setTotp).catch(() => setTotp(null));
     pgpStatus().then(setPgp).catch(() => setPgp(null));
     pgpListKeys().then(setPgpKeys).catch(() => setPgpKeys([]));
@@ -172,7 +186,6 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
     accounts().then(setAccountList).catch(() => setAccountList([]));
     delegations().then(setDelegationList).catch(() => setDelegationList({ granted: [], received: [] }));
     appTokens().then((r) => setDavTokens(r.data || [])).catch(() => setDavTokens([]));
-    setDavNewToken(null);
     webhookList().then(setWebhooks).catch(() => setWebhooks([]));
     meProfile().then((p) => {
       setProfile(p);

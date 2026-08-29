@@ -88,7 +88,6 @@ export function MailContacts({
   onOpenMessage: (m: MailMessage, folder: string) => void;
 }) {
   const t = useTranslations("contacts");
-  const tm = useTranslations("mail");
   const [list, setList] = useState<Contact[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -119,12 +118,22 @@ export function MailContacts({
     }
   }, []);
 
-  useEffect(() => {
+  // Clear stale banners on open (render-phase adjustment — React-recommended
+  // over synchronous setState in an effect); the list reloads asynchronously.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setError("");
       setInfo("");
-      load();
     }
+  }
+
+  useEffect(() => {
+    // Reload whenever the dialog opens. Every setState inside load() happens
+    // after its await — the lint cannot see through the call boundary.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (open) load();
   }, [open, load]);
 
   async function add(e: React.FormEvent) {
@@ -555,7 +564,7 @@ function ContactDetail({
   const t = useTranslations("contacts");
   const tm = useTranslations("mail");
   const [history, setHistory] = useState<MailMessage[] | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saveErr, setSaveErr] = useState("");
   const [name, setName] = useState(contact.name);
@@ -566,11 +575,19 @@ function ContactDetail({
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  useEffect(() => {
+  // Reset the detail view synchronously whenever the selected contact changes
+  // (render-phase adjustment — one render earlier than an effect, same net
+  // state machine: fresh spinner, no stale history/banner).
+  const [prevEmail, setPrevEmail] = useState(contact.email);
+  if (contact.email !== prevEmail) {
+    setPrevEmail(contact.email);
     setHistory(null);
     setError("");
-    let cancelled = false;
     setLoading(true);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
     Promise.all([
       mailSearch("Inbox", `from:${contact.email}`),
       mailSearch("Inbox", `to:${contact.email}`),
@@ -599,14 +616,18 @@ function ContactDetail({
     };
   }, [contact.email]);
 
-  useEffect(() => {
+  // Re-seed the edit form when a different contact is selected (render-phase
+  // adjustment — React-recommended over an effect).
+  const [prevContact, setPrevContact] = useState(contact);
+  if (contact !== prevContact) {
+    setPrevContact(contact);
     setName(contact.name);
     setEmail(contact.email);
     setComment(contact.comment);
     setGroups(contact.groups);
     setAvatar(contact.avatar);
     setDirty(false);
-  }, [contact]);
+  }
 
   async function save() {
     setSaving(true);

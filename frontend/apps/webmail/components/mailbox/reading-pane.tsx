@@ -1,377 +1,37 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Archive,
-  ArrowLeft,
-  Ban,
-  BellRing,
-  CalendarDays,
-  ChevronDown,
-  ChevronUp,
-  Download,
-  FileCode,
-  Flame,
-  Info,
-  Languages,
-  Loader2,
-  Lock,
-  MailCheck,
-  MessageSquarePlus,
-  MailWarning,
-  PenLine,
-  Printer,
-  RotateCw,
-  Undo2,
-  Volume2,
-  VolumeX,
-  Reply,
-  ReplyAll,
-  Send,
-  ShieldCheck,
-  Sparkles,
-  Star,
-  Tag,
-  ThumbsDown,
-  ThumbsUp,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Loader2, MessageSquarePlus, Reply, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { aiReplies, aiTranslate, inviteRespond, mailAttachmentsZip, mailFlag, mailRaw, pgpDecrypt } from "@/lib/api";
-import type { MailAttachment, MailInvitation, MailMessage, MailThread } from "@/lib/api";
-import { AttachmentCard } from "@/components/mailbox/reader/attachment-card";
-import { QuoteBlock } from "@/components/mailbox/reader/quote-block";
+import { aiReplies, aiTranslate, mailAttachmentsZip, mailFlag, mailRaw, pgpDecrypt } from "@/lib/api";
+import type { MailMessage, MailThread } from "@/lib/api";
+import { AttachmentList } from "@/components/mailbox/reader/attachment-list";
+import { AiSummary } from "@/components/mailbox/reader/ai-summary";
+import { MessageActions } from "@/components/mailbox/reader/message-actions";
+import { MessageBody } from "@/components/mailbox/reader/message-body";
+import { MessageDetails, MessageMeta } from "@/components/mailbox/reader/message-meta";
+import { MessageHeader } from "@/components/mailbox/reader/message-header";
+import {
+  BurnGate, PgpBanner, RecallNotice, ReceiptBanner, RemoteImageBanner, TranslationPanel,
+} from "@/components/mailbox/reader/notice-banners";
+import { QuickReply } from "@/components/mailbox/reader/quick-reply";
 import { useMounted } from "@/components/mailbox/reader/use-mounted";
-import { escHtml, isSnoozed, labelColor } from "@/components/mailbox/mail-utils";
-import { buildFolderTree, flattenTree, folderLabel } from "@/components/mailbox/folder-tree";
+import { ThreadMessage } from "@/components/mailbox/reader/thread-message";
+import { InvitationBanner } from "@/components/mailbox/reader/invitation-banner";
+import { escHtml, isSnoozed } from "@/components/mailbox/mail-utils";
 import type { ReaderFontSize, ReadingPaneWidth } from "@/lib/preferences";
 import {
-  blockRemoteImages, hasRemoteImages, rememberedRemoteSenders, rememberRemoteSender,
+  blockRemoteImages, hasRemoteImages, rememberedRemoteSenders,
 } from "@/components/mailbox/reader/remote-images";
 import {
-  fmtFullDate, fmtShort, getSnippet, parseBody, type Segment,
+  fmtFullDate, parseBody,
 } from "@/components/mailbox/reader/body";
-import { Highlight } from "@/components/mailbox/highlight";
 import { sanitizeMailHTML } from "@/lib/sanitize";
-import { cn } from "@/lib/utils";
-
-// isSentFolder reports whether a mailbox path is the Sent Items folder.
-function isSentFolder(name: string): boolean {
-  return ["sent", "sent items", "sentitems", "已发送"].includes(name.toLowerCase().trim());
-}
-
-function ThreadMessage({
-  message,
-  isExpanded,
-  loading,
-  onToggleExpand,
-  onClose,
-  detailsOpen,
-  onToggleDetails,
-  expandedQuotes,
-  onToggleQuote,
-  highlightTerms,
-  remoteLoaded,
-  onReply,
-  onReplyAll,
-  onForward,
-}: {
-  message: MailMessage;
-  isExpanded: boolean;
-  loading?: boolean;
-  onToggleExpand: () => void;
-  onClose: () => void;
-  detailsOpen: boolean;
-  onToggleDetails: () => void;
-  expandedQuotes: Set<number>;
-  onToggleQuote: (i: number) => void;
-  highlightTerms?: string[];
-  remoteLoaded: boolean;
-  onReply: () => void;
-  onReplyAll: () => void;
-  onForward: () => void;
-}) {
-  const t = useTranslations("mail");
-  const mounted = useMounted();
-  const sender = message.from[0];
-  const senderName = sender?.name || sender?.email || "?";
-
-  const segments = useMemo(
-    () => parseBody(message.text_body || ""),
-    [message.text_body],
-  );
-  const remoteImages = useMemo(
-    () => hasRemoteImages(message.html_body),
-    [message.html_body],
-  );
-  const htmlBody = useMemo(() => {
-    if (!message.html_body) return "";
-    const clean = sanitizeMailHTML(message.html_body);
-    return remoteImages && !remoteLoaded
-      ? blockRemoteImages(clean)
-      : clean;
-  }, [message.html_body, remoteImages, remoteLoaded]);
-
-  if (!isExpanded) {
-    return (
-      <button
-        onClick={onToggleExpand}
-        className="flex w-full items-start gap-3 border-b border-border py-3 text-left transition-colors hover:bg-muted/40 last:border-b-0"
-      >
-        <span
-          className={cn(
-            "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-            "bg-accent/60 text-accent-foreground",
-          )}
-        >
-          {senderName.charAt(0).toUpperCase()}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2">
-            <span className="truncate text-sm font-medium">{senderName}</span>
-            <span className="shrink-0 text-[11px] text-muted-foreground">
-              {fmtShort(message.date)}
-            </span>
-          </div>
-          <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-            <Highlight text={getSnippet(message.text_body || "")} terms={highlightTerms} />
-          </p>
-          {message.attachments && message.attachments.length > 0 && (
-            <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
-              <span>📎</span>
-              <span>
-                {t("attachments", { count: message.attachments.length })}
-              </span>
-            </div>
-          )}
-        </div>
-        {/* Same footprint as the expanded-state collapse button (28x28, top
-            aligned) so toggling a thread message does not make the arrow
-            jump horizontally or vertically. */}
-        <span className="flex size-7 shrink-0 items-center justify-center">
-          <ChevronDown className="size-3.5 text-muted-foreground" />
-        </span>
-      </button>
-    );
-  }
-
-  return (
-    <div className="border-b border-border py-3 last:border-b-0">
-      {/* Sender header */}
-      <div className="mb-3 flex items-start gap-3">
-        <span
-          className={cn(
-            "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-            "bg-accent text-accent-foreground",
-          )}
-        >
-          {senderName.charAt(0).toUpperCase()}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline justify-between gap-2">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{senderName}</p>
-              <button
-                onClick={onToggleDetails}
-                className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground"
-              >
-                {sender?.email}
-                {detailsOpen ? (
-                  <ChevronUp className="size-3" />
-                ) : (
-                  <ChevronDown className="size-3" />
-                )}
-              </button>
-            </div>
-            <span className="shrink-0 text-xs text-muted-foreground">
-              {fmtFullDate(message.date)}
-            </span>
-          </div>
-        </div>
-        {/* Collapse control: up arrow (not X) so it reads as "collapse" rather
-            than close/delete. Plain button on purpose: the shared Button has an
-            active:translate-y-px press effect that makes the icon drift on
-            click. */}
-        <button
-          type="button"
-          onClick={onClose}
-          title={t("collapseMessage")}
-          aria-label={t("collapseMessage")}
-          className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <ChevronUp className="size-3.5" />
-        </button>
-      </div>
-
-      {message.invitation && message.invitation.method === "REQUEST" && (
-        <InvitationBanner invitation={message.invitation} />
-      )}
-
-      {/* Expanded details */}
-      {detailsOpen && (
-        <div className="mb-3 space-y-0.5 rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-          <p>
-            <span className="font-medium text-foreground/80">From: </span>
-            {sender?.name ? `${sender.name} <${sender.email}>` : sender?.email}
-          </p>
-          <p>
-            <span className="font-medium text-foreground/80">To: </span>
-            {message.to.map((a) => a.name || a.email).join(", ") || "—"}
-          </p>
-          {message.cc && message.cc.length > 0 && (
-            <p>
-              <span className="font-medium text-foreground/80">Cc: </span>
-              {message.cc.map((a) => a.name || a.email).join(", ")}
-            </p>
-          )}
-          <p>
-            <span className="font-medium text-foreground/80">Date: </span>
-            {fmtFullDate(message.date)}
-          </p>
-        </div>
-      )}
-
-      {/* Message body: HTML preferred, plain text as fallback */}
-      <div className="mail-body">
-        {mounted && htmlBody ? (
-          <div dangerouslySetInnerHTML={{ __html: htmlBody }} />
-        ) : segments.length === 0 && loading ? (
-          <p className="flex items-center gap-1.5 text-muted-foreground">
-            <Loader2 className="size-3.5 animate-spin" />
-            {t("loading")}
-          </p>
-        ) : segments.length === 0 ? (
-          <p className="text-muted-foreground">{t("noTextBody")}</p>
-        ) : (
-          segments.map((seg, i) =>
-            seg.type === "p" ? (
-              <p key={i} className="text-sm leading-6">
-                {seg.lines.map((l, j) => (
-                  <span key={j}>
-                    <Highlight text={l} terms={highlightTerms} />
-                    {j < seg.lines.length - 1 && <br />}
-                  </span>
-                ))}
-              </p>
-            ) : (
-              <QuoteBlock
-                key={i}
-                lines={seg.lines}
-                expanded={expandedQuotes.has(i)}
-                onToggle={() => onToggleQuote(i)}
-              />
-            ),
-          )
-        )}
-      </div>
-
-      {/* Attachments */}
-      {message.attachments && message.attachments.length > 0 && (
-        <div className="mt-4 border-t border-border pt-3">
-          <p className="mb-2 text-xs font-medium text-muted-foreground">
-            {t("attachments", { count: message.attachments.length })}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {message.attachments.map((a, i) => (
-              <AttachmentCard key={i} attachment={a} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Action buttons below message */}
-      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-        <Button size="sm" variant="outline" onClick={onReply}>
-          <Reply className="size-3.5" />
-          {t("reply")}
-        </Button>
-        <Button size="sm" variant="outline" onClick={onReplyAll}>
-          <ReplyAll className="size-3.5" />
-          {t("replyAll")}
-        </Button>
-        <Button size="sm" variant="outline" onClick={onForward}>
-          <Send className="size-3.5" />
-          {t("forward")}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// InvitationBanner shows the meeting details of a received REQUEST and lets
-// the attendee accept / tentatively accept / decline (sends an iTIP REPLY).
-function InvitationBanner({ invitation }: { invitation: MailInvitation }) {
-  const t = useTranslations("mail");
-  const [busy, setBusy] = useState<"" | "accept" | "tentative" | "decline">("");
-  const [done, setDone] = useState("");
-  const [error, setError] = useState("");
-
-  async function respond(action: "accept" | "decline" | "tentative") {
-    setBusy(action);
-    setError("");
-    setDone("");
-    try {
-      await inviteRespond(invitation.ics, action);
-      setDone(action === "accept" ? t("inviteAccepted") : action === "tentative" ? t("inviteTentative") : t("inviteDeclined"));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("inviteFailed"));
-    } finally {
-      setBusy("");
-    }
-  }
-
-  const fmtWhen = () => {
-    if (!invitation.start) return "";
-    const s = new Date(invitation.start);
-    if (Number.isNaN(s.getTime())) return invitation.start;
-    if (!invitation.end) return s.toLocaleString();
-    const e = new Date(invitation.end);
-    if (Number.isNaN(e.getTime())) return s.toLocaleString();
-    return `${s.toLocaleString()} – ${e.toLocaleString()}`;
-  };
-
-  return (
-    <div className="mb-3 rounded-lg border border-border bg-accent/40 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <CalendarDays className="size-4 shrink-0 text-primary" />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">{invitation.summary || t("inviteMeeting")}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {fmtWhen()}
-            {invitation.location ? ` · ${invitation.location}` : ""}
-          </p>
-          {invitation.organizer && (
-            <p className="truncate text-xs text-muted-foreground">
-              {t("inviteOrganizer")}: {invitation.organizer}
-            </p>
-          )}
-        </div>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={() => respond("accept")} disabled={!!busy || !!done}>
-          {busy === "accept" ? <Loader2 className="size-3.5 animate-spin" /> : null}
-          {t("inviteAccept")}
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => respond("tentative")} disabled={!!busy || !!done}>
-          {busy === "tentative" ? <Loader2 className="size-3.5 animate-spin" /> : null}
-          {t("inviteTentative")}
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => respond("decline")} disabled={!!busy || !!done} className="text-destructive hover:text-destructive">
-          {busy === "decline" ? <Loader2 className="size-3.5 animate-spin" /> : null}
-          {t("inviteDecline")}
-        </Button>
-        {done && <span className="text-xs text-emerald-600">{done}</span>}
-        {error && <span className="text-xs text-destructive">{error}</span>}
-      </div>
-    </div>
-  );
-}
 
 export function ReadingPane({
   detail,
@@ -398,10 +58,7 @@ export function ReadingPane({
   labelColors,
   onToggleLabel,
   thread,
-  threadOpen,
-  threadLoading,
   conversationEnabled,
-  onToggleThread,
   onReplyThread,
   onReplyAllThread,
   onForwardThread,
@@ -424,7 +81,7 @@ export function ReadingPane({
   aiEnabled: boolean;
   summary: string;
   summarizing: boolean;
-  onSummarize: () => void;
+  onSummarize: (threadText?: string) => void;
   onReply: () => void;
   onReplyAll: () => void;
   onForward: () => void;
@@ -481,21 +138,6 @@ export function ReadingPane({
   const [receiptBusy, setReceiptBusy] = useState(false);
   const [snoozeOpen, setSnoozeOpen] = useState(false);
   const [snoozeCustom, setSnoozeCustom] = useState("");
-
-  const snoozePreset = (mode: "today" | "tomorrow" | "nextweek") => {
-    const d = new Date();
-    if (mode === "today") {
-      d.setHours(18, 0, 0, 0);
-    } else if (mode === "tomorrow") {
-      d.setDate(d.getDate() + 1);
-      d.setHours(9, 0, 0, 0);
-    } else {
-      const diff = (8 - d.getDay()) % 7 || 7;
-      d.setDate(d.getDate() + diff);
-      d.setHours(9, 0, 0, 0);
-    }
-    return d.getTime();
-  };
   const [recallBusy, setRecallBusy] = useState(false);
   const [recallHandled, setRecallHandled] = useState(false);
   const [replies, setReplies] = useState<string[]>([]);
@@ -513,6 +155,45 @@ export function ReadingPane({
   const [rawError, setRawError] = useState("");
   const [quoteSel, setQuoteSel] = useState<{ x: number; y: number; text: string } | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const [quickReplyText, setQuickReplyText] = useState("");
+  const [quickReplyAll, setQuickReplyAll] = useState(false);
+  const [quickSending, setQuickSending] = useState(false);
+  const [translation, setTranslation] = useState("");
+  const [translating, setTranslating] = useState(false);
+  const [translatedView, setTranslatedView] = useState(false);
+
+  // Track which thread message is expanded
+  const [expandedUid, setExpandedUid] = useState<number | null>(detail.uid);
+
+  const senderDomain = (detail.from[0]?.email || "").split("@").pop() || "";
+  const [remoteLoaded, setRemoteLoaded] = useState(() =>
+    rememberedRemoteSenders().includes(senderDomain),
+  );
+
+  // Reset transient panel state when a different mail is opened. The panel is
+  // kept mounted (no key remount) so switching mails doesn't flash empty
+  // content behind it; we only clear the per-message state here. The reset
+  // runs during render (React's "adjust state when props change" pattern)
+  // instead of inside an effect, so the fresh message never renders with the
+  // previous message's panel state.
+  const detailKey = `${detail.uid}\u0000${detail.from[0]?.email || ""}`;
+  const [prevDetailKey, setPrevDetailKey] = useState(detailKey);
+  if (prevDetailKey !== detailKey) {
+    setPrevDetailKey(detailKey);
+    const domain = (detail.from[0]?.email || "").split("@").pop() || "";
+    setExpandedUid(detail.uid);
+    setDetailsOpen(false);
+    setExpandedQuotes(new Set());
+    setSummaryCollapsed(false);
+    setSummaryOpen(false);
+    setFeedback(null);
+    setQuickReplyOpen(false);
+    setReplies([]);
+    setPgpPlaintext(null);
+    setPgpError("");
+    setRawText("");
+    setRemoteLoaded(rememberedRemoteSenders().includes(domain));
+  }
 
   // Track text selections inside the message body and offer "reply with
   // this quote" (Gmail/Outlook 引用选中段落回复).
@@ -540,34 +221,6 @@ export function ReadingPane({
       document.removeEventListener("scroll", onScroll, true);
     };
   }, [detail]);
-  const [quickReplyText, setQuickReplyText] = useState("");
-  const [quickReplyAll, setQuickReplyAll] = useState(false);
-  const [quickSending, setQuickSending] = useState(false);
-  const [translation, setTranslation] = useState("");
-  const [translating, setTranslating] = useState(false);
-  const [translatedView, setTranslatedView] = useState(false);
-
-  // Track which thread message is expanded
-  const [expandedUid, setExpandedUid] = useState<number | null>(detail.uid);
-
-  // Reset transient panel state when a different mail is opened. The panel is
-  // kept mounted (no key remount) so switching mails doesn't flash empty
-  // content behind it; we only clear the per-message state here.
-  useEffect(() => {
-    const domain = (detail.from[0]?.email || "").split("@").pop() || "";
-    setExpandedUid(detail.uid);
-    setDetailsOpen(false);
-    setExpandedQuotes(new Set());
-    setSummaryCollapsed(false);
-    setSummaryOpen(false);
-    setFeedback(null);
-    setQuickReplyOpen(false);
-    setReplies([]);
-    setPgpPlaintext(null);
-    setPgpError("");
-    setRawText("");
-    setRemoteLoaded(rememberedRemoteSenders().includes(domain));
-  }, [detail.uid, detail.from]);
 
   // Close the label menu when clicking outside it or pressing Escape; the
   // menu is a plain popover without a modal backdrop.
@@ -588,11 +241,6 @@ export function ReadingPane({
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [labelOpen]);
-
-  const senderDomain = (detail.from[0]?.email || "").split("@").pop() || "";
-  const [remoteLoaded, setRemoteLoaded] = useState(() =>
-    rememberedRemoteSenders().includes(senderDomain),
-  );
 
   async function loadRaw() {
     setRawOpen(true);
@@ -666,6 +314,17 @@ export function ReadingPane({
   const threadForDetail = thread?.thread_id === detail.thread_id ? thread : null;
   const threadMessages = threadForDetail?.messages ?? [detail];
   const isThreadView = threadMessages.length > 1;
+  // Thread-level quick reply and Smart Reply suggestions target the newest
+  // member (Gmail semantics); the AI summary covers the whole conversation.
+  const lastThreadMsg = threadMessages[threadMessages.length - 1];
+  const threadText = useMemo(
+    () =>
+      threadMessages
+        .map((m) => (m.text_body || "").trim())
+        .filter(Boolean)
+        .join("\n\n"),
+    [threadMessages],
+  );
   // The conversation view must stay in sync with the list: when the setting
   // is off, the reading pane shows the single message even if the message
   // belongs to a thread.
@@ -701,9 +360,10 @@ export function ReadingPane({
     }
   }
 
-  // loadReplies fetches Smart Reply suggestions for the current message.
-  async function loadReplies() {
-    const text = (detail.text_body || "").trim();
+  // loadReplies fetches Smart Reply suggestions; forText lets the thread
+  // view request suggestions for the newest member instead of the opened one.
+  async function loadReplies(forText?: string) {
+    const text = (forText ?? detail.text_body ?? "").trim();
     if (!text) return;
     setRepliesLoading(true);
     try {
@@ -759,35 +419,41 @@ export function ReadingPane({
     w.document.close();
   }
 
-  async function doQuickReply() {
+  // doQuickReplyFor sends the inline quick reply for a specific message —
+  // the opened detail in single view, the newest member in thread view.
+  async function doQuickReplyFor(target: MailMessage) {
     const text = quickReplyText.trim();
     if (!text) return;
     setQuickSending(true);
     try {
-      const sender = detail.from[0]?.email;
+      const sender = target.from[0]?.email;
       if (!sender) return;
       const meLower = meEmail.toLowerCase();
       const recipients = new Set<string>();
       if (quickReplyAll) {
-        [...detail.from, ...(detail.cc || []), ...detail.to].forEach((a) => {
+        [...target.from, ...(target.cc || []), ...target.to].forEach((a) => {
           if (a.email && a.email.toLowerCase() !== meLower) recipients.add(a.email);
         });
       } else {
         recipients.add(sender);
       }
-      const subject = detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`;
+      const subject = target.subject.startsWith("Re:") ? target.subject : `Re: ${target.subject}`;
       const ok = await onQuickReply(
         [...recipients],
         [],
         subject,
         text,
-        detail.id,
-        detail.id,
+        target.id,
+        target.id,
       );
       if (ok) setQuickReplyText("");
     } finally {
       setQuickSending(false);
     }
+  }
+
+  function doQuickReply() {
+    return doQuickReplyFor(detail);
   }
 
   return (
@@ -811,289 +477,41 @@ export function ReadingPane({
         </Button>
       )}
       {/* Subject header */}
-      <div className="sticky top-0 z-10 border-b border-border bg-card/95 px-4 py-3 backdrop-blur-sm md:px-6">
-        {/* Mobile back */}
-        <div className="mb-1.5 md:hidden">
-          <Button variant="ghost" size="sm" onClick={onBack}>
-            <ArrowLeft className="size-4" />
-            {t("back")}
-          </Button>
-        </div>
-
-        <div className="flex items-start gap-2">
-          <h1 className="min-w-0 flex-1 break-words text-lg font-semibold tracking-tight md:text-xl">
-            {detail.subject ? (
-              <Highlight text={detail.subject} terms={highlightTerms} />
-            ) : (
-              t("noSubject")
-            )}
-          </h1>
-          <div className="flex shrink-0 items-center gap-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onStar}
-              title={starred ? t("unstar") : t("star")}
-              className={cn("size-8", starred && "text-[#C9A227]")}
-            >
-              <Star className={cn("size-4", starred && "fill-current")} />
-            </Button>
-            {isDraft && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onEditDraft}
-                className="h-8 gap-1.5 px-2.5 text-xs"
-              >
-                <PenLine className="size-3.5" />
-                {t("editDraft")}
-              </Button>
-            )}
-            {isSentFolder(folder) && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => onRecall(detail.folder || folder, detail.uid)}
-                title={t("recall")}
-                className="size-8 text-muted-foreground hover:text-foreground"
-              >
-                <Undo2 className="size-4" />
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onArchive}
-              title={t("archive")}
-              className="size-8"
-            >
-              <Archive className="size-4" />
-            </Button>
-            {!showNotSpam && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={onSpam}
-                title={t("spam")}
-                className="size-8 text-muted-foreground hover:text-destructive"
-              >
-                <Ban className="size-4" />
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onDelete}
-              className="size-8 text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="size-4" />
-            </Button>
-            {aiEnabled && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={doTranslate}
-                title={t("translate")}
-                className="size-8 text-muted-foreground"
-              >
-                {translating ? <Loader2 className="size-4 animate-spin" /> : <Languages className="size-4" />}
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onToggleMute}
-              title={muted ? t("unmute") : t("mute")}
-              className={cn("size-8", muted && "text-primary")}
-            >
-              {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={doPrint}
-              title={t("print")}
-              className="size-8 text-muted-foreground"
-            >
-              <Printer className="size-4" />
-            </Button>
-            <div className="relative">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setSnoozeOpen((v) => !v)}
-                title={snoozed ? t("unsnooze") : t("snooze")}
-                className={cn("size-8", snoozed && "text-primary")}
-              >
-                <BellRing className="size-4" />
-              </Button>
-              {snoozeOpen && (
-                <div className="absolute top-full right-0 z-30 mt-1 w-56 rounded-lg border border-border bg-popover p-2 shadow-lg">
-                  <div className="space-y-1">
-                    <button
-                      type="button"
-                      className="flex w-full items-center rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted"
-                      onClick={() => {
-                        onSnooze(snoozed ? 0 : snoozePreset("today"));
-                        setSnoozeOpen(false);
-                      }}
-                    >
-                      {snoozed ? t("unsnooze") : t("snoozeLaterToday")}
-                    </button>
-                    {!snoozed && (
-                      <>
-                        <button
-                          type="button"
-                          className="flex w-full items-center rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted"
-                          onClick={() => {
-                            onSnooze(snoozePreset("tomorrow"));
-                            setSnoozeOpen(false);
-                          }}
-                        >
-                          {t("snoozeTomorrow")}
-                        </button>
-                        <button
-                          type="button"
-                          className="flex w-full items-center rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted"
-                          onClick={() => {
-                            onSnooze(snoozePreset("nextweek"));
-                            setSnoozeOpen(false);
-                          }}
-                        >
-                          {t("snoozeNextWeek")}
-                        </button>
-                        <div className="flex items-center gap-1.5 border-t border-border pt-1.5">
-                          <input
-                            type="datetime-local"
-                            value={snoozeCustom}
-                            onChange={(e) => setSnoozeCustom(e.target.value)}
-                            className="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-1.5 text-xs outline-none"
-                          />
-                          <Button
-                            size="xs"
-                            disabled={!snoozeCustom}
-                            onClick={() => {
-                              const t0 = new Date(snoozeCustom).getTime();
-                              if (t0 > Date.now()) {
-                                onSnooze(t0);
-                                setSnoozeCustom("");
-                                setSnoozeOpen(false);
-                              }
-                            }}
-                          >
-                            {t("snooze")}
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Labels / tags */}
-        <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          {muted && (
-            <span className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-              {t("mutedBadge")}
-            </span>
-          )}
-          {labels
-            .filter((l) => detail.flags.includes(l))
-            .map((l) => {
-              const color = labelColor(l, labelColors?.[l]);
-              return (
-                <span
-                  key={l}
-                  className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium"
-                  style={{
-                    backgroundColor: `${color}1f`,
-                    borderColor: `${color}59`,
-                    color,
-                  }}
-                >
-                  {l}
-                </span>
-              );
-            })}
-          <div className="relative" ref={labelMenuRef}>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setLabelOpen((v) => !v)}
-              title={t("labels")}
-              className="h-5 px-1.5 text-[11px]"
-            >
-              <Tag className="size-3" />
-            </Button>
-            {labelOpen && (
-              <div className="absolute top-full left-0 z-20 mt-1 w-52 rounded-lg border border-border bg-popover p-2 shadow-lg">
-                <div className="mb-2 flex flex-wrap gap-1">
-                  {labels.map((l) => {
-                    const has = detail.flags.includes(l);
-                    return (
-                      <button
-                        key={l}
-                        type="button"
-                        onClick={() => onToggleLabel(l)}
-                        className={cn(
-                          "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] transition-colors",
-                          has
-                            ? "border-transparent font-medium"
-                            : "border-border text-muted-foreground hover:bg-muted",
-                        )}
-                        style={
-                          has
-                            ? {
-                                backgroundColor: `${labelColor(l, labelColors?.[l])}1f`,
-                                color: labelColor(l, labelColors?.[l]),
-                              }
-                            : undefined
-                        }
-                      >
-                        <span
-                          className="size-1.5 rounded-full"
-                          style={{ backgroundColor: labelColor(l, labelColors?.[l]) }}
-                        />
-                        {l}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex gap-1">
-                  <Input
-                    value={newLabel}
-                    onChange={(e) => setNewLabel(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && newLabel.trim()) {
-                        onToggleLabel(newLabel.trim());
-                        setNewLabel("");
-                        setLabelOpen(false);
-                      }
-                    }}
-                    placeholder={t("newLabel")}
-                    className="h-7 text-xs"
-                  />
-                  <Button
-                    size="xs"
-                    onClick={() => {
-                      if (newLabel.trim()) {
-                        onToggleLabel(newLabel.trim());
-                        setNewLabel("");
-                        setLabelOpen(false);
-                      }
-                    }}
-                  >
-                    +
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <MessageHeader
+        detail={detail}
+        folder={folder}
+        isDraft={isDraft}
+        starred={starred}
+        muted={muted}
+        snoozed={snoozed}
+        labels={labels}
+        labelColors={labelColors}
+        aiEnabled={aiEnabled}
+        highlightTerms={highlightTerms}
+        translating={translating}
+        showNotSpam={showNotSpam}
+        onBack={onBack}
+        onStar={onStar}
+        onEditDraft={onEditDraft}
+        onRecall={onRecall}
+        onArchive={onArchive}
+        onSpam={onSpam}
+        onDelete={onDelete}
+        onTranslate={doTranslate}
+        onToggleMute={onToggleMute}
+        onPrint={doPrint}
+        onSnooze={onSnooze}
+        onToggleLabel={onToggleLabel}
+        snoozeOpen={snoozeOpen}
+        setSnoozeOpen={setSnoozeOpen}
+        snoozeCustom={snoozeCustom}
+        setSnoozeCustom={setSnoozeCustom}
+        labelOpen={labelOpen}
+        setLabelOpen={setLabelOpen}
+        newLabel={newLabel}
+        setNewLabel={setNewLabel}
+        labelMenuRef={labelMenuRef}
+      />
 
       {/* Message content area */}
       <div className="px-4 py-4 md:px-6">
@@ -1105,7 +523,7 @@ export function ReadingPane({
           </p>
         ) : isThreadView ? (
           <div className="space-y-0">
-            {threadMessages.map((msg) => (
+            {threadMessages.map((msg, idx) => (
               <ThreadMessage
                 key={msg.uid}
                 message={msg}
@@ -1122,6 +540,59 @@ export function ReadingPane({
                 onReply={() => onReplyThread(msg)}
                 onReplyAll={() => onReplyAllThread(msg)}
                 onForward={() => onForwardThread(msg)}
+                actionRowExtra={
+                  idx === threadMessages.length - 1 ? (
+                    <>
+                      {/* Thread-level controls, unified with the single-message
+                          view, inline after the forward button of the newest
+                          member: quick reply (to this member) and the AI
+                          summary (over the whole conversation). */}
+                      <Button
+                        size="sm"
+                        variant={quickReplyOpen ? "secondary" : "outline"}
+                        onClick={() => setQuickReplyOpen((v) => !v)}
+                      >
+                        <MessageSquarePlus className="size-3.5" />
+                        {t("quickReply")}
+                      </Button>
+                      {aiEnabled && (
+                        <Button
+                          size="sm"
+                          variant={summaryOpen || summarizing || summary ? "secondary" : "outline"}
+                          onClick={() => {
+                            if (summaryOpen) {
+                              setSummaryOpen(false);
+                            } else {
+                              setSummaryOpen(true);
+                              if (!summary) onSummarize(threadText);
+                            }
+                          }}
+                          disabled={summarizing}
+                        >
+                          <Sparkles className="size-3.5" />
+                          {summarizing ? t("summarizing") : summary ? t("aiSummary") : t("summarize")}
+                        </Button>
+                      )}
+                    </>
+                  ) : undefined
+                }
+                belowActions={
+                  idx === threadMessages.length - 1 && quickReplyOpen ? (
+                    <QuickReply
+                      replies={replies}
+                      setQuickReplyText={setQuickReplyText}
+                      quickReplyAll={quickReplyAll}
+                      setQuickReplyAll={setQuickReplyAll}
+                      aiEnabled={aiEnabled}
+                      onLoadReplies={() => loadReplies(lastThreadMsg.text_body)}
+                      repliesLoading={repliesLoading}
+                      setQuickReplyOpen={setQuickReplyOpen}
+                      quickReplyText={quickReplyText}
+                      onSend={() => doQuickReplyFor(lastThreadMsg)}
+                      quickSending={quickSending}
+                    />
+                  ) : undefined
+                }
               />
             ))}
           </div>
@@ -1129,37 +600,13 @@ export function ReadingPane({
           /* Single message view (no thread) */
           <div>
             {/* Sender header */}
-            <div className="mb-4 flex items-start gap-3">
-              <span
-                className={cn(
-                  "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                  "bg-accent text-accent-foreground",
-                )}
-              >
-                {senderName.charAt(0).toUpperCase()}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{senderName}</p>
-                    <button
-                      onClick={() => setDetailsOpen((v) => !v)}
-                      className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      {sender?.email}
-                      {detailsOpen ? (
-                        <ChevronUp className="size-3" />
-                      ) : (
-                        <ChevronDown className="size-3" />
-                      )}
-                    </button>
-                  </div>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {fmtFullDate(detail.date)}
-                  </span>
-                </div>
-            </div>
-          </div>
+            <MessageMeta
+              detail={detail}
+              senderName={senderName}
+              sender={sender}
+              detailsOpen={detailsOpen}
+              setDetailsOpen={setDetailsOpen}
+            />
 
             {/* Meeting invitation */}
             {detail.invitation && detail.invitation.method === "REQUEST" && (
@@ -1167,444 +614,135 @@ export function ReadingPane({
             )}
 
             {/* Read-receipt request (RFC 3798) */}
-            {detail.receipt_requested && !detail.flags.includes("$MDNSent") && (
-              <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs">
-                <MailCheck className="size-4 text-muted-foreground" />
-                <span className="flex-1">{t("receiptRequested")}</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={receiptBusy}
-                  onClick={async () => {
-                    setReceiptBusy(true);
-                    await onSendReceipt(detail.folder || folder, detail.uid);
-                    setReceiptBusy(false);
-                  }}
-                >
-                  {receiptBusy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                  {t("sendReceipt")}
-                </Button>
-              </div>
-            )}
+            <ReceiptBanner
+              detail={detail}
+              folder={folder}
+              receiptBusy={receiptBusy}
+              setReceiptBusy={setReceiptBusy}
+              onSendReceipt={onSendReceipt}
+            />
 
             {/* Recall notice (Outlook-style X-MS-Recall) */}
-            {detail.recall && !recallHandled && (
-              <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-amber-300/60 bg-amber-50 p-3 text-xs dark:border-amber-700/50 dark:bg-amber-950/30">
-                <MailWarning className="size-4 text-amber-600" />
-                <span className="flex-1">
-                  {t("recallNotice", { subject: detail.recall.subject })}
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={recallBusy}
-                  onClick={async () => {
-                    setRecallBusy(true);
-                    const ok = await onApplyRecall(detail.recall!.message_id, detail.folder || folder, detail.uid);
-                    if (ok) setRecallHandled(true);
-                    setRecallBusy(false);
-                  }}
-                >
-                  {recallBusy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                  {t("recallDeleteOriginal")}
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setRecallHandled(true)}>
-                  {t("recallDismiss")}
-                </Button>
-              </div>
-            )}
+            <RecallNotice
+              detail={detail}
+              folder={folder}
+              recallBusy={recallBusy}
+              setRecallBusy={setRecallBusy}
+              recallHandled={recallHandled}
+              setRecallHandled={setRecallHandled}
+              onApplyRecall={onApplyRecall}
+            />
 
             {/* Expanded details */}
             {detailsOpen && (
-              <div className="mb-4 space-y-0.5 rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-                <p>
-                  <span className="font-medium text-foreground/80">From: </span>
-                  {sender?.name ? `${sender.name} <${sender.email}>` : sender?.email}
-                </p>
-                <p>
-                  <span className="font-medium text-foreground/80">To: </span>
-                  {detail.to.map((a) => a.name || a.email).join(", ") || "—"}
-                </p>
-                {detail.cc && detail.cc.length > 0 && (
-                  <p>
-                    <span className="font-medium text-foreground/80">Cc: </span>
-                    {detail.cc.map((a) => a.name || a.email).join(", ")}
-                  </p>
-                )}
-                <p>
-                  <span className="font-medium text-foreground/80">Date: </span>
-                  {fmtFullDate(detail.date)}
-                </p>
-              </div>
+              <MessageDetails detail={detail} sender={sender} />
             )}
 
             {/* Action buttons */}
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              {showNotSpam && (
-                <Button size="sm" variant="outline" onClick={onNotSpam}>
-                  <ShieldCheck className="size-3.5" />
-                  {t("notSpam")}
-                </Button>
-              )}
-              {detail.unsubscribe_url && (
-                <Button size="sm" variant="outline" onClick={onUnsubscribe} title={detail.unsubscribe_url}>
-                  <X className="size-3.5" />
-                  {t("unsubscribe")}
-                </Button>
-              )}
-              <Button size="sm" variant="outline" onClick={onReply}>
-                <Reply className="size-3.5" />
-                {t("reply")}
-              </Button>
-              <Button size="sm" variant="outline" onClick={onReplyAll}>
-                <ReplyAll className="size-3.5" />
-                {t("replyAll")}
-              </Button>
-              <Button size="sm" variant="outline" onClick={onForward}>
-                <Send className="size-3.5" />
-                {t("forward")}
-              </Button>
-              <Button
-                size="sm"
-                variant={quickReplyOpen ? "secondary" : "outline"}
-                onClick={() => setQuickReplyOpen((v) => !v)}
-              >
-                <MessageSquarePlus className="size-3.5" />
-                {t("quickReply")}
-              </Button>
-              {aiEnabled && (
-                <Button
-                  size="sm"
-                  variant={summaryOpen || summarizing || summary ? "secondary" : "outline"}
-                  onClick={() => {
-                    if (summaryOpen) {
-                      setSummaryOpen(false);
-                    } else {
-                      setSummaryOpen(true);
-                      if (!summary) onSummarize();
-                    }
-                  }}
-                  disabled={summarizing}
-                >
-                  <Sparkles className="size-3.5" />
-                  {summarizing ? t("summarizing") : summary ? t("aiSummary") : t("summarize")}
-                </Button>
-              )}
-              <div className="ml-auto flex items-center gap-1">
-                <Button size="sm" variant="ghost" onClick={loadRaw} title={t("viewRaw")}>
-                  <FileCode className="size-3.5" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={downloadRaw} title={t("downloadEml")}>
-                  <Download className="size-3.5" />
-                </Button>
-                <select
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) onMoveToFolder(e.target.value);
-                  }}
-                  title={t("moveTo")}
-                  className="h-7 rounded-md border border-border bg-transparent px-1 text-xs text-muted-foreground outline-none focus-visible:border-ring"
-                >
-                  <option value="">{t("moveTo")}…</option>
-                  {flattenTree(buildFolderTree(folders), (leaf) => folderLabel(t, leaf))
-                    .filter((o) => !/^(trash|drafts)$/i.test(o.value))
-                    .map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            </div>
+            <MessageActions
+              showNotSpam={showNotSpam}
+              onNotSpam={onNotSpam}
+              detail={detail}
+              onUnsubscribe={onUnsubscribe}
+              onReply={onReply}
+              onReplyAll={onReplyAll}
+              onForward={onForward}
+              quickReplyOpen={quickReplyOpen}
+              setQuickReplyOpen={setQuickReplyOpen}
+              aiEnabled={aiEnabled}
+              summaryOpen={summaryOpen}
+              setSummaryOpen={setSummaryOpen}
+              summarizing={summarizing}
+              summary={summary}
+              onSummarize={onSummarize}
+              onLoadRaw={loadRaw}
+              onDownloadRaw={downloadRaw}
+              folders={folders}
+              onMoveToFolder={onMoveToFolder}
+            />
 
             {/* Inline quick reply: only rendered when the action-bar button
                 toggles it open. */}
             {quickReplyOpen && (
-              <div className="mt-4 rounded-lg border border-border p-3">
-                {replies.length > 0 && (
-                  <div className="mb-2 flex flex-wrap gap-1.5">
-                    {replies.map((r, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setQuickReplyText(r)}
-                        className="rounded-full border border-ai/30 bg-ai/10 px-2.5 py-1 text-left text-[11px] text-ai transition-colors hover:bg-ai/20"
-                      >
-                        {r}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div className="mb-2 flex items-center gap-2">
-                  <p className="text-xs font-medium text-muted-foreground">{t("quickReply")}</p>
-                  <button
-                    type="button"
-                    onClick={() => setQuickReplyAll((v) => !v)}
-                    className={cn(
-                      "rounded-full border px-2 py-0.5 text-[11px] transition-colors",
-                      quickReplyAll
-                        ? "border-primary bg-accent font-medium text-accent-foreground"
-                        : "border-border text-muted-foreground hover:bg-muted",
-                    )}
-                  >
-                    {quickReplyAll ? t("replyAll") : t("reply")}
-                  </button>
-                  {aiEnabled && (
-                    <button
-                      type="button"
-                      onClick={loadReplies}
-                      disabled={repliesLoading}
-                      title={t("smartReply")}
-                      className="flex items-center gap-1 rounded-full border border-ai/20 bg-ai/10 px-2 py-0.5 text-[11px] text-ai transition-colors hover:bg-ai/20"
-                    >
-                      {repliesLoading ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
-                      {t("smartReply")}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setQuickReplyOpen(false)}
-                    title={t("collapseQuote")}
-                    className="ml-auto rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <ChevronUp className="size-3.5" />
-                  </button>
-                </div>
-                <textarea
-                  value={quickReplyText}
-                  onChange={(e) => setQuickReplyText(e.target.value)}
-                  placeholder={t("quickReply")}
-                  rows={3}
-                  className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-                <div className="mt-2 flex justify-end">
-                  <Button size="sm" onClick={doQuickReply} disabled={!quickReplyText.trim() || quickSending}>
-                    {quickSending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
-                    {t("send")}
-                  </Button>
-                </div>
-              </div>
+              <QuickReply
+                replies={replies}
+                setQuickReplyText={setQuickReplyText}
+                quickReplyAll={quickReplyAll}
+                setQuickReplyAll={setQuickReplyAll}
+                aiEnabled={aiEnabled}
+                onLoadReplies={loadReplies}
+                repliesLoading={repliesLoading}
+                setQuickReplyOpen={setQuickReplyOpen}
+                quickReplyText={quickReplyText}
+                onSend={doQuickReply}
+                quickSending={quickSending}
+              />
             )}
 
             {/* PGP encrypted message */}
-            {isPgpEncrypted && (
-              <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-ai/30 bg-ai/10 px-3 py-2 text-xs text-ai">
-                <Lock className="size-3.5" />
-                {pgpPlaintext !== null ? (
-                  <span>{t("pgpDecrypted")}</span>
-                ) : (
-                  <>
-                    <span>{t("pgpEncrypted")}</span>
-                    <Button size="xs" variant="outline" onClick={decryptPgp} disabled={decrypting}>
-                      {decrypting ? (
-                        <Loader2 className="size-3 animate-spin" />
-                      ) : (
-                        <Lock className="size-3" />
-                      )}
-                      {decrypting ? t("pgpDecrypting") : t("pgpDecrypt")}
-                    </Button>
-                  </>
-                )}
-                {pgpError && <span className="text-destructive">{pgpError}</span>}
-              </div>
-            )}
+            <PgpBanner
+              isPgpEncrypted={isPgpEncrypted}
+              pgpPlaintext={pgpPlaintext}
+              onDecrypt={decryptPgp}
+              decrypting={decrypting}
+              pgpError={pgpError}
+            />
 
             {/* Remote image policy */}
-            {remoteImages && !remoteLoaded && (
-              <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                <span>{t("remoteImages")}</span>
-                <Button size="xs" variant="outline" onClick={() => setRemoteLoaded(true)}>
-                  {t("loadRemoteImages")}
-                </Button>
-                <Button
-                  size="xs"
-                  variant="outline"
-                  onClick={() => {
-                    rememberRemoteSender(senderDomain);
-                    setRemoteLoaded(true);
-                  }}
-                >
-                  {t("alwaysLoadRemote")}
-                </Button>
-              </div>
-            )}
+            <RemoteImageBanner
+              remoteImages={remoteImages}
+              remoteLoaded={remoteLoaded}
+              setRemoteLoaded={setRemoteLoaded}
+              senderDomain={senderDomain}
+            />
 
             {/* Translation panel */}
-            {translatedView && translation && (
-              <div className="mb-4 rounded-lg border border-border p-3">
-                <div className="mb-1.5 flex items-center justify-between">
-                  <p className="text-xs font-medium text-muted-foreground">{t("translate")}</p>
-                  <Button size="xs" variant="ghost" onClick={() => setTranslatedView(false)}>
-                    {t("showOriginal")}
-                  </Button>
-                </div>
-                <div className="whitespace-pre-wrap text-sm leading-6">{translation}</div>
-              </div>
-            )}
+            <TranslationPanel
+              translatedView={translatedView}
+              translation={translation}
+              setTranslatedView={setTranslatedView}
+            />
 
             {/* Burn-after-read gate: reveal once, then flag $BurnRead */}
-            {detail.burn_after_minutes && detail.burn_after_minutes > 0 &&
-              !detail.flags.includes("$BurnRead") && !burnRevealed && (
-                <div className="relative mb-4 rounded-lg border border-orange-300/60 bg-orange-50 p-6 text-center dark:border-orange-700/50 dark:bg-orange-950/30">
-                  <Flame className="mx-auto mb-2 size-6 text-orange-500" />
-                  <p className="text-sm font-medium">{t("burnNotice")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {t("burnHint", { minutes: detail.burn_after_minutes })}
-                  </p>
-                  <Button className="mt-3" size="sm" onClick={revealBurn}>
-                    {t("burnReveal")}
-                  </Button>
-                </div>
-              )}
+            <BurnGate
+              detail={detail}
+              burnRevealed={burnRevealed}
+              onReveal={revealBurn}
+            />
 
             {/* Message body: HTML preferred, plain text as fallback */}
-            <div className="mail-body" ref={bodyRef}>
-              {(burnRevealed || detail.flags.includes("$BurnRead")) && (
-                <div className="pointer-events-none fixed bottom-3 right-3 z-40 rounded bg-black/70 px-2 py-1 text-[10px] text-white">
-                  {meEmail} · {fmtFullDate(new Date().toISOString())}
-                </div>
-              )}
-              {mounted && htmlBody ? (
-                <div dangerouslySetInnerHTML={{ __html: htmlBody }} style={{fontSize: fontPx}} />
-              ) : segments.length === 0 && detailLoading ? (
-                <p className="flex items-center gap-1.5 text-muted-foreground">
-                  <Loader2 className="size-3.5 animate-spin" />
-                  {t("loading")}
-                </p>
-              ) : segments.length === 0 ? (
-                <p className="text-muted-foreground">{t("noTextBody")}</p>
-              ) : (
-                segments.map((seg, i) =>
-                  seg.type === "p" ? (
-                    <p key={i} className="leading-6" style={{fontSize: fontPx}}>
-                      {seg.lines.map((l, j) => (
-                        <span key={j}>
-                          <Highlight text={l} terms={highlightTerms} />
-                          {j < seg.lines.length - 1 && <br />}
-                        </span>
-                      ))}
-                    </p>
-                  ) : (
-                    <QuoteBlock
-                      key={i}
-                      lines={seg.lines}
-                      expanded={expandedQuotes.has(i)}
-                      onToggle={() => toggleQuote(i)}
-                    />
-                  ),
-                )
-              )}
-            </div>
+            <MessageBody
+              mounted={mounted}
+              htmlBody={htmlBody}
+              segments={segments}
+              detailLoading={detailLoading}
+              fontPx={fontPx}
+              burnRevealed={burnRevealed}
+              detail={detail}
+              meEmail={meEmail}
+              highlightTerms={highlightTerms}
+              expandedQuotes={expandedQuotes}
+              onToggleQuote={toggleQuote}
+              bodyRef={bodyRef}
+            />
 
             {/* Attachments */}
-            {detail.attachments && detail.attachments.length > 0 && (
-              <div className="mt-4 border-t border-border pt-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    {t("attachments", { count: detail.attachments.length })}
-                  </p>
-                  <Button size="xs" variant="outline" onClick={downloadAllAttachments}>
-                    <Download className="size-3" />
-                    {t("downloadAll")}
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {detail.attachments.map((a, i) => (
-                    <AttachmentCard key={i} attachment={a} />
-                  ))}
-                </div>
-              </div>
-            )}
+            <AttachmentList detail={detail} onDownloadAll={downloadAllAttachments} />
           </div>
         )}
 
         {/* AI summary: only rendered when the action-bar button toggles it. */}
         {aiEnabled && (summaryOpen || summarizing || summary) && (
-          <div className="mt-4 rounded-lg border border-ai/30 bg-ai/10 p-3">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 rounded bg-ai px-1.5 py-0.5 text-[11px] font-semibold text-ai-foreground">
-                <Sparkles className="size-3" />
-                AI
-              </span>
-              {summary ? (
-                <>
-                  <button
-                    onClick={() => setSummaryCollapsed((v) => !v)}
-                    className="rounded p-0.5 text-muted-foreground hover:text-foreground"
-                    title={summaryCollapsed ? t("expandQuote") : t("collapseQuote")}
-                  >
-                    {summaryCollapsed ? (
-                      <ChevronDown className="size-3.5" />
-                    ) : (
-                      <ChevronUp className="size-3.5" />
-                    )}
-                  </button>
-                  <Button
-                    size="xs"
-                    variant="ghost"
-                    onClick={onSummarize}
-                    disabled={summarizing}
-                  >
-                    <RotateCw className="size-3" />
-                    {t("regenerate")}
-                  </Button>
-                  <div className="ml-auto flex items-center gap-0.5">
-                    <button
-                      onClick={() => setSummaryOpen(false)}
-                      title={t("collapseQuote")}
-                      className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setFeedback(feedback === "up" ? null : "up")}
-                      title={t("helpful")}
-                      className={cn(
-                        "rounded p-1 transition-colors",
-                        feedback === "up"
-                          ? "text-primary"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      <ThumbsUp className="size-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setFeedback(feedback === "down" ? null : "down")}
-                      title={t("notHelpful")}
-                      className={cn(
-                        "rounded p-1 transition-colors",
-                        feedback === "down"
-                          ? "text-destructive"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      <ThumbsDown className="size-3.5" />
-                    </button>
-                  </div>
-                </>
-              ) : !summarizing ? (
-                <Button size="xs" variant="outline" onClick={onSummarize}>
-                  {t("summarize")}
-                </Button>
-              ) : (
-                <span className="text-xs text-muted-foreground">{t("summarizing")}</span>
-              )}
-            </div>
-            {summary && !summaryCollapsed && (
-              <>
-                <p className="mt-2 text-sm leading-6 whitespace-pre-wrap">{summary}</p>
-                <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
-                  <Info className="size-3" />
-                  {t("aiGenerated")}
-                </p>
-                {feedback && (
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {t("feedbackThanks")}
-                  </p>
-                )}
-              </>
-            )}
-          </div>
+          <AiSummary
+            setSummaryOpen={setSummaryOpen}
+            summarizing={summarizing}
+            summary={summary}
+            summaryCollapsed={summaryCollapsed}
+            setSummaryCollapsed={setSummaryCollapsed}
+            feedback={feedback}
+            setFeedback={setFeedback}
+            onSummarize={onSummarize}
+          />
         )}
       </div>
 

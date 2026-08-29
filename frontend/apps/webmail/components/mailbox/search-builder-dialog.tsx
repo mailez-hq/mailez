@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Bookmark, Plus, SlidersHorizontal, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -93,15 +93,18 @@ export function SearchBuilderDialog({
 
   // Reset local editing state each time the dialog opens: without this, a
   // condition committed in a previous session (e.g. From) silently leaks
-  // into the next search and into saved searches.
-  useEffect(() => {
+  // into the next search and into saved searches. Done as a render-phase
+  // state adjustment (React-recommended over an effect — no extra pass).
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setConditions([]);
       setEditing(null);
       setDraft("");
       setSaveName("");
     }
-  }, [open]);
+  }
 
   const fieldLabel = (f: Field) => t(`sb${f.charAt(0).toUpperCase()}${f.slice(1)}`);
   const activeCount = useMemo(() => conditions.length, [conditions]);

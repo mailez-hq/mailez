@@ -6,7 +6,7 @@
 // sidebar, banners, global overlays) is MailShell in mail-shell.tsx, which
 // also hosts the /home workspace as a sibling content area.
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Inbox as InboxIcon, Loader2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { highlightTerms } from "@/components/mailbox/highlight";
@@ -16,22 +16,31 @@ import { isMuted } from "@/components/mailbox/mail-utils";
 import { cn } from "@/lib/utils";
 import { useMailStore } from "@/components/mailbox/mail-store";
 
+// No external source to subscribe to: the client snapshot is re-read on every
+// render, which is all the welcome-hint needs.
+const subscribeNoop = () => () => {};
+
 // First-run hint shown in the empty reading pane until dismissed. It nudges
 // new users toward the shortcut help.
 const WELCOME_SEEN_KEY = "mailez.welcomeSeen";
 
 function FirstRunHint({ t }: { t: (key: string) => string }) {
-  const [show, setShow] = useState(false);
+  // Read localStorage through useSyncExternalStore: server snapshot is false
+  // (no hint during SSR/hydration), client snapshot reflects storage.
+  const seen = useSyncExternalStore(
+    subscribeNoop,
+    () => {
+      try {
+        return Boolean(window.localStorage.getItem(WELCOME_SEEN_KEY));
+      } catch {
+        return true; // storage unavailable: skip the hint
+      }
+    },
+    () => true,
+  );
+  const [dismissed, setDismissed] = useState(false);
 
-  useEffect(() => {
-    try {
-      if (!window.localStorage.getItem(WELCOME_SEEN_KEY)) setShow(true);
-    } catch {
-      // storage unavailable: skip the hint
-    }
-  }, []);
-
-  if (!show) return null;
+  if (dismissed || seen) return null;
   return (
     <div className="flex flex-col items-center gap-2">
       <p className="max-w-xs text-center">{t("welcomeHint")}</p>
@@ -39,7 +48,7 @@ function FirstRunHint({ t }: { t: (key: string) => string }) {
         size="sm"
         variant="outline"
         onClick={() => {
-          setShow(false);
+          setDismissed(true);
           try {
             window.localStorage.setItem(WELCOME_SEEN_KEY, "1");
           } catch {
@@ -61,7 +70,6 @@ export function MailView() {
     knownLabels,
     labelColors,
     folder,
-    sidebarOpen,
     setSidebarOpen,
     moveSelectedTo,
     openMessage,
@@ -93,7 +101,6 @@ export function MailView() {
     categoryFilter,
     setCategoryFilter,
     doAiSearch,
-    loadMessages,
     toggleSelect,
     removeMessage,
     toggleStar,

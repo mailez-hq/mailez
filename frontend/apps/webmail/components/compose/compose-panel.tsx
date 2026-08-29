@@ -299,7 +299,7 @@ export function ComposePanel(props: ComposePanelProps) {
           )}
           <div className="space-y-1">
             <Label>{t("subject")}</Label>
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
+            <Input data-testid="compose-subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
           </div>
         </div>
         {attachments.length > 0 && (

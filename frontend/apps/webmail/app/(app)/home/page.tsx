@@ -97,7 +97,7 @@ export default function WorkspacePage() {
   const t = useTranslations("home");
   const locale = useLocale();
   const router = useRouter();
-  const { me, unseen, setContactsOpen, setCalendarOpen, openCalendarEvent, openSnoozed } = useMailStore();
+  const { me, unseen, setContactsOpen, setCalendarOpen, openCalendarEvent, openSnoozed, openDriveFile } = useMailStore();
   const [todoCount, setTodoCount] = useState(0);
   const [contactCount, setContactCount] = useState(0);
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
@@ -380,7 +380,9 @@ export default function WorkspacePage() {
                   {files.map((f) => (
                     <li
                       key={f.id}
-                      className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/60"
+                      className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/60"
+                      onClick={() => openDriveFile(f)}
+                      title={f.name}
                     >
                       <FileText className="size-4 shrink-0 text-muted-foreground" />
                       <span className="truncate text-sm">{f.name}</span>

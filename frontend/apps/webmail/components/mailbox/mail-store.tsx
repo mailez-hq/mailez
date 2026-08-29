@@ -18,7 +18,7 @@ import { writeLastFolder } from "@/lib/preferences";
 import {
   mailMessage,
   logout as apiLogout,
-  type CalendarEvent, type MailMessage, type Me,
+  type CalendarEvent, type DriveEntry, type MailMessage, type Me,
 } from "@/lib/api";
 import { isPinned, isSnoozed } from "@/components/mailbox/mail-utils";
 import { viewCacheGet, viewCachePut } from "@/lib/view-cache";
@@ -366,9 +366,19 @@ export function useMailStoreValue(me: Me) {
   }
 
   // Opening the drive drawer dismisses a composing editor first, like the
-  // calendar drawer.
+  // calendar drawer. driveFocus is the file the drawer should navigate to
+  // (recent-files card on the workspace dashboard); plain openDrive clears it.
+  const [driveFocus, setDriveFocus] = useState<DriveEntry | null>(null);
+
   function openDrive() {
     if (composeOpen) closeCompose();
+    setDriveFocus(null);
+    setDriveOpen(true);
+  }
+
+  function openDriveFile(entry: DriveEntry) {
+    if (composeOpen) closeCompose();
+    setDriveFocus(entry);
     setDriveOpen(true);
   }
 
@@ -816,7 +826,9 @@ export function useMailStoreValue(me: Me) {
     openCalendarEvent,
     driveOpen,
     setDriveOpen,
+    driveFocus,
     openDrive,
+    openDriveFile,
     saveDraftNow,
     setTo,
     setCc,

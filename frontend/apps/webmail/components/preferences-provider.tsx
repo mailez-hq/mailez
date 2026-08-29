@@ -53,6 +53,10 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     const initial = readPreferences();
+    // Hydrating persisted preferences after mount is intentional: the server
+    // render must use the defaults (no storage access on the server), so this
+    // cannot be a lazy initializer.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPrefs(initial);
     applyPreferences(initial);
     setResolvedDark(resolveTheme(initial.theme) === "dark");

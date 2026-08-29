@@ -8,6 +8,7 @@
 // them. All mailbox state lives in the MailStoreProvider that mounts this.
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Sparkles, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,7 +42,6 @@ export function MailShell({ children }: { children: React.ReactNode }) {
     folders,
     unseen,
     knownLabels,
-    labelColors,
     labelManagerOpen,
     setLabelManagerOpen,
     activeLabel,
@@ -72,10 +72,8 @@ export function MailShell({ children }: { children: React.ReactNode }) {
     renameFolder,
     deleteFolder,
     clearFolder,
-    error,
     composeError,
     composeNotice,
-    detail,
     ai,
     draftSaved,
     composeOpen,
@@ -142,6 +140,7 @@ export function MailShell({ children }: { children: React.ReactNode }) {
     openCalendar,
     calendarFocus,
     driveOpen,
+    driveFocus,
     openDrive,
     setDriveOpen,
     setCalendarOpen,
@@ -157,7 +156,6 @@ export function MailShell({ children }: { children: React.ReactNode }) {
     toast,
     setToast,
     logout,
-    scheduled,
     scheduledOpen,
     setScheduledOpen,
     loadScheduled,
@@ -165,6 +163,12 @@ export function MailShell({ children }: { children: React.ReactNode }) {
   } = useMailStore();
 
   const [announcement, setAnnouncement] = useState<MailAnnouncement | null>(null);
+  // The store's folder stays at its default ("Inbox") on /home, where no
+  // /mail/[folder] URL segment ever sets it. Don't let that phantom value
+  // highlight a folder row while the workspace dashboard is open — only a
+  // real /mail route has an active folder.
+  const pathname = usePathname();
+  const currentFolder = pathname?.startsWith("/mail") ? folder : "";
 
   // The global admin announcement banner: fetched once per session, hidden
   // while the backend has none published.
@@ -205,7 +209,7 @@ export function MailShell({ children }: { children: React.ReactNode }) {
         labels={knownLabels}
         activeLabel={activeLabel}
         savedSearches={savedSearches}
-        current={folder}
+        current={currentFolder}
         email={me.email}
         quotaBytes={me.quota_bytes}
         quotaUsed={me.quota_bytes_used}
@@ -352,7 +356,7 @@ export function MailShell({ children }: { children: React.ReactNode }) {
       <SieveEditor open={sieveOpen} onOpenChange={setSieveOpen} />
 
       {calendarOpen && <CalendarDrawer onClose={() => setCalendarOpen(false)} initialEvent={calendarFocus} />}
-      {driveOpen && <DriveDrawer onClose={() => setDriveOpen(false)} />}
+      {driveOpen && <DriveDrawer focus={driveFocus} onClose={() => setDriveOpen(false)} />}
 
       <LabelManager open={labelManagerOpen} onOpenChange={setLabelManagerOpen} />
 
