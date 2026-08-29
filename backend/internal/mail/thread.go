@@ -137,7 +137,8 @@ func (c *Client) Thread(email, token, folder, tid string) ([]Message, error) {
 		done <- cli.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure, section.FetchItem()}, messages)
 	}()
 
-	var out []Message
+	// Non-nil empty slice: JSON null (nil slice) violates the array contract.
+	out := make([]Message, 0)
 	for msg := range messages {
 		if msg.Envelope != nil && threadID(msg.Envelope.Subject) == tid {
 			m := envelopeToMessage(msg)

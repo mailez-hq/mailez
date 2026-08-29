@@ -237,7 +237,9 @@ func (c *Client) SearchAllMessagesSpec(email, token string, sel SearchQuery) ([]
 	if err != nil {
 		return nil, err
 	}
-	var out []Message
+	// Non-nil empty slice: the API contract promises an array, and Go's nil
+	// slice serializes to JSON null (which once crashed the frontend).
+	out := make([]Message, 0)
 	seen := make(map[string]bool)
 	for _, f := range folders {
 		if strings.EqualFold(f, "Trash") {
