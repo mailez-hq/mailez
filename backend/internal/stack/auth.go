@@ -17,10 +17,9 @@ import (
 )
 
 // webmailPorts are the internal ports reserved for webmail traffic; temp
-// tokens are only accepted on these ports. The postdove engine reaches the
-// gateway proxies on 1143/11490/1587; mailezine publishes the engine ports
-// itself (143 imap, 4190 managesieve, 1587 submission), so those must be
-// accepted for the temp-token path too.
+// tokens are only accepted on these ports. The mailezine engine publishes
+// the standard engine ports itself (143 imap, 4190 managesieve, 1587
+// submission), so those must be accepted for the temp-token path too.
 var webmailPorts = map[string]bool{
 	"11490": true, // gateway managesieve proxy
 	"1143":  true, // gateway imap proxy
@@ -281,38 +280,39 @@ func (h *Handler) delegatedAppToken(c *fiber.Ctx, pw, owner string) bool {
 }
 
 // serverFor resolves the backend host:port for a protocol. Hosts come from
-// env, defaulting to the compose
-// service names; the hostname is resolved to an IP because nginx's mail auth
-// module (ngx_parse_addr) only accepts IP literals in Auth-Server.
+// the engine addresses (MAIL_IMAP_ADDR / MAIL_SMTP_ADDR), defaulting to the
+// mailezine compose service; the hostname is resolved to an IP because the
+// mail auth module (ngx_parse_addr) only accepts IP literals in Auth-Server.
 func (h *Handler) serverFor(protocol string, authenticated bool) (string, string) {
-	imapAddr := h.Cfg.DovecotAddress
-	smtpAddr := h.Cfg.PostfixAddress
-	var host string
+	imapHost := hostOf(h.Cfg.MailImapAddr)
+	smtpHost := hostOf(h.Cfg.MailSmtpAddr)
 	switch protocol {
 	case "imap":
-		host = imapAddr
-		return resolveHostname(host), "143"
+		return resolveHostname(imapHost), "143"
 	case "pop3":
-		host = imapAddr
-		return resolveHostname(host), "110"
+		return resolveHostname(imapHost), "110"
 	case "smtp":
 		if authenticated {
-			host = smtpAddr
-			return resolveHostname(host), "1587"
+			return resolveHostname(smtpHost), "1587"
 		}
-		host = smtpAddr
-		return resolveHostname(host), "25"
+		return resolveHostname(smtpHost), "25"
 	case "submission":
-		host = smtpAddr
-		return resolveHostname(host), "1587"
+		return resolveHostname(smtpHost), "1587"
 	case "lmtp":
-		host = imapAddr
-		return resolveHostname(host), "2525"
+		return resolveHostname(imapHost), "2525"
 	case "sieve":
-		host = imapAddr
-		return resolveHostname(host), "4190"
+		return resolveHostname(imapHost), "4190"
 	}
-	return resolveHostname(imapAddr), "143"
+	return resolveHostname(imapHost), "143"
+}
+
+// hostOf strips the port from a host:port address, passing bare hosts
+// through unchanged.
+func hostOf(addr string) string {
+	if host, _, err := net.SplitHostPort(addr); err == nil {
+		return host
+	}
+	return addr
 }
 
 // resolveHostname resolves a backend host for the mail auth module: IP

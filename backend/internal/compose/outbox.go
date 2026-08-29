@@ -201,9 +201,9 @@ func deliverOutbox(addr, from string, recipients []string, raw string) error {
 	if !strings.HasSuffix(raw, "\r\n") {
 		msg = append(msg, '\r', '\n')
 	}
-	// The local MTA (postdove gateway or mailezine dev) may present a
-	// self-signed certificate on the internal link; verify=false matches
-	// the rest of the internal mail client (mail.go tlsConfig).
+	// The engine MTA may present a self-signed certificate on the internal
+	// link; verify=false matches the rest of the internal mail client
+	// (mail.go tlsConfig).
 	c, err := smtp.Dial(addr)
 	if err != nil {
 		return err
@@ -211,7 +211,7 @@ func deliverOutbox(addr, from string, recipients []string, raw string) error {
 	defer c.Close()
 	// Opportunistic STARTTLS with the internal (self-signed) cert tolerated.
 	if err := c.StartTLS(&tls.Config{InsecureSkipVerify: true}); err != nil {
-		// plaintext internal link (postdove dev) is fine
+		// plaintext internal link (dev) is fine
 	}
 	if err := c.Mail(from); err != nil {
 		return err

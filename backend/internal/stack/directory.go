@@ -4,10 +4,9 @@ package stack
 //
 // These endpoints expose the mailbox directory (users, domains, aliases,
 // relays, senders, quota, sieve) as plain JSON concepts, independent of any
-// engine protocol. Engine adapters translate between this contract and their
-// own shapes: the postdove engine currently consumes the legacy
-// /stack/postfix/* and /stack/dovecot/* endpoints; future engines (stalwart,
-// mox) will consume this one directly.
+// engine protocol. The mailezine engine consumes this contract directly;
+// any future engine should do the same rather than speak a legacy MTA
+// protocol.
 //
 // A 404 response always means "no such object"; the request was valid but the
 // directory has nothing for it.

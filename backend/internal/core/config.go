@@ -19,8 +19,6 @@ type Config struct {
 	StackSecret        string
 	CookieSecure       bool
 	SessionLifetime    int // seconds
-	DovecotAddress     string
-	PostfixAddress     string
 	MailEngine         string
 	RecipientDelimiter string
 	Subnet             string
@@ -37,8 +35,8 @@ type Config struct {
 	MailEngineMgmtAddr   string
 	MailEngineMgmtSecret string
 	// MailMtaAddr is the host:port used by background workers (outbox
-	// delivery, external fetch poller) to submit mail to the local MTA.
-	// Defaults to PostfixAddress:25 (resolves inside the docker network);
+	// delivery, external fetch poller) to submit mail to the engine's MTA.
+	// Defaults to mailezine:25 (resolves inside the docker network);
 	// host-run dev backends must point it at a host-reachable mapping
 	// (e.g. 127.0.0.1:25).
 	MailMtaAddr string
@@ -71,8 +69,8 @@ type Config struct {
 	License          string
 	LicenseRequired  bool
 	// KVBackend is the engine storage KV backend ("pebble" | "tidb"). It is
-	// reported on the admin overview; the community (postdove) engine stores
-	// mail in Maildir instead and leaves this empty.
+	// reported on the admin overview; single-node deployments default to
+	// pebble with local-FS blobs.
 	KVBackend string
 	// BlobBackend is the message-body blob store: "minio" when an S3/MinIO
 	// endpoint is configured, otherwise "local".
@@ -85,10 +83,9 @@ type Config struct {
 }
 
 // SupportedMailEngines are the mail engines the control plane can drive.
-// postdove = community edition (Postfix + Dovecot), mailezine = enterprise
-// edition engine. The gateway speaks IMAP to either, so switching the
-// identifier only changes edition semantics (license) and the overview.
-var SupportedMailEngines = []string{"postdove", "mailezine"}
+// mailezine is the only engine; the identifier switches edition semantics
+// (license capacity) and the overview label.
+var SupportedMailEngines = []string{"mailezine"}
 
 // Load reads configuration from the environment.
 func Load() Config {
@@ -102,16 +99,14 @@ func Load() Config {
 		SecretKey:            env("MAILEZ_SECRET_KEY", "dev-secret-change-me"),
 		CookieSecure:         envBool("MAILEZ_COOKIE_SECURE", false),
 		SessionLifetime:      envInt("SESSION_LIFETIME", 3600),
-		DovecotAddress:       env("DOVECOT_ADDRESS", "dovecot"),
-		PostfixAddress:       env("POSTFIX_ADDRESS", "postfix"),
-		MailEngine:           env("MAILEZ_MAIL_ENGINE", "postdove"),
+		MailEngine:           env("MAILEZ_MAIL_ENGINE", "mailezine"),
 		RecipientDelimiter:   env("MAILEZ_RECIPIENT_DELIMITER", ""),
 		Subnet:               env("MAILEZ_SUBNET", "192.168.206.0/24"),
 		Domain:               env("MAILEZ_DOMAIN", "example.com"),
 		Hostname:             env("MAILEZ_HOSTNAME", "localhost"),
-		MailImapAddr:         env("MAIL_IMAP_ADDR", "gateway:1143"),
-		MailSmtpAddr:         env("MAIL_SMTP_ADDR", "gateway:1587"),
-		MailSieveAddr:        env("MAIL_SIEVE_ADDR", "gateway:11490"),
+		MailImapAddr:         env("MAIL_IMAP_ADDR", "mailezine:143"),
+		MailSmtpAddr:         env("MAIL_SMTP_ADDR", "mailezine:1587"),
+		MailSieveAddr:        env("MAIL_SIEVE_ADDR", "mailezine:4190"),
 		MailEngineMgmtAddr:   env("MAIL_ENGINE_MGMT_ADDR", ""),
 		MailEngineMgmtSecret: env("MAIL_ENGINE_MGMT_SECRET", ""),
 		MailMtaAddr:          env("MAIL_MTA_ADDR", ""),
@@ -143,9 +138,9 @@ func Load() Config {
 		ServiceFile:          env("MAILEZ_SERVICE_FILE", ""),
 		Service:              env("MAILEZ_SERVICE", ""),
 	}
-	// Enterprise (mailezine) defaults to the distributed stack: TiDB KV +
-	// MinIO/S3 blobs. Community (postdove) keeps Maildir/local and reports
-	// no KV. Explicit env overrides always win.
+	// Distributed deployments opt into TiDB KV + MinIO/S3 blobs via env;
+	// single-node keeps the pebble/local-FS defaults and reports no KV.
+	// Explicit env overrides always win.
 	cfg.KVBackend = env("MAILEZINE_STORAGE_BACKEND", "")
 	if cfg.KVBackend == "" && cfg.MailEngine == "mailezine" {
 		cfg.KVBackend = "tidb"
@@ -158,7 +153,7 @@ func Load() Config {
 		cfg.BlobBackend = "local"
 	}
 	if cfg.MailMtaAddr == "" {
-		cfg.MailMtaAddr = cfg.PostfixAddress + ":25"
+		cfg.MailMtaAddr = "mailezine:25"
 	}
 	return cfg
 }

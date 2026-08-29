@@ -1,9 +1,9 @@
 package stack
 
-// Contract tests for the /stack API consumed by the mail images (postfix /
-// dovecot / nginx). The response formats below must stay byte-compatible with
-// the internal API contract, so these tests pin the exact wire contract
-// (status codes, JSON quoting, list formatting).
+// Contract tests for the /stack API consumed by the mail images (nginx /
+// rspamd) and the mailezine engine. The response formats below must stay
+// byte-compatible with the internal API contract, so these tests pin the
+// exact wire contract (status codes, JSON quoting, list formatting).
 
 import (
 	"context"
@@ -66,8 +66,10 @@ func newContractHarness(t *testing.T) (*Handler, *fiber.App) {
 		Domain:             "example.com",
 		MessageRateLimit:   200,
 		DkimSelector:       "dkim",
-		DovecotAddress:     "127.0.0.1",
-		PostfixAddress:     "127.0.0.1",
+		MailEngine:         "mailezine",
+		MailImapAddr:       "127.0.0.1:143",
+		MailSmtpAddr:       "127.0.0.1:1587",
+		MailSieveAddr:      "127.0.0.1:4190",
 	}
 	mgr := auth.NewManager(db, auth.NewMemoryStore(), "mailez_session", time.Hour)
 	h := New(db, mgr, cfg, nil, nil, authcache.New(0))
@@ -299,7 +301,7 @@ func TestAuthContract(t *testing.T) {
 			headers.Get("Auth-Status"), headers.Get("Auth-Error-Code"), headers.Get("Auth-User-Exists"))
 	}
 
-	// Unknown users are flagged for postfix.
+	// Unknown users are flagged for the mail proxy.
 	code, headers, _ = doAuthReq(t, app, "/stack/auth/email", mailHeaders(map[string]string{
 		"Auth-User": "nobody@example.com", "Auth-Pass": "secret123",
 	}))
@@ -359,270 +361,6 @@ func TestAuthContract(t *testing.T) {
 		"Auth-User": "alice@example.com", "Auth-Pass": "secret123",
 	}); code != 500 {
 		t.Fatalf("auth/email bad method: got %d", code)
-	}
-}
-
-func TestPostfixDomainContract(t *testing.T) {
-	h, app := newContractHarness(t)
-	seedContractData(t, h)
-
-	if code, body := doGet(t, app, "/stack/postfix/domain/example.com"); code != 200 || body != `"example.com"` {
-		t.Fatalf("domain: got %d %q", code, body)
-	}
-	if code, body := doGet(t, app, "/stack/postfix/domain/alt.example.com"); code != 200 || body != `"example.com"` {
-		t.Fatalf("alternative: got %d %q", code, body)
-	}
-	if code, _ := doGet(t, app, "/stack/postfix/domain/%5B1.2.3.4%5D"); code != 404 {
-		t.Fatalf("bracketed domain: got %d", code)
-	}
-	if code, _ := doGet(t, app, "/stack/postfix/domain/unknown.example.com"); code != 404 {
-		t.Fatalf("unknown domain: got %d", code)
-	}
-}
-
-func TestPostfixMailboxContract(t *testing.T) {
-	h, app := newContractHarness(t)
-	seedContractData(t, h)
-
-	if code, body := doGet(t, app, "/stack/postfix/mailbox/alice@example.com"); code != 200 || body != `"alice@example.com"` {
-		t.Fatalf("mailbox: got %d %q", code, body)
-	}
-	if code, _ := doGet(t, app, "/stack/postfix/mailbox/nobody@example.com"); code != 404 {
-		t.Fatalf("missing mailbox: got %d", code)
-	}
-}
-
-func TestPostfixAliasContract(t *testing.T) {
-	h, app := newContractHarness(t)
-	seedContractData(t, h)
-
-	cases := []struct {
-		path string
-		want string
-	}{
-		{"/stack/postfix/alias/team@example.com", `"alice@example.com,bob@example.com"`},
-		{"/stack/postfix/alias/team+detail@example.com", `"alice+detail@example.com,bob+detail@example.com"`},
-		{"/stack/postfix/alias/team%2Bdetail@example.com", `"alice+detail@example.com,bob+detail@example.com"`},
-		{"/stack/postfix/alias/alice@example.com", `"alice@example.com"`},
-		{"/stack/postfix/alias/example.com", `"example.com"`},
-		{"/stack/postfix/alias/wildcard@example.com", `"alice@example.com"`},
-	}
-	for _, c := range cases {
-		if code, body := doGet(t, app, c.path); code != 200 || body != c.want {
-			t.Errorf("%s: got %d %q, want %q", c.path, code, body, c.want)
-		}
-	}
-
-	for _, path := range []string{
-		"/stack/postfix/alias/nobody@unknown.example.com",
-		"/stack/postfix/alias/%22quoted%22@example.com",
-		"/stack/postfix/alias/a%40b@example.com",
-	} {
-		if code, _ := doGet(t, app, path); code != 404 {
-			t.Errorf("%s: got %d, want 404", path, code)
-		}
-	}
-}
-
-func TestPostfixTransportContract(t *testing.T) {
-	h, app := newContractHarness(t)
-	seedContractData(t, h)
-
-	cases := []struct {
-		path string
-		want string
-	}{
-		{"/stack/postfix/transport/alice@relay.example.com", `"smtp:[relay.example.com]:2525"`},
-		{"/stack/postfix/transport/alice@mxrelay.example.com", `"smtp:mxrelay.example.com"`},
-		{"/stack/postfix/transport/alice@lmtprelay.example.com", `"lmtp:imap.example.com:2525"`},
-	}
-	for _, c := range cases {
-		if code, body := doGet(t, app, c.path); code != 200 || body != c.want {
-			t.Errorf("%s: got %d %q, want %q", c.path, code, body, c.want)
-		}
-	}
-
-	for _, path := range []string{
-		"/stack/postfix/transport/alice@unknown.example.com",
-		"/stack/postfix/transport/*",
-	} {
-		if code, _ := doGet(t, app, path); code != 404 {
-			t.Errorf("%s: got %d, want 404", path, code)
-		}
-	}
-}
-
-func TestPostfixSenderLoginContract(t *testing.T) {
-	h, app := newContractHarness(t)
-	seedContractData(t, h)
-
-	code, body := doGet(t, app, "/stack/postfix/sender/login/alice@example.com")
-	if code != 200 {
-		t.Fatalf("sender login: got %d", code)
-	}
-	got := sortedCSV(t, body)
-	want := []string{"alice@example.com", "bob@example.com"} // bob may spoof within the domain
-	if strings.Join(got, ",") != strings.Join(want, ",") {
-		t.Fatalf("sender login: got %v, want %v", got, want)
-	}
-
-	// A localpart nobody owns still lists the spoofers of the domain
-	// (isolated on a domain without wildcard aliases).
-	code, body = doGet(t, app, "/stack/postfix/sender/login/anyone@spoof.example.com")
-	if code != 200 {
-		t.Fatalf("sender login (spoof): got %d", code)
-	}
-	got = sortedCSV(t, body)
-	if len(got) != 1 || got[0] != "carol@spoof.example.com" {
-		t.Fatalf("sender login (spoof): got %v, want [carol@spoof.example.com]", got)
-	}
-
-	if code, _ := doGet(t, app, "/stack/postfix/sender/login/nobody@unknown.example.com"); code != 404 {
-		t.Fatalf("sender login unknown: got %d", code)
-	}
-}
-
-// sortedCSV unmarshals a JSON string and returns its comma-separated values sorted.
-func sortedCSV(t *testing.T, body string) []string {
-	t.Helper()
-	var s string
-	if err := json.Unmarshal([]byte(body), &s); err != nil {
-		t.Fatalf("unmarshal %q: %v", body, err)
-	}
-	parts := strings.Split(s, ",")
-	sort.Strings(parts)
-	return parts
-}
-
-func TestPostfixSRSAndRateContract(t *testing.T) {
-	h, app := newContractHarness(t)
-	seedContractData(t, h)
-
-	// Non-SRS recipients and served-domain senders are not rewritten.
-	if code, _ := doGet(t, app, "/stack/postfix/recipient/map/alice@example.com"); code != 404 {
-		t.Errorf("recipient/map plain: got %d, want 404", code)
-	}
-	if code, _ := doGet(t, app, "/stack/postfix/sender/map/alice@example.com"); code != 404 {
-		t.Errorf("sender/map served domain: got %d, want 404", code)
-	}
-
-	// External sender is SRS-rewritten, then the recipient map restores it.
-	code, body := doGet(t, app, "/stack/postfix/sender/map/john@example.org")
-	if code != 200 || !strings.Contains(body, "SRS0=") {
-		t.Fatalf("sender/map external: got %d %q", code, body)
-	}
-	var srs string
-	if err := json.Unmarshal([]byte(body), &srs); err != nil {
-		t.Fatalf("sender/map unmarshal: %v", err)
-	}
-	code, body = doGet(t, app, "/stack/postfix/recipient/map/"+srs)
-	if code != 200 || body != `"john@example.org"` {
-		t.Fatalf("recipient/map SRS: got %d %q", code, body)
-	}
-
-	// Rate endpoint answers 404 while under the limit (postfix treats a hit
-	// as a temporary failure only when the JSON smtp code is returned).
-	if code, _ := doGet(t, app, "/stack/postfix/sender/rate/alice@example.com"); code != 404 {
-		t.Errorf("sender/rate under limit: got %d, want 404", code)
-	}
-	if code, _ := doGet(t, app, "/stack/postfix/sender/rate/nobody@example.com"); code != 404 {
-		t.Errorf("sender/rate unknown: got %d, want 404", code)
-	}
-}
-
-func TestDovecotContract(t *testing.T) {
-	h, app := newContractHarness(t)
-	seedContractData(t, h)
-
-	if code, body := doGet(t, app, "/stack/dovecot/passdb/alice@example.com"); code != 200 ||
-		body != `{"allow_real_nets":"192.168.206.0/24","nopassword":"Y","password":null}` {
-		t.Fatalf("passdb: got %d %q", code, body)
-	}
-	if code, body := doGet(t, app, "/stack/dovecot/userdb/alice@example.com"); code != 200 ||
-		body != `{"quota_rule":"*:bytes=1000000000"}` {
-		t.Fatalf("userdb: got %d %q", code, body)
-	}
-	if code, _ := doGet(t, app, "/stack/dovecot/passdb/nobody@example.com"); code != 404 {
-		t.Fatalf("passdb missing: got %d", code)
-	}
-
-	// userdb iteration: set equality (SQL order is not guaranteed).
-	code, body := doGet(t, app, "/stack/dovecot/userdb/")
-	if code != 200 {
-		t.Fatalf("userdb list: got %d", code)
-	}
-	var emails []string
-	if err := json.Unmarshal([]byte(body), &emails); err != nil {
-		t.Fatalf("userdb list unmarshal: %v", err)
-	}
-	sort.Strings(emails)
-	if strings.Join(emails, ",") != "alice@example.com,bob@example.com,carol@spoof.example.com" {
-		t.Fatalf("userdb list: got %v", emails)
-	}
-
-	// quota report is persisted.
-	if code, body := doPost(t, app, "/stack/dovecot/quota/bytes/alice@example.com", "2048"); code != 200 {
-		t.Fatalf("quota report: got %d %q", code, body)
-	}
-	var u models.User
-	if err := h.DB.First(&u, "email = ?", "alice@example.com").Error; err != nil {
-		t.Fatalf("reload user: %v", err)
-	}
-	if u.QuotaBytesUsed != 2048 {
-		t.Fatalf("quota persisted: got %d", u.QuotaBytesUsed)
-	}
-
-	if code, body := doGet(t, app, "/stack/dovecot/sieve/name/default/alice@example.com"); code != 200 || body != `"default"` {
-		t.Fatalf("sieve name: got %d %q", code, body)
-	}
-	code, body = doGet(t, app, "/stack/dovecot/sieve/data/default/alice@example.com")
-	if code != 200 {
-		t.Fatalf("sieve data: got %d", code)
-	}
-	var script string
-	if err := json.Unmarshal([]byte(body), &script); err != nil {
-		t.Fatalf("sieve data unmarshal: %v", err)
-	}
-	if !strings.Contains(script, `require "vacation";`) || !strings.Contains(script, `fileinto :create "Junk";`) {
-		t.Fatalf("sieve data missing expected rules:\n%s", script)
-	}
-}
-
-// TestDovecotSieveWhitelistBlacklist pins the generated sieve rules for a
-// user with whitelist/blacklist entries (mixed domains and full addresses).
-func TestDovecotSieveWhitelistBlacklist(t *testing.T) {
-	h, app := newContractHarness(t)
-	seedContractData(t, h)
-
-	var u models.User
-	if err := h.DB.First(&u, "email = ?", "alice@example.com").Error; err != nil {
-		t.Fatalf("load user: %v", err)
-	}
-	if err := h.DB.Model(&u).Updates(map[string]any{
-		"whitelist": "trusted.example.com, friend@example.net",
-		"blacklist": "spam.example.com, bad@example.net",
-	}).Error; err != nil {
-		t.Fatalf("set lists: %v", err)
-	}
-
-	_, body := doGet(t, app, "/stack/dovecot/sieve/data/default/alice@example.com")
-	var script string
-	if err := json.Unmarshal([]byte(body), &script); err != nil {
-		t.Fatalf("sieve data unmarshal: %v", err)
-	}
-	for _, want := range []string{
-		`address :domain :is "From" "trusted.example.com"`,
-		`address :is "From" "friend@example.net"`,
-		`address :domain :is "From" "spam.example.com"`,
-		`address :is "From" "bad@example.net"`,
-	} {
-		if !strings.Contains(script, want) {
-			t.Fatalf("sieve data missing %q:\n%s", want, script)
-		}
-	}
-	// whitelist must precede the spam filter so it bypasses Junk filing.
-	if idxW, idxS := strings.Index(script, "address :domain :is \"From\" \"trusted.example.com\""), strings.Index(script, "if spamtest"); idxW < 0 || idxS < 0 || idxW > idxS {
-		t.Fatalf("whitelist rule must appear before spamtest:\n%s", script)
 	}
 }
 
@@ -704,14 +442,6 @@ func TestIDNAContract(t *testing.T) {
 	unicode := url.PathEscape("bücher.example")
 	punycode := "xn--bcher-kva.example"
 
-	// Domain map answers punycode regardless of how the domain was stored or
-	// queried.
-	if code, body := doGet(t, app, "/stack/postfix/domain/"+punycode); code != 200 || body != `"`+punycode+`"` {
-		t.Fatalf("domain punycode: got %d %q", code, body)
-	}
-	if code, body := doGet(t, app, "/stack/postfix/domain/"+unicode); code != 200 || body != `"`+punycode+`"` {
-		t.Fatalf("domain unicode: got %d %q", code, body)
-	}
 
 	// rspamd vault advertises the punycode selector domain (image parity).
 	for _, q := range []string{punycode, unicode} {
@@ -734,11 +464,6 @@ func TestIDNAContract(t *testing.T) {
 		}
 	}
 
-	// Alias destinations are IDNA-encoded on the wire.
-	if code, body := doGet(t, app, "/stack/postfix/alias/team@example.com"); code != 200 ||
-		body != `"x@`+punycode+`"` {
-		t.Fatalf("alias destination: got %d %q", code, body)
-	}
 
 	// local_domains passes through the stored names (image behaviour).
 	code, body := doGet(t, app, "/stack/rspamd/local_domains")
@@ -800,42 +525,6 @@ func TestFetchContract(t *testing.T) {
 
 	if code, _ := doPost(t, app, "/stack/fetch/999", `"x"`); code != 404 {
 		t.Fatalf("fetch done unknown id: got %d", code)
-	}
-}
-
-func TestAutoconfigContract(t *testing.T) {
-	h, app := newContractHarness(t)
-	seedContractData(t, h)
-
-	code, body := doGet(t, app, "/stack/autoconfig/mozilla")
-	if code != 200 || !strings.Contains(body, "mail.example.com") || !strings.Contains(body, "%EMAILDOMAIN%") {
-		t.Fatalf("mozilla: got %d %q", code, body)
-	}
-
-	code, body = doGet(t, app, "/stack/autoconfig/microsoft.json?Protocol=Autodiscoverv1")
-	if code != 200 || !strings.Contains(body, `"Protocol":"Autodiscoverv1"`) {
-		t.Fatalf("microsoft.json: got %d %q", code, body)
-	}
-	if code, _ := doGet(t, app, "/stack/autoconfig/microsoft.json?Protocol=Other"); code != 404 {
-		t.Fatalf("microsoft.json other protocol: got %d", code)
-	}
-
-	req := httptest.NewRequest(http.MethodPost, "/stack/autoconfig/microsoft",
-		strings.NewReader(`<?xml version="1.0"?><Autodiscover><Request><EMailAddress>alice@example.com</EMailAddress></Request></Autodiscover>`))
-	req.Header.Set("Content-Type", "application/xml")
-	resp, err := app.Test(req)
-	if err != nil {
-		t.Fatalf("microsoft POST: %v", err)
-	}
-	b, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	if resp.StatusCode != 200 || !strings.Contains(string(b), "<Type>IMAP</Type>") {
-		t.Fatalf("microsoft POST: got %d %q", resp.StatusCode, string(b))
-	}
-
-	code, body = doGet(t, app, "/stack/autoconfig/apple")
-	if code != 200 || !strings.Contains(body, "EmailTypeIMAP") {
-		t.Fatalf("apple: got %d %q", code, body)
 	}
 }
 
@@ -930,7 +619,7 @@ func TestDirectoryContract(t *testing.T) {
 	}
 }
 
-// TestDistributionGroupExpansion pins the 通讯组 delivery contract: structured
+// TestDistributionGroupExpansion pins the 閫氳缁?delivery contract: structured
 // members join the destination list, nested local groups expand recursively,
 // cycles terminate, and local users / external members pass through.
 func TestDistributionGroupExpansion(t *testing.T) {
@@ -989,18 +678,5 @@ func TestDistributionGroupExpansion(t *testing.T) {
 	}
 	if len(res.Targets) != 4 {
 		t.Fatalf("targets = %v, want 4 unique entries", res.Targets)
-	}
-
-	// The postfix alias map exposes the same flat list (engine contract).
-	code, body = doGet(t, app, "/stack/postfix/alias/all@example.com")
-	if code != 200 {
-		t.Fatalf("postfix alias: got %d %q", code, body)
-	}
-	var joined string
-	if err := json.Unmarshal([]byte(body), &joined); err != nil {
-		t.Fatalf("unmarshal postfix: %v (%q)", err, body)
-	}
-	if parts := strings.Split(joined, ","); len(parts) != 4 {
-		t.Fatalf("postfix targets = %v, want 4", parts)
 	}
 }

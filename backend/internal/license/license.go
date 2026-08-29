@@ -33,8 +33,8 @@ import (
 const (
 	EditionDev        = "dev"
 	EditionEnterprise = "enterprise"
-	// EditionCommunity marks the free community edition (postdove engine):
-	// no license is loaded, required or enforced.
+	// EditionCommunity marks the free community edition (single-node
+	// storage): no license is loaded, required or enforced.
 	EditionCommunity = "community"
 )
 
