@@ -123,6 +123,20 @@ func TestEventWatcherDetectsNewMail(t *testing.T) {
 		t.Fatalf("flag change must not publish, got %+v", ev)
 	default:
 	}
+
+	// A snooze wake-up resurfaces an old message as unread: UNSEEN grows
+	// without UIDNEXT or count changing, and that must fire so the client
+	// refreshes (engine sweeper → delivery receipt → Kick path).
+	fake.set("a@example.com", "Inbox", mail.FolderStat{UidNext: 2, Messages: 2, Unseen: 2})
+	w.pollOnce()
+	select {
+	case ev := <-ch:
+		if len(ev.Folders) != 1 || ev.Folders[0] != "Inbox" {
+			t.Fatalf("unexpected wake event: %+v", ev)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("expected mail event on unseen growth (snooze wake)")
+	}
 }
 
 func TestEventWatcherToleratesErrorsAndPrunes(t *testing.T) {
