@@ -121,14 +121,42 @@ export class ApiError extends Error {
 // A 401 on an authed surface means the session cookie expired or was
 // revoked server-side. Instead of letting every poll toast errors forever,
 // bounce to the login screen once; the guard flag stops in-flight request
-// storms from chaining redirects. Auth endpoints display their own 401s.
+// storms from chaining redirects. Auth endpoints (/auth, /sso) display
+// their own 401s.
 let bouncedToLogin = false;
+export function sessionBounced(): boolean {
+  return bouncedToLogin;
+}
+
+// Human copy for the brief window between the first 401 and the login-page
+// navigation: the raw server text ("authentication required") must never
+// surface in the UI. Locale follows the NEXT_LOCALE cookie the switcher
+// persists (see app/layout.tsx).
+function sessionExpiredText(): string {
+  const zh =
+    typeof document !== "undefined" &&
+    /(?:^|;\s*)NEXT_LOCALE=zh/.test(document.cookie);
+  return zh ? "登录已过期，请重新登录" : "Your session has expired. Please sign in again.";
+}
+
+function authSurface(path: string): boolean {
+  return path.startsWith("/auth") || path.startsWith("/sso");
+}
+
 function handleUnauthorized(path: string) {
   if (bouncedToLogin || typeof window === "undefined") return;
-  if (path.startsWith("/auth")) return;
+  if (authSurface(path)) return;
   bouncedToLogin = true;
   if (window.location.pathname === "/") return; // already on the login page
-  window.location.href = "/";
+  // Carry the reason and, on mail surfaces, a return link so the sign-in
+  // page can explain the bounce and restore where the user was after
+  // logging back in (Gmail/Fastmail-style session-expiry flow).
+  const here = window.location.pathname + window.location.search;
+  const target =
+    here === "/home" || here.startsWith("/mail")
+      ? `/?expired=1&next=${encodeURIComponent(here)}`
+      : "/?expired=1";
+  window.location.href = target;
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -139,8 +167,13 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const err = body as { error?: string; code?: string };
-    if (res.status === 401) handleUnauthorized(path);
-    throw new ApiError(err.error || res.statusText, res.status, err.code);
+    const expired = res.status === 401 && !authSurface(path);
+    if (expired) handleUnauthorized(path);
+    throw new ApiError(
+      expired ? sessionExpiredText() : err.error || res.statusText,
+      res.status,
+      err.code,
+    );
   }
   if (res.status === 204) return undefined as T;
   // Operation endpoints may answer 200 with an empty/plain body (e.g. "OK");
@@ -203,8 +236,9 @@ export async function mailMessages(folder: string, page = 0, sort = "date", dir 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const err = body as { error?: string; code?: string };
-    if (res.status === 401) handleUnauthorized("/mail/messages");
-    throw new ApiError(err.error || res.statusText, res.status, err.code);
+    const expired = res.status === 401;
+    if (expired) handleUnauthorized("/mail/messages");
+    throw new ApiError(expired ? sessionExpiredText() : err.error || res.statusText, res.status, err.code);
   }
   const messages = (await res.json()) ?? [];
   const total = Number(res.headers.get("X-Total-Messages") || 0);
@@ -320,7 +354,10 @@ export async function mailAttachmentsZip(folder: string, uid: number): Promise<B
   const res = await fetch(`${API}${mailPath(`/mail/attachments/zip?folder=${encodeURIComponent(folder)}&uid=${uid}`)}`, {
     headers: mailHeaders(),
   });
-  if (!res.ok) throw new Error("download failed");
+  if (!res.ok) {
+    if (res.status === 401) handleUnauthorized("/mail/attachments/zip");
+    throw new Error("download failed");
+  }
   return res.blob();
 }
 
@@ -335,6 +372,10 @@ export const uploadLargeAttachment = (file: File) => {
     body: fd,
   }).then(async (res) => {
     if (!res.ok) {
+      if (res.status === 401) {
+        handleUnauthorized("/uploads");
+        throw new Error(sessionExpiredText());
+      }
       const body = await res.json().catch(() => ({}));
       throw new Error((body as { error?: string }).error || "upload failed");
     }
@@ -618,6 +659,10 @@ export const driveUpload = (file: File, parentId: number) => {
     body: fd,
   }).then(async (res) => {
     if (!res.ok) {
+      if (res.status === 401) {
+        handleUnauthorized("/drive/upload");
+        throw new Error(sessionExpiredText());
+      }
       const body = await res.json().catch(() => ({}));
       throw new Error((body as { error?: string }).error || "upload failed");
     }
@@ -629,7 +674,10 @@ export async function driveDownload(id: number): Promise<Blob> {
   const res = await fetch(`${API}${mailPath(`/drive/download/${id}`)}`, {
     headers: mailHeaders(),
   });
-  if (!res.ok) throw new Error("download failed");
+  if (!res.ok) {
+    if (res.status === 401) handleUnauthorized("/drive/download");
+    throw new Error("download failed");
+  }
   return res.blob();
 }
 
@@ -966,7 +1014,12 @@ export const exportContacts = async (): Promise<string> => {
   const res = await fetch(`${API}/contacts/export`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new ApiError((body as { error?: string }).error || res.statusText, res.status);
+    const expired = res.status === 401;
+    if (expired) handleUnauthorized("/contacts/export");
+    throw new ApiError(
+      expired ? sessionExpiredText() : (body as { error?: string }).error || res.statusText,
+      res.status,
+    );
   }
   return res.text();
 };

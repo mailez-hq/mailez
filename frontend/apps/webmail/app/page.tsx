@@ -24,7 +24,7 @@ function mailboxTarget(): string {
     const next = new URLSearchParams(window.location.search).get("next");
     if (
       next &&
-      (next === "/mail" || next.startsWith("/mail/")) &&
+      (next === "/mail" || next.startsWith("/mail/") || next === "/home") &&
       !next.startsWith("//") &&
       !next.includes("\\")
     ) {
@@ -66,6 +66,13 @@ export default function Home() {
   const [pendingToken, setPendingToken] = useState("");
   const [code, setCode] = useState("");
   const [settings, setSettings] = useState<ServerSettings | null>(null);
+  // ?expired=1 is set by the API layer when a 401 bounced the user here:
+  // explain the kick instead of dropping them on a silent sign-in form.
+  const [expired] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("expired") === "1",
+  );
 
   // Enterprise branding from the server (admin console). Empty fields fall
   // back to the built-in Mailez brand below.
@@ -246,6 +253,14 @@ export default function Home() {
               <CardTitle className="text-base font-semibold">{t("title")}</CardTitle>
             </CardHeader>
             <CardContent>
+          {expired && (
+            <div
+              role="status"
+              className="mb-4 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300"
+            >
+              {t("sessionExpired")}
+            </div>
+          )}
           {pendingToken ? (
             <form onSubmit={onSubmitTotp} className="space-y-4">
               <div className="space-y-2">
