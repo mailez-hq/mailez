@@ -22,6 +22,7 @@ import {
 import { QuickReply } from "@/components/mailbox/reader/quick-reply";
 import { useMounted } from "@/components/mailbox/reader/use-mounted";
 import { ThreadMessage } from "@/components/mailbox/reader/thread-message";
+import { foldHtmlQuotes } from "@/components/mailbox/reader/html-quotes";
 import { InvitationBanner } from "@/components/mailbox/reader/invitation-banner";
 import { escHtml, isSnoozed } from "@/components/mailbox/mail-utils";
 import type { ReaderFontSize, ReadingPaneWidth } from "@/lib/preferences";
@@ -60,7 +61,6 @@ export function ReadingPane({
   thread,
   conversationEnabled,
   onReplyThread,
-  onReplyAllThread,
   onForwardThread,
   highlightTerms,
   readerFont,
@@ -105,7 +105,6 @@ export function ReadingPane({
   conversationEnabled: boolean;
   onToggleThread: () => void;
   onReplyThread: (m: MailMessage) => void;
-  onReplyAllThread: (m: MailMessage) => void;
   onForwardThread: (m: MailMessage) => void;
   highlightTerms?: string[];
   readerFont?: ReaderFontSize;
@@ -164,6 +163,10 @@ export function ReadingPane({
 
   // Track which thread message is expanded
   const [expandedUid, setExpandedUid] = useState<number | null>(detail.uid);
+  // Inline quick reply in thread view: which member the box targets (Gmail
+  // model - the reply box opens under the message being answered, not as an
+  // overlay that hides the conversation). null = newest member.
+  const [quickReplyTargetUid, setQuickReplyTargetUid] = useState<number | null>(null);
 
   const senderDomain = (detail.from[0]?.email || "").split("@").pop() || "";
   const [remoteLoaded, setRemoteLoaded] = useState(() =>
@@ -188,6 +191,7 @@ export function ReadingPane({
     setSummaryOpen(false);
     setFeedback(null);
     setQuickReplyOpen(false);
+    setQuickReplyTargetUid(null);
     setReplies([]);
     setPgpPlaintext(null);
     setPgpError("");
@@ -299,10 +303,15 @@ export function ReadingPane({
     if (!detail.html_body) return "";
     if (pgpPlaintext !== null || isPgpEncrypted) return "";
     const clean = sanitizeMailHTML(detail.html_body);
-    return remoteImages && !remoteLoaded
-      ? blockRemoteImages(clean)
-      : clean;
-  }, [detail.html_body, remoteImages, remoteLoaded, pgpPlaintext, isPgpEncrypted]);
+    const guarded =
+      remoteImages && !remoteLoaded
+        ? blockRemoteImages(clean)
+        : clean;
+    // Fold quoted history into <details> (same as thread members): the
+    // engine's auto-generated html carries the whole "> " chain as nested
+    // blockquotes that would otherwise render in full.
+    return foldHtmlQuotes(guarded, t("quotedText"));
+  }, [detail.html_body, remoteImages, remoteLoaded, pgpPlaintext, isPgpEncrypted, t]);
 
   const starred = detail.flags.includes("\\Flagged");
   const sender = detail.from[0];
@@ -527,7 +536,16 @@ export function ReadingPane({
           </p>
         ) : isThreadView ? (
           <div className="space-y-0">
-            {threadMessages.map((msg, idx) => (
+            {threadMessages.map((msg, idx) => {
+              // Gmail model: the inline reply box lives under the message
+              // being answered (newest by default, the clicked member
+              // otherwise) instead of an overlay that hides the thread.
+              const quickTarget =
+                quickReplyTargetUid === null
+                  ? threadMessages[threadMessages.length - 1]
+                  : threadMessages.find((m) => m.uid === quickReplyTargetUid);
+              const isQuickTarget = quickReplyOpen && quickTarget?.uid === msg.uid;
+              return (
               <ThreadMessage
                 key={msg.uid}
                 message={msg}
@@ -541,8 +559,16 @@ export function ReadingPane({
                 onToggleQuote={toggleQuote}
                 highlightTerms={highlightTerms}
                 remoteLoaded={remoteLoaded}
-                onReply={() => onReplyThread(msg)}
-                onReplyAll={() => onReplyAllThread(msg)}
+                onReply={() => {
+                  setQuickReplyTargetUid(msg.uid);
+                  setQuickReplyAll(false);
+                  setQuickReplyOpen(true);
+                }}
+                onReplyAll={() => {
+                  setQuickReplyTargetUid(msg.uid);
+                  setQuickReplyAll(true);
+                  setQuickReplyOpen(true);
+                }}
                 onForward={() => onForwardThread(msg)}
                 actionRowExtra={
                   idx === threadMessages.length - 1 ? (
@@ -553,8 +579,13 @@ export function ReadingPane({
                           summary (over the whole conversation). */}
                       <Button
                         size="sm"
-                        variant={quickReplyOpen ? "secondary" : "outline"}
-                        onClick={() => setQuickReplyOpen((v) => !v)}
+                        variant={isQuickTarget ? "secondary" : "outline"}
+                        onClick={() => {
+                          // The thread-level button always resets to the
+                          // newest member; per-message 回复 retargets above.
+                          setQuickReplyTargetUid(null);
+                          setQuickReplyOpen((v) => !v);
+                        }}
                       >
                         <MessageSquarePlus className="size-3.5" />
                         {t("quickReply")}
@@ -581,24 +612,26 @@ export function ReadingPane({
                   ) : undefined
                 }
                 belowActions={
-                  idx === threadMessages.length - 1 && quickReplyOpen ? (
+                  isQuickTarget && quickTarget ? (
                     <QuickReply
                       replies={replies}
                       setQuickReplyText={setQuickReplyText}
                       quickReplyAll={quickReplyAll}
                       setQuickReplyAll={setQuickReplyAll}
                       aiEnabled={aiEnabled}
-                      onLoadReplies={() => loadReplies(lastThreadMsg.text_body)}
+                      onLoadReplies={() => loadReplies(quickTarget.text_body)}
                       repliesLoading={repliesLoading}
                       setQuickReplyOpen={setQuickReplyOpen}
                       quickReplyText={quickReplyText}
-                      onSend={() => doQuickReplyFor(lastThreadMsg)}
+                      onSend={() => doQuickReplyFor(quickTarget)}
                       quickSending={quickSending}
+                      onPopOut={() => onReplyThread(quickTarget)}
                     />
                   ) : undefined
                 }
               />
-            ))}
+              );
+            })}
           </div>
         ) : (
           /* Single message view (no thread) */

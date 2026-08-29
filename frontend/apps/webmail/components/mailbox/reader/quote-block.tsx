@@ -15,7 +15,10 @@ export function QuoteBlock({
   onToggle: () => void;
 }) {
   const t = useTranslations("mail");
-  const collapsed = !expanded && lines.length > 3;
+  // Gmail model: quoted history is collapsed by default however short it is
+  // - the thread above already shows every member in full, so an in-message
+  // quote is redundant until the reader asks for it.
+  const collapsed = !expanded;
   return (
     <div className="my-1">
       <blockquote
@@ -28,24 +31,22 @@ export function QuoteBlock({
           <p key={j} className="text-sm">{l || <br />}</p>
         ))}
       </blockquote>
-      {lines.length > 3 && (
-        <button
-          onClick={onToggle}
-          className="mt-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-        >
-          {expanded ? (
-            <>
-              <ChevronUp className="size-3" />
-              {t("collapseQuote")}
-            </>
-          ) : (
-            <>
-              <ChevronDown className="size-3" />
-              {t("expandQuote")} · {t("quoteLines", { count: lines.length })}
-            </>
-          )}
-        </button>
-      )}
+      <button
+        onClick={onToggle}
+        className="mt-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+      >
+        {expanded ? (
+          <>
+            <ChevronUp className="size-3" />
+            {t("collapseQuote")}
+          </>
+        ) : (
+          <>
+            <ChevronDown className="size-3" />
+            {t("expandQuote")} · {t("quoteLines", { count: lines.length })}
+          </>
+        )}
+      </button>
     </div>
   );
 }

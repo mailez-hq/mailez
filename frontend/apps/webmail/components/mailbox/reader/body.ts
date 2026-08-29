@@ -2,6 +2,12 @@
 
 export type Segment = { type: "p" | "quote"; lines: string[] };
 
+// A reply-attribution header line ("On Aug 29, 2026 17:24, x@y.com wrote:").
+// It belongs INSIDE the collapsible quote region it introduces - keeping it
+// as a plain paragraph leaves a stray "On … wrote:" above every collapsed
+// quote and leaks into list snippets.
+const ATTRIBUTION_RE = /^\s*on\s.+wrote:\s*$/i;
+
 export function parseBody(text: string): Segment[] {
   const segs: Segment[] = [];
   const lines = text.split(/\r?\n/);
@@ -22,6 +28,16 @@ export function parseBody(text: string): Segment[] {
       }
       if (!quote) quote = [];
       quote.push(m[1] || "");
+    } else if (ATTRIBUTION_RE.test(raw)) {
+      // Attribution header opens the quote region (Gmail folds it together
+      // with the history it introduces); a regular paragraph after a quote
+      // still closes it, so interleaved replies keep their own segments.
+      if (para) {
+        flush({ type: "p", lines: para });
+        para = null;
+      }
+      if (!quote) quote = [];
+      quote.push(raw.trim());
     } else if (raw.trim() === "") {
       // Preserve blank lines inside the open segment: consecutive empty
       // lines become <br>s in the viewer instead of being collapsed away.

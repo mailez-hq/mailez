@@ -30,10 +30,42 @@ describe("parseBody", () => {
     expect(parseBody("")).toEqual([]);
     expect(parseBody("\n\n")).toEqual([]);
   });
+
+  it("folds the 'On … wrote:' attribution into the quote region it opens", () => {
+    // Gmail model: the reply header belongs inside the collapsible quote,
+    // not above it as a stray paragraph.
+    const segs = parseBody(
+      "d\n\nOn 8月29日 17:24, admin@example.com wrote:\n> c\n> more",
+    );
+    expect(segs).toEqual([
+      {type: "p", lines: ["d", ""]},
+      {
+        type: "quote",
+        lines: [
+          "On 8月29日 17:24, admin@example.com wrote:",
+          "c",
+          "more",
+        ],
+      },
+    ]);
+  });
+
+  it("lets an interleaved reply close the quote region after an attribution", () => {
+    const segs = parseBody("On x wrote:\n> old\nnew reply\n> more old");
+    expect(segs).toEqual([
+      {type: "quote", lines: ["On x wrote:", "old"]},
+      {type: "p", lines: ["new reply"]},
+      {type: "quote", lines: ["more old"]},
+    ]);
+  });
 });
 
 describe("getSnippet", () => {
   it("flattens paragraphs for the list preview", () => {
     expect(getSnippet("hello\n\nworld")).toBe("hello world");
+  });
+
+  it("excludes quoted history including its attribution header", () => {
+    expect(getSnippet("d\n\nOn 8月29日 17:24, admin@example.com wrote:\n> c")).toBe("d");
   });
 });

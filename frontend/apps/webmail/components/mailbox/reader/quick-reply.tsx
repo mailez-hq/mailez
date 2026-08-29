@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronUp, Loader2, Send, Sparkles } from "lucide-react";
+import { ChevronUp, Loader2, Maximize2, Send, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { Dispatch, SetStateAction } from "react";
 
@@ -21,6 +21,7 @@ export function QuickReply({
   quickReplyText,
   onSend,
   quickSending,
+  onPopOut,
 }: {
   replies: string[];
   setQuickReplyText: Dispatch<SetStateAction<string>>;
@@ -33,6 +34,9 @@ export function QuickReply({
   quickReplyText: string;
   onSend: () => void;
   quickSending: boolean;
+  // Pop out (Gmail's ↗): escalate to the full compose overlay seeded with
+  // this target message - attachments, signatures, scheduling live there.
+  onPopOut?: () => void;
 }) {
   const t = useTranslations("mail");
   return (
@@ -77,14 +81,26 @@ export function QuickReply({
             {t("smartReply")}
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => setQuickReplyOpen(false)}
-          title={t("collapseQuote")}
-          className="ml-auto rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ChevronUp className="size-3.5" />
-        </button>
+        <div className="ml-auto flex items-center gap-1">
+          {onPopOut && (
+            <button
+              type="button"
+              onClick={onPopOut}
+              title={t("popOutCompose")}
+              className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Maximize2 className="size-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setQuickReplyOpen(false)}
+            title={t("collapseQuote")}
+            className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronUp className="size-3.5" />
+          </button>
+        </div>
       </div>
       <textarea
         value={quickReplyText}

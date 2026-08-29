@@ -109,6 +109,8 @@
     "back": "Back",
     "expandQuote": "Expand quote",
     "collapseQuote": "Collapse quote",
+    "quotedText": "Show quoted text",
+    "popOutCompose": "Full compose",
     "collapseMessage": "Collapse message",
     "quoteLines": "Quoted {count} lines",
     "threadCount": "Thread ({count})",
