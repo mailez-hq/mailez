@@ -74,6 +74,21 @@ func (a *App) MailToken(c *fiber.Ctx) (string, error) {
 	return a.Auth.SessionToken(c.Context(), user.Email, sid)
 }
 
+// ErrMailAccess reports that the session may not act on the requested
+// mailbox: X-Delegate-Email named an owner for whom the caller holds no
+// full-access grant. Handlers surface it as 403, not a 500 "token error".
+var ErrMailAccess = errors.New("not authorized to access this mailbox")
+
+// DialFailure maps a MailDial error to its HTTP response. Mailbox-access
+// rejections are 403 with the reason; anything else (temp-token minting,
+// credential decryption) stays an internal 500 "token error".
+func DialFailure(c *fiber.Ctx, err error) error {
+	if errors.Is(err, ErrMailAccess) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.Status(500).JSON(fiber.Map{"error": "token error"})
+}
+
 // MailDial resolves the mailbox connection for a request: the internal gateway
 // account by default, or the external account named by ?account_id= when
 // present. External dials carry the decrypted stored credentials so the mail
@@ -90,7 +105,7 @@ func (a *App) MailDial(c *fiber.Ctx) (mail.Dial, error) {
 		if err := a.DB.WithContext(c.Context()).
 			Where("LOWER(owner_email) = LOWER(?) AND LOWER(delegate_email) = LOWER(?) AND full_access = ?", delegate, user.Email, true).
 			First(&dep).Error; err != nil {
-			return mail.Dial{}, errors.New("not authorized to access this mailbox")
+			return mail.Dial{}, ErrMailAccess
 		}
 		sid := c.Cookies(a.Auth.SessionName)
 		token, err := a.Auth.CreateTempToken(c.Context(), delegate, sid)

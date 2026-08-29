@@ -43,7 +43,9 @@ func (h *Handler) listTokens(c *fiber.Ctx) error {
 	}
 	var tokens []models.Token
 	offset := (page - 1) * limit
-	if err := q.Order("id").Limit(limit).Offset(offset).Find(&tokens).Error; err != nil {
+	// Newest first: a freshly created token must appear on the first page so
+	// the user can verify it (consistent with the smime/pgp listings).
+	if err := q.Order("id desc").Limit(limit).Offset(offset).Find(&tokens).Error; err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
 	return core.Page(c, tokens, int(total), page, limit)

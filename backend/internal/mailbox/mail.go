@@ -51,7 +51,7 @@ func (h *Handler) registerMail(r fiber.Router) {
 func (h *Handler) mailReadAll(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		Folder string `json:"folder"`
@@ -75,7 +75,7 @@ func (h *Handler) mailReadAll(c *fiber.Ctx) error {
 func (h *Handler) mailFlag(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		Folder string `json:"folder"`
@@ -108,7 +108,7 @@ func (h *Handler) mailFlag(c *fiber.Ctx) error {
 func (h *Handler) mailSnooze(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		Folder string `json:"folder"`
@@ -138,7 +138,7 @@ func (h *Handler) mailSnooze(c *fiber.Ctx) error {
 func (h *Handler) mailSnoozed(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	msgs, err := h.Mail.With(d).SnoozedMessages(d.Email, d.Token)
 	if err != nil {
@@ -161,7 +161,7 @@ func (h *Handler) mailSnoozed(c *fiber.Ctx) error {
 func (h *Handler) mailMove(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		Folder      string   `json:"folder"`
@@ -195,7 +195,7 @@ func (h *Handler) mailMove(c *fiber.Ctx) error {
 func (h *Handler) mailDelete(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		Folder string `json:"folder"`
@@ -227,7 +227,7 @@ func (h *Handler) mailToken(c *fiber.Ctx) (string, error) {
 func (h *Handler) mailFolders(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	folders, err := h.Mail.With(d).ListFolders(d.Email, d.Token)
 	if err != nil {
@@ -271,7 +271,7 @@ func validFolderName(name string) bool {
 func (h *Handler) mailFolderCreate(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		Name string `json:"name"`
@@ -295,7 +295,7 @@ func (h *Handler) mailFolderCreate(c *fiber.Ctx) error {
 func (h *Handler) mailFolderRename(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		Name    string `json:"name"`
@@ -322,7 +322,7 @@ func (h *Handler) mailFolderRename(c *fiber.Ctx) error {
 func (h *Handler) mailFolderDelete(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	name := c.Query("name")
 	if !validFolderName(name) {
@@ -347,7 +347,7 @@ func (h *Handler) mailFolderDelete(c *fiber.Ctx) error {
 func (h *Handler) mailFolderClear(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		Name string `json:"name"`
@@ -370,7 +370,7 @@ func (h *Handler) mailFolderClear(c *fiber.Ctx) error {
 func (h *Handler) mailUnseen(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	counts, err := h.Mail.With(d).UnseenCounts(d.Email, d.Token)
 	if err != nil {
@@ -390,7 +390,7 @@ func (h *Handler) mailUnseen(c *fiber.Ctx) error {
 func (h *Handler) mailMessages(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	folder := c.Query("folder", "INBOX")
 	page, err := strconv.Atoi(c.Query("page", "0"))
@@ -427,7 +427,7 @@ func (h *Handler) mailMessages(c *fiber.Ctx) error {
 func (h *Handler) mailSearch(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	folder := c.Query("folder", "INBOX")
 	query := c.Query("q")
@@ -462,7 +462,7 @@ func (h *Handler) mailSearch(c *fiber.Ctx) error {
 func (h *Handler) mailSearchSpec(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		Folder string           `json:"folder"`
@@ -503,7 +503,7 @@ func (h *Handler) mailSearchSpec(c *fiber.Ctx) error {
 func (h *Handler) mailThread(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	folder := c.Query("folder", "INBOX")
 	tid := c.Query("thread_id")
@@ -534,7 +534,7 @@ func (h *Handler) mailThread(c *fiber.Ctx) error {
 func (h *Handler) mailRaw(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	folder := c.Query("folder", "INBOX")
 	uid, err := strconv.ParseUint(c.Query("uid"), 10, 32)
@@ -559,7 +559,7 @@ func (h *Handler) mailRaw(c *fiber.Ctx) error {
 func (h *Handler) mailMessage(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	folder := c.Query("folder", "INBOX")
 
@@ -602,7 +602,7 @@ func (h *Handler) mailMessage(c *fiber.Ctx) error {
 func (h *Handler) mailACL(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	folder := c.Query("folder", "")
 	if folder == "" {
@@ -628,7 +628,7 @@ func (h *Handler) mailACL(c *fiber.Ctx) error {
 func (h *Handler) mailACLSet(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	var in struct {
 		Folder     string `json:"folder"`
@@ -654,7 +654,7 @@ func (h *Handler) mailACLSet(c *fiber.Ctx) error {
 func (h *Handler) mailACLDelete(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	folder := c.Query("folder", "")
 	identifier := c.Query("identifier", "")

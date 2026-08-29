@@ -33,6 +33,7 @@ type Message struct {
 	From          []Address    `json:"from"`
 	To            []Address    `json:"to"`
 	Cc            []Address    `json:"cc,omitempty"`
+	Bcc           []Address    `json:"bcc,omitempty"`
 	Date          time.Time    `json:"date"`
 	Flags         []string     `json:"flags"`
 	HasAttachment bool         `json:"has_attachment"`
@@ -761,6 +762,9 @@ func envelopeToMessage(msg *imap.Message) Message {
 		out.From = addresses(msg.Envelope.From)
 		out.To = addresses(msg.Envelope.To)
 		out.Cc = addresses(msg.Envelope.Cc)
+		// Bcc is only ever set on the owner's own Drafts copy; mapping it
+		// lets the draft editor restore the blind recipients on reopen.
+		out.Bcc = addresses(msg.Envelope.Bcc)
 		out.ID = EncodeMessageID(msg.Envelope.MessageId)
 	}
 	// JSON contract: from/to/flags are arrays, never null. A message whose

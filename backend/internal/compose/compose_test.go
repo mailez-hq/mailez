@@ -30,6 +30,7 @@ type fakeGateway struct {
 	sentCc     []string
 	sentAttach []mail.Attachment
 	savedTo    []string
+	savedBcc   []string
 	savedUID   uint32
 }
 
@@ -42,8 +43,9 @@ func (f *fakeGateway) Send(email, token, from string, to, cc, bcc []string, subj
 	return nil
 }
 
-func (f *fakeGateway) SaveDraft(email, token string, to, cc []string, subject, text, html string, attachments []mail.Attachment, replaceUID uint32) (uint32, error) {
+func (f *fakeGateway) SaveDraft(email, token string, to, cc, bcc []string, subject, text, html string, attachments []mail.Attachment, replaceUID uint32) (uint32, error) {
 	f.savedTo = to
+	f.savedBcc = bcc
 	f.savedUID = 99
 	return f.savedUID, nil
 }
@@ -150,5 +152,25 @@ func TestMailSaveDraft(t *testing.T) {
 	}
 	if len(fake.savedTo) != 1 || fake.savedTo[0] != "b@example.com" {
 		t.Errorf("savedTo = %v", fake.savedTo)
+	}
+}
+
+// TestMailSaveDraftBcc proves the blind recipients survive the draft round
+// trip: the API accepts bcc and forwards it to the gateway so the Drafts
+// copy keeps them (regression for drafts silently dropping Bcc).
+func TestMailSaveDraftBcc(t *testing.T) {
+	app, fake := newTestApp(t, &fakeGateway{})
+	body, _ := json.Marshal(map[string]any{
+		"to":      []string{"b@example.com"},
+		"bcc":     []string{"hidden@example.com"},
+		"subject": "draft",
+		"text":    "body",
+	})
+	resp, _ := doJSON(t, app, http.MethodPost, "/api/v1/mail/draft", string(body))
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("draft status = %d, want 200", resp.StatusCode)
+	}
+	if len(fake.savedBcc) != 1 || fake.savedBcc[0] != "hidden@example.com" {
+		t.Errorf("savedBcc = %v, want [hidden@example.com]", fake.savedBcc)
 	}
 }

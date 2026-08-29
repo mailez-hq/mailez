@@ -28,7 +28,7 @@ import (
 func (h *Handler) mailAttachmentsZip(c *fiber.Ctx) error {
 	d, err := h.MailDial(c)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "token error"})
+		return core.DialFailure(c, err)
 	}
 	folder := c.Query("folder")
 	uid64, err := strconv.ParseUint(c.Query("uid"), 10, 32)
