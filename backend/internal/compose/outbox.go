@@ -17,9 +17,24 @@ import (
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/crypto"
-	"mailez/backend/internal/dlp"
 	"mailez/backend/internal/mail"
 )
+
+// OutboundVerdict is the outbound content-filter result the outbox worker
+// consumes: Action "pass" | "block" | "hold" (hold parks the message for an
+// approver, identified by ID).
+type OutboundVerdict struct {
+	Action string
+	Reason string
+	ID     uint
+}
+
+// OutboundScanner is the DLP seam: the enterprise build supplies the
+// content filter (dlp.Service behind an adapter); the community build
+// passes nil and messages submit unscanned.
+type OutboundScanner interface {
+	CheckRaw(ctx context.Context, senderEmail, from string, to []string, raw []byte) (*OutboundVerdict, error)
+}
 
 // maxUndoSeconds bounds the send-undo window the client may request.
 const maxUndoSeconds = 30
@@ -41,14 +56,14 @@ type OutboxWorker struct {
 	DB        *gorm.DB
 	MtaAddr   string
 	SecretKey string
-	DLP       *dlp.Service // optional outbound content filter (审批/DLP)
-	Mail      sentSaver    // internal gateway client used to save Sent copies
+	DLP       OutboundScanner // optional outbound content filter (审批/DLP), nil in CE
+	Mail      sentSaver       // internal gateway client used to save Sent copies
 
 	mu     sync.Mutex
 	tokens map[string]string // per-user worker app token cache (email → secret)
 }
 
-func NewOutboxWorker(db *gorm.DB, mtaAddr, secretKey string, dlpSvc *dlp.Service, mailClient sentSaver) *OutboxWorker {
+func NewOutboxWorker(db *gorm.DB, mtaAddr, secretKey string, dlpSvc OutboundScanner, mailClient sentSaver) *OutboxWorker {
 	return &OutboxWorker{
 		DB:        db,
 		MtaAddr:   mtaAddr,

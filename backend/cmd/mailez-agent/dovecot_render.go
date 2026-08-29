@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 package main
 
 import (
@@ -9,7 +11,7 @@ import (
 	"strings"
 	"text/template"
 
-	"mailez/backend/internal/agent"
+	"mailez/backend/internal/ee/agent"
 )
 
 //go:embed templates/dovecot/*.tmpl

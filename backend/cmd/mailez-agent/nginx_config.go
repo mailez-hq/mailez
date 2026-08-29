@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 package main
 
 import (
@@ -7,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"mailez/backend/internal/agent"
+	"mailez/backend/internal/ee/agent"
 )
 
 // TLSPaths holds the certificate paths rendered into the TLS configs.

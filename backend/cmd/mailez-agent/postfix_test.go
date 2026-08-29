@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 package main
 
 import (
@@ -13,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"mailez/backend/internal/agent"
+	"mailez/backend/internal/ee/agent"
 )
 
 func TestPostfixRender(t *testing.T) {

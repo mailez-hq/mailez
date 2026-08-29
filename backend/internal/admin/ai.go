@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 package admin
 
 import (
@@ -10,10 +12,10 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 
-	"mailez/backend/internal/ai"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/crypto"
+	"mailez/backend/internal/ee/ai"
 )
 
 func (h *Handler) registerAI(r fiber.Router, mw fiber.Handler) {

@@ -23,13 +23,8 @@ import (
 	"gorm.io/gorm"
 
 	_ "mailez/backend/docs"
-	"mailez/backend/internal/activesync"
 	"mailez/backend/internal/admin"
-	"mailez/backend/internal/agent"
-	"mailez/backend/internal/ai"
 	"mailez/backend/internal/alias"
-	"mailez/backend/internal/announcement"
-	"mailez/backend/internal/archive"
 	"mailez/backend/internal/auth"
 	"mailez/backend/internal/authcache"
 	"mailez/backend/internal/calendar"
@@ -38,8 +33,6 @@ import (
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/dav"
-	"mailez/backend/internal/delegation"
-	"mailez/backend/internal/dlp"
 	"mailez/backend/internal/domain"
 	"mailez/backend/internal/drive"
 	"mailez/backend/internal/fetch"
@@ -92,9 +85,9 @@ func New(cfg core.Config) *Server {
 	rdb := connectRedis(cfg)
 
 	app := fiber.New(fiber.Config{
-		AppName:      "mailez",
-		BodyLimit:    64 * 1024 * 1024, // aligned with the 20MB attachment cap + base64 overhead
-		ReadTimeout:  30 * time.Second,
+		AppName:     "mailez",
+		BodyLimit:   64 * 1024 * 1024, // aligned with the 20MB attachment cap + base64 overhead
+		ReadTimeout: 30 * time.Second,
 		// No write timeout: long-lived responses (the AI compose SSE stream
 		// and the /events mailbox push) stay open for hours. fasthttp applies
 		// WriteTimeout as one absolute deadline for the whole response write,
@@ -178,13 +171,12 @@ func New(cfg core.Config) *Server {
 	fetcher := fetch.New(db, cfg.MailMtaAddr, cfg.SecretKey, cfg.FetchInsecure, time.Duration(cfg.FetchInterval)*time.Second)
 	go fetcher.Run(bgCtx)
 	// Send-undo queue: delivers parked messages once their window elapses.
-	dlpSvc := dlp.New(&core.App{DB: db, Auth: s.Auth, Cfg: cfg})
-	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey, dlpSvc, mail.New(cfg.MailImapAddr, "", "").SetInsecureTLS(cfg.FetchInsecure)).Run(bgCtx)
-	go dlpSvc.RunExpiry(bgCtx)
+	// The outbound DLP scanner (content filter/审批) is an enterprise
+	// capability: the seam returns nil in the community build.
+	dlpScanner := eeStartComplianceWorkers(db, s.Auth, cfg, bgCtx)
+	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey, dlpScanner, mail.New(cfg.MailImapAddr, "", "").SetInsecureTLS(cfg.FetchInsecure)).Run(bgCtx)
 	// Organization address book refresh (AD/LDAP) when directory sync is on.
 	go ldap.RunSyncWorker(bgCtx, db, cfg.SecretKey)
-	// Compliance archive retention: purge messages past their policy deadline.
-	go archive.New(&core.App{DB: db, Auth: s.Auth, Cfg: cfg}).RunRetention(bgCtx)
 	// Calendar event reminders: mail the owner when start - reminder arrives.
 	go calendar.NewReminderWorker(db, cfg).Run(bgCtx)
 	// Large-attachment relay cleanup: delete expired uploads.
@@ -287,13 +279,13 @@ func (s *Server) routes() {
 			brand.Contact = row.Contact
 		}
 		return c.JSON(fiber.Map{
-			"hostname": s.Cfg.Hostname,
-			"domain":   s.Cfg.Domain,
-			"smtp":     fiber.Map{"plain": 25, "submission": 587, "ssl": 465},
-			"pop3":     fiber.Map{"plain": 110, "ssl": 995},
-			"imap":     fiber.Map{"plain": 143, "ssl": 993},
-			"branding": brand,
-			"domains":  domains,
+			"hostname":       s.Cfg.Hostname,
+			"domain":         s.Cfg.Domain,
+			"smtp":           fiber.Map{"plain": 25, "submission": 587, "ssl": 465},
+			"pop3":           fiber.Map{"plain": 110, "ssl": 995},
+			"imap":           fiber.Map{"plain": 143, "ssl": 993},
+			"branding":       brand,
+			"domains":        domains,
 			"default_domain": s.Cfg.Domain,
 		})
 	})
@@ -305,7 +297,6 @@ func (s *Server) routes() {
 	if s.LDAP != nil {
 		s.LDAP.CheckCapacity = app.License.CheckCapacity
 	}
-	aiMgr := ai.New(s.DB, s.Cfg)
 	user.RegisterPublic(v1, app)
 	// The ICS export is fetched by external calendar clients with only the
 	// HMAC feed token, so it must sit outside RequireAuth. Order matters:
@@ -322,17 +313,12 @@ func (s *Server) routes() {
 	alias.New(app).Register(authed)
 	mailbox.New(app).Register(authed)
 	compose.New(app).Register(authed)
-	delegation.New(app).Register(authed)
 	contacts.New(app).Register(authed)
 	sieve.New(app).Register(authed)
 	admin.New(app).Register(authed)
-	announcement.New(app).Register(authed)
 	calendarHandler.Register(authed)
-	archive.New(app).Register(authed)
-	dlp.New(app).Register(authed)
 	invite.New(app).Register(authed)
 	fetch.RegisterAPI(authed, app)
-	ai.RegisterAPI(authed, app, aiMgr)
 	push.RegisterAPI(authed, app, s.events)
 	uploads.New(s.DB, s.Cfg).Register(authed)
 	if driveSvc, derr := drive.New(s.DB, s.Cfg); derr == nil {
@@ -343,8 +329,6 @@ func (s *Server) routes() {
 
 	stackGroup := s.App.Group("/stack", requireStackSecret(s.Cfg.StackSecret))
 	s.internal.Register(stackGroup)
-	archive.New(app).RegisterStack(stackGroup)
-	dlp.New(app).RegisterStack(stackGroup)
 
 	// Built-in CardDAV/CalDAV servers (phone/desktop sync over Basic Auth)
 	// plus the RFC 6764 well-known discovery redirects.
@@ -352,21 +336,22 @@ func (s *Server) routes() {
 	s.App.Get("/.well-known/carddav", redirectDAV)
 	s.App.Get("/.well-known/caldav", redirectDAV)
 
-	// Exchange ActiveSync (mobile device sync): WBXML commands at
-	// /Microsoft-Server-ActiveSync plus autodiscover.
-	activesync.New(s.DB, s.Auth, s.Cfg, app.Mail, s.basicAuthCache).Register(s.App)
+	// Enterprise routes (delegation, announcement, archive, DLP, AI,
+	// ActiveSync) mount through the edition seam: nothing in CE.
+	eeRegisterRoutes(s, app, v1, authed, stackGroup)
 }
 
 // requireStackSecret guards the internal /stack API used by mailezine and
 // the mail agent. When MAILEZ_STACK_SECRET is empty (local dev) every
 // caller is accepted; otherwise the caller must present the shared secret in
-// the X-Stack-Secret header (agent.SecretHeader).
+// the X-Stack-Secret header (kept in sync with the enterprise agent's
+// stackclient.SecretHeader).
 func requireStackSecret(secret string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		if secret == "" {
 			return c.Next()
 		}
-		got := c.Get(agent.SecretHeader)
+		got := c.Get("X-Stack-Secret")
 		if subtle.ConstantTimeCompare([]byte(got), []byte(secret)) != 1 {
 			return c.SendStatus(fiber.StatusForbidden)
 		}

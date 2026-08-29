@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 package main
 
 import (
@@ -14,7 +16,7 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
-	"mailez/backend/internal/agent"
+	"mailez/backend/internal/ee/agent"
 )
 
 // MTA-STS policy daemon for postfix, a Go port of postfix-mta-sts-resolver

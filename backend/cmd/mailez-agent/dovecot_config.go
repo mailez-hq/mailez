@@ -1,3 +1,5 @@
+//go:build mailez_ee
+
 package main
 
 import (
@@ -6,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"mailez/backend/internal/agent"
+	"mailez/backend/internal/ee/agent"
 )
 
 // DovecotConfig is the typed view of the environment consumed by the dovecot
