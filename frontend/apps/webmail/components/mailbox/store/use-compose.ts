@@ -780,6 +780,10 @@ export function useCompose({
         removeEditedDraft(draftUidRef.current);
         resetCompose();
         loadMessages(folder);
+        // Immediate send: confirm the outcome. Gmail/Fastmail/Coremail all
+        // keep the user where they are and confirm with a toast instead of
+        // navigating away — a silent close leaves "did it send?" unanswered.
+        showToast(t("toastSent"));
         return;
       }
 
@@ -798,10 +802,12 @@ export function useCompose({
       // The backend parks the message in the outbox until the undo window
       // elapses, then delivers it. Refresh the current folder after that
       // window so a sent-and-delivered message shows up without requiring a
-      // manual refresh.
+      // manual refresh, and flip the toast to the final confirmation — the
+      // two-phase "Sending… → Sent" rhythm Gmail uses.
       setTimeout(() => {
         loadMessages(folder, 0, true);
         refreshUnseen();
+        showToast(t("toastSent"));
       }, delay * 1000 + 2000);
     } catch (err) {
       setComposeError(err instanceof Error ? err.message : "send failed");
