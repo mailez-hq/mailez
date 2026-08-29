@@ -145,6 +145,52 @@ export function resolveTheme(theme: Theme): "light" | "dark" {
   return theme;
 }
 
+// The theme-relevant slice of preferences, mirrored into a cookie so the
+// server render can paint the correct dark class / density / accent on
+// <html> in the initial HTML — no bootstrap script, no theme flash.
+// "system" is stored as the last RESOLVED scheme (sys:dark / sys:light):
+// the server cannot query matchMedia, and refreshing the value on every
+// visit keeps it in sync with OS scheme changes.
+export const THEME_COOKIE = "mailez.theme";
+
+export type ThemeCookie = {
+  theme: Theme; // "light" | "dark" | "system" (system = sys:<resolved>)
+  dark: boolean; // resolved scheme, what SSR actually needs
+  density: Density;
+  accent: Accent;
+};
+
+export function parseThemeCookie(raw: string | undefined | null): ThemeCookie | null {
+  if (!raw) return null;
+  const fields = new Map<string, string>();
+  for (const part of raw.split("&")) {
+    const eq = part.indexOf("=");
+    if (eq > 0) fields.set(part.slice(0, eq), part.slice(eq + 1));
+  }
+  const t = fields.get("t");
+  if (t !== "dark" && t !== "light" && t !== "sys:dark" && t !== "sys:light") return null;
+  const d = fields.get("d");
+  const density = d === "compact" || d === "relaxed" ? d : "cozy";
+  const a = fields.get("a");
+  const accent = a === "green" || a === "purple" || a === "orange" || a === "rose" ? a : "blue";
+  return {
+    theme: t === "sys:dark" || t === "sys:light" ? "system" : t,
+    dark: t === "dark" || t === "sys:dark",
+    density,
+    accent,
+  };
+}
+
+export function writeThemeCookie(prefs: Preferences) {
+  try {
+    const t =
+      prefs.theme === "system" ? `sys:${resolveTheme("system")}` : prefs.theme;
+    document.cookie = `${THEME_COOKIE}=t=${t}&d=${prefs.density}&a=${prefs.accent}; path=/; max-age=31536000; samesite=lax`;
+  } catch {
+    // cookie unavailable; SSR falls back to defaults for one load
+  }
+}
+
 export function applyTheme(theme: Theme) {
   const resolved = resolveTheme(theme);
   document.documentElement.classList.toggle("dark", resolved === "dark");
@@ -162,7 +208,7 @@ export function applyPreferences(prefs: Preferences) {
   applyTheme(prefs.theme);
   applyDensity(prefs.density);
   applyAccent(prefs.accent);
+  // Keep the SSR mirror fresh so the next full load paints this exact
+  // theme server-side (this is also the "system" resolved-value refresh).
+  writeThemeCookie(prefs);
 }
-
-/** Inline script injected into <head> to apply saved theme/density/accent before paint. */
-export const themeBootstrapScript = `try{var p=JSON.parse(localStorage.getItem("${PREF_KEY}")||"{}");var t=p.theme==="dark"||p.theme==="light"?p.theme:"system";var d=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",d);document.documentElement.dataset.density=p.density==="compact"||p.density==="relaxed"?p.density:"cozy";document.documentElement.dataset.accent=["green","purple","orange","rose"].indexOf(p.accent)>=0?p.accent:"blue"}catch(e){document.documentElement.dataset.density="cozy";document.documentElement.dataset.accent="blue"}`;
