@@ -113,6 +113,9 @@ export function useCompose({
     attachments: OutboundAttachment[]; uid: number | null;
   } | null>(null);
   const draftUidRef = useRef<number | null>(null);
+  // Threading headers of the message this compose session replies to, so
+  // full-compose replies stay in the conversation exactly like quick replies.
+  const replyHeadersRef = useRef<{ inReplyTo: string; references: string } | null>(null);
   const draftBaselineRef = useRef("");
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Serializes draft saves: while a save is in flight the draft UID is not yet
@@ -261,8 +264,10 @@ export function useCompose({
     text = "",
     focus: "to" | "editor" = "to",
     replyTarget = false,
+    replyHeaders?: { inReplyTo: string; references: string },
   ) {
     setHasReplyTarget(replyTarget);
+    replyHeadersRef.current = replyHeaders ?? null;
     setComposeError("");
     setComposeNotice("");
     // A bare "Write" right after closing a draft restores the saved content
@@ -372,9 +377,9 @@ export function useCompose({
       quoteText(m),
       "editor",
       true,
+      { inReplyTo: m.id, references: m.id },
     );
   }
-
   // replyFrom / forwardFrom open compose for an arbitrary message (thread
   // members, row context menus) without first swapping the open detail, so
   // the thread reading-pane action buttons work on the clicked message.
@@ -387,6 +392,7 @@ export function useCompose({
       quote,
       "editor",
       true,
+      { inReplyTo: m.id, references: m.id },
     );
   }
 
@@ -451,6 +457,9 @@ export function useCompose({
       quote,
       "editor",
       true,
+      // Keep the reply in the thread: the backend decodes the routable id
+      // back into the raw Message-ID header.
+      { inReplyTo: detail.id, references: detail.id },
     );
   }
 
@@ -482,6 +491,7 @@ export function useCompose({
     setEncryptOn(false);
     setDraftSaved(false);
     draftUidRef.current = m.uid;
+    replyHeadersRef.current = null;
     draftBaselineRef.current = composeSignature({
       to, cc, bcc, subject: m.subject || "", body: html, bodyText: text, attachments: atts,
     });
@@ -501,6 +511,7 @@ export function useCompose({
       quote,
       "editor",
       true,
+      { inReplyTo: detail.id, references: detail.id },
     );
   }
 
@@ -521,6 +532,7 @@ export function useCompose({
       quote,
       "editor",
       true,
+      { inReplyTo: detail.id, references: detail.id },
     );
   }
 
@@ -755,6 +767,7 @@ export function useCompose({
         setScheduleAt("");
         setDraftSaved(false);
         draftUidRef.current = null;
+        replyHeadersRef.current = null;
       };
 
       // Sending an edited draft must remove the original from Drafts; the
@@ -772,7 +785,7 @@ export function useCompose({
       // Scheduled send: the backend parks the message until send_at. Cancel it
       // from the Scheduled dialog, not the send/undo toast.
       if (sendAt) {
-        await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, 0, sendAt, receiptOn, burnAfter);
+        await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, 0, sendAt, receiptOn, burnAfter, replyHeadersRef.current?.inReplyTo, replyHeadersRef.current?.references);
         removeEditedDraft(draftUidRef.current);
         resetCompose();
         showToast(t("toastScheduled", { time: fmtDate(sendAt) }));
@@ -780,7 +793,7 @@ export function useCompose({
       }
 
       if (delay <= 0) {
-        await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, 0, undefined, receiptOn, burnAfter);
+        await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, 0, undefined, receiptOn, burnAfter, replyHeadersRef.current?.inReplyTo, replyHeadersRef.current?.references);
         removeEditedDraft(draftUidRef.current);
         resetCompose();
         loadMessages(folder);
@@ -794,7 +807,7 @@ export function useCompose({
       // Server-side undo window: the backend parks the message in its outbox
       // and delivers it when the window elapses, so closing the tab no longer
       // loses the send.
-      const res = await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, delay, undefined, receiptOn, burnAfter);
+      const res = await mailSend(finalTo, finalCc, finalBcc, finalSubject, finalText, finalHtml, finalFrom, finalAttachments, delay, undefined, receiptOn, burnAfter, replyHeadersRef.current?.inReplyTo, replyHeadersRef.current?.references);
       removeEditedDraft(draftUidRef.current);
       const outboxId = res?.outbox_id;
       resetCompose();

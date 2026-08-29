@@ -2,10 +2,10 @@ package mail
 
 import (
 	"fmt"
-	"hash/fnv"
 	"io"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/emersion/go-imap"
 )
@@ -47,9 +47,146 @@ func threadID(subject string) string {
 	if n == "" {
 		return ""
 	}
-	h := fnv.New64a()
-	_, _ = h.Write([]byte(n))
-	return fmt.Sprintf("%x", h.Sum64())
+	return "s:" + n
+}
+
+// threadNode is one scanned envelope reduced to its threading identity.
+type threadNode struct {
+	uid       uint32
+	msgid     string // normalized "<id@host>"; "" when the mail has none
+	inReplyTo string // first In-Reply-To entry, normalized; "" when absent
+	subject   string // subject fallback key ("" when degenerate)
+	date      time.Time
+}
+
+// normalizeMsgID canonicalizes a Message-ID to the bracketed wire form.
+func normalizeMsgID(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	if !strings.HasPrefix(s, "<") {
+		s = "<" + s
+	}
+	if !strings.HasSuffix(s, ">") {
+		s += ">"
+	}
+	return s
+}
+
+func envelopeThreadNode(msg *imap.Message) (threadNode, bool) {
+	if msg.Envelope == nil {
+		return threadNode{}, false
+	}
+	n := threadNode{
+		uid:     msg.Uid,
+		subject: threadID(msg.Envelope.Subject),
+		date:    msg.Envelope.Date, // zero date sorts oldest — deterministic
+	}
+	if msg.Envelope.MessageId != "" {
+		n.msgid = normalizeMsgID(msg.Envelope.MessageId)
+	}
+	if msg.Envelope.InReplyTo != "" {
+		n.inReplyTo = normalizeMsgID(msg.Envelope.InReplyTo)
+	}
+	return n, true
+}
+
+// groupThreads derives one canonical thread key per scanned message.
+//
+// Policy (Gmail-faithful, backwards compatible): messages linked through
+// In-Reply-To inside the window form one component keyed by the component's
+// root message-id ("m:<id>"), so two genuinely separate conversations that
+// merely share a subject no longer merge. Messages with no usable references
+// keep the subject key ("s:<normalized>") that has always grouped them, and
+// a reply whose parent fell outside the window degrades to the subject key
+// instead of orphaning itself.
+func groupThreads(nodes []threadNode) map[uint32]string {
+	byMsgid := make(map[string]uint32, len(nodes))
+	for _, n := range nodes {
+		if n.msgid != "" {
+			if _, ok := byMsgid[n.msgid]; !ok {
+				byMsgid[n.msgid] = n.uid
+			}
+		}
+	}
+
+	// Union-find over uids. Roots never gain outgoing edges, so the parent
+	// map stays a forest (mutual-reference cycles cannot form).
+	parent := make(map[uint32]uint32, len(nodes))
+	find := func(x uint32) uint32 {
+		root := x
+		for {
+			p, ok := parent[root]
+			if !ok || p == root {
+				break
+			}
+			root = p
+		}
+		for {
+			p, ok := parent[x]
+			if !ok || p == x || p == root {
+				break
+			}
+			parent[x] = root
+			x = p
+		}
+		parent[root] = root
+		return root
+	}
+	union := func(a, b uint32) {
+		ra, rb := find(a), find(b)
+		if ra != rb {
+			parent[ra] = rb
+		}
+	}
+	for _, n := range nodes {
+		if n.inReplyTo == "" {
+			continue
+		}
+		if p, ok := byMsgid[n.inReplyTo]; ok && p != n.uid {
+			union(n.uid, p)
+		}
+	}
+
+	groups := make(map[uint32][]threadNode)
+	for _, n := range nodes {
+		r := find(n.uid)
+		groups[r] = append(groups[r], n)
+	}
+
+	keys := make(map[uint32]string, len(nodes))
+	for _, members := range groups {
+		key := componentKey(members)
+		if key == "" {
+			continue
+		}
+		for _, m := range members {
+			keys[m.uid] = key
+		}
+	}
+	return keys
+}
+
+// componentKey picks the canonical key for one component: the oldest member's
+// message-id when the component is reply-linked, otherwise the subject
+// fallback of its oldest member.
+func componentKey(members []threadNode) string {
+	sorted := append([]threadNode(nil), members...)
+	sort.Slice(sorted, func(i, j int) bool {
+		if !sorted[i].date.Equal(sorted[j].date) {
+			return sorted[i].date.Before(sorted[j].date)
+		}
+		return sorted[i].uid < sorted[j].uid
+	})
+	if len(members) > 1 {
+		for _, m := range sorted {
+			if m.msgid != "" {
+				return "m:" + m.msgid
+			}
+		}
+	}
+	return sorted[0].subject
 }
 
 // threadMeta scans the most recent threadWindow envelopes of a selected
@@ -82,27 +219,26 @@ func (c *Client) threadMeta(cli fetcher, total uint32) (*threadMeta, error) {
 		done <- cli.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchUid}, messages)
 	}()
 
-	meta := &threadMeta{
-		ids:    map[uint32]string{},
-		counts: map[string]int{},
-		latest: map[string]uint32{},
-	}
+	nodes := make([]threadNode, 0, int(total-start+1))
 	for msg := range messages {
-		if msg.Envelope == nil {
-			continue
-		}
-		tid := threadID(msg.Envelope.Subject)
-		if tid == "" {
-			continue
-		}
-		meta.ids[msg.Uid] = tid
-		meta.counts[tid]++
-		if cur, ok := meta.latest[tid]; !ok || msg.Uid > cur {
-			meta.latest[tid] = msg.Uid
+		if n, ok := envelopeThreadNode(msg); ok {
+			nodes = append(nodes, n)
 		}
 	}
 	if err := <-done; err != nil {
 		return nil, fmt.Errorf("imap thread fetch: %w", err)
+	}
+
+	meta := &threadMeta{
+		ids:    groupThreads(nodes),
+		counts: map[string]int{},
+		latest: map[string]uint32{},
+	}
+	for uid, tid := range meta.ids {
+		meta.counts[tid]++
+		if cur, ok := meta.latest[tid]; !ok || uid > cur {
+			meta.latest[tid] = uid
+		}
 	}
 	return meta, nil
 }
@@ -120,12 +256,27 @@ func (c *Client) Thread(email, token, folder, tid string) ([]Message, error) {
 	if err != nil {
 		return nil, fmt.Errorf("imap select %q: %w", folder, err)
 	}
-	start := uint32(1)
-	if mbox.Messages > threadWindow {
-		start = mbox.Messages - threadWindow + 1
+	meta, err := c.threadMeta(cli, mbox.Messages)
+	if err != nil {
+		return nil, err
 	}
+
+	// Non-nil empty slice: JSON null (nil slice) violates the array contract.
+	out := make([]Message, 0)
+	matched := make([]uint32, 0)
+	for uid, t := range meta.ids {
+		if t == tid {
+			matched = append(matched, uid)
+		}
+	}
+	if len(matched) == 0 {
+		return out, nil
+	}
+	sort.Slice(matched, func(i, j int) bool { return matched[i] < matched[j] })
 	seqset := new(imap.SeqSet)
-	seqset.AddRange(start, mbox.Messages)
+	for _, uid := range matched {
+		seqset.AddNum(uid)
+	}
 
 	messages := make(chan *imap.Message, 10)
 	done := make(chan error, 1)
@@ -134,22 +285,17 @@ func (c *Client) Thread(email, token, folder, tid string) ([]Message, error) {
 	// the detail fetch).
 	section := &imap.BodySectionName{Peek: true}
 	go func() {
-		done <- cli.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure, section.FetchItem()}, messages)
+		done <- cli.UidFetch(seqset, []imap.FetchItem{imap.FetchEnvelope, imap.FetchFlags, imap.FetchUid, imap.FetchBodyStructure, section.FetchItem()}, messages)
 	}()
-
-	// Non-nil empty slice: JSON null (nil slice) violates the array contract.
-	out := make([]Message, 0)
 	for msg := range messages {
-		if msg.Envelope != nil && threadID(msg.Envelope.Subject) == tid {
-			m := envelopeToMessage(msg)
-			m.ThreadID = tid
-			if body := msg.GetBody(section); body != nil {
-				if raw, err := io.ReadAll(body); err == nil {
-					applyBody(&m, raw)
-				}
+		m := envelopeToMessage(msg)
+		m.ThreadID = tid
+		if body := msg.GetBody(section); body != nil {
+			if raw, err := io.ReadAll(body); err == nil {
+				applyBody(&m, raw)
 			}
-			out = append(out, m)
 		}
+		out = append(out, m)
 	}
 	if err := <-done; err != nil {
 		return nil, fmt.Errorf("imap thread fetch: %w", err)
