@@ -125,6 +125,10 @@ export function useMailSearch({
   }, [query, activeView, activeLabel]);
 
   function clearSearch() {
+    // Invalidate any in-flight search first: without this, a slow search
+    // response could land after the folder reload and overwrite it with
+    // stale filtered results (the two seq guards are independent).
+    searchSeq.current++;
     setSearching(false);
     setQuery("");
     setSearchSpec(null);
@@ -266,6 +270,10 @@ export function useMailSearch({
     savedSearches, searchAll, setSearchAll,
     // Exposed so the store can clear it on folder switches.
     lastSearchRef,
+    // Exposed so the store can invalidate in-flight searches when a folder
+    // load starts (the reverse direction of runSearchWithSpec's loadSeq
+    // bump) — without it a slow search could overwrite the folder list.
+    searchSeqRef: searchSeq,
     doSearch, runSearchWithSpec, applySearchSpec,
     clearSearch, refreshMail, selectLabel,
     saveCurrentSearch, saveSearchSpec, removeSavedSearch, runSavedSearch,

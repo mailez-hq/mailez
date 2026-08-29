@@ -118,6 +118,19 @@ export class ApiError extends Error {
   }
 }
 
+// A 401 on an authed surface means the session cookie expired or was
+// revoked server-side. Instead of letting every poll toast errors forever,
+// bounce to the login screen once; the guard flag stops in-flight request
+// storms from chaining redirects. Auth endpoints display their own 401s.
+let bouncedToLogin = false;
+function handleUnauthorized(path: string) {
+  if (bouncedToLogin || typeof window === "undefined") return;
+  if (path.startsWith("/auth")) return;
+  bouncedToLogin = true;
+  if (window.location.pathname === "/") return; // already on the login page
+  window.location.href = "/";
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${mailPath(path)}`, {
     headers: { "Content-Type": "application/json", ...mailHeaders() },
@@ -126,6 +139,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const err = body as { error?: string; code?: string };
+    if (res.status === 401) handleUnauthorized(path);
     throw new ApiError(err.error || res.statusText, res.status, err.code);
   }
   if (res.status === 204) return undefined as T;
@@ -188,9 +202,11 @@ export async function mailMessages(folder: string, page = 0, sort = "date", dir 
   );
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error || res.statusText);
+    const err = body as { error?: string; code?: string };
+    if (res.status === 401) handleUnauthorized("/mail/messages");
+    throw new ApiError(err.error || res.statusText, res.status, err.code);
   }
-  const messages = await res.json();
+  const messages = (await res.json()) ?? [];
   const total = Number(res.headers.get("X-Total-Messages") || 0);
   return { messages, total };
 }

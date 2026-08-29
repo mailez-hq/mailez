@@ -7,6 +7,10 @@ import type { MailMessage } from "@/lib/api";
 /** Snapshot of the mailbox state the hotkeys read (kept fresh by the store). */
 export type HotkeyState = {
   messages: MailMessage[];
+  /** The list exactly as rendered (pinned floated, snoozed dropped,
+   * category filter applied) — hotkeys index THIS array so the highlighted
+   * row and the acted-on row are always the same message. */
+  shownMessages: MailMessage[];
   cursor: number;
   folder: string;
   searching: boolean;
@@ -76,7 +80,7 @@ export function useMailHotkeys({
       if (mod) return;
 
       const api = apiRef.current;
-      const m = s.messages[s.cursor];
+      const m = s.shownMessages[s.cursor];
 
       if (e.shiftKey && e.key === "I") {
         if (m) api.setSeen(m, true);
@@ -109,7 +113,7 @@ export function useMailHotkeys({
           api.openCompose();
           break;
         case "j":
-          setCursor((c) => Math.min(c + 1, s.messages.length - 1));
+          setCursor((c) => Math.min(c + 1, s.shownMessages.length - 1));
           break;
         case "k":
           setCursor((c) => Math.max(c - 1, 0));

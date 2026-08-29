@@ -148,6 +148,7 @@ export function useMailStoreValue(me: Me) {
     activeLabel, setActiveLabel,
     savedSearches, searchAll, setSearchAll,
     lastSearchRef,
+    searchSeqRef,
     doSearch, applySearchSpec,
     clearSearch, refreshMail, selectLabel,
     saveCurrentSearch, saveSearchSpec, removeSavedSearch, runSavedSearch,
@@ -183,7 +184,7 @@ export function useMailStoreValue(me: Me) {
     setSelectedUids(new Set());
     setCursor(0);
     if (opts.includeLabel) setActiveLabel("");
-  }, loadFolders);
+  }, loadFolders, loadMessages);
 
   // ---- labels (definitions, message keywords, colors, manager dialog) ----
   const {
@@ -415,9 +416,15 @@ export function useMailStoreValue(me: Me) {
 
   useEffect(() => {
     lastSearchRef.current = "";
+    // A folder load supersedes any in-flight search: bump the search guard
+    // so a slow /mail/search response cannot land afterwards and overwrite
+    // the folder list (searches already invalidate folder loads the other
+    // way via loadSeq).
+    searchSeqRef.current++;
     // Fetch-on-folder-change: loadMessages resolves every setState after await.
     loadMessages(folder);
-  }, [folder, loadMessages, lastSearchRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- searchSeqRef is a stable ref
+  }, [folder, loadMessages, lastSearchRef, searchSeqRef]);
 
   // Remember the last-visited folder so login / re-open can restore the
   // user's position instead of always landing in the inbox. Only /mail routes
@@ -519,6 +526,17 @@ export function useMailStoreValue(me: Me) {
     return [...pinned, ...rest];
   }, [messages, activeView]);
 
+  // shownMessages applies the category filter on top of displayMessages —
+  // exactly what the list panel renders. Keyboard navigation must index
+  // this same array: using the raw list let j/k highlight one row while
+  // Enter/x/s acted on a different (reordered or hidden) message.
+  const shownMessages = useMemo(() => {
+    if (!categoryFilter) return displayMessages;
+    return displayMessages.filter(
+      (m) => (priorityCategories[String(m.uid)] ?? m.category) === categoryFilter,
+    );
+  }, [displayMessages, categoryFilter, priorityCategories]);
+
   function loadMore() {
     if (loadingMoreRef.current || searching || messages.length >= total) return;
     loadingMoreRef.current = true;
@@ -576,7 +594,7 @@ export function useMailStoreValue(me: Me) {
   // row is already the open detail, reply immediately; otherwise open the
   // message first and compose once the detail has swapped in.
   async function openThenReply(kind: "reply" | "replyAll" | "forward") {
-    const m = stateRef.current.messages[stateRef.current.cursor];
+    const m = stateRef.current.shownMessages[stateRef.current.cursor];
     if (!m) return;
     if (stateRef.current.detail?.uid === m.uid) {
       (kind === "reply" ? reply : kind === "replyAll" ? replyAll : forward)();
@@ -590,7 +608,7 @@ export function useMailStoreValue(me: Me) {
 
   // ---- global keyboard shortcuts ----
   const stateRef = useRef<HotkeyState>({
-    messages, cursor, folder, searching, detail,
+    messages, shownMessages, cursor, folder, searching, detail,
     composeOpen, settingsOpen, contactsOpen, paletteOpen, shortcutsOpen,
   });
   const apiRef = useRef<HotkeyApi>({
@@ -602,7 +620,7 @@ export function useMailStoreValue(me: Me) {
   // (writing refs during render is a React 19 anti-pattern).
   useEffect(() => {
     stateRef.current = {
-      messages, cursor, folder, searching, detail,
+      messages, shownMessages, cursor, folder, searching, detail,
       composeOpen, settingsOpen, contactsOpen, paletteOpen, shortcutsOpen,
     };
     apiRef.current = {

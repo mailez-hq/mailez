@@ -9,6 +9,8 @@ import {
   type MailDelegation,
 } from "@/lib/api";
 
+import { detailCache, threadCache } from "./view-caches";
+
 type ResetView = (opts: { includeLabel?: boolean }) => void;
 
 /**
@@ -20,6 +22,7 @@ export function useAccounts(
   router: { push: (href: string) => void },
   resetView: ResetView,
   loadFolders: () => void | Promise<void>,
+  loadMessages: (folder: string, page?: number, silent?: boolean) => Promise<void>,
 ) {
   // ---- aggregated external accounts (full aggregation client) ----
   const [accountList, setAccountList] = useState<MailAccount[]>([]);
@@ -71,12 +74,20 @@ export function useAccounts(
   async function switchAccount(id: number | null) {
     if (id === activeAccount || switchInFlight.current) return;
     switchInFlight.current = true;
+    // The view caches are keyed by folder/uid only — without a flush the
+    // next account would serve the previous mailbox's details.
+    detailCache.clear();
+    threadCache.clear();
     setActiveAccount(id);
     setActiveDelegate(null);
     resetView({});
     switchInFlight.current = false;
     router.push("/mail/Inbox");
     loadFolders();
+    // resetView keeps folder at "Inbox": when the user was already there the
+    // folder effect's dependencies do not change and would never reload, so
+    // the list would stay empty. Load the scoped inbox explicitly.
+    loadMessages("Inbox");
   }
 
   // Switching delegated mailboxes re-scopes every /mail/* request to the
@@ -84,12 +95,15 @@ export function useAccounts(
   async function switchDelegate(email: string | null) {
     if (email === activeDelegate || switchInFlight.current) return;
     switchInFlight.current = true;
+    detailCache.clear();
+    threadCache.clear();
     setActiveAccount(null);
     setActiveDelegate(email);
     resetView({ includeLabel: true });
     switchInFlight.current = false;
     router.push("/mail/Inbox");
     loadFolders();
+    loadMessages("Inbox");
   }
 
   return {

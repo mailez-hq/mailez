@@ -472,11 +472,13 @@ export function MessageListPanel({
               selected={m.id === openId && !!openId}
               selectedInBulk={selectedUids.has(m.uid)}
               cursorActive={i === cursor && !searching}
-              onOpen={() => onOpen(m)}
-              onToggleSelect={() => onToggleSelect(m)}
-              onDelete={() => onDelete(m)}
-              onArchive={() => onArchive(m)}
-              onStar={() => onStar(m)}
+              // Handlers pass straight through (no per-row closures) so
+              // MessageRow's memoization sees stable identities.
+              onOpen={onOpen}
+              onToggleSelect={onToggleSelect}
+              onDelete={onDelete}
+              onArchive={onArchive}
+              onStar={onStar}
               highlightTerms={highlightTerms}
               onContextMenu={onContextMenu}
             />
