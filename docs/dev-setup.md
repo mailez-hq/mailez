@@ -57,7 +57,7 @@ docker compose -f docker-compose.dev.yml up -d
 依赖，mailezine 引擎直接发布邮件端口（25 / 1587 / 110 / 143 / 4190）到
 宿主机。引擎通过 `host.docker.internal:8080` 访问宿主机 mailez 后端的
 目录/认证接口（SQLite 存储）。两个生产版本是独立文件（全容器化）：
-`docker-compose.community.yml`（社区版 postfix+dovecot + MySQL）与
+`docker-compose.community.yml`（社区版 mailezine + MySQL，单节点存储）与
 `docker-compose.enterprise.yml`（企业版 mailezine + MySQL + TiDB +
 MinIO/S3），见 `deploy/scripts/README.md`。
 
@@ -82,7 +82,7 @@ powershell -File .\dev-start.ps1 -Ce  # 社区版（企业功能位显示降级�
 | 版本 | compose 文件 | 引擎 | 控制面 | 存储 |
 | ---- | ------------ | ---- | ------ | ---- |
 | 开发 | `docker-compose.dev.yml` | mailezine | SQLite（宿主机） | Pebble + 本地 FS |
-| 社区版 | `docker-compose.community.yml` | postfix+dovecot | MySQL | maildir |
+| 社区版 | `docker-compose.community.yml` | mailezine | MySQL | Pebble + 本地 FS |
 | 企业版 | `docker-compose.enterprise.yml` | mailezine | MySQL | TiDB + MinIO/S3 |
 
 引擎镜像构建：`go run ./cmd/build-images -version local`（mailezine 模块在
@@ -119,8 +119,8 @@ go run ./cmd/e2e -api-port 8080 -smtp-port 25 -imap-port 143 --domain e2e.exampl
 
 ## 为什么后端必须监听 8080
 
-邮件栈镜像内部把控制面地址写为 `MAILEZ_BACKEND_ADDRESS:8080`（nginx 认证代理、
-dovecot passdb、postfix 查询都走它）。开发模式下 `MAILEZ_BACKEND_ADDRESS` 被
+邮件栈镜像内部把控制面地址写为 `MAILEZ_BACKEND_ADDRESS:8080`（nginx 网关、
+mailezine 引擎的目录/认证查询都走它）。开发模式下 `MAILEZ_BACKEND_ADDRESS` 被
 `docker-compose.dev.yml` 覆盖为 `host.docker.internal`，因此宿主机后端必须
 监听 8080，前端 `next.config.ts` 的默认 `API_TARGET` 也指向
 `http://localhost:8080`。容器化部署时用环境变量 `API_TARGET=http://backend:8080`
@@ -136,11 +136,11 @@ dovecot passdb、postfix 查询都走它）。开发模式下 `MAILEZ_BACKEND_AD
 
 ## 自建镜像（完全本地构建，无外部镜像仓库依赖）
 
-邮件组件（nginx / dovecot / postfix / rspamd / macro-scanner / unbound）的
-Dockerfile 与静态配置在 `deploy/images/`（共享基础设施）与
-`deploy/engines/postdove/`（引擎 A）下，全部为多阶段自建镜像
+邮件组件（nginx / rspamd / macro-scanner / unbound）的 Dockerfile 与静态
+配置在 `deploy/images/`（共享基础设施）下，mailezine 引擎镜像从相邻仓库
+`deploy/engines/mailezine/` 构建，全部为多阶段自建镜像
 （Go 编译 agent + 官方 `alpine:3.21`，无任何第三方邮件镜像依赖）。构建
-入口为 `go run ./backend/cmd/build-images`，两个 compose 文件默认就引用
+入口为 `go run ./backend/cmd/build-images`，
 本地构建的 `mailez/*:local`：
 
 ```

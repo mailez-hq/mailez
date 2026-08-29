@@ -4,10 +4,10 @@
 
 mailez is a self-hosted mail platform built from three layers:
 
-1. **Mail images (Docker)** — nginx gateway, Postfix, Dovecot, Rspamd
-   (mail-filter), macro-scanner, Unbound
-   (resolver), Redis. All components are self-built images driven by a single
-   Go agent binary (`mailez-agent`).
+1. **Mail images (Docker)** — nginx gateway (HTTP/ACME), the mailezine
+   engine (SMTP/IMAP/POP3/ManageSieve), Rspamd (mail-filter),
+   macro-scanner, Unbound (resolver), Redis. The shared components are
+   self-built images driven by a single Go agent binary (`mailez-agent`).
 2. **Backend (Go)** — the control plane: REST API for admin/webmail, the
    internal API the mail images authenticate against, SSO sessions, Sieve,
    fetching, push notifications, AI.
@@ -34,7 +34,7 @@ backend/internal/
 ├── fetch/         external POP3/IMAP polling
 ├── push/          Web Push subscriptions + notifier
 ├── ai/            LLM provider abstraction + AI endpoints
-├── stack/         internal API contract for nginx/postfix/dovecot/rspamd
+├── stack/         internal API contract for the mail images
 ├── mail/          IMAP/SMTP gateway behind the mail.Gateway interface
 └── server/        composition root: Fiber app, migrations, background workers
 ```

@@ -78,7 +78,7 @@
 | 档位 | 引擎 | 存储 |
 |---|---|---|
 | **dev**（默认） | mailezine | SQLite + Pebble + 本地 FS |
-| **community** | Postfix + Dovecot | MySQL + maildir |
+| **community** | mailezine | MySQL + Pebble + 本地 FS |
 | **enterprise** | mailezine | MySQL + TiDB + MinIO/S3 |
 
 ```sh
@@ -113,10 +113,10 @@ go run ./cmd/e2e    # 发一封测试邮件，检查投递、DKIM 签名与防�
 
 - 后端：Go + Fiber，GORM，Redis
 - 前端：Next.js（React）——管理后台与 Webmail 两个独立应用
-- 邮件引擎可插拔，统一走引擎无关的目录契约（`/stack/directory/*`）：
-  **mailezine**（单 Go 二进制，dev/企业档默认）提供 SMTP/IMAP/POP3/
-  ManageSieve，KV + blob 存储均可插拔；**postdove**（Postfix + Dovecot，
-  前置 nginx 网关）支撑社区版；Stalwart 适配器也可接入同一契约
+- 邮件引擎统一为 **mailezine**（单 Go 二进制），走引擎无关的目录契约
+  （`/stack/directory/*`）提供 SMTP/IMAP/POP3/ManageSieve，KV + blob 存储
+  均可插拔；dev/社区/企业三档同一引擎，仅在存储规模（SQLite/pebble 对
+  MySQL/TiDB/MinIO）与授权功能上有别
 - 更多细节：[`docs/dev-setup.md`](docs/dev-setup.md)、
   [`docs/architecture.md`](docs/architecture.md)、
   [`docs/webmail-ui-spec.md`](docs/webmail-ui-spec.md)

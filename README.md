@@ -98,7 +98,7 @@ entry point:
 | Edition | Engine | Storage |
 |---|---|---|
 | **dev** (default) | mailezine | SQLite + Pebble + local FS |
-| **community** | Postfix + Dovecot | MySQL + maildir |
+| **community** | mailezine | MySQL + Pebble + local FS |
 | **enterprise** | mailezine | MySQL + TiDB + MinIO/S3 |
 
 ```sh
@@ -135,12 +135,11 @@ go run ./cmd/e2e    # sends a test mail, checks delivery, DKIM and spam filterin
 
 - Backend: Go + Fiber, GORM, Redis
 - Frontend: Next.js (React) — separate admin and webmail apps
-- Mail engine is pluggable behind an engine-agnostic directory contract
-  (`/stack/directory/*`): **mailezine** (a single Go binary, default in the
-  dev and enterprise tiers) speaks SMTP/IMAP/POP3/ManageSieve with pluggable
-  KV + blob storage; **postdove** (Postfix + Dovecot behind an nginx gateway)
-  powers the community edition; a Stalwart adapter can slot in behind the
-  same API
+- Mail engine: **mailezine** (a single Go binary) speaks
+  SMTP/IMAP/POP3/ManageSieve behind an engine-agnostic directory contract
+  (`/stack/directory/*`) with pluggable KV + blob storage — every tier
+  (dev, community, enterprise) runs it; the tiers differ only in storage
+  scale (SQLite/pebble vs MySQL/TiDB/MinIO) and licensed features
 - More details: [`docs/dev-setup.md`](docs/dev-setup.md),
   [`docs/architecture.md`](docs/architecture.md),
   [`docs/webmail-ui-spec.md`](docs/webmail-ui-spec.md)
