@@ -272,6 +272,7 @@
     "templateCancel": "Cancel",
     "manageTemplates": "Manage templates",
     "toastSent": "Sent",
+    "viewSent": "View sent",
     "receiptRequest": "Request read receipt",
     "receiptRequested": "The sender requested a read receipt",
     "sendReceipt": "Send receipt",

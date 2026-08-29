@@ -783,7 +783,7 @@ export function useCompose({
         // Immediate send: confirm the outcome. Gmail/Fastmail/Coremail all
         // keep the user where they are and confirm with a toast instead of
         // navigating away — a silent close leaves "did it send?" unanswered.
-        showToast(t("toastSent"));
+        showToast(t("toastSent"), undefined, 6000, { label: t("viewSent"), folder: "Sent" });
         return;
       }
 
@@ -807,7 +807,7 @@ export function useCompose({
       setTimeout(() => {
         loadMessages(folder, 0, true);
         refreshUnseen();
-        showToast(t("toastSent"));
+        showToast(t("toastSent"), undefined, 6000, { label: t("viewSent"), folder: "Sent" });
       }, delay * 1000 + 2000);
     } catch (err) {
       setComposeError(err instanceof Error ? err.message : "send failed");

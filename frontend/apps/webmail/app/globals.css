@@ -139,6 +139,20 @@
   html {
     @apply font-sans;
   }
+  /* Toast entrance (Gmail-style bottom-left confirmations). */
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .toast-in {
+    animation: toast-in 0.18s ease-out;
+  }
   /* Tailwind v4 preflight uses `cursor: default` on buttons; restore the
      pointer so every interactive element (native buttons and Base UI roles
      such as menu items / options / tabs / switches) signals clickability. */
