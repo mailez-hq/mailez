@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"mailez/backend/internal/core"
+	"mailez/backend/internal/labelutil"
 	"mailez/backend/internal/mail"
 
 	"github.com/gofiber/fiber/v2"
@@ -85,8 +86,11 @@ func (h *Handler) mailFlag(c *fiber.Ctx) error {
 	if err := c.BodyParser(&in); err != nil || in.Folder == "" || in.UID == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "folder and uid are required"})
 	}
-	// Labels arrive as display names (possibly Chinese); map to the ASCII
-	// keyword stored on the wire. System flags pass through unchanged.
+	// Flag names arrive as display names from API clients ("seen", "flagged"):
+	// resolve system flags first (case-insensitive), then map the remainder
+	// through the label table. Passing a bare "seen" through unchanged used
+	// to create a custom keyword that never touched the real \Seen state.
+	in.Flag = labelutil.CanonicalFlag(in.Flag)
 	in.Flag = h.labelKeywordByName(mailboxIdentity(c), in.Flag)
 	if err := h.Mail.With(d).SetFlag(d.Email, d.Token, in.Folder, in.UID, in.Flag, in.Value); err != nil {
 		return core.Fail(c, 502, err, "mail service error")

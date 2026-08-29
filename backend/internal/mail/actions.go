@@ -47,7 +47,13 @@ func (c *Client) MarkAllRead(email, token, folder string) error {
 	if err != nil {
 		return fmt.Errorf("imap select %q: %w", folder, err)
 	}
-	if mbox.Messages == 0 || mbox.Unseen == 0 {
+	// NOTE: no Unseen short-circuit here. go-imap v1's Select never fills
+	// MailboxStatus.Unseen — that field only comes back from the STATUS
+	// command; SELECT's optional "OK [UNSEEN n]" response code lands in the
+	// separate UnseenSeqNum field. Guarding on Unseen made this function a
+	// silent no-op (204 with nothing marked). The fetch-filter loop below is
+	// the authoritative unseen detector.
+	if mbox.Messages == 0 {
 		return nil
 	}
 	// Fetch the UIDs of unseen messages so the store batch only touches the

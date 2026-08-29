@@ -27,6 +27,7 @@ type fakeGateway struct {
 	total    int
 	moved    [][2]string
 	marked   []string
+	flags    []string
 }
 
 func (f *fakeGateway) With(dial mail.Dial) mail.Gateway { return f }
@@ -46,6 +47,11 @@ func (f *fakeGateway) MoveMany(email, token, folder string, uids []uint32, desti
 
 func (f *fakeGateway) MarkAllRead(email, token, folder string) error {
 	f.marked = append(f.marked, folder)
+	return nil
+}
+
+func (f *fakeGateway) SetFlag(email, token, folder string, uid uint32, flag string, value bool) error {
+	f.flags = append(f.flags, flag)
 	return nil
 }
 
@@ -116,5 +122,36 @@ func TestMailMove(t *testing.T) {
 	}
 	if len(fake.moved) != 1 || fake.moved[0] != [2]string{"INBOX", "Archive"} {
 		t.Errorf("moved = %v", fake.moved)
+	}
+}
+
+// Regression: the /mail/flag API speaks display names too. A bare "seen"
+// used to reach the IMAP wire verbatim and silently create a custom keyword
+// that never touched the real \Seen state (unread badges never moved).
+func TestMailFlagCanonicalizesSystemFlags(t *testing.T) {
+	app, fake := newTestApp(t, &fakeGateway{})
+	post := func(body string) {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/mail/flag", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("request: %v", err)
+		}
+		if resp.StatusCode != http.StatusNoContent {
+			t.Fatalf("flag %s: status = %d, want 204", body, resp.StatusCode)
+		}
+	}
+	post(`{"folder":"INBOX","uid":7,"flag":"seen","value":true}`)
+	post(`{"folder":"INBOX","uid":7,"flag":"\\Flagged","value":true}`)
+	post(`{"folder":"INBOX","uid":7,"flag":"$MDNSent","value":true}`)
+	want := []string{`\Seen`, `\Flagged`, "$MDNSent"}
+	if len(fake.flags) != len(want) {
+		t.Fatalf("captured flags = %v, want %v", fake.flags, want)
+	}
+	for i, w := range want {
+		if fake.flags[i] != w {
+			t.Errorf("flags[%d] = %q, want %q", i, fake.flags[i], w)
+		}
 	}
 }
