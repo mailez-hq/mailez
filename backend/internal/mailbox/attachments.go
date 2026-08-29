@@ -17,7 +17,7 @@ import (
 )
 
 // mailAttachmentsZip packs every attachment of one message into a zip and
-// streams it to the client (Gmail/SnappyMail "download all attachments").
+// streams it to the client ("download all attachments").
 // @Summary Download all attachments as zip
 // @Tags mail
 // @Produce application/zip

@@ -9,7 +9,7 @@ import type { CalendarEvent } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // CalendarDrawer slides the calendar in from the right edge of the mailbox
-// (Gmail-style side panel) so the user never leaves the message view.
+// (in-place side panel) so the user never leaves the message view.
 export function CalendarDrawer({
   onClose,
   initialEvent,

@@ -49,7 +49,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 // A 401 on a dashboard surface means the session cookie expired or was
 // revoked server-side. Bounce to the sign-in page once with a reason flag
-// and a return link (Gmail/Fastmail-style session-expiry flow); the guard
+// and a return link (standard session-expiry flow); the guard
 // flag stops in-flight request storms from chaining redirects. Auth
 // endpoints (/sso, /auth) display their own 401s ("wrong e-mail or
 // password" must keep reaching the login form verbatim).

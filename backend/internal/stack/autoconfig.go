@@ -15,7 +15,7 @@ func (h *Handler) registerAutoconfig(r fiber.Router) {
 	r.Get("/autoconfig/apple", h.autoconfigApple)
 }
 
-// autoconfigMozilla serves the Thunderbird autoconfig XML (RFC-style).
+// autoconfigMozilla serves the autoconfig XML (config-v1.1 format).
 func (h *Handler) autoconfigMozilla(c *fiber.Ctx) error {
 	host := h.Cfg.Hostname
 	xml := fmt.Sprintf(`<?xml version="1.0"?>
@@ -63,7 +63,7 @@ func (h *Handler) autoconfigMicrosoftJSON(c *fiber.Ctx) error {
 
 var emailTagRe = regexp.MustCompile(`<EMailAddress>(.*?)</EMailAddress>`)
 
-// autoconfigMicrosoft answers the Outlook Autodiscover POST.
+// autoconfigMicrosoft answers the Autodiscover POST.
 func (h *Handler) autoconfigMicrosoft(c *fiber.Ctx) error {
 	body := string(c.Body())
 	if !strings.Contains(body, "Autodiscover") {

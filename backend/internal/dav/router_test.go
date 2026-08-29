@@ -93,7 +93,7 @@ func TestDAVAuthAndDiscovery(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	// App token authenticates (Thunderbird/DAVx5 style).
+	// App token authenticates (as dedicated CalDAV/CardDAV clients do).
 	appHash, err := password.HashPBKDF2SHA256("dav-app-token")
 	if err != nil {
 		t.Fatal(err)

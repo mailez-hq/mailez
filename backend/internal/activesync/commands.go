@@ -15,7 +15,7 @@ import (
 )
 
 // cmdProvision runs the device policy handshake. We ship a permissive policy
-// document so iOS/Outlook complete provisioning without blocking users.
+// document so mobile clients complete provisioning without blocking users.
 func (s *Service) cmdProvision(c *fiber.Ctx, req *easRequest, user *models.User) error {
 	root, err := readBody(c)
 	if err != nil {

@@ -211,7 +211,7 @@ var migrations = []migration{
 	},
 	{
 		// Compliance email archiving: capture/retention policies and the
-		// archived message store (Coremail-style 归档/检索/审查).
+		// archived message store (归档/检索/审查).
 		ID: "20260827_email_archive",
 		Up: func(db *gorm.DB) error {
 			if err := db.AutoMigrate(&ArchiveSettings{}, &ArchivedMessage{}); err != nil {
@@ -237,7 +237,7 @@ var migrations = []migration{
 	},
 	{
 		// Outbound DLP + approval workflow: sensitive-word/regex rules and
-		// held messages awaiting approver decisions (Coremail-style 审批).
+		// held messages awaiting approver decisions (审批).
 		ID: "20260827_dlp_approval",
 		Up: func(db *gorm.DB) error {
 			return db.AutoMigrate(&DlpRule{}, &PendingApproval{})
@@ -245,7 +245,7 @@ var migrations = []migration{
 	},
 	{
 		// Exchange ActiveSync: device registry, per-collection incremental
-		// sync snapshots and Ping counters (iOS/Outlook mobile sync).
+		// sync snapshots and Ping counters (mobile device sync).
 		ID: "20260827_eas_devices",
 		Up: func(db *gorm.DB) error {
 			return db.AutoMigrate(&EasDevice{}, &EasSyncState{}, &EasPingState{})
@@ -269,7 +269,7 @@ var migrations = []migration{
 	},
 	{
 		// Login security: known-IP list on users so a sign-in from a new
-		// device/IP can raise an email alert (Gmail/Outlook-style).
+		// device/IP can raise an email alert.
 		ID: "20260827_login_alert_ips",
 		Up: func(db *gorm.DB) error {
 			return db.AutoMigrate(&User{})
@@ -284,7 +284,7 @@ var migrations = []migration{
 	},
 	{
 		// Distribution groups (通讯组): Alias gains a display name and a
-		// structured member list for Coremail-style group management.
+		// structured member list for group management.
 		ID: "20260827_alias_group_members",
 		Up: func(db *gorm.DB) error {
 			return db.AutoMigrate(&Alias{})

@@ -1,7 +1,7 @@
 // Package archive implements compliance email archiving: the mail engine
 // forwards every inbound/outbound message to the stack ingest endpoint, the
 // backend stores it with a retention policy, and admins search, review and
-// export the store (Coremail-style 归档/检索/审查/稽核).
+// export the store (归档/检索/审查/稽核).
 package archive
 
 import (

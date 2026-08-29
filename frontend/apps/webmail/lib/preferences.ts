@@ -7,7 +7,7 @@ export type Density = "compact" | "cozy" | "relaxed";
 export type Accent = "blue" | "green" | "purple" | "orange" | "rose";
 export type ReaderFontSize = "sm" | "md" | "lg" | "xl";
 export type ReadingPaneWidth = "narrow" | "md" | "wide";
-// Conversation view groups the message list by thread (Gmail-style); turning
+// Conversation view groups the message list by thread; turning
 // it off falls back to one row per message.
 export type ConversationPref = boolean;
 // Where a signed-in user lands: the workspace dashboard or straight into
@@ -40,7 +40,7 @@ export type Preferences = {
   // autoSignature appends the personal signature to new compose automatically.
   autoSignature: boolean;
   // collapseReplyQuote folds the quoted original into a "…" row in reply
-  // compose (Gmail-style); off shows the full quote expanded (Fastmail-style).
+  // compose; off shows the full quote expanded.
   collapseReplyQuote: boolean;
   landing: Landing;
 };
@@ -116,7 +116,7 @@ export function writePreferences(prefs: Preferences) {
 
 // Last-visited mailbox folder, used to restore the user's position after
 // login / app open (the "inbox is home, but home is where you left off" rule
-// used by Gmail / Outlook / Thunderbird).
+// used by mainstream mail clients).
 export const LAST_FOLDER_KEY = "mailez.lastFolder";
 
 export function readLastFolder(): string | null {

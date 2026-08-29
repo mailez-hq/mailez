@@ -1,8 +1,7 @@
 // Package activesync implements the server side of Exchange ActiveSync
 // (EAS): WBXML transport, device registry, folder hierarchy and incremental
-// mail sync over the existing IMAP gateway. Mobile clients (iOS Mail,
-// Outlook for iOS/Android) can configure the account with the mailbox
-// password or an app token.
+// mail sync over the existing IMAP gateway. Mobile clients can configure
+// the account with the mailbox password or an app token.
 package activesync
 
 import (
@@ -379,8 +378,8 @@ func writeEmptyOK(c *fiber.Ctx, version byte) error {
 	return c.Status(http.StatusOK).Send(nil)
 }
 
-// handleAutodiscover answers the XML autodiscover request so iOS/Outlook can
-// discover the ActiveSync endpoint from just the email address.
+// handleAutodiscover answers the XML autodiscover request so mobile clients
+// can discover the ActiveSync endpoint from just the email address.
 func (s *Service) handleAutodiscover(c *fiber.Ctx) error {
 	if c.Method() == http.MethodOptions {
 		return c.SendStatus(http.StatusOK)

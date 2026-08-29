@@ -64,7 +64,7 @@ export type MailMessage = {
   // offers a "send receipt" action unless the $MDNSent keyword is set.
   receipt_requested?: boolean;
   receipt_to?: string;
-  // Recall notice (Outlook-style X-MS-Recall) targeting an original message.
+  // Recall notice (X-MS-Recall) targeting an original message.
   recall?: { message_id: string; subject: string };
   // Burn-after-read (阅后即焚): the reader shows the body once and flags the
   // message $BurnRead. 0 or absent = normal message.

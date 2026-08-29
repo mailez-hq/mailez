@@ -138,7 +138,7 @@ export function playChime() {
 // round-trips the original newlines exactly — per-line <p>s with empty
 // <p><br></p> blocks would double every blank line on readback.
 // collapseQuote marks the quote blockquote with data-collapsed="true" so the
-// compose editor renders it Gmail-style (folded "…" until clicked), while the
+// compose editor renders it folded ("…" until clicked), while the
 // full quoted text still travels with the sent message.
 export function textToHtml(text: string, opts?: { collapseQuote?: boolean }): string {
   const out: string[] = [];

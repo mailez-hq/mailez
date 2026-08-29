@@ -150,7 +150,7 @@ function handleUnauthorized(path: string) {
   if (window.location.pathname === "/") return; // already on the login page
   // Carry the reason and, on mail surfaces, a return link so the sign-in
   // page can explain the bounce and restore where the user was after
-  // logging back in (Gmail/Fastmail-style session-expiry flow).
+  // logging back in (standard session-expiry flow).
   const here = window.location.pathname + window.location.search;
   const target =
     here === "/home" || here.startsWith("/mail")

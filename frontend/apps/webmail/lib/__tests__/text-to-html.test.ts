@@ -120,7 +120,7 @@ describe("normalizeQuoteBody", () => {
   });
 });
 
-describe("Gmail-style collapsed quote", () => {
+describe("collapsed quote rendering", () => {
   it("marks reply quotes with data-collapsed and leaves plain quotes alone", () => {
     const src = "On 2026-08-26, admin@example.com wrote:\n> eeee\n> dddd";
     expect(textToHtml(src, {collapseQuote: true})).toBe(

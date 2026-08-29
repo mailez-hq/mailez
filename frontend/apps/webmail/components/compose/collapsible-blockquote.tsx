@@ -8,7 +8,7 @@ import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 
-// Gmail-style quote in the compose editor: reply quotes render collapsed as a
+// Collapsed quote in the compose editor: reply quotes render collapsed as a
 // single "…" row by default and expand on click, while the quoted text stays
 // in the document model so the sent message (and the plain-text body) still
 // carries the full quote. The collapsed state lives in a data-collapsed

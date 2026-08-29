@@ -1,5 +1,5 @@
 // Package dlp implements outbound content filtering and approval
-// (Coremail-style 敏感词过滤 + 审批): rules scan outbound mail and either
+// (敏感词过滤 + 审批): rules scan outbound mail and either
 // block it at submission or hold it for an approver's decision.
 package dlp
 

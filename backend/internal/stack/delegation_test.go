@@ -159,8 +159,8 @@ func TestAuthEmailDelegatedLogin(t *testing.T) {
 	}
 }
 
-// TestAuthEmailDelegatedAppToken covers desktop clients (Thunderbird etc.)
-// that authenticate with an app token: the delegate's own app token opens the
+// TestAuthEmailDelegatedAppToken covers desktop clients that authenticate
+// with an app token: the delegate's own app token opens the
 // owner's mailbox only while a full-access grant exists.
 func TestAuthEmailDelegatedAppToken(t *testing.T) {
 	h, app := newContractHarness(t)

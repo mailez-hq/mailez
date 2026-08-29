@@ -61,8 +61,8 @@ type Message struct {
 	// RFC 3798); ReceiptTo is the address the sender wants the receipt sent to.
 	ReceiptRequested bool   `json:"receipt_requested,omitempty"`
 	ReceiptTo        string `json:"receipt_to,omitempty"`
-	// Recall is set when the message is a recall notice (Outlook-style
-	// X-MS-Recall), linking to the original message by Message-ID.
+	// Recall is set when the message is a recall notice (X-MS-Recall),
+	// linking to the original message by Message-ID.
 	Recall *RecallInfo `json:"recall,omitempty"`
 	// BurnAfterMinutes marks a burn-after-read (阅后即焚) message: the reader
 	// shows the body once and flags it $BurnRead. 0 = normal message.
@@ -346,7 +346,7 @@ func (c *Client) listDateAsc(cli *pooledConn, total uint32, page int) ([]Message
 // the conversation list, matching the thread-metadata window.
 const conversationWindow = 300
 
-// ListConversationsSorted returns one page of conversations (Gmail-style):
+// ListConversationsSorted returns one page of conversations:
 // messages sharing a thread id collapse into a single row represented by the
 // newest member, carrying aggregated unread/flagged state, the distinct
 // senders and the member count. Rows are ordered by the requested field of
@@ -670,7 +670,7 @@ func parseReceiptRequest(raw []byte) (requested bool, to string) {
 	return to != "", to
 }
 
-// parseRecallNotice detects an Outlook-style recall notice and returns the
+// parseRecallNotice detects an X-MS-Recall recall notice and returns the
 // original message id it targets.
 func parseRecallNotice(raw []byte) *RecallInfo {
 	msg, err := mail.ReadMessage(bytes.NewReader(raw))

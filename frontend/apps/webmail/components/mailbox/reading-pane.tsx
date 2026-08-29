@@ -196,7 +196,7 @@ export function ReadingPane({
   }
 
   // Track text selections inside the message body and offer "reply with
-  // this quote" (Gmail/Outlook 引用选中段落回复).
+  // this quote" (引用选中段落回复).
   useEffect(() => {
     if (!detail) return;
     const onMouseUp = () => {
@@ -315,7 +315,7 @@ export function ReadingPane({
   const threadMessages = threadForDetail?.messages ?? [detail];
   const isThreadView = threadMessages.length > 1;
   // Thread-level quick reply and Smart Reply suggestions target the newest
-  // member (Gmail semantics); the AI summary covers the whole conversation.
+  // member (conversation semantics); the AI summary covers the whole conversation.
   const lastThreadMsg = threadMessages[threadMessages.length - 1];
   const threadText = useMemo(
     () =>
@@ -622,7 +622,7 @@ export function ReadingPane({
               onSendReceipt={onSendReceipt}
             />
 
-            {/* Recall notice (Outlook-style X-MS-Recall) */}
+            {/* Recall notice (X-MS-Recall) */}
             <RecallNotice
               detail={detail}
               folder={folder}

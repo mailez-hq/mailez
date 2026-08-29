@@ -1,6 +1,6 @@
 // Package webdav implements the transport layer shared by the built-in
 // CardDAV and CalDAV servers. It speaks the WebDAV method subset that real
-// clients (iOS, Android DAVx5, Thunderbird, Outlook) actually use:
+// clients (iOS, Android and desktop CalDAV/CardDAV apps) actually use:
 // OPTIONS, PROPFIND (allprop/prop/propname), GET/HEAD, PUT, DELETE and
 // REPORT. LOCK/COPY/MOVE are deliberately omitted — none of the mainstream
 // DAV clients require them for address books or calendars.

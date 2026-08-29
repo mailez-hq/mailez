@@ -346,7 +346,7 @@ func (s *Server) routes() {
 	s.App.Get("/.well-known/carddav", redirectDAV)
 	s.App.Get("/.well-known/caldav", redirectDAV)
 
-	// Exchange ActiveSync (iOS/Outlook mobile sync): WBXML commands at
+	// Exchange ActiveSync (mobile device sync): WBXML commands at
 	// /Microsoft-Server-ActiveSync plus autodiscover.
 	activesync.New(s.DB, s.Auth, s.Cfg, app.Mail, s.basicAuthCache).Register(s.App)
 }

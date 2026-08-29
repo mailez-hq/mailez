@@ -357,7 +357,7 @@ func draftNewSystem(tone DraftTone) string {
 }
 
 // SmartReplies returns 2-3 short, ready-to-send reply suggestions for an
-// email (Gmail-style quick replies). Each candidate is one sentence in the
+// email (one-tap quick replies). Each candidate is one sentence in the
 // same language as the original message.
 func (m *Manager) SmartReplies(ctx context.Context, text string) ([]string, error) {
 	p := m.load()

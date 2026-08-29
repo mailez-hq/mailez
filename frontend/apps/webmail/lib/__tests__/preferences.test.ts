@@ -55,12 +55,12 @@ describe("collapseReplyQuote preference", () => {
     window.localStorage.clear();
   });
 
-  it("defaults to Gmail-style collapsed quotes", () => {
+  it("defaults to collapsed reply quotes", () => {
     expect(DEFAULT_PREFS.collapseReplyQuote).toBe(true);
     expect(readPreferences().collapseReplyQuote).toBe(true);
   });
 
-  it("reads an explicit false (Fastmail-style expanded quotes)", () => {
+  it("reads an explicit false (expanded quotes)", () => {
     window.localStorage.setItem(PREF_KEY, JSON.stringify({ collapseReplyQuote: false }));
     expect(readPreferences().collapseReplyQuote).toBe(false);
   });

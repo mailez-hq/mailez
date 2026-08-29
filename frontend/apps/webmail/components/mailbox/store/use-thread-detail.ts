@@ -9,7 +9,7 @@ import { threadCache } from "./view-caches";
 /**
  * Reading-pane cluster: the opened message (selected/detail + loading) and
  * its conversation (thread view). Owns the conversation preload/fetch that
- * auto-opens Gmail-style threads; the URL-driven detail load (pathId effect)
+ * auto-opens thread view; the URL-driven detail load (pathId effect)
  * stays in mail-store because it also resets the AI summary.
  */
 export function useThreadDetail({
@@ -31,7 +31,7 @@ export function useThreadDetail({
   const [threadLoading, setThreadLoading] = useState(false);
 
   // Auto-load the conversation when a message that belongs to a thread
-  // opens, so the reading pane shows the Gmail-style thread view without any
+  // opens, so the reading pane shows the thread view without any
   // extra click. The previous conversation is dropped immediately so
   // switching between threads never renders stale members. The drop and any
   // cache hit run during render (React-endorsed adjustment); only the

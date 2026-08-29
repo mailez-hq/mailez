@@ -223,8 +223,8 @@ func (h *Handler) checkCredentials(u *models.User, pw, ip, protocol, authPort st
 				return true
 			}
 		}
-		// App-token delegation: a client (e.g. Thunderbird) configured with
-		// the delegate's app token may connect to the delegated owner
+		// App-token delegation: a client (e.g. a desktop mail app) configured
+		// with the delegate's app token may connect to the delegated owner
 		// account when the delegate holds full access.
 		return h.delegatedAppToken(c, pw, u.Email)
 	}

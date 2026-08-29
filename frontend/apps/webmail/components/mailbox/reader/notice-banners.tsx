@@ -46,7 +46,7 @@ export function ReceiptBanner({
   );
 }
 
-// RecallNotice is the Outlook-style X-MS-Recall banner: the sender asked to
+// RecallNotice is the X-MS-Recall banner: the sender asked to
 // delete the original, and the reader can apply or dismiss the recall.
 export function RecallNotice({
   detail,

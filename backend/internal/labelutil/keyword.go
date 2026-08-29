@@ -27,7 +27,7 @@ func atomSafe(r rune) bool {
 // actually stored on the IMAP wire. Pure-ASCII names pass through unchanged
 // (backward compatible with existing labels); every other character is
 // encoded as =XX per UTF-8 byte, following the same approach Mozilla adopted
-// for non-ASCII Thunderbird tags. The result is a valid IMAP atom and is
+// for non-ASCII client tags. The result is a valid IMAP atom and is
 // deterministic, so name→keyword always agrees between save, flag, rename,
 // delete and search.
 func EncodeKeyword(name string) string {
