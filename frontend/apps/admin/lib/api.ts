@@ -29,7 +29,13 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const err = body as { error?: string; code?: string };
-    throw new ApiError(err.error || res.statusText, res.status, err.code);
+    const expired = res.status === 401 && !authSurface(path);
+    if (expired) handleUnauthorized(path);
+    throw new ApiError(
+      expired ? sessionExpiredText() : err.error || res.statusText,
+      res.status,
+      err.code,
+    );
   }
   if (res.status === 204) return undefined as T;
   const text = await res.text();
@@ -39,6 +45,55 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   } catch {
     return undefined as T;
   }
+}
+
+// A 401 on a dashboard surface means the session cookie expired or was
+// revoked server-side. Bounce to the sign-in page once with a reason flag
+// and a return link (Gmail/Fastmail-style session-expiry flow); the guard
+// flag stops in-flight request storms from chaining redirects. Auth
+// endpoints (/sso, /auth) display their own 401s ("wrong e-mail or
+// password" must keep reaching the login form verbatim).
+let bouncedToLogin = false;
+
+// Human copy for the brief window between the first 401 and the login-page
+// navigation: the raw server text ("authentication required") must never
+// surface in the UI. Locale follows the NEXT_LOCALE cookie the switcher
+// persists.
+function sessionExpiredText(): string {
+  const zh =
+    typeof document !== "undefined" &&
+    /(?:^|;\s*)NEXT_LOCALE=zh/.test(document.cookie);
+  return zh ? "登录已过期，请重新登录" : "Your session has expired. Please sign in again.";
+}
+
+function authSurface(path: string): boolean {
+  return path.startsWith("/sso") || path.startsWith("/auth");
+}
+
+function handleUnauthorized(path: string) {
+  if (bouncedToLogin || typeof window === "undefined") return;
+  if (authSurface(path)) return;
+  bouncedToLogin = true;
+  if (window.location.pathname === "/") return; // already on the login page
+  const here = window.location.pathname + window.location.search;
+  const safe = here.startsWith("/") && !here.startsWith("//") && !here.includes("\\");
+  window.location.href = safe ? `/?expired=1&next=${encodeURIComponent(here)}` : "/?expired=1";
+}
+
+// dashboardTarget resolves where a signed-in admin lands: the page they were
+// bounced from (?next=, set on session expiry) or the Overview dashboard.
+function sameOriginPath(v: string | null): string | null {
+  return v && v.startsWith("/") && !v.startsWith("//") && !v.includes("\\") ? v : null;
+}
+
+export function dashboardTarget(): string {
+  try {
+    const next = sameOriginPath(new URLSearchParams(window.location.search).get("next"));
+    if (next) return next;
+  } catch {
+    // ignore malformed query
+  }
+  return "/overview";
 }
 
 export const apiPost = <T,>(path: string, body: unknown) =>
