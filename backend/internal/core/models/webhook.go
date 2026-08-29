@@ -6,12 +6,12 @@ import "time"
 // (new mail, etc.). Each delivery is signed with the user-chosen secret via an
 // X-Mailez-Signature header so the receiver can verify authenticity.
 type Webhook struct {
-	ID         uint       `gorm:"primaryKey" json:"id"`
-	UserEmail  string     `gorm:"size:255;not null;index" json:"user_email"`
-	URL        string     `gorm:"type:text;not null" json:"url"`
-	Secret     string     `gorm:"type:text;not null" json:"secret"`
-	Events     string     `gorm:"type:text;not null" json:"events"` // comma-separated: mail.received
-	Enabled    bool       `gorm:"not null;default:true" json:"enabled"`
+	ID        uint   `gorm:"primaryKey" json:"id"`
+	UserEmail string `gorm:"size:255;not null;index" json:"user_email"`
+	URL       string `gorm:"type:text;not null" json:"url"`
+	Secret    string `gorm:"type:text;not null" json:"secret"`
+	Events    string `gorm:"type:text;not null" json:"events"` // comma-separated: mail.received
+	Enabled   bool   `gorm:"not null;default:true" json:"enabled"`
 	// TokenEnc/TokenID back the background notifier poller for users without
 	// a browser push subscription (webhook-only mail.received delivery).
 	TokenEnc   string     `gorm:"type:text" json:"-"`

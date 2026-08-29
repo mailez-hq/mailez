@@ -44,10 +44,10 @@ func New(db *gorm.DB, cache *authcache.Cache) *Server {
 		cache = authcache.New(0)
 	}
 	return &Server{
-		DB:      db,
-		Card:    card,
-		Cal:     cal,
-		Handler: &webdav.Server{Capabilities: []string{"addressbook", "calendar-access"}},
+		DB:        db,
+		Card:      card,
+		Cal:       cal,
+		Handler:   &webdav.Server{Capabilities: []string{"addressbook", "calendar-access"}},
 		AuthCache: cache,
 	}
 }

@@ -7,12 +7,12 @@ func TestEncodeKeyword(t *testing.T) {
 		name string
 		want string
 	}{
-		{"Work", "Work"},          // pure ASCII passes through
+		{"Work", "Work"},             // pure ASCII passes through
 		{"工作", "=E5=B7=A5=E4=BD=9C"}, // Chinese is =XX-encoded per UTF-8 byte
-		{"a b", "a=20b"},          // space (atom-special) encoded
-		{"a(b)c", "a=28b=29c"},    // atom-specials encoded
-		{"100%", "100=25"},        // list-wildcard encoded
-		{"", ""},                  // empty stays empty
+		{"a b", "a=20b"},             // space (atom-special) encoded
+		{"a(b)c", "a=28b=29c"},       // atom-specials encoded
+		{"100%", "100=25"},           // list-wildcard encoded
+		{"", ""},                     // empty stays empty
 	}
 	for _, tc := range cases {
 		if got := EncodeKeyword(tc.name); got != tc.want {

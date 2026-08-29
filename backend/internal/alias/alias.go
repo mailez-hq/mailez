@@ -78,11 +78,11 @@ func (h *Handler) getAlias(c *fiber.Ctx) error {
 // @Router /aliases [post]
 func (h *Handler) createAlias(c *fiber.Ctx) error {
 	var in struct {
-		Email       string `json:"email"`
-		Destination string `json:"destination"`
-		Name        string `json:"name"`
+		Email       string               `json:"email"`
+		Destination string               `json:"destination"`
+		Name        string               `json:"name"`
 		Members     []models.AliasMember `json:"members"`
-		Wildcard    bool   `json:"wildcard"`
+		Wildcard    bool                 `json:"wildcard"`
 	}
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
@@ -141,11 +141,11 @@ func (h *Handler) updateAlias(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "no access to this domain"})
 	}
 	var in struct {
-		Destination *string `json:"destination"`
-		Name        *string `json:"name"`
+		Destination *string               `json:"destination"`
+		Name        *string               `json:"name"`
 		Members     *[]models.AliasMember `json:"members"`
-		Wildcard    *bool   `json:"wildcard"`
-		Disabled    *bool   `json:"disabled"`
+		Wildcard    *bool                 `json:"wildcard"`
+		Disabled    *bool                 `json:"disabled"`
 	}
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})

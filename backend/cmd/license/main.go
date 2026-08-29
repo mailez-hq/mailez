@@ -1,13 +1,13 @@
 // Command license issues and inspects Mailez enterprise licenses and
 // technical-service certificates.
 //
-//   go run ./cmd/license genkey                      # print a fresh keypair
-//   go run ./cmd/license issue --out lic.lic \
-//       --licensee "Acme Corp" --mailboxes 500
-//   go run ./cmd/license inspect --in lic.lic
-//   go run ./cmd/license service issue --out service.lic \
-//       --licensee "Acme Corp" --tier premium --service-end 2027-08-28T00:00:00Z
-//   go run ./cmd/license service inspect --in service.lic
+//	go run ./cmd/license genkey                      # print a fresh keypair
+//	go run ./cmd/license issue --out lic.lic \
+//	    --licensee "Acme Corp" --mailboxes 500
+//	go run ./cmd/license inspect --in lic.lic
+//	go run ./cmd/license service issue --out service.lic \
+//	    --licensee "Acme Corp" --tier premium --service-end 2027-08-28T00:00:00Z
+//	go run ./cmd/license service inspect --in service.lic
 //
 // The signing key comes from MAILEZ_LICENSE_PRIVATE_KEY (base64 DER PKCS8)
 // or --key <file>; without either the built-in DEV key is used.
