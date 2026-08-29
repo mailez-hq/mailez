@@ -182,7 +182,7 @@ export function useCompose({
       if (draftSavingRef.current) return; // a manual save already persists this content
       draftSavingRef.current = true;
       try {
-        const res = await mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, attachments);
+        const res = await mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, bcc, attachments);
         draftUidRef.current = res.uid || draftUidRef.current;
         setDraftSaved(true);
       } catch {
@@ -200,13 +200,13 @@ export function useCompose({
   // auto-save also runs 30s after the user stops typing.
   async function saveDraftNow() {
     const hasContent =
-      to.length > 0 || cc.length > 0 || subject.trim() !== "" || bodyText.trim() !== "" || attachments.length > 0;
+      to.length > 0 || cc.length > 0 || bcc.length > 0 || subject.trim() !== "" || bodyText.trim() !== "" || attachments.length > 0;
     if (!hasContent) return;
     if (draftSavingRef.current) return; // ignore rapid repeated clicks; the first save persists
     draftSavingRef.current = true;
     setComposeError("");
     try {
-      const res = await mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, attachments);
+      const res = await mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, bcc, attachments);
       draftUidRef.current = res.uid || draftUidRef.current;
       setDraftSaved(true);
       refreshDraftsIfActive();
@@ -221,7 +221,7 @@ export function useCompose({
   // Without this, closing within the 30s auto-save window would lose edits.
   function closeCompose() {
     const hasContent =
-      to.length > 0 || cc.length > 0 || subject.trim() !== "" || bodyText.trim() !== "" || attachments.length > 0;
+      to.length > 0 || cc.length > 0 || bcc.length > 0 || subject.trim() !== "" || bodyText.trim() !== "" || attachments.length > 0;
     // Closing a pristine reply (auto quote, no edits, no existing draft)
     // dismisses it without polluting the Drafts folder.
     const pristine =
@@ -237,7 +237,7 @@ export function useCompose({
         to, cc, bcc, subject, body, bodyText, attachments,
         uid: draftUidRef.current,
       };
-      mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, attachments)
+      mailSaveDraft(subject, bodyText, body, draftUidRef.current ?? 0, to, cc, bcc, attachments)
         .then((res) => {
           draftUidRef.current = res.uid || draftUidRef.current;
           if (lastDraftRef.current) lastDraftRef.current.uid = draftUidRef.current;
@@ -458,6 +458,9 @@ export function useCompose({
     const m = detail;
     const to = (m.to || []).map((a) => a.email).filter(Boolean);
     const cc = (m.cc || []).map((a) => a.email).filter(Boolean);
+    // Blind recipients live only on the Drafts copy (backend maps the Bcc
+    // envelope); restore them so reopening keeps the full compose state.
+    const bcc = (m.bcc || []).map((a) => a.email).filter(Boolean);
     const html = m.html_body || textToHtml(m.text_body || "");
     const text = m.text_body || "";
     const atts = (m.attachments || [])
@@ -465,8 +468,8 @@ export function useCompose({
       .map((a) => ({ filename: a.filename, content_type: a.content_type, size: a.size, data: a.data as string }));
     setTo(to);
     setCc(cc);
-    setBcc([]);
-    setCcExpanded(cc.length > 0);
+    setBcc(bcc);
+    setCcExpanded(cc.length > 0 || bcc.length > 0);
     setAttachments(atts);
     setSubject(m.subject || "");
     setBody(html);
@@ -476,7 +479,7 @@ export function useCompose({
     setDraftSaved(false);
     draftUidRef.current = m.uid;
     draftBaselineRef.current = composeSignature({
-      to, cc, bcc: [], subject: m.subject || "", body: html, bodyText: text, attachments: atts,
+      to, cc, bcc, subject: m.subject || "", body: html, bodyText: text, attachments: atts,
     });
     setComposeFocus("editor");
     setComposeOpen(true);

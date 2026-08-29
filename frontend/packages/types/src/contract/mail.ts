@@ -31,6 +31,10 @@ export type MailMessage = {
   from: { name: string; email: string }[];
   to: { name: string; email: string }[];
   cc?: { name: string; email: string }[];
+  // Present on the owner's own Drafts copy: blind recipients are stored on
+  // the draft so reopening it (or any IMAP client) restores them. They never
+  // appear on transmitted messages.
+  bcc?: { name: string; email: string }[];
   date: string;
   flags: string[];
   has_attachment: boolean;

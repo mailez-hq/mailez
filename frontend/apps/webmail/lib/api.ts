@@ -380,11 +380,12 @@ export const mailSaveDraft = (
   replaceUid = 0,
   to: string[] = [],
   cc: string[] = [],
+  bcc: string[] = [],
   attachments?: OutboundAttachment[],
 ) =>
   api<{ uid: number }>("/mail/draft", {
     method: "POST",
-    body: JSON.stringify({ subject, text, html, replace_uid: replaceUid, to, cc, attachments }),
+    body: JSON.stringify({ subject, text, html, replace_uid: replaceUid, to, cc, bcc, attachments }),
   });
 
 export const mailFlag = (folder: string, uid: number, flag: string, value: boolean) =>
