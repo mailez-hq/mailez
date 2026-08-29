@@ -94,9 +94,10 @@ func (in *accountInput) validate(a *models.Account, requirePassword bool) error 
 }
 
 // accountTest opens an IMAP connection with the stored credentials to surface
-// configuration or authentication problems without waiting for the UI.
-func accountTest(d mail.Dial) error {
-	_, err := mail.New("", "", "").With(d).ListFolders("", "")
+// configuration or authentication problems without waiting for the UI. The
+// TLS policy mirrors the fetch poller (FETCH_INSECURE).
+func accountTest(h *Handler, d mail.Dial) error {
+	_, err := mail.New("", "", "").SetInsecureTLS(h.Cfg.FetchInsecure).With(d).ListFolders("", "")
 	return err
 }
 
@@ -224,7 +225,7 @@ func (h *Handler) accountTestHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return core.Fail(c, 500, err, "decryption error")
 	}
-	if err := accountTest(mail.ExternalDial(acc.Email, acc.ImapHost, acc.ImapPort, acc.ImapSecurity, acc.Username, pw)); err != nil {
+	if err := accountTest(h, mail.ExternalDial(acc.Email, acc.ImapHost, acc.ImapPort, acc.ImapSecurity, acc.Username, pw)); err != nil {
 		_ = h.DB.Model(&acc).Update("last_error", err.Error()).Error
 		return core.Fail(c, 502, err, "connection failed")
 	}

@@ -172,7 +172,7 @@ func New(cfg core.Config) *Server {
 	go fetcher.Run(bgCtx)
 	// Send-undo queue: delivers parked messages once their window elapses.
 	dlpSvc := dlp.New(&core.App{DB: db, Auth: s.Auth, Cfg: cfg})
-	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey, dlpSvc, mail.New(cfg.MailImapAddr, "", "")).Run(bgCtx)
+	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey, dlpSvc, mail.New(cfg.MailImapAddr, "", "").SetInsecureTLS(cfg.FetchInsecure)).Run(bgCtx)
 	go dlpSvc.RunExpiry(bgCtx)
 	// Organization address book refresh (AD/LDAP) when directory sync is on.
 	go ldap.RunSyncWorker(bgCtx, db, cfg.SecretKey)

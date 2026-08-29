@@ -121,6 +121,17 @@ func (h *Handler) deleteToken(c *fiber.Ctx) error {
 	if res.RowsAffected == 0 {
 		return c.Status(404).JSON(fiber.Map{"error": "token not found"})
 	}
+	// Cascade the revocation to background credentials that embed a copy of
+	// this token: push subscriptions and webhooks would otherwise keep
+	// logging in with the dead secret forever (the poller has no way to
+	// notice). Clearing the copy forces the next subscribe/ensure to mint a
+	// fresh token.
+	_ = h.DB.Model(&models.PushSubscription{}).
+		Where("token_id = ?", id).
+		Updates(map[string]any{"token_enc": "", "token_id": 0}).Error
+	_ = h.DB.Model(&models.Webhook{}).
+		Where("token_id = ?", id).
+		Updates(map[string]any{"token_enc": "", "token_id": 0}).Error
 	return c.SendStatus(204)
 }
 

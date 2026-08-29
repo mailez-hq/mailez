@@ -29,6 +29,13 @@ type Config struct {
 	MailImapAddr       string
 	MailSmtpAddr       string
 	MailSieveAddr      string
+	// MailEngineMgmtAddr is the mailezine management API (host:port). When
+	// set (with MailEngineMgmtSecret), deleting a user also purges the
+	// account's engine-side data via DELETE /v1/accounts/{email} — without
+	// the cascade the engine keeps orphaned mailboxes and a re-created
+	// same-address account would inherit the previous owner's mail.
+	MailEngineMgmtAddr   string
+	MailEngineMgmtSecret string
 	// MailMtaAddr is the host:port used by background workers (outbox
 	// delivery, external fetch poller) to submit mail to the local MTA.
 	// Defaults to PostfixAddress:25 (resolves inside the docker network);
@@ -105,6 +112,8 @@ func Load() Config {
 		MailImapAddr:       env("MAIL_IMAP_ADDR", "gateway:1143"),
 		MailSmtpAddr:       env("MAIL_SMTP_ADDR", "gateway:1587"),
 		MailSieveAddr:      env("MAIL_SIEVE_ADDR", "gateway:11490"),
+		MailEngineMgmtAddr:   env("MAIL_ENGINE_MGMT_ADDR", ""),
+		MailEngineMgmtSecret: env("MAIL_ENGINE_MGMT_SECRET", ""),
 		MailMtaAddr:        env("MAIL_MTA_ADDR", ""),
 		UploadDir:          env("MAILEZ_UPLOAD_DIR", "uploads"),
 		DriveBackend:       env("MAILEZ_DRIVE_BACKEND", "local"),

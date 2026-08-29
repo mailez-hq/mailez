@@ -1,6 +1,8 @@
 package user
 
 import (
+	"log"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -277,6 +279,32 @@ func parseUserDate(s string) *time.Time {
 	return nil
 }
 
+// purgeEngineAccount cascades a user deletion to the mailezine engine via
+// its management API (best-effort: a failure is logged, not fatal — the
+// control-plane row is already gone and re-creation no longer matches the
+// orphaned engine account by registry). Skipped when no management endpoint
+// is configured (community edition / engine-managed deployments).
+func (h *Handler) purgeEngineAccount(email string) {
+	addr := h.Cfg.MailEngineMgmtAddr
+	if addr == "" {
+		return
+	}
+	req, err := http.NewRequest(http.MethodDelete, strings.TrimRight(addr, "/")+"/v1/accounts/"+url.PathEscape(email), nil)
+	if err != nil {
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+h.Cfg.MailEngineMgmtSecret)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Printf("user delete: engine purge for %s failed: %v", email, err)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
+		log.Printf("user delete: engine purge for %s: status %d", email, resp.StatusCode)
+	}
+}
+
 // deleteUser removes a user (manager/admin).
 // @Summary Delete user
 // @Tags users
@@ -296,5 +324,6 @@ func (h *Handler) deleteUser(c *fiber.Ctx) error {
 	if err := h.DB.Delete(&models.User{}, "email = ?", email).Error; err != nil {
 		return core.Fail(c, 400, err, "delete failed")
 	}
+	h.purgeEngineAccount(email)
 	return c.SendStatus(204)
 }
