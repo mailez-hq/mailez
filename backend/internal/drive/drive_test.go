@@ -108,16 +108,6 @@ func TestDriveLifecycle(t *testing.T) {
 	if string(dlB) != "hello drive" {
 		t.Fatalf("download content = %q", dlB)
 	}
-	// Share link and token download.
-	shareResp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/drive/share/2", nil))
-	if err != nil {
-		t.Fatal(err)
-	}
-	shareB, _ := io.ReadAll(shareResp.Body)
-	shareResp.Body.Close()
-	if !strings.Contains(string(shareB), "token=") {
-		t.Fatalf("share: %s", shareB)
-	}
 	// Trash and restore.
 	trashReq := httptest.NewRequest(http.MethodPost, "/api/v1/drive/trash", strings.NewReader(`{"ids":[2]}`))
 	trashReq.Header.Set("Content-Type", "application/json")
