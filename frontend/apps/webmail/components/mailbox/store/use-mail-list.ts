@@ -45,7 +45,17 @@ export function useMailList({
     try {
       const res = await mailMessages(f, p, sortBy, sortDir, conversation);
       if (seq !== loadSeq.current) return;
-      setMessages(p === 0 ? res.messages : (prev) => [...prev, ...res.messages]);
+      setMessages(
+        p === 0
+          ? res.messages
+          : // Offset pages over a shifting sorted list can re-serve a
+            // message that a new delivery already pushed into the previous
+            // page; keep the first occurrence so rows keep stable uid keys.
+            (prev) => {
+              const seen = new Set(prev.map((m) => m.uid));
+              return [...prev, ...res.messages.filter((m) => !seen.has(m.uid))];
+            },
+      );
       setTotal(res.total);
       setPage(p);
     } catch (e) {
