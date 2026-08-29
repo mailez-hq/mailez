@@ -14,7 +14,7 @@ authentication, admin console and webmail.
 ## Who is it for?
 
 - **Individuals** — a mailbox that is truly yours, not rented from a mail provider
-- **Teams and companies** — domain mail for everyone, with data kept 100% in-house
+- **Businesses and organizations** — domain mail for everyone, with data kept 100% in-house
 - **Public sector** — strict data-sovereignty and privacy requirements, fully covered
 
 The common ground: self-hosted and privacy-first, with no Linux mail expert
