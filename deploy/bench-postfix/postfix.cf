@@ -1,8 +1,0 @@
-# Benchmark: disable the rspamd milter so the engine comparison isolates
-# postfix/dovecot vs mailezine (rspamd is a shared component in real
-# deployments and is exercised separately).
-smtpd_milters =
-# Benchmark queue mode: relay every outbound (non-local) message to the
-# host-run mock MX so delivery is deterministic and DNS-independent
-# (cmd/bench queue, docs/benchmark.md).
-relayhost = [host.docker.internal]:25252

@@ -9,7 +9,7 @@ cover development plus the two production editions:
 | File                                    | Edition      | Engine           | Storage                  |
 | --------------------------------------- | ------------ | ---------------- | ------------------------ |
 | `docker-compose.dev.yml`                | Development  | mailezine        | SQLite + Pebble + local FS |
-| `docker-compose.community.yml`          | Community    | postfix+dovecot  | MySQL + maildir          |
+| `docker-compose.community.yml`          | Community    | mailezine        | MySQL + Pebble + local FS |
 | `docker-compose.enterprise.yml`         | Enterprise   | mailezine        | MySQL + TiDB + MinIO/S3  |
 
 All files belong to one compose project (`mailez`), so `ps`/`logs`/`down`
@@ -17,7 +17,7 @@ manage the same stack whichever edition is active.
 
 ```sh
 ./deploy/mailezctl.sh up                    # dev: SQLite + Pebble + local FS
-./deploy/mailezctl.sh up community          # community: postfix+dovecot + MySQL
+./deploy/mailezctl.sh up community          # community: mailezine + MySQL
 ./deploy/mailezctl.sh up enterprise         # enterprise: mailezine + MySQL + TiDB + MinIO/S3
 ./deploy/mailezctl.sh ps                    # status (same project regardless)
 ./deploy/mailezctl.sh logs enterprise mailezine -Follow
