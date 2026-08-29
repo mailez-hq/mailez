@@ -61,7 +61,9 @@ export function AiSummary({
             <Button
               size="xs"
               variant="ghost"
-              onClick={onSummarize}
+              // Arrow-wrap: summarize(threadText?) reads its first argument
+              // as data - a bare onClick would hand it the click event.
+              onClick={() => onSummarize()}
               disabled={summarizing}
             >
               <RotateCw className="size-3" />
@@ -102,7 +104,7 @@ export function AiSummary({
             </div>
           </>
         ) : !summarizing ? (
-          <Button size="xs" variant="outline" onClick={onSummarize}>
+          <Button size="xs" variant="outline" onClick={() => onSummarize()}>
             {t("summarize")}
           </Button>
         ) : (

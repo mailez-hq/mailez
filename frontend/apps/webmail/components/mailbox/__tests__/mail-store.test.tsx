@@ -282,4 +282,33 @@ describe("MailStore (characterization)", () => {
     });
     expect(observe().composeOpen).toBe(false);
   });
+
+  // Regression: compose must confirm a send on the toast instance the shell
+  // renders. useToast() creates per-call state, so an internal instance in
+  // useCompose would swallow every send confirmation (silent sends).
+  it("confirms a compose send on the rendered toast, with a Sent link", async () => {
+    window.localStorage.setItem(
+      "mailez.prefs",
+      JSON.stringify({ undoSendSeconds: 0 }),
+    );
+    try {
+      const { observe } = renderMailStore(null);
+      await waitFor(() => expect(observe().loading).toBe(false));
+
+      await act(async () => {
+        observe().openCompose("bob@x.com", "Ping");
+      });
+      await act(async () => {
+        await observe().send({ preventDefault: () => {} } as unknown as React.FormEvent);
+      });
+
+      expect(api.mailSend).toHaveBeenCalled();
+      // The toast lives on the store's single rendered instance.
+      await waitFor(() => expect(observe().toast?.label).toBeTruthy());
+      expect(observe().toast?.label).toBe("toastSent");
+      expect(observe().toast?.link?.folder).toBe("Sent");
+    } finally {
+      window.localStorage.removeItem("mailez.prefs");
+    }
+  });
 });
