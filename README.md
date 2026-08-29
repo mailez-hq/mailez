@@ -20,34 +20,60 @@ mail delivery, spam filtering, authentication, admin console and webmail.
 
 ### Webmail that feels like a native app
 
-- **Three-pane layout** — folders, list and reading pane side by side; read,
-  reply and organize mail without page reloads; the list column is even
-  draggable to your preferred width
+- **Live, not refreshed** — new mail arrives over a real-time push channel, so
+  the inbox updates itself; reading, replying and organizing never reload the
+  page, and long lists scroll smoothly through 10,000+ messages
+- **Three-pane layout** — folders, list and reading pane side by side; the
+  list column is draggable to your preferred width, and the reading pane
+  collapses quoted replies Gmail-style so long threads stay scannable
 - **Search that just works** — type naturally (`from:`, `to:`, `has:attachment`,
   dates…), save frequent searches, and filter with one click for unread,
   starred or messages with attachments
 - **Keyboard-first** — press `/` to search, `⌘K` for the command palette, `?`
-  for the full shortcut list; long lists scroll through 10,000+ messages
-  without a stutter
-- **Day-to-day mail tasks made easy** — conversation threads, bulk move /
-  archive / delete with an undo toast, pull-to-refresh for new mail
+  for the full shortcut list
+- **Day-to-day mail tasks made easy** — conversation threads, quick reply and
+  AI summary right in the action bar, snooze, scheduled send, undo toast for
+  bulk move / archive / delete, and drafts that keep every recipient including
+  Bcc
 - **An AI assistant (optional)** — summarize long threads, draft replies in
   the tone you want, auto-prioritize your inbox, or search by meaning instead
   of keywords
-- **Privacy features built in** — PGP sign and encrypt, two-factor
-  authentication, remote-image blocking, a Sieve filter editor, and a contact
-  view grouped by sender
+- **A workbench, not just an inbox** — the home dashboard surfaces recent
+  files and upcoming events, both clickable straight into context
+- **Privacy features built in** — PGP sign and encrypt (distinct from your
+  personal signature, with an optional auto-signature), two-factor
+  authentication, remote-image blocking, a Sieve filter editor, and contacts
+  grouped by sender
 - **Works offline** — installs as a PWA; light/dark themes and three list
   densities for comfort
+
+### Mail is just the start
+
+- **Calendar** — events with reminders, shared calendars, and subscriptions
+  you can plug into Apple Calendar or Google Calendar via a private ICS link
+- **Contacts** — vCard import/export, duplicate merging, and CardDAV sync for
+  phones
+- **Drive** — upload and organize files, share by link, restore from trash;
+  recent files show up on the dashboard
+
+### Any device, any client
+
+- **Standard protocols** — SMTP / IMAP / POP3 (implicit TLS available), plus
+  CardDAV / CalDAV and Exchange ActiveSync for phone sync; Thunderbird,
+  Outlook and Apple Mail configure themselves via autoconfig/autodiscover
+- **Delegated mailboxes** — grant a teammate full access to your mailbox (or
+  manage a shared one) without sharing passwords
+- **App tokens** — per-client tokens you can issue and revoke from settings
 
 ### An admin console that doesn't feel like admin work
 
 - **Manage everything in one place** — domains, mailboxes, aliases, relays,
-  external mailbox fetching and app tokens
+  external mailbox fetching and app tokens; deleting a user cleans up their
+  engine-side mailbox automatically
 - **One-click DKIM** — generate signing keys with a status hint, so your mail
   stops landing in spam
 - **See who did what** — audit log of admin actions, role-based access
-  (admin / manager / user)
+  (admin / manager / user), and a site-wide announcement banner
 - **Backup or migrate easily** — export and import your whole configuration
 
 ### Trust and security under the hood
@@ -56,34 +82,38 @@ mail delivery, spam filtering, authentication, admin console and webmail.
   DMARC / ARC signing and checking keep your mail deliverable
 - **Transport security** — MTA-STS and DANE protect mail in transit;
   per-mailbox quotas and sending rate limits keep the system healthy
-- **Malware scanning** — attachments are scanned for macros and known threats
+- **Malware scanning & content controls** — attachments are scanned for
+  macros and known threats; outbound DLP and compliance archiving are
+  available on the enterprise edition
 
 ## Quick start
 
-Requires Docker (Compose v2) and a Go toolchain (1.22+) for the one-time
-image build.
+Three self-contained deployment tiers ship as compose files, managed by one
+entry point:
+
+| Edition | Engine | Storage |
+|---|---|---|
+| **dev** (default) | mailezine | SQLite + Pebble + local FS |
+| **community** | Postfix + Dovecot | MySQL + maildir |
+| **enterprise** | mailezine | MySQL + TiDB + MinIO/S3 |
 
 ```sh
-cd backend
-go run ./cmd/build-images
-
-cd ../deploy
-cp mailez.env.example mailez.env   # set MAILEZ_SECRET_KEY, MAILEZ_DOMAIN, MAILEZ_HOSTNAMES
-docker compose up -d --build
+./deploy/mailezctl.sh up              # dev tier
+./deploy/mailezctl.sh up community    # community edition (production)
+./deploy/mailezctl.sh up enterprise   # enterprise edition (production)
 ```
 
-The images are tagged `mailez/*:local` and referenced by the compose files,
-so nothing is pulled from a public registry. `build-images` discovers
-components from the directory layout (`deploy/images` for shared services,
-`deploy/engines/<engine>` for engine-specific ones), so adding a new engine
-needs no script changes.
+The dev tier expects the backend on the host at `:8080` (build the images
+once with `cd backend && go run ./cmd/build-images`; details in
+[`docs/dev-setup.md`](docs/dev-setup.md)). Both production editions are fully
+containerized and publish:
 
 | Port | What's there |
 |---|---|
 | http://localhost:8082 | Admin console |
 | http://localhost:8083 | Webmail |
 | http://localhost:8081 | Backend API (for developers) |
-| 25/587/143/993/4190 … | Mail protocols (SMTP / IMAP / ManageSieve) |
+| 25/465/587/143/993/4190 … | Mail protocols (SMTP / IMAP / ManageSieve) |
 
 TLS is off by default for local testing. For production, follow
 [`deploy/certs/README.md`](deploy/certs/README.md) to enable automatic
@@ -101,12 +131,14 @@ go run ./cmd/e2e    # sends a test mail, checks delivery, DKIM and spam filterin
 
 - Backend: Go + Fiber, GORM, Redis
 - Frontend: Next.js (React) — separate admin and webmail apps
-- Mail engine (pluggable, default `postdove`): Postfix + Dovecot behind an
-  nginx gateway, with Rspamd filtering and Unbound DNS; the control plane
-  talks to the engine through an engine-agnostic directory contract
-  (`/stack/directory/*`), so a second engine (e.g. Stalwart) can slot in
-  behind the same API
+- Mail engine is pluggable behind an engine-agnostic directory contract
+  (`/stack/directory/*`): **mailezine** (a single Go binary, default in the
+  dev and enterprise tiers) speaks SMTP/IMAP/POP3/ManageSieve with pluggable
+  KV + blob storage; **postdove** (Postfix + Dovecot behind an nginx gateway)
+  powers the community edition; a Stalwart adapter can slot in behind the
+  same API
 - More details: [`docs/dev-setup.md`](docs/dev-setup.md),
+  [`docs/architecture.md`](docs/architecture.md),
   [`docs/webmail-ui-spec.md`](docs/webmail-ui-spec.md)
 
 ## License
