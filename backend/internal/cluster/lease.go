@@ -60,13 +60,19 @@ func holderID() string {
 // Expiry compares replica clocks, so replicas must run NTP (standard for
 // any multi-replica deployment anyway).
 func TryHold(db *gorm.DB, name string, ttl time.Duration) bool {
+	return TryHoldWith(db, name, ttl, holderID())
+}
+
+// TryHoldWith is TryHold with an explicit holder identity, used by tests to
+// simulate several replicas inside one process.
+func TryHoldWith(db *gorm.DB, name string, ttl time.Duration, holder string) bool {
 	if db == nil {
 		// No database (should not happen): fail open so workers keep
 		// running in single-replica deployments.
 		return true
 	}
 	now := time.Now().UTC()
-	lease := models.ClusterLease{Name: name, Holder: holderID(), ExpiresAt: now.Add(ttl)}
+	lease := models.ClusterLease{Name: name, Holder: holder, ExpiresAt: now.Add(ttl)}
 	// First acquire: inserting wins if the row does not exist yet. A
 	// missing table (deployment that skipped migrations, or a bare test
 	// database) self-heals once here instead of silently disabling the
@@ -84,8 +90,8 @@ func TryHold(db *gorm.DB, name string, ttl time.Duration) bool {
 		}
 		// Row exists: take it over when free (expired) or renew when ours.
 		res = db.Model(&models.ClusterLease{}).
-			Where("name = ? AND (holder = ? OR expires_at <= ?)", name, holderID(), now).
-			Updates(map[string]any{"holder": holderID(), "expires_at": now.Add(ttl)})
+			Where("name = ? AND (holder = ? OR expires_at <= ?)", name, holder, now).
+			Updates(map[string]any{"holder": holder, "expires_at": now.Add(ttl)})
 		return res.Error == nil && res.RowsAffected > 0
 	}
 	return false
