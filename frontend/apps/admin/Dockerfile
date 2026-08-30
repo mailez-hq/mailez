@@ -12,7 +12,11 @@ COPY packages/types/package.json packages/types/
 COPY packages/ui/package.json packages/ui/
 RUN npm ci
 COPY . .
-RUN npm run build --workspace apps/admin
+# Edition is a BUILD-TIME decision (materialized edition/ + baked
+# NEXT_PUBLIC_MAILEZ_EDITION); default ce, enterprise passes
+# --build-arg MAILEZ_EDITION=ee via compose.
+ARG MAILEZ_EDITION=ce
+RUN MAILEZ_EDITION=${MAILEZ_EDITION} npm run build --workspace apps/admin
 
 # Runtime stage. node_modules is copied whole for robustness; switch to Next.js
 # `output: "standalone"` later for a smaller image.
