@@ -126,6 +126,11 @@ containerized and publish:
 | http://localhost:8081 | Backend API (for developers) |
 | 25/465/587/143/993/4190 … | Mail protocols (SMTP / IMAP / ManageSieve) |
 
+`mailezctl` reads `deploy/mailez.env` (copy `mailez.env.example`, then set
+`MAILEZ_SECRET_KEY` and `MAILEZ_STACK_SECRET`). Host port mappings are
+overridable there too (`MAILEZ_HTTP_PORT`, `MAILEZ_ADMIN_PORT`, …) for
+machines where 80/443/8082 are already taken.
+
 TLS is off by default for local testing. For production, follow
 [`deploy/certs/README.md`](deploy/certs/README.md) to enable automatic
 certificates.
@@ -145,6 +150,20 @@ Then verify the whole mail path end to end (requires Go on the host):
 cd backend
 go run ./cmd/e2e    # sends a test mail, checks delivery, DKIM and spam filtering
 ```
+
+**Enterprise licensing.** The enterprise tier requires a license file at
+`deploy/licenses/license.lic` (`MAILEZ_LICENSE_REQUIRED=true` refuses to
+start the backend without one). To evaluate, self-issue a trial license with
+the built-in dev key:
+
+```sh
+cd backend
+go run ./cmd/license issue --out ../deploy/licenses/license.lic \
+    --licensee "Trial Customer" --mailboxes 25
+```
+
+Production deployments are signed with your own key
+(`MAILEZ_LICENSE_PRIVATE_KEY`); the built-in dev key is for evaluation only.
 
 ## Tech stack (for developers)
 
