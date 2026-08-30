@@ -79,7 +79,7 @@
 | 档位 | 引擎 | 存储 |
 |---|---|---|
 | **dev**（默认） | mailezine | SQLite + Pebble + 本地 FS |
-| **community** | mailezine | MySQL + Pebble + 本地 FS |
+| **community** | mailezine | SQLite + Pebble + 本地 FS（可选 MySQL） |
 | **enterprise** | mailezine | MySQL + TiDB + MinIO/S3 |
 
 所有档位运行**同一个 mailezine 引擎**——协议一致、邮件层功能一致、升级

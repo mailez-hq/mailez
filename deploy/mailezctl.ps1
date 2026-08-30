@@ -1,8 +1,8 @@
-# mailezctl — 管理入口：开发 / 社区版 / 企业版。
+﻿# mailezctl — 管理入口：开发 / 社区版 / 企业版。
 #
 # 三个自包含 compose 文件：
 #   dev  = docker-compose.dev.yml   （SQLite + Pebble + 本地 FS）
-#   community = docker-compose.community.yml（社区版：mailezine + MySQL）
+#   community = docker-compose.community.yml（社区版：mailezine + SQLite 控制面）
 #   enterprise = docker-compose.enterprise.yml（企业版：mailezine + MySQL +
 #                TiDB + MinIO/S3）
 #

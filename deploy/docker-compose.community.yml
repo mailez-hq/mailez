@@ -1,8 +1,8 @@
 # mailez 社区版生产档（自包含）。
 #
 # 社区版与企业版同用 mailezine 引擎，区别只在规模组件：社区版单节点
-# （控制面 MySQL + 引擎 pebble KV + 本地 FS blob），企业版再加
-# TiDB/MinIO/HA（见 docker-compose.enterprise.yml）。引擎直发邮件端口
+# （控制面 SQLite + 引擎 pebble KV + 本地 FS blob），企业版再加
+# MySQL/TiDB/MinIO/HA（见 docker-compose.enterprise.yml）。引擎直发邮件端口
 # （25/465/587/110/995/143/993/4190），gateway(nginx) 只做 HTTP/ACME。
 #
 # 用法：
@@ -11,7 +11,13 @@
 #   docker compose -f docker-compose.community.yml ps / logs / down
 #
 # 首次部署需初始化管理员：docker compose -f docker-compose.community.yml exec
-# backend go run ./cmd/seed（或把 DB_DSN 指向 MySQL 后本地执行）。
+# backend mailez-seed。
+#
+# 控制面数据库默认 SQLite（文件落在 ./data/mailez.db，随 ./data 一起备份）。
+# 偏好 MySQL 时：docker compose --profile mysql -f docker-compose.community.yml
+# up -d，并把 backend 环境的 DB_DRIVER/DB_DSN 覆盖为
+# mysql / mailez:mailez@tcp(mysql:3306)/mailez?charset=utf8mb4&parseTime=True&loc=Local
+# （用 deploy/mailez.env 的 compose 覆盖或直接改本文件）。
 
 name: mailez
 
@@ -29,8 +35,11 @@ services:
     volumes:
       - "./data/redis:/data"
 
+  # 可选控制面数据库：默认 SQLite 零外部依赖；`--profile mysql` 启用本服务
+  # 并将 backend 的 DB_DRIVER/DB_DSN 覆盖指向它（见文件头说明）。
   mysql:
     image: mysql:8.0
+    profiles: ["mysql"]
     pull_policy: missing
     restart: always
     command:
@@ -58,8 +67,10 @@ services:
     env_file: mailez.env
     environment:
       - MAILEZ_PORT=8080
-      - DB_DRIVER=mysql
-      - DB_DSN=mailez:mailez@tcp(mysql:3306)/mailez?charset=utf8mb4&parseTime=True&loc=Local
+      # 控制面默认 SQLite：单机社区版零外部数据库依赖，./data/mailez.db
+      # 随数据目录整体备份；需要 MySQL 见文件头 --profile mysql 说明。
+      - DB_DRIVER=${MAILEZ_DB_DRIVER:-sqlite}
+      - DB_DSN=${MAILEZ_DB_DSN:-/data/mailez.db}
       - REDIS_ADDR=redis:6379
       - MAILEZ_HOSTNAME=mail.example.com
       - MAILEZ_DOMAIN=example.com
@@ -92,8 +103,6 @@ services:
       - "./data:/data"
     depends_on:
       redis:
-        condition: service_healthy
-      mysql:
         condition: service_healthy
 
   frontend-admin:
