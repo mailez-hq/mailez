@@ -92,7 +92,7 @@ func Load() Config {
 	cfg := Config{
 		Port:                 env("MAILEZ_PORT", "8081"),
 		Env:                  env("MAILEZ_ENV", "development"),
-		MetricsAddr:          env("MAILEZ_METRICS_ADDR", ":9090"),
+		MetricsAddr:          env("MAILEZ_METRICS_ADDR", "127.0.0.1:9090"),
 		DBDriver:             env("DB_DRIVER", "sqlite"),
 		DBDSN:                env("DB_DSN", "mailez.db"),
 		RedisAddr:            env("REDIS_ADDR", "localhost:6379"),

@@ -118,6 +118,11 @@ func (h *Handler) rewriteLabelTokens(userEmail, query string) string {
 // @Success 200 {array} models.Label
 // @Router /mail/labels [get]
 func (h *Handler) mailLabels(c *fiber.Ctx) error {
+	// MailDial validates the X-Delegate-Email grant (the header alone must
+	// never scope label rows — that would be a cross-account read/write).
+	if _, err := h.MailDial(c); err != nil {
+		return core.DialFailure(c, err)
+	}
 	var labels []models.Label
 	if err := h.DB.Where("user_email = ?", mailboxIdentity(c)).Order("name").Find(&labels).Error; err != nil {
 		return core.Fail(c, 500, err, "db error")
@@ -133,6 +138,11 @@ func (h *Handler) mailLabels(c *fiber.Ctx) error {
 // @Failure 400 {object} map[string]interface{}
 // @Router /mail/labels [post]
 func (h *Handler) mailLabelSave(c *fiber.Ctx) error {
+	// Same grant validation as mailLabels: identity from the header is only
+	// trusted once MailDial has verified the delegation.
+	if _, err := h.MailDial(c); err != nil {
+		return core.DialFailure(c, err)
+	}
 	identity := mailboxIdentity(c)
 	var in struct {
 		Name  string `json:"name"`

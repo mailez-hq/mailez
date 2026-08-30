@@ -7,7 +7,13 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 )
+
+// Deadline bounds every dial/read/write phase of a POP3 session. A remote
+// that accepts the connection and then black-holes must not stall the
+// serial fetch poll loop (and every account behind it) forever.
+const pop3Deadline = 2 * time.Minute
 
 // pop3Conn is a minimal POP3 (RFC 1939) client sufficient for fetching mail,
 // avoiding an external dependency. It supports implicit TLS (port 995) when
@@ -22,11 +28,18 @@ func dialPOP3(host string, port int, useTLS, insecure bool) (*pop3Conn, error) {
 	var conn net.Conn
 	var err error
 	if useTLS {
-		conn, err = tls.Dial("tcp", addr, &tls.Config{InsecureSkipVerify: insecure, ServerName: host})
+		d := &net.Dialer{Timeout: pop3Deadline}
+		conn, err = tls.DialWithDialer(d, "tcp", addr, &tls.Config{InsecureSkipVerify: insecure, ServerName: host})
 	} else {
-		conn, err = net.Dial("tcp", addr)
+		conn, err = net.DialTimeout("tcp", addr, pop3Deadline)
 	}
 	if err != nil {
+		return nil, err
+	}
+	// A session-level idle deadline: each command/response pair re-arms it
+	// via setDeadline below, so a stuck remote surfaces as i/o timeout.
+	if err := conn.SetDeadline(time.Now().Add(pop3Deadline)); err != nil {
+		conn.Close()
 		return nil, err
 	}
 	c := &pop3Conn{conn: conn, r: bufio.NewReader(conn)}
@@ -35,6 +48,11 @@ func dialPOP3(host string, port int, useTLS, insecure bool) (*pop3Conn, error) {
 		return nil, err
 	}
 	return c, nil
+}
+
+// setDeadline re-arms the per-command deadline before each exchange.
+func (p *pop3Conn) setDeadline() {
+	_ = p.conn.SetDeadline(time.Now().Add(pop3Deadline))
 }
 
 func (p *pop3Conn) readline() (string, error) {
@@ -47,6 +65,7 @@ func (p *pop3Conn) readline() (string, error) {
 
 // cmd sends a command and returns the single-line status response.
 func (p *pop3Conn) cmd(line string) (string, error) {
+	p.setDeadline()
 	if _, err := fmt.Fprintf(p.conn, "%s\r\n", line); err != nil {
 		return "", err
 	}

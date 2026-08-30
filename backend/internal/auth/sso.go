@@ -61,11 +61,17 @@ func (m *Manager) ssoLogin(c *fiber.Ctx) error {
 		}
 	}
 	if err != nil {
-		m.loginFailed(c.Context(), req.Email)
+		if m.loginFailed(c.Context(), req.Email) {
+			// Per-email lockout: the failure limit is already exceeded, so
+			// burn no bcrypt on further attempts from any IP.
+			return c.Status(fiber.StatusTooManyRequests).JSON(models.APIError{Error: "too many failed logins for this account, try again later", Code: "rate_limited"})
+		}
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "wrong e-mail or password"})
 	}
 	if user == nil {
-		m.loginFailed(c.Context(), req.Email)
+		if m.loginFailed(c.Context(), req.Email) {
+			return c.Status(fiber.StatusTooManyRequests).JSON(models.APIError{Error: "too many failed logins for this account, try again later", Code: "rate_limited"})
+		}
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "wrong e-mail or password"})
 	}
 	m.loginSucceeded(c.Context(), user.Email)
