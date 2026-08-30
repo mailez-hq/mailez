@@ -50,8 +50,8 @@ it. This keeps the graph acyclic and lets handler tests inject a fake
 - Every webmail request exchanges the session for a short-lived `token-*`
   temporary credential used as the IMAP/SMTP password — the user's real
   password never reaches the browser.
-- The mail images authenticate through `/stack/*`: nginx's mail proxy and
-  Dovecot's passdb call the backend, which validates credentials, 2FA state,
+- The mail engine authenticates through `/stack/*`: mailezine's SASL
+  login calls the backend, which validates credentials, 2FA state,
   protocol permissions and rate limits.
 
 ## Email HTML safety

@@ -113,7 +113,7 @@ func installDmarcCron() error {
 
 // chownRspamdData replicates "find /var/lib/rspamd | grep -v /filter |
 // xargs -n1 chown rspamd:rspamd" without touching the filter volume (it is
-// owned by postfix so rspamd can drop quarantine files).
+// owned by the engine so rspamd can drop quarantine files).
 func chownRspamdData(uid, gid int) error {
 	return filepath.Walk("/var/lib/rspamd", func(p string, info os.FileInfo, err error) error {
 		if err != nil {

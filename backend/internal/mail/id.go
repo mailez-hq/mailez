@@ -139,8 +139,8 @@ func DecodeMessageID(id string) (string, error) {
 
 // UIDByMessageID resolves a routable id back to the IMAP UID of the message
 // whose Message-ID header matches. It iterates the mailbox envelopes rather
-// than issuing a SEARCH HEADER command: many servers (and this stack's Dovecot
-// setup) do not index arbitrary headers, so SEARCH "Message-ID" can silently
+// than issuing a SEARCH HEADER command: many servers do not index arbitrary
+// headers, so SEARCH "Message-ID" can silently
 // return nothing even when the message is present. Comparing the parsed
 // Message-ID directly is index-independent and deterministic.
 func (c *Client) UIDByMessageID(email, token, folder, id string) (uint32, error) {

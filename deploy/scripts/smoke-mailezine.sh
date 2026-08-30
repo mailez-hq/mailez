@@ -38,5 +38,5 @@ if command -v nc >/dev/null 2>&1; then
     | grep -E '^\* [0-9]+ FETCH|a2 OK|a4 OK' || true
   echo "==> done (IMAP 输出含 * N FETCH 即通过)"
 else
-  echo "==> IMAP 冒烟跳过：未找到 nc（可用 dovecot imaptest 或 mailezine 集成测试替代）"
+  echo "==> IMAP 冒烟跳过：未找到 nc（可用 mailezine 集成测试替代）"
 fi
