@@ -1,0 +1,12 @@
+# Keep the backend image build context small: dev databases, built
+# binaries, logs and demo scripts never belong in the image (the final
+# stage copies only source + go.mod/sum, but the context still crosses
+# the daemon boundary).
+*.exe
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.log
+demo-shots.db
+.gocache-*/

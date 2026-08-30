@@ -4,6 +4,70 @@ All notable changes to mailez are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Community edition control plane defaults to SQLite (`./data/mailez.db`);
+  MySQL stays available through the new `--profile mysql` compose tier
+  (`MAILEZ_DB_DRIVER` / `MAILEZ_DB_DSN`)
+- `mailezctl` manages three tiers (dev / community / enterprise) as one
+  compose project; raw compose invocations require
+  `--env-file mailez.env` for the `${MAILEZ_STACK_SECRET:?}` interpolation
+- First-login bootstrap via `mailez-seed` baked into the backend image
+  (default `admin@example.com` / `MailezDemo2026!`, overridable with
+  `MAILEZ_ADMIN_EMAIL` / `MAILEZ_ADMIN_PASSWORD`)
+- Frontend images are edition-aware: `MAILEZ_EDITION` build arg bakes CE or
+  EE bundles (community composes build `ce`, enterprise passes `ee`)
+
+### Fixed
+
+- External POP3/IMAP fetch disabled TLS verification (now verified by default;
+  `FETCH_INSECURE` opts out)
+- Email HTML rendering was vulnerable to stored XSS; sanitized on both sides
+- Web login had no brute-force protection (rate limited)
+- Session cookies were not marked Secure; `COOKIE_SECURE` now controls it
+- Default `SECRET_KEY` is rejected in production mode
+- CardDAV/CalDAV cross-account IDOR: the `{user}` path segment is now
+  checked against the authenticated identity at the router (a valid DAV
+  credential could previously read/overwrite/delete any account's contacts
+  and calendars); the shared WebDAV handler was also instantiated per
+  request, removing a backend data race
+- `/mail/merge` bypassed the send-identity policy (`MaySendAs`) that
+  `/mail/send` enforces — any user could mail-merge as any address
+- `/mail/labels` trusted `X-Delegate-Email` without validating the
+  delegation grant
+- User deletion now purges dependent rows and drive/upload blobs first
+  (MySQL RESTRICT foreign keys made it fail; SQLite orphaned rows)
+- Fetch poller uses dial/read deadlines (one dead remote no longer stalls
+  every other account's polling); engine-account purge uses an HTTP timeout
+- Production weak-secret guard extended to `MAILEZ_STACK_SECRET` (empty
+  secret would leave the internal `/stack` API unauthenticated); prod
+  composes set `MAILEZ_ENV=production` so the guard can fire
+- Metrics listener defaults to loopback (`127.0.0.1:9090`)
+- SQLite control plane runs WAL + a 10s busy timeout (background writers
+  no longer surface "database is locked" under load)
+- Per-email login lockout is enforced (previously counted but never acted
+  on); exceeding it now returns 429 before the bcrypt check
+- Webmail: account/delegate switch re-scopes API calls before loading the
+  mailbox (previously showed the previous account's mail); AI search and
+  the snoozed view take the same sequence guards as keyword search; the AI
+  streaming compose interval is cleared on every exit path
+- Admin: CE builds no longer call the enterprise-only AI/LDAP config
+  endpoints (config page hides those tabs); a missing license block on
+  `/overview` no longer renders as "Enterprise"
+- e2e CI seeds via in-container `mailez-seed` (matches the SQLite default)
+- Website: EN locale links keep the `/en` prefix (navbar and page CTAs
+  previously navigated back to the Chinese pages); EN Mailezine page says
+  two counter-balanced benchmark rounds (not three); pricing/compare put
+  Rspamd in the enterprise column and name SQLite as the community control
+  plane; migration FAQ no longer promises incremental re-runs
+
+### Removed
+
+- Dead env entries `MAILEZ_RELAYHOST` / `MAILEZ_REJECT_UNLISTED_RECIPIENT`
+  / `MAILEZ_FTS` from `mailez.env.example` (nothing read them)
+
 ## [1.0.0-rc.1] - 2026-08-28
 
 ### Added
@@ -119,14 +183,3 @@ All notable changes to mailez are documented here. The format follows
 - Multipart message builder emitted a duplicate boundary, corrupting the
   first body part when attachments were present
 - Attachments larger than 4 MiB were rejected by the default HTTP body limit
-
-## [Unreleased]
-- External POP3/IMAP fetch disabled TLS verification (now verified by default;
-  `FETCH_INSECURE` opts out)
-
-### Security
-
-- Email HTML rendering was vulnerable to stored XSS; sanitized on both sides
-- Web login had no brute-force protection (rate limited)
-- Session cookies were not marked Secure; `COOKIE_SECURE` now controls it
-- Default `SECRET_KEY` is rejected in production mode

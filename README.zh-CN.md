@@ -94,6 +94,16 @@ ActiveSync、S/MIME、委派代管属企业版）。传统 Postfix+Dovecot 架�
 ./deploy/mailezctl.sh up enterprise   # 企业版（生产）
 ```
 
+首次使用前编辑 `deploy/mailez.env`（由 `mailez.env.example` 复制而来），
+至少设置两个密钥——compose 的 `${VAR:?}` 插值要求它们非空，缺失时
+mailezctl 会直接报错退出：
+
+```sh
+MAILEZ_SECRET_KEY=$(openssl rand -hex 16)    # TokenEnc / 外部账号密码加密
+MAILEZ_STACK_SECRET=$(openssl rand -hex 32)  # 引擎↔backend 内部 API 鉴权
+MAILEZINE_STACK_SECRET=                      # 必须与上一行同值
+```
+
 dev 档需要宿主机 `:8080` 上先起后端（镜像只需构建一次：
 `cd backend && go run ./cmd/build-images`，细节见
 [`docs/dev-setup.md`](docs/dev-setup.md)）；两个生产档完全容器化，发布端口：
@@ -111,9 +121,14 @@ dev 档需要宿主机 `:8080` 上先起后端（镜像只需构建一次：
 启动后可跑一遍端到端验证，确认整个邮件链路正常：
 
 ```sh
-cd backend
-go run ./cmd/seed   # 初始化管理员账号（只需一次）
-go run ./cmd/e2e    # 发一封测试邮件，检查投递、DKIM 签名与防垃圾过滤
+# 容器化档位：镜像内置 seed 器（默认 admin@example.com / MailezDemo2026!，
+# 可用 MAILEZ_ADMIN_EMAIL / MAILEZ_ADMIN_PASSWORD 覆盖）
+cd deploy && docker compose --env-file mailez.env -f docker-compose.community.yml exec backend mailez-seed
+# 本地 dev 档（SQLite 在宿主机）：
+cd backend && go run ./cmd/seed
+
+# 端到端：发一封测试邮件，检查投递、DKIM 签名与防垃圾过滤
+go run ./cmd/e2e
 ```
 
 ## 技术栈（开发者）
@@ -136,5 +151,8 @@ go run ./cmd/e2e    # 发一封测试邮件，检查投递、DKIM 签名与防�
   仅当分发软件或以网络服务形式提供修改版时，需以同协议公开修改
 - **Copyleft 设计** —— 任何人分发 mailez 或将其修改版上线提供服务，
   都必须以同一协议公开源码——项目与分叉保持开放
-- **商业授权** —— 闭源商用、SaaS/托管服务、OEM 嵌入需要商业授权
+- **商业授权** —— 闭源商用、SaaS/托管服务、OEM 嵌入需要商业授权；
+  企业版（合规归档 / DLP / AI / LDAP / ActiveSync / S/MIME / 委派代管 /
+  分布式存储与 HA）需 `deploy/licenses/license.lic` 授权文件，自签与
+  采购流程见英文 README 的 Enterprise licensing 一节
   （企业版自带）；联系 `contact@mailez.com`

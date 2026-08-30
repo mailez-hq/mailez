@@ -9,7 +9,7 @@ cover development plus the two production editions:
 | File                                    | Edition      | Engine           | Storage                  |
 | --------------------------------------- | ------------ | ---------------- | ------------------------ |
 | `docker-compose.dev.yml`                | Development  | mailezine        | SQLite + Pebble + local FS |
-| `docker-compose.community.yml`          | Community    | mailezine        | MySQL + Pebble + local FS |
+| `docker-compose.community.yml`          | Community    | mailezine        | SQLite (default; MySQL optional) + Pebble + local FS |
 | `docker-compose.enterprise.yml`         | Enterprise   | mailezine        | MySQL + TiDB + MinIO/S3  |
 
 All files belong to one compose project (`mailez`), so `ps`/`logs`/`down`
@@ -17,7 +17,7 @@ manage the same stack whichever edition is active.
 
 ```sh
 ./deploy/mailezctl.sh up                    # dev: SQLite + Pebble + local FS
-./deploy/mailezctl.sh up community          # community: mailezine + MySQL
+./deploy/mailezctl.sh up community          # community: mailezine + SQLite (default)
 ./deploy/mailezctl.sh up enterprise         # enterprise: mailezine + MySQL + TiDB + MinIO/S3
 ./deploy/mailezctl.sh ps                    # status (same project regardless)
 ./deploy/mailezctl.sh logs enterprise mailezine -Follow
@@ -40,15 +40,18 @@ rspamd spam headers, and (optionally) alias delivery.
 
 Prerequisites:
 
-- The stack is up: `cd deploy && docker compose -f docker-compose.enterprise.yml up -d --build`
+- The stack is up (raw compose needs `--env-file mailez.env`, which
+  `mailezctl` passes for you):
+  `cd deploy && docker compose --env-file mailez.env -f docker-compose.enterprise.yml up -d --build`
 - The backend has been seeded once (creates `admin@example.com` /
-  `MailezDemo2026!`). Run the seed from a container or locally:
+  `MailezDemo2026!`). Easiest from a container:
 
   ```sh
-  cd backend && go run ./cmd/seed   # uses ./mailez.db next to it
+  cd deploy && docker compose --env-file mailez.env -f docker-compose.enterprise.yml exec backend mailez-seed
   ```
 
-  or point `DB_DSN` at the deployed database.
+  For a host-side seed, point `DB_DRIVER`/`DB_DSN` at the deployed database
+  (the community default is SQLite inside the container at `/data/mailez.db`).
 - Go toolchain (the command lives in the backend module and reuses `go-imap`).
 
 Usage:

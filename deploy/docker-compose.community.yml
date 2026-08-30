@@ -7,17 +7,23 @@
 #
 # 用法：
 #   cd deploy
-#   docker compose -f docker-compose.community.yml up -d --build
-#   docker compose -f docker-compose.community.yml ps / logs / down
+#   cp mailez.env.example mailez.env   # 并设置 MAILEZ_SECRET_KEY / MAILEZ_STACK_SECRET
+#   docker compose --env-file mailez.env -f docker-compose.community.yml up -d --build
+#   docker compose --env-file mailez.env -f docker-compose.community.yml ps / logs / down
 #
-# 首次部署需初始化管理员：docker compose -f docker-compose.community.yml exec
-# backend mailez-seed。
+# 注意 --env-file mailez.env：compose 的 ${VAR:?} 插值只读 shell 环境与
+# --env-file 指定的文件，不读服务的 env_file，缺了它 stack secret 会直接
+# 报错退出（mailezctl 脚本已内置该参数）。
+#
+# 首次部署需初始化管理员：docker compose --env-file mailez.env -f
+# docker-compose.community.yml exec backend mailez-seed。
 #
 # 控制面数据库默认 SQLite（文件落在 ./data/mailez.db，随 ./data 一起备份）。
-# 偏好 MySQL 时：docker compose --profile mysql -f docker-compose.community.yml
-# up -d，并把 backend 环境的 DB_DRIVER/DB_DSN 覆盖为
-# mysql / mailez:mailez@tcp(mysql:3306)/mailez?charset=utf8mb4&parseTime=True&loc=Local
-# （用 deploy/mailez.env 的 compose 覆盖或直接改本文件）。
+# 偏好 MySQL 时：docker compose --env-file mailez.env --profile mysql -f
+# docker-compose.community.yml up -d，并在 mailez.env 里设置
+# MAILEZ_DB_DRIVER=mysql 与
+# MAILEZ_DB_DSN=mailez:mailez@tcp(mysql:3306)/mailez?charset=utf8mb4&parseTime=True&loc=Local
+# （backend 的 DB_DRIVER/DB_DSN 由这两个变量插值得出）。
 
 name: mailez
 
@@ -72,8 +78,13 @@ services:
       - DB_DRIVER=${MAILEZ_DB_DRIVER:-sqlite}
       - DB_DSN=${MAILEZ_DB_DSN:-/data/mailez.db}
       - REDIS_ADDR=redis:6379
-      - MAILEZ_HOSTNAME=mail.example.com
-      - MAILEZ_DOMAIN=example.com
+      # Domain values come from mailez.env via interpolation — pinning them
+      # here would silently override the operator's env file.
+      - MAILEZ_HOSTNAME=${MAILEZ_HOSTNAME:-mail.${MAILEZ_DOMAIN:-example.com}}
+      - MAILEZ_DOMAIN=${MAILEZ_DOMAIN:-example.com}
+      # Production tier: enables the weak-secret guard (refuses placeholder
+      # SECRET_KEY / empty STACK_SECRET).
+      - MAILEZ_ENV=production
       - MAILEZ_SUBNET=${MAILEZ_SUBNET:-192.168.206.0/24}
       - MAILEZ_RECIPIENT_DELIMITER=+
       - MAILEZ_MESSAGE_RATELIMIT=200
@@ -217,6 +228,9 @@ services:
 
   macro-scanner:
     image: mailez/macro-scanner:${MAILEZ_IMAGE_TAG:-local}
+    build:
+      context: ..
+      dockerfile: deploy/images/macro-scanner/Dockerfile
     pull_policy: missing
     hostname: macro-scanner
     restart: always

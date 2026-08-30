@@ -31,10 +31,9 @@
 | 后端 API（本地） | `http://localhost:8080` | **必须 8080**：邮件栈镜像通过 `MAILEZ_BACKEND_ADDRESS:8080` 访问内部 API |
 | webmail（本地 dev） | `http://localhost:3001` | `npm run dev -- -p 3001` |
 | admin（本地 dev） | `http://localhost:3000` | `npm run dev -- -p 3000` |
-| IMAP 代理（容器→宿主映射） | `127.0.0.1:1143` | gateway 容器的内部代理端口 |
-| SMTP 提交（容器→宿主映射） | `127.0.0.1:1587` | gateway 容器的内部提交端口 |
-| ManageSieve | `127.0.0.1:4190` | gateway 容器（外部客户端） |
-| ManageSieve（webmail 内部） | `127.0.0.1:11490` | gateway 容器 |
+| IMAP（引擎直发布） | `127.0.0.1:143` | mailezine 容器（gateway 只做 HTTP/ACME） |
+| SMTP 提交（引擎直发布） | `127.0.0.1:1587` | mailezine 容器 |
+| ManageSieve（引擎直发布） | `127.0.0.1:4190` | mailezine 容器 |
 
 ## 一次性准备
 
@@ -57,9 +56,9 @@ docker compose -f docker-compose.dev.yml up -d
 依赖，mailezine 引擎直接发布邮件端口（25 / 1587 / 110 / 143 / 4190）到
 宿主机。引擎通过 `host.docker.internal:8080` 访问宿主机 mailez 后端的
 目录/认证接口（SQLite 存储）。两个生产版本是独立文件（全容器化）：
-`docker-compose.community.yml`（社区版 mailezine + MySQL，单节点存储）与
-`docker-compose.enterprise.yml`（企业版 mailezine + MySQL + TiDB +
-MinIO/S3），见 `deploy/scripts/README.md`。
+`docker-compose.community.yml`（社区版 mailezine + SQLite 默认控制面 +
+单节点存储）与 `docker-compose.enterprise.yml`（企业版 mailezine +
+MySQL + TiDB + MinIO/S3），见 `deploy/scripts/README.md`。
 
 ## 启动 mailez（本地开发模式）
 
@@ -82,7 +81,7 @@ powershell -File .\dev-start.ps1 -Ce  # 社区版（企业功能位显示降级�
 | 版本 | compose 文件 | 引擎 | 控制面 | 存储 |
 | ---- | ------------ | ---- | ------ | ---- |
 | 开发 | `docker-compose.dev.yml` | mailezine | SQLite（宿主机） | Pebble + 本地 FS |
-| 社区版 | `docker-compose.community.yml` | mailezine | MySQL | Pebble + 本地 FS |
+| 社区版 | `docker-compose.community.yml` | mailezine | SQLite 默认（可选 MySQL） | Pebble + 本地 FS |
 | 企业版 | `docker-compose.enterprise.yml` | mailezine | MySQL | TiDB + MinIO/S3 |
 
 引擎镜像构建：`go run ./cmd/build-images -version local`（mailezine 模块在
@@ -132,13 +131,13 @@ mailezine 引擎的目录/认证查询都走它）。开发模式下 `MAILEZ_BAC
   宿主机映射端口，或邮件栈没启动。按上文环境变量设置并确认
   `docker compose -f docker-compose.dev.yml ps` 全部 healthy。
 - 想直接改邮件栈配置：挂载目录 `deploy/overrides/`（nginx/rspamd）与
-  `deploy/data/mail`（邮箱数据）都保留在项目里，方便日后调整。
+  `deploy/data/mailezine`（邮箱数据）都保留在项目里，方便日后调整。
 
 ## 自建镜像（完全本地构建，无外部镜像仓库依赖）
 
 邮件组件（nginx / rspamd / macro-scanner / unbound）的 Dockerfile 与静态
 配置在 `deploy/images/`（共享基础设施）下，mailezine 引擎镜像从相邻仓库
-`deploy/engines/mailezine/` 构建，全部为多阶段自建镜像
+`../mailezine`（compose 的 build context 指向它）构建，全部为多阶段自建镜像
 （Go 编译 agent + 官方 `alpine:3.21`，无任何第三方邮件镜像依赖）。构建
 入口为 `go run ./backend/cmd/build-images`，
 本地构建的 `mailez/*:local`：
