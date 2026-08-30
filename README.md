@@ -27,9 +27,11 @@ required to run it.
 - **Live, not refreshed** — new mail arrives over a real-time push channel, so
   the inbox updates itself; reading, replying and organizing never reload the
   page, and long lists scroll smoothly through 10,000+ messages
+- **Conversation view keeps threads readable** — replies under one subject
+  merge into a single conversation with its full timeline, and quoted history
+  in replies folds away until you expand it
 - **Three-pane layout** — folders, list and reading pane side by side; the
-  list column is draggable to your preferred width, and the reading pane
-  collapses quoted replies Gmail-style so long threads stay scannable
+  list column is draggable to your preferred width
 - **Search that just works** — type naturally (`from:`, `to:`, `has:attachment`,
   dates…), save frequent searches, and filter with one click for unread,
   starred or messages with attachments
