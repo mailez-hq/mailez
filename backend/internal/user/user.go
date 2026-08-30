@@ -286,9 +286,10 @@ func parseUserDate(s string) *time.Time {
 
 // purgeEngineAccount cascades a user deletion to the mailezine engine via
 // its management API (best-effort: a failure is logged, not fatal — the
-// control-plane row is already gone and re-creation no longer matches the
-// orphaned engine account by registry). Skipped when no management endpoint
-// is configured (community edition / engine-managed deployments).
+// control-plane row is already gone, leaving no registry to reconcile a
+// re-created account with the orphaned engine one). Skipped when no
+// management endpoint is configured (community edition / engine-managed
+// deployments).
 func (h *Handler) purgeEngineAccount(email string) {
 	addr := h.Cfg.MailEngineMgmtAddr
 	if addr == "" {

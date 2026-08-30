@@ -58,8 +58,7 @@ func New(db *gorm.DB, authMgr *auth.Manager, cfg Config) *App {
 		community := edition == "community" || edition == "ce"
 		if community && cfg.LicenseFile == "" && cfg.License == "" {
 			// A community deployment without a mounted license reports (and
-			// runs as) the community edition — not the built-in unlimited
-			// dev license, which would label the admin overview "dev".
+			// runs as) the community edition, not the built-in dev license.
 			lic = license.Community()
 		} else {
 			// mailezine engine: the license gates mailbox capacity and

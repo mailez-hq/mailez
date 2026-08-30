@@ -43,9 +43,8 @@ import { detailCache } from "./store/view-caches";
 const MailStoreContext = createContext<MailStoreValue | null>(null);
 
 // Label colors live in their own tiny context: the memoized MessageRow
-// subscribes only to this (its identity changes solely when labelDefs
-// change), so the churning ~200-field store value no longer defeats its
-// memo on every keystroke/toast/hover elsewhere in the mailbox.
+// subscribes only to this, and its identity changes solely when labelDefs
+// change — not on every store update elsewhere in the mailbox.
 const LabelColorsContext = createContext<Record<string, string>>({});
 
 export function useMailStore(): MailStoreValue {

@@ -89,8 +89,7 @@ export function ComposeEditor({
   autoFocus?: boolean;
   spellcheck?: boolean;
 }) {
-  // Toolbar labels/tooltips live under mail.editor in the catalogs — the
-  // toolbar was previously hardcoded Chinese regardless of locale.
+  // Toolbar labels/tooltips live under mail.editor in the catalogs.
   const t = useTranslations("mail.editor");
   // TipTap's deferred editor creation (immediatelyRender:false on Next.js)
   // emits one update right after mount, normalizing the document. That

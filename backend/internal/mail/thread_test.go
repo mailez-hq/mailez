@@ -43,8 +43,7 @@ func nodesOf(t *testing.T, ff *fakeThreadFetcher, total uint32) map[uint32]strin
 func d(minute int) time.Time { return time.Date(2026, 8, 29, 17, minute, 0, 0, time.UTC) }
 
 // A reply chain links into one component keyed by the root's message-id,
-// while an unrelated message that merely shares the subject stays separate
-// (the historical subject merge no longer glues distinct conversations).
+// while an unrelated message that merely shares the subject stays separate.
 func TestGroupThreadsSplitsSameSubjectDistinctChains(t *testing.T) {
 	ff := &fakeThreadFetcher{msgs: []*imap.Message{
 		env(1, "计划", "root-a@example.com", "", d(10)),

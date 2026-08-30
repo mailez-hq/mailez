@@ -97,7 +97,7 @@ func envelopeThreadNode(msg *imap.Message) (threadNode, bool) {
 // Policy (Gmail-faithful, backwards compatible): messages linked through
 // In-Reply-To inside the window form one component keyed by the component's
 // root message-id ("m:<id>"), so two genuinely separate conversations that
-// merely share a subject no longer merge. Messages with no usable references
+// merely share a subject do not merge. Messages with no usable references
 // keep the subject key ("s:<normalized>") that has always grouped them, and
 // a reply whose parent fell outside the window degrades to the subject key
 // instead of orphaning itself.
