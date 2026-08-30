@@ -153,7 +153,8 @@ services:
       - MAILEZINE_DIRECTORY_MODE=mailez
       - MAILEZINE_AUTH_MODE=mailez
       # 社区版单节点存储：pebble KV + 本地 FS blob（默认，无需 TiDB/MinIO）。
-      - MAILEZINE_RSPAMD_URL=http://mail-filter:11333/checkv2
+      # 反垃圾走引擎内置基础档（Authentication-Results + DNSBL + 名单，
+      # MAILEZINE_JUNK_* 可调）；企业版以 MAILEZINE_RSPAMD_URL 启用 rspamd 高级档。
       - MAILEZINE_DKIM_VAULT_URL=http://backend:8080/stack/rspamd/vault
       - MAILEZINE_TRUSTED_NETS=${MAILEZ_SUBNET:-192.168.206.0/24}
       # 引擎直发标准端口 + 隐式 TLS（465/993/995）。
@@ -191,28 +192,6 @@ services:
     depends_on:
       gateway:
         condition: service_started
-      mail-filter:
-        condition: service_started
-      resolver:
-        condition: service_started
-
-  mail-filter:
-    image: mailez/rspamd:${MAILEZ_IMAGE_TAG:-local}
-    pull_policy: missing
-    restart: always
-    env_file: mailez.env
-    environment:
-      - MAILEZ_ENGINE=mailezine
-    networks:
-      default: {}
-      no-egress: {}
-    volumes:
-      - "./data/filter:/var/lib/rspamd"
-      - "./data/dkim:/dkim"
-      - "./overrides/rspamd:/etc/rspamd/override.d"
-    depends_on:
-      - gateway
-      - backend
 
   macro-scanner:
     image: mailez/macro-scanner:${MAILEZ_IMAGE_TAG:-local}
@@ -221,12 +200,6 @@ services:
     restart: always
     networks:
       - no-egress
-
-  resolver:
-    image: mailez/unbound:${MAILEZ_IMAGE_TAG:-local}
-    pull_policy: missing
-    restart: always
-    env_file: mailez.env
 
 networks:
   default:
