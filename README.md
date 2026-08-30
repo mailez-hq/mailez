@@ -105,8 +105,8 @@ Every edition runs the **same mailezine engine** — same protocols, same
 features at the mail layer, same upgrade path. The editions differ only in
 **storage scale** (single-node Pebble/local-FS vs distributed TiDB/MinIO with
 HA) and **licensed features** (compliance archiving, DLP, AI, LDAP sync,
-ActiveSync, S/MIME, delegation are enterprise). Deployments on the legacy
-Postfix+Dovecot architecture migrate in place with `mailezine migrate`.
+ActiveSync, S/MIME, delegation are enterprise). Existing deployments on the
+traditional Postfix+Dovecot architecture migrate in place with `mailezine migrate`.
 
 ```sh
 ./deploy/mailezctl.sh up              # dev tier
@@ -153,11 +153,14 @@ go run ./cmd/e2e    # sends a test mail, checks delivery, DKIM and spam filterin
 
 ## License
 
-[mailez License](LICENSE) — Apache License 2.0 with additional use conditions:
+[AGPL-3.0](LICENSE) — GNU Affero General Public License v3.0.
 
-- **No SaaS** — may not be provided to third parties as a hosted/managed/SaaS offering
-- **Own-use only** — use is limited to operating mail services for yourself or your
-  organization, wherever it is deployed (on-premises, private cloud, or public cloud)
-- **No third-party multi-tenant service** — a single deployment may not serve multiple
-  independent organizations; running multiple domains or mailboxes for your own
-  organization is fine
+- **Self-hosting is unencumbered** — deploy, modify and run it for yourself
+  or your organization with no obligations beyond keeping modifications
+  open when you distribute them or offer them as a network service
+- **Copyleft by design** — anyone distributing mailez or serving a modified
+  version over a network must share their source under the same license,
+  which keeps the project and its forks open
+- **Commercial licensing** — closed-source use, SaaS/managed offerings and
+  OEM embedding require a commercial license (the enterprise edition ships
+  with one); contact `contact@mailez.com`
