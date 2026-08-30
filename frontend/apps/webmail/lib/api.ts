@@ -118,6 +118,13 @@ export class ApiError extends Error {
   }
 }
 
+// Build-time edition marker (injected by next.config.ts from MAILEZ_EDITION;
+// internal dev defaults to ee). Enterprise-only API helpers check it and
+// resolve locally in the community build instead of firing requests that
+// can only 404 against a community backend.
+const COMMUNITY_BUILD =
+  (process.env.NEXT_PUBLIC_MAILEZ_EDITION ?? "ee").toLowerCase() === "ce";
+
 // A 401 on an authed surface means the session cookie expired or was
 // revoked server-side. Instead of letting every poll toast errors forever,
 // bounce to the login screen once; the guard flag stops in-flight request
@@ -582,8 +589,13 @@ export const accountDelete = (id: number) =>
 export const accountTest = (id: number) =>
   apiPost<{ ok: boolean }>(`/accounts/${id}/test`, {});
 
-// Mailbox delegation / shared mailboxes.
-export const delegations = () => api<DelegationListing>("/delegations");
+// Mailbox delegation / shared mailboxes. Enterprise-only: the community
+// backend has no /delegations routes, so the community build resolves the
+// listing locally instead of issuing a request that can only 404.
+export const delegations = (): Promise<DelegationListing> =>
+  COMMUNITY_BUILD
+    ? Promise.resolve({ granted: [], received: [] })
+    : api<DelegationListing>("/delegations");
 
 export const delegationCreate = (input: {
   delegate_email: string;
@@ -763,7 +775,13 @@ export const sieveDelete = (name: string) =>
 export const sieveActivate = (name: string) =>
   apiPost(`/sieve/${encodeURIComponent(name)}/activate`, {});
 
-export const aiStatus = () => api<AIStatus>("/ai/status");
+// Enterprise-only capability probe. The community build throws the same
+// 404-shaped ApiError the real probe would return, so the locked hint still
+// renders — without a network round-trip that can only fail.
+export const aiStatus = (): Promise<AIStatus> =>
+  COMMUNITY_BUILD
+    ? Promise.reject(new ApiError("ai/status: not part of the community edition", 404))
+    : api<AIStatus>("/ai/status");
 
 export const aiSummarize = (text: string) =>
   api<{ summary: string }>("/ai/summarize", { method: "POST", body: JSON.stringify({ text }) });

@@ -23,6 +23,13 @@ const API_TARGET = process.env.API_TARGET || "http://localhost:8080";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@mailez/ui", "@mailez/types"],
+  // Client-side edition marker: enterprise-only API helpers check it and
+  // short-circuit locally instead of issuing requests that can only 404
+  // against a community backend.
+  env: {
+    NEXT_PUBLIC_MAILEZ_EDITION:
+      (process.env.MAILEZ_EDITION ?? "ee").toLowerCase() === "ce" ? "ce" : "ee",
+  },
   // The app is served behind nginx (gateway) which handles compression;
   // Next's own gzip would buffer proxied SSE frames (text/event-stream) and
   // the mailbox push would never reach the browser.
