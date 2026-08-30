@@ -8,6 +8,13 @@ export type { Me, LoginResult };
 
 const API = "/api/v1";
 
+// Build-time edition marker (injected by next.config.ts from MAILEZ_EDITION;
+// internal dev defaults to ee). Shared pages consult it to hide
+// enterprise-only surfaces — announcement/archive/DLP pages already go
+// through the @/edition mechanism; this covers the shared config page.
+export const IS_COMMUNITY_BUILD =
+  (process.env.NEXT_PUBLIC_MAILEZ_EDITION ?? "ee").toLowerCase() === "ce";
+
 // ApiError carries the HTTP status and the backend's machine-readable code.
 export class ApiError extends Error {
   readonly status: number;
@@ -291,7 +298,11 @@ export interface AiConfigView {
   last_test_error?: string;
 }
 
-export const getAIConfigs = () => api<AiConfigView[]>("/config/ai");
+// Enterprise-only surface: AI model configuration. The community build
+// resolves the empty list locally instead of firing a request that can
+// only 404 against a community backend (and the tab is hidden anyway).
+export const getAIConfigs = (): Promise<AiConfigView[]> =>
+  IS_COMMUNITY_BUILD ? Promise.resolve([]) : api<AiConfigView[]>("/config/ai");
 
 export const createAIConfig = (input: {
   name: string;
@@ -347,7 +358,9 @@ export type LdapConfigView = {
   updated_at?: string;
 };
 
-export const getLDAPConfig = () => api<LdapConfigView>("/ldap");
+// Enterprise-only surface: AD/LDAP directory integration (see getAIConfigs).
+export const getLDAPConfig = (): Promise<LdapConfigView> =>
+  IS_COMMUNITY_BUILD ? Promise.resolve({ enabled: false } as LdapConfigView) : api<LdapConfigView>("/ldap");
 
 export const putLDAPConfig = (input: Partial<LdapConfigView> & { bind_password?: string }) =>
   apiPut<LdapConfigView>("/ldap", input);

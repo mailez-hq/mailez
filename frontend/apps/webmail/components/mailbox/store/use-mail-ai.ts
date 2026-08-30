@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 
 import { ApiError, aiPrioritize, aiSearch, aiStatus, aiSummarize, type MailMessage } from "@/lib/api";
 
@@ -21,6 +21,8 @@ export function useMailAi({
   setSelected,
   setDetail,
   setCursor,
+  searchSeqRef,
+  loadSeq,
 }: {
   prefsAiEnabled: boolean;
   prefsAi: { summary: boolean; draft: boolean; priority: boolean; search: boolean };
@@ -34,6 +36,12 @@ export function useMailAi({
   setSelected: Dispatch<SetStateAction<MailMessage | null>>;
   setDetail: Dispatch<SetStateAction<MailMessage | null>>;
   setCursor: Dispatch<SetStateAction<number>>;
+  /** Same sequence guards the folder/search loaders use: an AI search
+   * replaces the list, so in-flight folder loads / keyword searches must be
+   * invalidated, and a late AI response must lose to whatever the user
+   * started next. */
+  searchSeqRef: RefObject<number>;
+  loadSeq: RefObject<number>;
 }) {
   const [aiEnabled, setAiEnabled] = useState(false);
   // aiLocked marks the enterprise-only deployment (the /ai/status route itself
@@ -127,10 +135,16 @@ export function useMailAi({
   async function doAiSearch(q?: string) {
     const searchQuery = (q ?? query).trim();
     if (!searchQuery || !ai.search) return;
+    // Invalidate in-flight folder loads / keyword searches and take the
+    // sequence ourselves (runSearchWithSpec pattern); a folder switch after
+    // this point bumps the counters and our late result is dropped.
+    const seq = ++searchSeqRef.current;
+    loadSeq.current++;
     setAiSearching(true);
     setError("");
     try {
       const res = await aiSearch(searchQuery);
+      if (seq !== searchSeqRef.current) return; // superseded
       setSearching(true);
       setSelected(null);
       setDetail(null);
