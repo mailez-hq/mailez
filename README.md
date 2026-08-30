@@ -197,7 +197,9 @@ Production deployments are signed with your own key
   scale (SQLite/pebble vs MySQL/TiDB/MinIO) and licensed features
 - More details: [`docs/dev-setup.md`](docs/dev-setup.md),
   [`docs/architecture.md`](docs/architecture.md),
-  [`docs/webmail-ui-spec.md`](docs/webmail-ui-spec.md)
+  [`docs/webmail-ui-spec.md`](docs/webmail-ui-spec.md);
+  upgrading between versions/tiers (including the MySQL→SQLite control-plane
+  switch and CE→EE paths): [`docs/upgrades.md`](docs/upgrades.md)
 
 ## License
 

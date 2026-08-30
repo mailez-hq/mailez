@@ -56,6 +56,33 @@ All notable changes to mailez are documented here. The format follows
 - Admin: CE builds no longer call the enterprise-only AI/LDAP config
   endpoints (config page hides those tabs); a missing license block on
   `/overview` no longer renders as "Enterprise"
+- Admin: save/create errors in the six list pages (users, domains, aliases,
+  relays, tokens, fetches) were written to a state that only rendered inside
+  the (closed) dialog — a failed save silently did nothing; errors now show
+  inside the open dialog (cleared on reopen) while load/delete errors render
+  on the page
+- Admin: archive compliance export dropped the `date_from` / `date_to` /
+  `reviewed` filters the on-screen search applied, so the exported mbox
+  could contain a different message set than the reviewed results (fixed on
+  both the frontend and the export endpoint)
+- Admin: DLP rule scope dropdown offered only hardcoded placeholder domains
+  (`example.com` / `other.com`); now a free-text domain input with the
+  served domains suggested
+- Webmail: message rows no longer re-render on every store change — the
+  memoized row subscribed to the whole mailbox store context for label
+  colors; the color map now lives in its own context whose identity changes
+  only when label definitions change
+- Mailezine: `EXAMINE` is now actually read-only — STORE/COPY/MOVE/EXPUNGE
+  and APPEND into the examined mailbox return `NO`, FETCH body sections no
+  longer implicitly set `\Seen`, CLOSE degrades to UNSELECT, and the
+  selection reports no permanent flags (previously EXAMINE was fully
+  writable, so clients that open mailboxes read-only could mutate them)
+- Mailezine: PROXY protocol v1 headers are only honored from trusted peers
+  (new `MAILEZINE_PROXY_TRUSTED`, default loopback/private CIDRs) — a
+  client that reached a PROXY-enabled port directly could previously forge
+  the client IP that relay/auth decisions trust; the header read is also
+  bounded (30s deadline, 128-byte line cap) so a silent or padding peer
+  cannot hold connections open
 - e2e CI seeds via in-container `mailez-seed` (matches the SQLite default)
 - Website: EN locale links keep the `/en` prefix (navbar and page CTAs
   previously navigated back to the Chinese pages); EN Mailezine page says

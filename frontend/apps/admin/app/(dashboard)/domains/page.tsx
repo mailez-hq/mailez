@@ -34,7 +34,10 @@ export default function DomainsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [open, setOpen] = useState(false);
+  // Page-level error (load/domain delete) renders outside the modal; the
+  // edit dialog (form + alternatives + DKIM) reports through formError.
   const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
   const [editTarget, setEditTarget] = useState<Domain | null>(null);
 
   const [name, setName] = useState("");
@@ -120,7 +123,7 @@ export default function DomainsPage() {
       setSignupEnabled(false); setAnonmailEnabled(false); setComment("");
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "save failed");
+      setFormError(err instanceof Error ? err.message : "save failed");
     }
   }
 
@@ -142,7 +145,7 @@ export default function DomainsPage() {
       setAltName("");
       loadAlternatives(editTarget.name);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "add failed");
+      setFormError(err instanceof Error ? err.message : "add failed");
     }
   }
 
@@ -152,7 +155,7 @@ export default function DomainsPage() {
       await apiDelete(`/alternatives/${encodeURIComponent(a.name)}`);
       if (editTarget) loadAlternatives(editTarget.name);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "delete failed");
+      setFormError(err instanceof Error ? err.message : "delete failed");
     }
   }
 
@@ -161,7 +164,7 @@ export default function DomainsPage() {
     try {
       setDkim(await generateDomainDkim(editTarget.name));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "generate failed");
+      setFormError(err instanceof Error ? err.message : "generate failed");
     }
   }
 
@@ -174,7 +177,7 @@ export default function DomainsPage() {
   return (
     <div className="space-y-4">
       <PageHeader title={t("title")} description={t("desc")}>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) setFormError(""); }}>
           <DialogTrigger render={<Button><Plus />{t("new")}</Button>} />
           <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
             <form onSubmit={save} className="space-y-4">
@@ -273,7 +276,7 @@ export default function DomainsPage() {
                 </>
               )}
 
-              {error && <p className="text-sm text-red-600">{error}</p>}
+              {formError && <p className="text-sm text-red-600">{formError}</p>}
               <DialogFooter>
                 <Button type="submit">{editTarget ? ct("edit") : ct("create")}</Button>
               </DialogFooter>
@@ -281,6 +284,8 @@ export default function DomainsPage() {
           </DialogContent>
         </Dialog>
       </PageHeader>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <Card>
         <CardHeader><CardTitle className="text-base">{t("served")}</CardTitle></CardHeader>
