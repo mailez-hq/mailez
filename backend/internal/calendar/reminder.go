@@ -14,6 +14,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"mailez/backend/internal/cluster"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/mail"
@@ -45,6 +46,12 @@ func (w *ReminderWorker) Run(ctx context.Context) {
 }
 
 func (w *ReminderWorker) flush() {
+	// Singleton via DB lease: the reminder-log check is check-then-insert,
+	// so two replicas flushing the same event could deliver twice. The
+	// lease keeps one flusher; the log keeps the once-per-event guarantee.
+	if !cluster.TryHold(w.DB, "calendar_reminder", cluster.LeaseTTL) {
+		return
+	}
 	now := time.Now()
 	var events []models.CalendarEvent
 	if err := w.DB.Where("reminder_minutes > 0 AND start IS NOT NULL").Find(&events).Error; err != nil {

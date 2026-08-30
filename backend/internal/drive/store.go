@@ -37,6 +37,21 @@ func NewStore(cfg core.Config) (Store, error) {
 	return &LocalStore{Root: filepath.Join(root, "drive")}, nil
 }
 
+// NewUploadsStore builds the blob backend for the large-attachment relay:
+// the same MinIO/S3 backend as the drive when configured, but the local
+// root stays the upload dir so keys remain the on-disk relative paths
+// existing deployments already have.
+func NewUploadsStore(cfg core.Config) (Store, error) {
+	if strings.EqualFold(cfg.DriveBackend, "minio") {
+		return newMinioStore(cfg)
+	}
+	root := cfg.UploadDir
+	if root == "" {
+		root = "uploads"
+	}
+	return &LocalStore{Root: root}, nil
+}
+
 // LocalStore keeps blobs under the configured data directory.
 type LocalStore struct {
 	Root string

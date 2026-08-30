@@ -10,6 +10,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"mailez/backend/internal/cluster"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/crypto"
@@ -113,6 +114,13 @@ func (n *Notifier) repairNotifierToken(email string) error {
 }
 
 func (n *Notifier) pollOnce(ctx context.Context) {
+	// Singleton via DB lease: several backend replicas may run, but only
+	// the lease holder sends web pushes (otherwise every recipient device
+	// would get one push per replica). A delivery-receipt kick landing on
+	// a non-leader replica is simply deferred to the leader's next tick.
+	if !cluster.TryHold(n.DB, "push_notifier", cluster.LeaseTTL) {
+		return
+	}
 	key, err := EnsureVAPID(n.DB)
 	if err != nil {
 		log.Printf("push: vapid: %v", err)

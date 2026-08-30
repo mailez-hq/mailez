@@ -332,6 +332,15 @@ var migrations = []migration{
 			return db.AutoMigrate(&WorkerToken{})
 		},
 	},
+	{
+		// Horizontal scaling: the outbox claim column makes scheduled-send
+		// delivery safe under several backend replicas, and the lease
+		// table elects one replica per singleton worker.
+		ID: "20260915_cluster_replicas",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&Outbox{}, &ClusterLease{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in
