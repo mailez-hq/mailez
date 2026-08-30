@@ -57,8 +57,15 @@ func (h *Handler) signupDomains(c *fiber.Ctx) error {
 // @Produce json
 // @Success 201 {object} models.User
 // @Failure 400 {object} models.APIError
+// @Failure 429 {object} models.APIError "rate_limited"
 // @Router /signup [post]
 func (h *Handler) signup(c *fiber.Ctx) error {
+	// Self-signup is an unauthenticated write endpoint: cap it per IP so a
+	// bot cannot provision accounts (and burn bcrypt + DB rows) at line
+	// rate. 10/hour matches human signup flow everywhere.
+	if h.Auth != nil && !h.Auth.RateAllow(c.Context(), "signup", c.IP(), 10, time.Hour) {
+		return c.Status(fiber.StatusTooManyRequests).JSON(models.APIError{Error: "too many signups from this address, try again later", Code: "rate_limited"})
+	}
 	var in struct {
 		Email         string `json:"email"`
 		Password      string `json:"pw"`
