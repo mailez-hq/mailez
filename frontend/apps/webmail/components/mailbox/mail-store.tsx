@@ -222,6 +222,7 @@ export function useMailStoreValue(me: Me) {
     priorityCategories, setPriorityCategories,
     setBaseMessages,
     ai,
+    aiLocked,
     summarize, togglePriority, doAiSearch,
   } = useMailAi({
     prefsAiEnabled: prefs.ai.enabled,
@@ -762,6 +763,7 @@ export function useMailStoreValue(me: Me) {
     saveSearchSpec,
     searchRef,
     ai,
+    aiLocked,
     prioritizing,
     priorityOn,
     priorityCategories,

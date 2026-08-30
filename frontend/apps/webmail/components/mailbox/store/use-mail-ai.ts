@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 
-import { aiPrioritize, aiSearch, aiStatus, aiSummarize, type MailMessage } from "@/lib/api";
+import { ApiError, aiPrioritize, aiSearch, aiStatus, aiSummarize, type MailMessage } from "@/lib/api";
 
 /**
  * AI cluster: backend capability probe, the effective per-feature flags
@@ -36,6 +36,10 @@ export function useMailAi({
   setCursor: Dispatch<SetStateAction<number>>;
 }) {
   const [aiEnabled, setAiEnabled] = useState(false);
+  // aiLocked marks the enterprise-only deployment (the /ai/status route itself
+  // is absent, a 404): the entry points render a visible locked hint instead
+  // of silently disappearing, so community users can see what they miss.
+  const [aiLocked, setAiLocked] = useState(false);
   const [summary, setSummary] = useState("");
   const [summarizing, setSummarizing] = useState(false);
   const [prioritizing, setPrioritizing] = useState(false);
@@ -47,7 +51,15 @@ export function useMailAi({
 
   // load AI capability once; AI summary/draft only show when a provider is configured
   useEffect(() => {
-    aiStatus().then((s) => setAiEnabled(s.enabled)).catch(() => setAiEnabled(false));
+    aiStatus()
+      .then((s) => {
+        setAiEnabled(s.enabled);
+        setAiLocked(false);
+      })
+      .catch((e) => {
+        setAiEnabled(false);
+        setAiLocked(e instanceof ApiError && e.status === 404);
+      });
   }, []);
 
   // Effective per-feature AI flags: backend availability AND the user toggles.
@@ -140,6 +152,7 @@ export function useMailAi({
     priorityCategories, setPriorityCategories,
     baseMessages, setBaseMessages,
     ai,
+    aiLocked,
     summarize, togglePriority, doAiSearch,
   };
 }
