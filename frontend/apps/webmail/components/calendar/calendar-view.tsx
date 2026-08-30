@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Share2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { IS_COMMUNITY_BUILD } from "@/lib/api";
 import { EventDialog } from "@/components/calendar/event-dialog";
 import { ShareDialog } from "@/components/calendar/share-dialog";
 import {
@@ -208,10 +209,15 @@ export function CalendarView({ initialEvent }: { initialEvent?: CalendarEvent | 
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShareOpen(true)} title={t("shareCalendar")}>
-            <Share2 className="size-4" />
-            <span className="hidden sm:inline">{t("share")}</span>
-          </Button>
+          {/* Calendar sharing is enterprise-only; hide the entry point in
+              the community build so the dialog (and its /calendar/shares
+              probe) never opens against a community backend. */}
+          {!IS_COMMUNITY_BUILD && (
+            <Button variant="outline" size="sm" onClick={() => setShareOpen(true)} title={t("shareCalendar")}>
+              <Share2 className="size-4" />
+              <span className="hidden sm:inline">{t("share")}</span>
+            </Button>
+          )}
           <Button size="sm" onClick={() => openNew(new Date())}>
             <Plus className="size-4" />
             {t("newEvent")}

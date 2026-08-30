@@ -23,6 +23,9 @@ const API_TARGET = process.env.API_TARGET || "http://localhost:8080";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@mailez/ui", "@mailez/types"],
+  // Browsers may resolve localhost to IPv6 ([::1]:3001); Next blocks
+  // cross-origin dev resources unless the alternate origin is allowed.
+  allowedDevOrigins: ["localhost", "[::1]"],
   // Client-side edition marker: enterprise-only API helpers check it and
   // short-circuit locally instead of issuing requests that can only 404
   // against a community backend.

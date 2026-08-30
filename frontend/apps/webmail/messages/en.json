@@ -48,6 +48,7 @@
     "loading": "Loading…",
     "noMessages": "No messages",
     "noMatches": "No matches",
+    "messageGone": "This message no longer exists — it may have been deleted on another device",
     "selectMessage": "Select a message",
     "welcomeHint": "Welcome to Mailez — press ? to see keyboard shortcuts",
     "welcomeDismiss": "Got it",
@@ -598,7 +599,12 @@
     "allDay": "All day",
     "noEvents": "No events today",
     "recentFiles": "Recent files",
-    "noFiles": "No files yet"
+    "noFiles": "No files yet",
+    "security": "Account security",
+    "recentLogins": "Recent sign-ins",
+    "noLogins": "No recent sign-ins",
+    "lastPasswordChange": "Last password change",
+    "neverChanged": "Never changed"
   },
   "contacts": {
     "title": "Contacts",

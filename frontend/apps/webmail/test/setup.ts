@@ -1,6 +1,11 @@
-import "@testing-library/jest-dom/vitest";
+// Explicit extend instead of "@testing-library/jest-dom/vitest": with
+// vitest 4 the side-effect import resolves a different expect instance in
+// some module graphs and the DOM matchers never reach the test files.
+import * as jestDomMatchers from "@testing-library/jest-dom/matchers";
 
-import { vi } from "vitest";
+import { vi, expect as vitestExpect } from "vitest";
+
+vitestExpect.extend(jestDomMatchers);
 
 // Components under test call useTranslations("mail") etc. Behavior tests
 // assert on state and semantics, not copy, so echoing the key keeps tests
