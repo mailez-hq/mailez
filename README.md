@@ -85,7 +85,7 @@ required to run it.
 ### Trust and security under the hood
 
 - **Spam filtering that works** — Rspamd learns from your reporting; DKIM /
-  DMARC / ARC signing and checking keep your mail deliverable
+  DMARC signing and checking keep your mail deliverable
 - **Transport security** — MTA-STS and DANE protect mail in transit;
   per-mailbox quotas and sending rate limits keep the system healthy
 - **Malware scanning & content controls** — attachments are scanned for
@@ -105,8 +105,10 @@ entry point:
 
 Every edition runs the **same mailezine engine** — same protocols, same
 features at the mail layer, same upgrade path. The editions differ only in
-**storage scale** (single-node Pebble/local-FS vs distributed TiDB/MinIO with
-HA) and **licensed features** (compliance archiving, DLP, AI, LDAP sync,
+**storage scale** (single-node Pebble/local-FS vs distributed TiDB/MinIO),
+**control-plane replica count** (the `ha` overlay adds stateless
+backend/frontend replicas with lease-elected singleton workers) and
+**licensed features** (compliance archiving, DLP, AI, LDAP sync,
 ActiveSync, S/MIME, delegation are enterprise). Existing deployments on the
 traditional Postfix+Dovecot architecture migrate in place with `mailezine migrate`.
 
@@ -114,7 +116,16 @@ traditional Postfix+Dovecot architecture migrate in place with `mailezine migrat
 ./deploy/mailezctl.sh up              # dev tier
 ./deploy/mailezctl.sh up community    # community edition (production)
 ./deploy/mailezctl.sh up enterprise   # enterprise edition (production)
+./deploy/mailezctl.sh up ha           # enterprise + control-plane replicas
 ```
+
+The `ha` overlay scales the control plane horizontally: backend replicas
+load-balance behind the gateway with no sticky sessions, scheduled sends
+stay exactly-once-claimed under any replica count, background workers run
+on one lease-elected replica (60 s automatic failover), and large
+attachments plus the drive live in shared object storage. See
+[`docs/scaling.md`](docs/scaling.md) for the mechanics and operations
+runbook.
 
 The dev tier expects the backend on the host at `:8080` (build the images
 once with `cd backend && go run ./cmd/build-images`; details in

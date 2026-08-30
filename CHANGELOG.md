@@ -6,6 +6,17 @@ All notable changes to mailez are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Horizontal scaling for the control plane: stateless backend replicas
+  behind the gateway (`mailezctl up ha` / `docker-compose.ha.yml`), with
+  atomic outbox claims (scheduled sends cannot double-deliver under any
+  replica count; stale claims reclaim after 5 minutes), a DB-lease
+  singleton election for background workers (external fetch, web push,
+  calendar reminders, upload cleanup, EE dlp/archive/ldap sweeps; 60 s
+  automatic failover) and shared object storage for large attachments and
+  the drive (`MAILEZ_DRIVE_BACKEND=minio`); runbook in `docs/scaling.md`
+
 ### Changed
 
 - Community edition control plane defaults to SQLite (`./data/mailez.db`);
