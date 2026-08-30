@@ -81,6 +81,12 @@
 | **community** | mailezine | MySQL + Pebble + 本地 FS |
 | **enterprise** | mailezine | MySQL + TiDB + MinIO/S3 |
 
+所有档位运行**同一个 mailezine 引擎**——协议一致、邮件层功能一致、升级
+路径一致。版本差别只有两点：**存储规模**（单机 Pebble/本地 FS 对分布式
+TiDB/MinIO + 高可用）与**授权功能**（合规归档、DLP、AI、LDAP 同步、
+ActiveSync、S/MIME、委派代管属企业版）。旧版 Postfix+Dovecot 架构的存量
+部署可用 `mailezine migrate` 原地迁移到新存储。
+
 ```sh
 ./deploy/mailezctl.sh up              # dev 档
 ./deploy/mailezctl.sh up community    # 社区版（生产）

@@ -101,6 +101,13 @@ entry point:
 | **community** | mailezine | MySQL + Pebble + local FS |
 | **enterprise** | mailezine | MySQL + TiDB + MinIO/S3 |
 
+Every edition runs the **same mailezine engine** — same protocols, same
+features at the mail layer, same upgrade path. The editions differ only in
+**storage scale** (single-node Pebble/local-FS vs distributed TiDB/MinIO with
+HA) and **licensed features** (compliance archiving, DLP, AI, LDAP sync,
+ActiveSync, S/MIME, delegation are enterprise). Deployments on the legacy
+Postfix+Dovecot architecture migrate in place with `mailezine migrate`.
+
 ```sh
 ./deploy/mailezctl.sh up              # dev tier
 ./deploy/mailezctl.sh up community    # community edition (production)
