@@ -166,7 +166,7 @@ export function ReadingPane({
 
   // Track which thread message is expanded
   const [expandedUid, setExpandedUid] = useState<number | null>(detail.uid);
-  // Inline quick reply in thread view: which member the box targets (Gmail
+  // Inline quick reply in thread view: which member the box targets (conversation
   // model - the reply box opens under the message being answered, not as an
   // overlay that hides the conversation). null = newest member.
   const [quickReplyTargetUid, setQuickReplyTargetUid] = useState<number | null>(null);
@@ -540,7 +540,7 @@ export function ReadingPane({
         ) : isThreadView ? (
           <div className="space-y-0">
             {threadMessages.map((msg, idx) => {
-              // Gmail model: the inline reply box lives under the message
+              // Conversation model: the inline reply box lives under the message
               // being answered (newest by default, the clicked member
               // otherwise) instead of an overlay that hides the thread.
               const quickTarget =

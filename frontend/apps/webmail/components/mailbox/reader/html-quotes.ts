@@ -1,5 +1,5 @@
 // Folds quoted reply history in HTML mail bodies into native <details>
-// disclosures (Gmail's "show quoted text" model). Runs client-side on the
+// disclosures (the "show quoted text" model). Runs client-side on the
 // already-sanitized HTML string: the engine auto-generates html_body from
 // plain text by turning "> " lines into <blockquote>s, so without this pass
 // every thread member re-renders the whole nested history that the members

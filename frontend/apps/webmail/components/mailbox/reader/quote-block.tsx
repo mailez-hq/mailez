@@ -15,7 +15,7 @@ export function QuoteBlock({
   onToggle: () => void;
 }) {
   const t = useTranslations("mail");
-  // Gmail model: quoted history is collapsed by default however short it is
+  // Conversation model: quoted history is collapsed by default however short it is
   // - the thread above already shows every member in full, so an in-message
   // quote is redundant until the reader asks for it.
   const collapsed = !expanded;

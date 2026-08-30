@@ -139,7 +139,7 @@
   html {
     @apply font-sans;
   }
-  /* Toast entrance (Gmail-style bottom-left confirmations). */
+  /* Toast entrance (bottom-left confirmations). */
   @keyframes toast-in {
     from {
       opacity: 0;
@@ -319,7 +319,7 @@
   margin: 0.25rem 0;
 }
 /* Folded quoted history (foldHtmlQuotes wraps top-level blockquotes in a
-   closed <details>). The summary reads as Gmail's "show quoted text" row. */
+   closed <details>). The summary reads as a "show quoted text" row. */
 .mail-body details.mail-quote-fold {
   margin: 0.25rem 0;
 }

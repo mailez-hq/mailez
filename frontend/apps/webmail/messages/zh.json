@@ -600,10 +600,10 @@
     "paneMd": "中",
     "paneWide": "宽",
     "spellcheck": "拼写检查",
-    "conversationView": "会话视图（Gmail 风格）",
+    "conversationView": "会话视图",
     "conversationViewHint": "同一主题的往来邮件在列表中合并为一行，点击展开查看完整会话。",
     "collapseReplyQuote": "回复时折叠引用",
-    "collapseReplyQuoteHint": "把被引用的原文折叠成一个 …，点击展开（Gmail 风格）；关闭则始终显示完整引用（Fastmail 风格）。"
+    "collapseReplyQuoteHint": "把被引用的原文折叠成一个 …，点击展开；关闭则始终显示完整引用。"
   },
   "contacts": {
     "title": "通讯录",

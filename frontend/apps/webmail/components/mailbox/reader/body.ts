@@ -29,7 +29,7 @@ export function parseBody(text: string): Segment[] {
       if (!quote) quote = [];
       quote.push(m[1] || "");
     } else if (ATTRIBUTION_RE.test(raw)) {
-      // Attribution header opens the quote region (Gmail folds it together
+      // Attribution header opens the quote region (it folds together
       // with the history it introduces); a regular paragraph after a quote
       // still closes it, so interleaved replies keep their own segments.
       if (para) {

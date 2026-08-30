@@ -34,7 +34,7 @@ export function QuickReply({
   quickReplyText: string;
   onSend: () => void;
   quickSending: boolean;
-  // Pop out (Gmail's ↗): escalate to the full compose overlay seeded with
+  // Pop out (the ↗ button): escalate to the full compose overlay seeded with
   // this target message - attachments, signatures, scheduling live there.
   onPopOut?: () => void;
 }) {

@@ -32,7 +32,7 @@ describe("parseBody", () => {
   });
 
   it("folds the 'On … wrote:' attribution into the quote region it opens", () => {
-    // Gmail model: the reply header belongs inside the collapsible quote,
+    // Conversation model: the reply header belongs inside the collapsible quote,
     // not above it as a stray paragraph.
     const segs = parseBody(
       "d\n\nOn 8月29日 17:24, admin@example.com wrote:\n> c\n> more",
