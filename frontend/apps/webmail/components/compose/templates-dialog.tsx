@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LayoutTemplate, PenLine, Plus, Trash2, X } from "lucide-react";
+import { LayoutTemplate, PenLine, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,9 +28,16 @@ export function TemplatesDialog({
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
 
+  // Clear the stale error on open (render-phase adjustment — React-recommended
+  // over synchronous setState in an effect); the list itself reloads async.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) setError("");
+  }
+
   useEffect(() => {
     if (!open) return;
-    setError("");
     mailTemplates().then(setList).catch(() => {});
   }, [open]);
 

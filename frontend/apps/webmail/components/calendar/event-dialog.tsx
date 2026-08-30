@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -69,35 +69,40 @@ export function EventDialog({
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!open) return;
-    setError("");
-    if (event) {
-      setSummary(event.summary);
-      setLocation(event.location || "");
-      setDescription(event.description || "");
-      setAllDay(event.all_day);
-      setStart(event.all_day ? dateInput(event.start) : localInput(event.start));
-      setEnd(event.end ? (event.all_day ? dateInput(event.end) : localInput(event.end)) : "");
-      setRrule(event.rrule || "");
-      setReminder(event.reminder_minutes || 0);
-      setSendInvite(false);
-      setAttendees("");
-    } else {
-      setSummary("");
-      setLocation("");
-      setDescription("");
-      setAllDay(false);
-      const d = defaultDate || new Date();
-      const pad = (n: number) => String(n).padStart(2, "0");
-      setStart(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
-      setEnd("");
-      setRrule("");
-      setReminder(0);
-      setSendInvite(false);
-      setAttendees("");
+  // Repopulate the form whenever the dialog opens (render-phase adjustment —
+  // React-recommended over an effect, catches every open path).
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setError("");
+      if (event) {
+        setSummary(event.summary);
+        setLocation(event.location || "");
+        setDescription(event.description || "");
+        setAllDay(event.all_day);
+        setStart(event.all_day ? dateInput(event.start) : localInput(event.start));
+        setEnd(event.end ? (event.all_day ? dateInput(event.end) : localInput(event.end)) : "");
+        setRrule(event.rrule || "");
+        setReminder(event.reminder_minutes || 0);
+        setSendInvite(false);
+        setAttendees("");
+      } else {
+        setSummary("");
+        setLocation("");
+        setDescription("");
+        setAllDay(false);
+        const d = defaultDate || new Date();
+        const pad = (n: number) => String(n).padStart(2, "0");
+        setStart(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+        setEnd("");
+        setRrule("");
+        setReminder(0);
+        setSendInvite(false);
+        setAttendees("");
+      }
     }
-  }, [open, event, defaultDate]);
+  }
 
   const toISO = (v: string, allDay: boolean) => {
     if (allDay) {

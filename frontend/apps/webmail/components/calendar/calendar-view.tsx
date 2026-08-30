@@ -56,21 +56,34 @@ function dayEvents(events: CalendarEvent[]): Map<string, CalendarEvent[]> {
 
 export function CalendarView({ initialEvent }: { initialEvent?: CalendarEvent | null }) {
   const t = useTranslations("calendar");
-  const [month, setMonth] = useState(() => startOfMonth(new Date()));
+  // "Consume once on mount" initial event: seed the view straight from the
+  // prop via lazy initializers (a mount effect would trip the compiler lint
+  // and run after paint anyway).
+  const initialDate = initialEvent ? new Date(initialEvent.start) : null;
+  const initialValid = initialDate && !Number.isNaN(initialDate.getTime());
+  const [month, setMonth] = useState(() => (initialValid ? startOfMonth(initialDate as Date) : startOfMonth(new Date())));
   const [view, setView] = useState<"month" | "week">("month");
   // Week view anchor: any date; the visible week is the one containing it.
-  const [weekAnchor, setWeekAnchor] = useState(() => new Date());
+  const [weekAnchor, setWeekAnchor] = useState(() => (initialValid ? initialDate : new Date()));
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<CalendarEvent | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(() => Boolean(initialEvent));
+  const [editing, setEditing] = useState<CalendarEvent | null>(() => initialEvent ?? null);
   const [defaultDate, setDefaultDate] = useState<Date | undefined>(undefined);
   const [shareOpen, setShareOpen] = useState(false);
 
-  const load = useCallback(async () => {
+  // Show the spinner synchronously for every range change: the render-phase
+  // adjustment reacts one render earlier than an effect would.
+  const rangeKey = `${month.getTime()}/${view}/${weekAnchor.getTime()}`;
+  const [prevRangeKey, setPrevRangeKey] = useState(rangeKey);
+  if (rangeKey !== prevRangeKey) {
+    setPrevRangeKey(rangeKey);
     setLoading(true);
     setError("");
+  }
+
+  const load = useCallback(async () => {
     try {
       let from: Date;
       let to: Date;
@@ -92,24 +105,11 @@ export function CalendarView({ initialEvent }: { initialEvent?: CalendarEvent | 
   }, [month, view, weekAnchor]);
 
   useEffect(() => {
+    // Fetch whenever the visible range changes. Every setState inside load()
+    // happens after its await — the lint cannot see through the call boundary.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
-
-  // When the drawer is opened from the workspace home with a focused event
-  // (clicking a row in "today's schedule"), jump to its month and pop the
-  // event dialog immediately. Consumed once on mount.
-  useEffect(() => {
-    if (!initialEvent) return;
-    const d = new Date(initialEvent.start);
-    if (!Number.isNaN(d.getTime())) {
-      setMonth(startOfMonth(d));
-      setWeekAnchor(d);
-    }
-    setEditing(initialEvent);
-    setDefaultDate(undefined);
-    setDialogOpen(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const grid = useMemo(() => {
     const first = startOfMonth(month);
