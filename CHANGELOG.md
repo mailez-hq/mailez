@@ -17,8 +17,10 @@ All notable changes to mailez are documented here. The format follows
   worker are fenced out), singleton workers are leased across nodes,
   full-text indexes converge on every node by tailing the change log, and
   an advisory per-account write gate absorbs cross-node hot-key
-  contention. New `engine-lb` service (haproxy TCP passthrough) publishes
-  the mail ports and spreads connections across replicas. Semantics are
+  contention. New `engine-lb` service (haproxy) publishes the mail ports
+  and spreads connections across replicas, injecting PROXY protocol v1
+  so engines see real client IPs (DNSBL/policy scoring, rate limits and
+  audit operate on the true source). Semantics are
   pinned by a kill -9 failover drill over real TiDB
   (`TestMultiActiveFailover`, mailezine repo) and observable via
   `mailezine_queue_claims_total{claimed|stolen|lost}`,
