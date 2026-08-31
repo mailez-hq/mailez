@@ -106,26 +106,38 @@ entry point:
 Every edition runs the **same mailezine engine** — same protocols, same
 features at the mail layer, same upgrade path. The editions differ only in
 **storage scale** (single-node Pebble/local-FS vs distributed TiDB/MinIO),
-**control-plane replica count** (the `ha` overlay adds stateless
-backend/frontend replicas with lease-elected singleton workers) and
-**licensed features** (compliance archiving, DLP, AI, LDAP sync,
-ActiveSync, S/MIME, delegation are enterprise). Existing deployments on the
-traditional Postfix+Dovecot architecture migrate in place with `mailezine migrate`.
+**clustering** (single node, or active-passive failover, or full
+multi-active replicas), and **licensed features** (compliance archiving,
+DLP, AI, LDAP sync, ActiveSync, S/MIME, delegation are enterprise).
+Existing deployments on the traditional Postfix+Dovecot architecture
+migrate in place with `mailezine migrate`.
 
 ```sh
 ./deploy/mailezctl.sh up              # dev tier
 ./deploy/mailezctl.sh up community    # community edition (production)
 ./deploy/mailezctl.sh up enterprise   # enterprise edition (production)
 ./deploy/mailezctl.sh up ha           # enterprise + control-plane replicas
+./deploy/mailezctl.sh up multi        # enterprise + multi-active engine
 ```
 
 The `ha` overlay scales the control plane horizontally: backend replicas
 load-balance behind the gateway with no sticky sessions, scheduled sends
 stay exactly-once-claimed under any replica count, background workers run
 on one lease-elected replica (60 s automatic failover), and large
-attachments plus the drive live in shared object storage. See
-[`docs/scaling.md`](docs/scaling.md) for the mechanics and operations
-runbook.
+attachments plus the drive live in shared object storage.
+
+The `multi` overlay makes mailez a **truly distributed mail system**: every
+engine replica serves every account on the shared TiDB/MinIO — SMTP,
+IMAP/POP3, Sieve and the outbound queue are all multi-active with no
+leader. The outbound queue claims each message transactionally (a node
+killed mid-delivery has its claim taken over after the lease lapses, with
+fenced outcome writes), singleton workers are leased across nodes,
+full-text indexes converge per node by tailing the change log, and
+per-account write pinning absorbs cross-node hot-key contention. Verified
+by a kill -9 failover drill over real TiDB (`TestMultiActiveFailover` in
+the mailezine repo). See
+[`docs/scaling.md`](docs/scaling.md) for the tier-selection table,
+mechanics and operations runbook.
 
 The dev tier expects the backend on the host at `:8080` (build the images
 once with `cd backend && go run ./cmd/build-images`; details in

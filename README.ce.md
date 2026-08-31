@@ -164,7 +164,7 @@ go run ./cmd/e2e    # sends a test mail, checks delivery, DKIM and spam filterin
 | Compliance archiving, outbound DLP approval | — | ✓ |
 | AI assistant, LDAP/AD sync | — | ✓ |
 | Exchange ActiveSync, S/MIME, delegation | — | ✓ |
-| Distributed storage (TiDB + MinIO/S3), multi-replica HA | — | ✓ |
+| Distributed storage (TiDB + MinIO/S3); multi-replica HA or fully multi-active engine | — | ✓ |
 
 Upgrading is in place — same engine, same data, same UI; see
 [`docs/upgrades.md`](docs/upgrades.md). For the commercial edition, contact

@@ -83,16 +83,32 @@
 | **enterprise** | mailezine | MySQL + TiDB + MinIO/S3 |
 
 所有档位运行**同一个 mailezine 引擎**——协议一致、邮件层功能一致、升级
-路径一致。版本差别只有两点：**存储规模**（单机 Pebble/本地 FS 对分布式
-TiDB/MinIO + 高可用）与**授权功能**（合规归档、DLP、AI、LDAP 同步、
-ActiveSync、S/MIME、委派代管属企业版）。传统 Postfix+Dovecot 架构的存量
-部署可用 `mailezine migrate` 原地迁移到新存储。
+路径一致。版本差别在三点：**存储规模**（单机 Pebble/本地 FS 对分布式
+TiDB/MinIO）、**集群形态**（单机 / active-passive 容灾 / multi 全服务多活）
+与**授权功能**（合规归档、DLP、AI、LDAP 同步、ActiveSync、S/MIME、委派
+代管属企业版）。传统 Postfix+Dovecot 架构的存量部署可用 `mailezine
+migrate` 原地迁移到新存储。
 
 ```sh
 ./deploy/mailezctl.sh up              # dev 档
 ./deploy/mailezctl.sh up community    # 社区版（生产）
 ./deploy/mailezctl.sh up enterprise   # 企业版（生产）
+./deploy/mailezctl.sh up ha           # 企业版 + 控制面多副本
+./deploy/mailezctl.sh up multi        # 企业版 + 引擎多活（分布式邮件系统）
 ```
+
+`ha` 档把控制面横向扩容：backend 副本在网关后负载均衡（无会话粘性），
+定时发送在任意副本数下原子认领不双发，后台 worker 走 DB 租约选主
+（60s 自动故障转移），超大附件与云盘落共享对象存储。
+
+`multi` 档让 mailez 成为**真正意义的分布式邮件系统**：每个引擎副本在共享
+TiDB/MinIO 上服务任意账户——SMTP、IMAP/POP3、Sieve、出站队列全部多活，
+无主备、扩容即加副本。出站队列按消息事务认领（投递中途被 kill -9 的
+节点，租约到期后由其他副本接管，迟到写回被 fencing 丢弃）；单例 worker
+跨节点租约；全文索引每节点 tail 变更日志收敛；按账户写 pin 吸收跨节点
+热键竞争。全部语义经真实双进程 + TiDB 的 kill -9 故障演练验证
+（mailezine 仓库 `TestMultiActiveFailover`）。选型表与运维手册见
+[`docs/scaling.md`](docs/scaling.md)。
 
 首次使用前编辑 `deploy/mailez.env`（由 `mailez.env.example` 复制而来），
 至少设置两个密钥——compose 的 `${VAR:?}` 插值要求它们非空，缺失时

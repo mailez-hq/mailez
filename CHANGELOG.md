@@ -8,6 +8,22 @@ All notable changes to mailez are documented here. The format follows
 
 ### Added
 
+- Multi-active engine tier — a truly distributed mail system
+  (`mailezctl up multi` / `docker-compose.multi.yml`, engine
+  `MAILEZINE_CLUSTER_MODE=multi`): every mailezine replica serves every
+  account on shared TiDB/MinIO with no leader. Outbound deliveries are
+  claimed per message in a KV transaction (a node killed mid-delivery is
+  taken over after the claim lease lapses; late writes from the stale
+  worker are fenced out), singleton workers are leased across nodes,
+  full-text indexes converge on every node by tailing the change log, and
+  an advisory per-account write gate absorbs cross-node hot-key
+  contention. New `engine-lb` service (haproxy TCP passthrough) publishes
+  the mail ports and spreads connections across replicas. Semantics are
+  pinned by a kill -9 failover drill over real TiDB
+  (`TestMultiActiveFailover`, mailezine repo) and observable via
+  `mailezine_queue_claims_total{claimed|stolen|lost}`,
+  `mailezine_kv_txn_replays_total` and `mailezine_account_gate_*`
+  metrics; selection table and runbook in `docs/scaling.md`
 - Horizontal scaling for the control plane: stateless backend replicas
   behind the gateway (`mailezctl up ha` / `docker-compose.ha.yml`), with
   atomic outbox claims (scheduled sends cannot double-deliver under any
