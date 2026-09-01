@@ -10,9 +10,15 @@
 ```sh
 ./deploy/mailezctl.sh down
 git pull          # mailez 与 mailezine 两个仓库都要拉
-cd backend && go run ./cmd/build-images   # 重建 mailez/*:local 镜像
-cd ../deploy && ./mailezctl.sh up community   # 或 enterprise
+./deploy/mailezctl.sh up community           # 或 enterprise
 ```
+
+`mailezctl up` 自带 `--build`,会以正确的 edition 构建参数重建
+backend/前端/引擎镜像,是镜像更新的统一入口。注意 `go run
+./cmd/build-images` 只覆盖 nginx/rspamd/unbound/macro-scanner 与
+**CE 档**引擎(不传 `MAILEZ_EDITION`),不构建 backend 与前端——
+企业栈不要用它,否则会拿回 CE 引擎镜像(见 `docs/rollout-runbook.md`
+踩坑清单)。
 
 - 控制面:启动时自动执行版本化迁移(`schema_migrations` 表),无需人工干预。
 - 邮件数据:`deploy/data/` 不受升级影响;升级前整体备份该目录即可
@@ -49,6 +55,16 @@ cd ../deploy && ./mailezctl.sh up community   # 或 enterprise
 **控制面与授权**:企业栈要求 `deploy/licenses/license.lic`
 (`MAILEZ_LICENSE_REQUIRED=true`,自签/采购见 README)。控制面同样走
 第 2 节的导出/导入(MySQL → MySQL,无切换问题)。
+
+自签演练的授权签发与全流程实跑(含切换顺序与验证清单)见
+`docs/rollout-runbook.md` 阶段二;最短签发命令:
+
+```sh
+cd backend
+go run ./cmd/license issue --out ../deploy/licenses/license.lic \
+  --licensee <名字> --mailboxes 100
+go run ./cmd/license inspect -in ../deploy/licenses/license.lic
+```
 
 **邮件数据(Pebble/本地 FS → TiDB/MinIO)**:目前**没有** KV→KV 迁移
 工具。两条可行路径:
