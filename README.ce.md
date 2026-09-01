@@ -100,7 +100,7 @@ Postfix+Dovecot architecture migrate in place with `mailezine migrate`.
 ```
 
 The dev tier expects the backend on the host at `:8080` (build the images
-once with `cd backend && go run ./cmd/build-images`; details in
+once with `docker buildx bake` from the repo root; details in
 [`docs/dev-setup.md`](docs/dev-setup.md)). The community edition is fully
 containerized and publishes:
 

@@ -5,20 +5,21 @@
 (Pebble → TiDB)的邮件数据目前**没有**原地迁移工具;`mailezine migrate`
 只覆盖传统栈(Maildir)→ KV。替代路径见下文。
 
-## 1. 同版本升级(拉取新代码)
+## 1. 同版本升级
+
+镜像部署(默认):改 `deploy/mailez.env` 的 `MAILEZ_IMAGE_TAG` 指向新版本,
+然后重新拉起(compose 只重建镜像变了的服务,`deploy/data/` 不动):
 
 ```sh
-./deploy/mailezctl.sh down
-git pull          # mailez 与 mailezine 两个仓库都要拉
-./deploy/mailezctl.sh up community           # 或 enterprise
+# 编辑 deploy/mailez.env: MAILEZ_IMAGE_TAG=v1.2.3
+./deploy/mailezctl.sh up community           # 或 enterprise / multi / ha
 ```
 
-`mailezctl up` 自带 `--build`,会以正确的 edition 构建参数重建
-backend/前端/引擎镜像,是镜像更新的统一入口。注意 `go run
-./cmd/build-images` 只覆盖 nginx/rspamd/unbound/macro-scanner 与
-**CE 档**引擎(不传 `MAILEZ_EDITION`),不构建 backend 与前端——
-企业栈不要用它,否则会拿回 CE 引擎镜像(见 `docs/rollout-runbook.md`
-踩坑清单)。
+源码部署(`MAILEZ_LOCAL_BUILD=1`):`git pull`(mailez 与 mailezine 两个
+仓库都要拉)后同样 `up`——`--build` 会以正确的 edition 构建参数重建
+backend/前端/引擎镜像(构建定义在仓库根目录 `docker-bake.hcl`;
+引擎发布镜像由 mailezine 仓库的 release 工作流产出,见
+`docs/rollout-runbook.md` "镜像发布流程")。
 
 - 控制面:启动时自动执行版本化迁移(`schema_migrations` 表),无需人工干预。
 - 邮件数据:`deploy/data/` 不受升级影响;升级前整体备份该目录即可
