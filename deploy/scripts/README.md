@@ -40,9 +40,9 @@ rspamd spam headers, and (optionally) alias delivery.
 
 Prerequisites:
 
-- The stack is up (raw compose needs `--env-file mailez.env`, which
-  `mailezctl` passes for you):
-  `cd deploy && docker compose --env-file mailez.env -f docker-compose.enterprise.yml up -d --build`
+- The stack is up (`mailezctl` passes `--env-file mailez.env` for you):
+  `cd deploy && ./mailezctl.sh up enterprise`
+  (local source build: `MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up enterprise`)
 - The backend has been seeded once (creates `admin@example.com` /
   `MailezDemo2026!`). Easiest from a container:
 

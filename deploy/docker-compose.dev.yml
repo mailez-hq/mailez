@@ -8,8 +8,8 @@
 #
 # 用法（backend 需先按 docs/dev-setup.md 在宿主机 :8080 起来）：
 #   cd deploy
-#   docker compose -f docker-compose.dev.yml up -d --build
-#   docker compose -f docker-compose.dev.yml down
+#   ./mailezctl.sh up dev    # dev 档恒本地构建（叠加 docker-compose.build.dev.yml 后 up -d --build）
+#   ./mailezctl.sh down dev
 
 name: mailez
 
@@ -28,10 +28,7 @@ services:
       - "./data/redis:/data"
 
   mailezine:
-    image: mailez/mailezine:local
-    build:
-      context: ../../mailezine
-      dockerfile: Dockerfile
+    image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-mailezine:${MAILEZINE_IMAGE_TAG:-${MAILEZ_IMAGE_TAG:-local}}
     pull_policy: missing
     restart: always
     environment:
@@ -75,7 +72,7 @@ services:
       - resolver
 
   mail-filter:
-    image: mailez/rspamd:local
+    image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-rspamd:${MAILEZ_IMAGE_TAG:-local}
     pull_policy: missing
     restart: always
     env_file: mailez.env
@@ -92,7 +89,7 @@ services:
       - "./overrides/rspamd:/etc/rspamd/override.d"
 
   resolver:
-    image: mailez/unbound:local
+    image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-unbound:${MAILEZ_IMAGE_TAG:-local}
     pull_policy: missing
     restart: always
     env_file: mailez.env

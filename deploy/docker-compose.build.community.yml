@@ -1,0 +1,51 @@
+# Build overlay for the community profile: adds build instructions so
+#   MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up community
+# (or: docker compose --env-file mailez.env -f docker-compose.community.yml
+#      -f docker-compose.build.community.yml up -d --build)
+# builds all images from source instead of pulling prebuilt ones. Editions
+# are baked at build time (CE here; the enterprise overlay uses ee args and
+# the -ee image names come from the base enterprise file).
+# Never shipped in release tarballs — pull-only deployments don't need it.
+
+services:
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: backend/Dockerfile
+      args:
+        MAILEZ_EDITION: ce
+
+  frontend-admin:
+    build:
+      context: ../frontend
+      dockerfile: apps/admin/Dockerfile
+      args:
+        MAILEZ_EDITION: ce
+
+  frontend-webmail:
+    build:
+      context: ../frontend
+      dockerfile: apps/webmail/Dockerfile
+      args:
+        MAILEZ_EDITION: ce
+
+  gateway:
+    build:
+      context: ..
+      dockerfile: deploy/images/gateway/Dockerfile
+
+  mailezine:
+    build:
+      # Relative to deploy/: the sibling mailezine checkout. Override with
+      # MAILEZINE_CONTEXT where the layout differs (CI sets ../mailezine).
+      context: ${MAILEZINE_CONTEXT:-../../mailezine}
+      dockerfile: Dockerfile
+      args:
+        MAILEZ_EDITION: ce
+        VERSION: ${MAILEZ_IMAGE_TAG:-local}
+
+  macro-scanner:
+    build:
+      context: ..
+      dockerfile: deploy/images/macro-scanner/Dockerfile
