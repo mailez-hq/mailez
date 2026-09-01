@@ -184,8 +184,8 @@ services:
       # 社区版单节点存储：pebble KV + 本地 FS blob（默认，无需 TiDB/MinIO）。
       - MAILEZINE_STORAGE_BACKEND=pebble
       - MAILEZINE_ROCKS_PATH=/data/rocks
-      # 反垃圾走引擎内置基础档（Authentication-Results + DNSBL + 名单，
-      # MAILEZINE_JUNK_* 可调）；企业版以 MAILEZINE_RSPAMD_URL 启用 rspamd 高级档。
+      # 反垃圾：未配 MAILEZINE_RSPAMD_URL 时走引擎内置基础档（MAILEZINE_JUNK_*
+      # 可调）；配置后升级为 rspamd 扫描（社区版即含），企业版另启用学习。
       - MAILEZINE_DKIM_VAULT_URL=http://backend:8080/stack/rspamd/vault
       - MAILEZINE_TRUSTED_NETS=${MAILEZ_SUBNET:-192.168.206.0/24}
       # 引擎直发标准端口 + 隐式 TLS（465/993/995）。

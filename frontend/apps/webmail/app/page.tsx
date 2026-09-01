@@ -74,7 +74,11 @@ export default function Home({
   const [settings, setSettings] = useState<ServerSettings | null>(null);
   // ?expired=1 is set by the API layer when a 401 bounced the user here:
   // explain the kick instead of dropping them on a silent sign-in form.
+  // ?sso_error=<reason> is set by the OIDC callback when federated sign-in
+  // failed; the banner explains the bounce with the same coarse reason the
+  // backend is willing to disclose.
   const [expired] = useState(sp.expired === "1");
+  const [ssoError] = useState(typeof sp.sso_error === "string" ? sp.sso_error : "");
 
   // Enterprise branding from the server (admin console). Empty fields fall
   // back to the built-in Mailez brand below.
@@ -271,6 +275,14 @@ export default function Home({
               {t("sessionExpired")}
             </div>
           )}
+          {ssoError && (
+            <div
+              role="alert"
+              className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {t("ssoError", { reason: ssoError })}
+            </div>
+          )}
           {pendingToken ? (
             <form onSubmit={onSubmitTotp} className="space-y-4">
               <div className="space-y-2">
@@ -334,6 +346,22 @@ export default function Home({
               <Button type="submit" className="w-full" disabled={busy}>
                 {busy ? t("submitting") : t("submit")}
               </Button>
+              {settings?.oidc?.enabled && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    // Federated sign-in: the backend start route binds the
+                    // post-login landing (deep link honored) and hands off
+                    // to the identity provider.
+                    window.location.href =
+                      "/api/v1/sso/oidc/start?next=" + encodeURIComponent(mailboxTarget());
+                  }}
+                >
+                  {t("ssoButton")}
+                </Button>
+              )}
             </form>
           )}
             </CardContent>

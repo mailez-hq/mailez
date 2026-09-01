@@ -26,7 +26,9 @@
     "verify": "Verify",
     "error": "Sign-in failed",
     "sessionExpired": "Your session has expired. Please sign in again.",
-    "rateLimited": "Too many attempts, please wait a moment before trying again."
+    "rateLimited": "Too many attempts, please wait a moment before trying again.",
+    "ssoButton": "Sign in with enterprise SSO",
+    "ssoError": "Enterprise sign-in failed ({reason}). Please try again or contact your administrator."
   },
   "nav": {
     "overview": "Overview",
@@ -425,10 +427,13 @@
     "recent": "Recent activity",
     "time": "Time",
     "user": "User",
+    "action": "Action",
+    "target": "Target",
     "method": "Method",
     "path": "Path",
     "status": "Status",
     "ip": "IP",
+    "export": "Export CSV",
     "noItems": "No activity yet"
   },
   "config": {

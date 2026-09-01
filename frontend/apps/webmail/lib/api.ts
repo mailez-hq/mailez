@@ -469,6 +469,9 @@ export type ServerSettings = {
   pop3: { plain: number; ssl: number };
   imap: { plain: number; ssl: number };
   branding?: BrandingConfig;
+  // Federated sign-in advertisement (enterprise edition only): the login
+  // page renders the SSO button only when the backend mounts the routes.
+  oidc?: { enabled: boolean };
 };
 
 // BrandingConfig is the enterprise-customizable login-page brand. Empty
@@ -709,6 +712,9 @@ export async function driveDownload(id: number): Promise<Blob> {
 
 export const driveShare = (id: number) =>
   api<{ url: string }>(`/drive/share/${id}`);
+
+export const driveShareRevoke = (id: number) =>
+  api<void>(`/drive/share/${id}`, { method: "DELETE" });
 
 export const driveRename = (id: number, name: string) =>
   apiPost<void>("/drive/rename", { id, name });

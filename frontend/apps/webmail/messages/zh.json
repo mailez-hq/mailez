@@ -20,6 +20,8 @@
     "error": "登录失败",
     "sessionExpired": "登录已过期，请重新登录。",
     "rateLimited": "尝试次数过多，请稍等片刻再试。",
+    "ssoButton": "企业账号统一登录",
+    "ssoError": "企业统一登录失败（{reason}），请重试或联系管理员。",
     "mailSettings": "邮箱设置（客户端配置）",
     "smtpServer": "SMTP 服务器",
     "pop3Server": "POP3 服务器",
@@ -781,6 +783,10 @@
     "empty": "此文件夹为空",
     "loading": "加载中…",
     "copied": "已复制",
-    "linkCopied": "分享链接已复制到剪贴板"
+    "linkCopied": "分享链接已复制到剪贴板",
+    "copyLink": "复制分享链接",
+    "revokeShare": "撤销分享",
+    "revokeFailed": "撤销失败",
+    "shareQuotaReached": "已达到当前版本分享链接上限（3 个）；无限分享请升级企业版"
   }
 }

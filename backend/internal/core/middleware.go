@@ -54,6 +54,7 @@ func (a *App) Audit(c *fiber.Ctx) error {
 			Path:   c.Path(),
 			Status: c.Response().StatusCode(),
 		}
+		auditEnrich(c, &entry)
 		a.DB.Create(&entry)
 	}
 	return err
