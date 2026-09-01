@@ -133,6 +133,33 @@ export function useMessageActions({
     }
   }
 
+  // Bulk release from the quarantine (junk) folder: whitelist every selected
+  // sender in one settings update, then move all of them back to Inbox.
+  async function reportNotSpamBulk(uids: number[]) {
+    const uidSet = new Set(uids);
+    const senders = [...new Set(
+      messages
+        .filter((m) => uidSet.has(m.uid))
+        .map((m) => m.from[0]?.email)
+        .filter((x): x is string => Boolean(x)),
+    )];
+    setError("");
+    try {
+      if (senders.length > 0) {
+        const profile = await meProfile();
+        const current = (profile.whitelist || "").split(",").map((s) => s.trim()).filter(Boolean);
+        const merged = [...current];
+        for (const s of senders) if (!merged.includes(s)) merged.push(s);
+        if (merged.length !== current.length) {
+          await updateMeSettings({ whitelist: merged.join(", ") });
+        }
+      }
+      await moveTo(uids, "Inbox", t("toastNotSpam"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "not spam failed");
+    }
+  }
+
   // unsubscribeAction follows the sender's List-Unsubscribe header: mailto
   // opens a pre-filled compose, https is triggered server-side.
   async function unsubscribeAction(m: MailMessage) {
@@ -380,7 +407,7 @@ export function useMessageActions({
     archiveMessage, spamMessage, removeMessage,
     bulkDelete, bulkArchive, bulkSpam, bulkFlag,
     setSeen, toggleRead, toggleStar, togglePin, toggleMute,
-    openMessage, reportNotSpam, unsubscribeAction,
+    openMessage, reportNotSpam, reportNotSpamBulk, unsubscribeAction,
   };
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Archive, Bookmark, Check, ChevronDown, Ellipsis, FolderSearch, Inbox, MailCheck, Menu, Plus, RefreshCw, Search, SearchX, SlidersHorizontal, Sparkles, Tag, Trash2, X } from "lucide-react";
+import { Archive, Bookmark, Check, ChevronDown, Ellipsis, FolderSearch, Inbox, MailCheck, Menu, Plus, RefreshCw, Search, SearchX, ShieldCheck, SlidersHorizontal, Sparkles, Tag, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +46,8 @@ export function MessageListPanel({
   onBulkArchive,
   onBulkSpam,
   onBulkFlag,
+  spamFolder,
+  onBulkRelease,
   onLoadMore,
   searchInputRef,
   onMenu,
@@ -102,6 +104,8 @@ export function MessageListPanel({
   onBulkArchive: () => void;
   onBulkSpam: () => void;
   onBulkFlag: (flag: string, value: boolean) => void;
+  spamFolder?: string;
+  onBulkRelease?: () => void;
   onLoadMore: () => void;
   searchInputRef: React.RefObject<HTMLInputElement | null>;
   onMenu: () => void;
@@ -342,11 +346,32 @@ export function MessageListPanel({
         </div>
       )}
 
+      {/* Quarantine (junk) banner: explains the folder and offers one-tap
+          release of the selected messages back to the inbox. */}
+      {folder === spamFolder && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+          <ShieldCheck className="size-3.5 shrink-0" />
+          <span className="min-w-0 flex-1">{t("quarantineHint")}</span>
+          {onBulkRelease && selectedUids.size > 0 && (
+            <Button size="xs" variant="outline" onClick={onBulkRelease}>
+              <Inbox className="size-3" />
+              {t("release")}
+            </Button>
+          )}
+        </div>
+      )}
+
       {selectedUids.size > 0 && (
         <div className="flex flex-wrap items-center gap-1 border-b border-border px-2 py-1.5">
           <span className="mr-1 shrink-0 whitespace-nowrap text-xs text-muted-foreground">
             {t("selected", { count: selectedUids.size })}
           </span>
+          {onBulkRelease && folder === spamFolder && (
+            <Button size="xs" variant="outline" onClick={onBulkRelease}>
+              <Inbox className="size-3" />
+              {t("release")}
+            </Button>
+          )}
           <Button size="xs" variant="outline" onClick={onBulkDelete}>
             <Trash2 className="size-3" />
             {t("delete")}

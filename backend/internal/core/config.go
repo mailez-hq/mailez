@@ -24,9 +24,15 @@ type Config struct {
 	Subnet             string
 	Domain             string
 	Hostname           string
-	MailImapAddr       string
-	MailSmtpAddr       string
-	MailSieveAddr      string
+	// WebAuthn (passkey) relying-party configuration. RPID defaults to the
+	// primary domain; origins default to https://<hostname>. Deployments
+	// serving the console on other schemes/hosts must override both
+	// (MAILEZ_WEBAUTHN_RP_ID / MAILEZ_WEBAUTHN_ORIGINS, comma-separated).
+	WebAuthnRPID    string
+	WebAuthnOrigins []string
+	MailImapAddr    string
+	MailSmtpAddr    string
+	MailSieveAddr   string
 	// MailEngineMgmtAddr is the mailezine management API (host:port). When
 	// set (with MailEngineMgmtSecret), deleting a user also purges the
 	// account's engine-side data via DELETE /v1/accounts/{email} — without
@@ -120,6 +126,8 @@ func Load() Config {
 		Subnet:               env("MAILEZ_SUBNET", "192.168.206.0/24"),
 		Domain:               env("MAILEZ_DOMAIN", "example.com"),
 		Hostname:             env("MAILEZ_HOSTNAME", "localhost"),
+		WebAuthnRPID:         env("MAILEZ_WEBAUTHN_RP_ID", env("MAILEZ_DOMAIN", "example.com")),
+		WebAuthnOrigins:      splitCSV(env("MAILEZ_WEBAUTHN_ORIGINS", "https://"+env("MAILEZ_HOSTNAME", "localhost"))),
 		MailImapAddr:         env("MAIL_IMAP_ADDR", "mailezine:143"),
 		MailSmtpAddr:         env("MAIL_SMTP_ADDR", "mailezine:1587"),
 		MailSieveAddr:        env("MAIL_SIEVE_ADDR", "mailezine:4190"),
@@ -186,6 +194,18 @@ func env(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// splitCSV parses a comma-separated environment value into a trimmed,
+// non-empty string slice.
+func splitCSV(v string) []string {
+	var out []string
+	for _, p := range strings.Split(v, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func envInt(key string, fallback int) int {
