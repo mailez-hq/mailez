@@ -593,15 +593,18 @@ export function useCompose({
     setComposeNotice("");
     setAiComposeBusy(true);
     // Fresh compose: clear the form, then open the panel so the user watches
-    // the email being written.
+    // the email being written. Attachments must be cleared too — leftovers
+    // from a reply/draft-edit session would otherwise ride along on the AI
+    // email (send snapshots the array) and into the draft baseline.
     setTo([]);
     setCc([]);
     setBcc([]);
     setSubject("");
     setBody("");
     setBodyText("");
+    setAttachments([]);
     draftBaselineRef.current = composeSignature({
-      to: [], cc: [], bcc: [], subject: "", body: "", bodyText: "", attachments,
+      to: [], cc: [], bcc: [], subject: "", body: "", bodyText: "", attachments: [],
     });
     setComposeOpen(true);
     setComposeFocus("editor");

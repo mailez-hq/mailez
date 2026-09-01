@@ -421,8 +421,11 @@ export function ReadingPane({
     if (!w) return;
     const sender = detail.from.map((a) => a.name || a.email).join(", ");
     const recipients = [...detail.to, ...(detail.cc || [])].map((a) => a.email).join(", ");
+    // The print window executes scripts (window.onload=print), so the body
+    // MUST go through the same sanitization as the reading pane: raw
+    // html_body could carry inline handlers that would run same-origin.
     const body =
-      detail.html_body ||
+      (detail.html_body ? sanitizeMailHTML(detail.html_body) : "") ||
       `<pre style="white-space:pre-wrap;font-family:inherit">${escHtml(detail.text_body || "")}</pre>`;
     w.document.write(
       `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(detail.subject)}</title>` +
