@@ -20,7 +20,12 @@ type Invitation struct {
 	AllDay      bool     `json:"all_day"`
 	Organizer   string   `json:"organizer"`
 	Attendees   []string `json:"attendees"`
-	ICS         string   `json:"ics"`
+	// For METHOD:REPLY: the attendee who answered and their PARTSTAT
+	// (accepted / declined / tentative), so the organizer's UI can render
+	// the RSVP without re-parsing the attachment.
+	ReplyAttendee string `json:"reply_attendee,omitempty"`
+	ReplyStatus   string `json:"reply_status,omitempty"`
+	ICS           string `json:"ics"`
 }
 
 // ParseInvitation extracts the invitation from raw text/calendar bytes.
@@ -60,6 +65,20 @@ func ParseInvitation(raw []byte) *Invitation {
 	for _, at := range e.Attendees() {
 		if a := addressValue(at.Value); a != "" {
 			out.Attendees = append(out.Attendees, a)
+		}
+	}
+	if out.Method == "REPLY" {
+		// A REPLY carries the answering attendee with a PARTSTAT parameter.
+		for _, at := range e.Attendees() {
+			status := strings.ToLower(firstParam(at.ICalParameters, "PARTSTAT"))
+			if status == "" {
+				continue
+			}
+			if a := addressValue(at.Value); a != "" {
+				out.ReplyAttendee = a
+			}
+			out.ReplyStatus = status
+			break
 		}
 	}
 	if st := e.GetProperty(ics.ComponentPropertyDtStart); st != nil {
@@ -123,4 +142,15 @@ func addressValue(v string) string {
 		v = strings.TrimPrefix(strings.TrimSpace(v), "mailto:")
 	}
 	return strings.TrimSpace(v)
+}
+
+// firstParam returns the first value of an ICS property parameter ("" when
+// absent).
+func firstParam(params map[string][]string, name string) string {
+	for _, v := range params[name] {
+		if v = strings.TrimSpace(v); v != "" {
+			return v
+		}
+	}
+	return ""
 }
