@@ -13,24 +13,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      # The build overlay builds the mailezine engine from source; check the
+      # engine repo out next to this one for the build context.
+      - uses: actions/checkout@v4
         with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
-
-      - name: Build mailez images
-        working-directory: backend
-        run: go run ./cmd/build-images
+          repository: mailez-hq/mailezine
+          path: mailezine
 
       - name: Start the stack
         working-directory: deploy
+        env:
+          # mailezine build context for docker-compose.build.community.yml,
+          # relative to deploy/.
+          MAILEZINE_CONTEXT: ../mailezine
+          MAILEZ_IMAGE_TAG: local
         run: |
           cp mailez.env.example mailez.env
           printf 'MAILEZ_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> mailez.env
           printf 'MAILEZ_STACK_SECRET=%s\n' "$(openssl rand -hex 32)" >> mailez.env
           # --env-file is required: compose ${VAR:?} interpolation reads
           # shell env and the --env-file only, never the services' env_file.
-          docker compose --env-file mailez.env -f docker-compose.community.yml up -d --build
+          docker compose --env-file mailez.env \
+            -f docker-compose.community.yml -f docker-compose.build.community.yml \
+            up -d --build
 
       - name: Wait for the backend
         run: |
