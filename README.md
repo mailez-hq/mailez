@@ -109,7 +109,7 @@ features at the mail layer, same upgrade path. The editions differ only in
 **clustering** (single node, or active-passive failover, or full
 multi-active replicas), and **licensed features** (compliance archiving,
 DLP, AI, LDAP sync, ActiveSync, S/MIME, delegation are enterprise).
-Existing deployments on the traditional Postfix+Dovecot architecture
+Existing deployments on the traditional multi-process mail architecture
 migrate in place with `mailezine migrate`.
 
 ```sh

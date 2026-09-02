@@ -80,7 +80,7 @@ go run ./cmd/license inspect -in ../deploy/licenses/license.lic
 **回退**:切换前保留旧栈数据目录与配置导出;企业版许可证独立于数据,
 回退社区版=停企业栈、起社区栈、导入同一份配置导出。
 
-## 4. 传统栈(Postfix+Dovecot)→ 任意版本
+## 4. 传统多进程邮件栈 → 任意版本
 
 `mailezine migrate`(引擎仓库)支持 Maildir → Pebble/TiDB 单向全量复制,
 详见引擎仓库 `cmd/mailezine migrate` 文档。注意它是**全量**复制:

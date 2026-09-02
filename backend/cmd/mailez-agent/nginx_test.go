@@ -75,8 +75,8 @@ func TestNginxRenderMailezineEngine(t *testing.T) {
 	if err != nil {
 		t.Fatalf("renderNginxAll: %v", err)
 	}
-	// mailezine mode renders the HTTP/ACME nginx config only: no dovecot
-	// login proxy, no mail{} proxy block (the engine publishes mail ports).
+	// mailezine mode renders the HTTP/ACME nginx config only: no IMAP login
+	// proxy sidecars, no mail{} proxy block (the engine publishes mail ports).
 	nginx := string(files["/etc/nginx/nginx.conf"])
 	for _, want := range []string{
 		"resolver ", "listen 80", "location /stack {", "proxy_pass http://$backend",
@@ -91,10 +91,10 @@ func TestNginxRenderMailezineEngine(t *testing.T) {
 		t.Errorf("nginx.conf must not contain the mail proxy in mailezine mode:\n%s", nginx)
 	}
 	if _, ok := files["/etc/dovecot/proxy.conf"]; ok {
-		t.Errorf("dovecot proxy must not be rendered in mailezine mode")
+		t.Errorf("legacy IMAP proxy must not be rendered in mailezine mode")
 	}
 	if _, ok := files["/etc/dovecot/login.lua"]; ok {
-		t.Errorf("login.lua must not be rendered in mailezine mode")
+		t.Errorf("legacy login.lua must not be rendered in mailezine mode")
 	}
 	if _, ok := files["/etc/caddy/Caddyfile"]; ok {
 		t.Errorf("Caddyfile must not be rendered anymore")

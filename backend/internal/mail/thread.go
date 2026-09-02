@@ -191,7 +191,7 @@ func componentKey(members []threadNode) string {
 
 // threadMeta scans the most recent threadWindow envelopes of a selected
 // mailbox and returns per-UID thread ids, per-thread counts and whether a UID
-// is the newest message of its thread (UIDs are monotonic on Dovecot).
+// is the newest message of its thread (UIDs are monotonic per mailbox).
 type threadMeta struct {
 	ids    map[uint32]string
 	counts map[string]int

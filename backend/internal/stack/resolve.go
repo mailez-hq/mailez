@@ -63,7 +63,7 @@ func (h *Handler) resolveDestination(localpart, domain string, ignoreForwardKeep
 				return s.Destinations()
 			}
 			// Re-attach the delimiter detail for explicit aliases, mirroring
-			// postfix' propagate_unmatched_extensions.
+			// the classic MTA propagate-unmatched-extensions behavior.
 			detail := localpart[len(stripped):]
 			return appendDetail(h.expandTargets(s), detail)
 		}

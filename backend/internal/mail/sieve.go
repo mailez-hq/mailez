@@ -62,10 +62,11 @@ func (s *sieve) close() {
 
 func (s *sieve) handshake(email, token string) error {
 	auth := base64.StdEncoding.EncodeToString([]byte("\x00" + email + "\x00" + token))
-	// RFC 5804 allows the initial response as a quoted string. Dovecot's
-	// managesieve-login rejects the literal forms over the login proxy
-	// (non-synchronizing {n+}: "Missing LF after literal size"; synchronizing
-	// {n}: no "+" continuation), so send the base64 payload inline.
+	// RFC 5804 allows the initial response as a quoted string. Common
+	// managesieve-login implementations reject the literal forms over the
+	// login proxy (non-synchronizing {n+}: "Missing LF after literal size";
+	// synchronizing {n}: no "+" continuation), so send the base64 payload
+	// inline.
 	status, _, err := s.do(`AUTHENTICATE "PLAIN" "` + auth + `"`)
 	if err != nil {
 		return err
@@ -237,7 +238,8 @@ func (c *Client) SieveDeleteScript(email, token, name string) error {
 		return err
 	}
 	defer s.close()
-	// Dovecot rejects DELETESCRIPT for the active script; deactivate it first.
+	// ManageSieve servers reject DELETESCRIPT for the active script;
+	// deactivate it first.
 	status, content, err := s.do("LISTSCRIPTS")
 	if err != nil {
 		return err

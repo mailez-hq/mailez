@@ -86,7 +86,7 @@
 路径一致。版本差别在三点：**存储规模**（单机 Pebble/本地 FS 对分布式
 TiDB/MinIO）、**集群形态**（单机 / active-passive 容灾 / multi 全服务多活）
 与**授权功能**（合规归档、DLP、AI、LDAP 同步、ActiveSync、S/MIME、委派
-代管属企业版）。传统 Postfix+Dovecot 架构的存量部署可用 `mailezine
+代管属企业版）。传统多进程邮件架构的存量部署可用 `mailezine
 migrate` 原地迁移到新存储。
 
 ```sh

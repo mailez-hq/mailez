@@ -92,7 +92,7 @@ Every tier runs the **same mailezine engine** — same protocols, same
 features at the mail layer, same upgrade path. The tiers differ only in
 **storage scale** (single-node Pebble/local-FS vs shared MySQL/MinIO) and
 **licensed features**. Existing deployments on the traditional
-Postfix+Dovecot architecture migrate in place with `mailezine migrate`.
+traditional multi-process mail architecture migrate in place with `mailezine migrate`.
 
 ```sh
 ./deploy/mailezctl.sh up              # dev tier

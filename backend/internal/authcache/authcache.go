@@ -20,8 +20,8 @@ const (
 // A cache hit replays the exact credentials that already succeeded, so a wrong
 // password can never ride a prior success; failures are never cached (brute
 // force stays visible to the verifier and rate limiters). The TTL bounds how
-// long a password change or account disable takes to propagate, mirroring
-// Dovecot's auth_cache_ttl semantics.
+// long a password change or account disable takes to propagate — the common
+// auth-cache TTL semantic.
 type Cache struct {
 	mu  sync.Mutex
 	m   map[string]cacheEntry
