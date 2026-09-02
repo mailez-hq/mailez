@@ -11,6 +11,7 @@ import (
 	"mime"
 	"mime/multipart"
 	"mime/quotedprintable"
+	"net"
 	"net/mail"
 	"slices"
 	"sort"
@@ -168,11 +169,14 @@ func (c *Client) openIMAP(email, token string) (*pooledConn, error) {
 }
 
 // dialIMAP dials the gateway, upgrades to TLS when required and logs in.
+// Connect and every subsequent command are bounded (see timeouts.go): one
+// wedged engine must degrade to a fast error, not a parked goroutine.
 func (c *Client) dialIMAP(email, token string) (*client.Client, error) {
-	cli, err := client.Dial(c.IMAPAddr)
+	cli, err := client.DialWithDialer(&net.Dialer{Timeout: imapInternalDialTimeout}, c.IMAPAddr)
 	if err != nil {
 		return nil, fmt.Errorf("imap dial: %w", err)
 	}
+	cli.Timeout = imapInternalCmdTimeout
 	if err := cli.StartTLS(c.tlsConfig()); err != nil {
 		// MAILEZ_TLS=off deployments serve plaintext on the internal proxy
 		// port; fall back to the trusted internal link without encryption.

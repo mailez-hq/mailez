@@ -60,6 +60,12 @@ func (c *Client) idleRound(email, token, folder string, stop <-chan struct{}, wa
 		return false, false
 	}
 	defer func() { _ = cli.Logout() }()
+	// dialIMAP bounds every command, but IDLE is a long-lived command by
+	// design: it completes only when the stop channel closes or the server
+	// pushes a change, so the per-command timeout must be disabled again
+	// here. Hang protection comes from the dial bound above plus the
+	// bounded backoff loop.
+	cli.Timeout = 0
 
 	// Unilateral updates surface here even while IDLE is running; a buffered
 	// channel keeps a burst from blocking the client's reader goroutine.

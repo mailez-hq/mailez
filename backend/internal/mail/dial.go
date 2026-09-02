@@ -70,13 +70,14 @@ func (c *Client) With(d Dial) Gateway {
 func (c *Client) openExternalIMAP(d Dial) (*client.Client, error) {
 	addr := net.JoinHostPort(d.Host, strconv.Itoa(d.Port))
 	tlsCfg := &tls.Config{InsecureSkipVerify: c.insecureTLS, ServerName: d.Host}
+	dialer := &net.Dialer{Timeout: imapExternalDialTimeout}
 	var cli *client.Client
 	var err error
 	switch d.Security {
 	case "tls", "ssl", "imaps":
-		cli, err = client.DialTLS(addr, tlsCfg)
+		cli, err = client.DialWithDialerTLS(dialer, addr, tlsCfg)
 	case "starttls":
-		cli, err = client.Dial(addr)
+		cli, err = client.DialWithDialer(dialer, addr)
 		if err == nil {
 			if serr := cli.StartTLS(tlsCfg); serr != nil {
 				_ = cli.Logout()
@@ -84,11 +85,14 @@ func (c *Client) openExternalIMAP(d Dial) (*client.Client, error) {
 			}
 		}
 	default: // none: plaintext (for private networks / dev only)
-		cli, err = client.Dial(addr)
+		cli, err = client.DialWithDialer(dialer, addr)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("imap dial %s: %w", addr, err)
 	}
+	// External servers are untrusted network peers: bound every command so a
+	// stalled host costs one request's worth of latency, not the request.
+	cli.Timeout = imapExternalCmdTimeout
 	if err := cli.Login(d.Username, d.Password); err != nil {
 		_ = cli.Logout()
 		return nil, fmt.Errorf("imap login: %w", err)
