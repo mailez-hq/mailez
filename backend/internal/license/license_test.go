@@ -97,11 +97,11 @@ func TestCapacity(t *testing.T) {
 				m = &Manager{lic: DevLicense()}
 			} else {
 				env := mustEnvelope(t, c.lic)
-				var err error
-				m, err = Load("", env, true)
+				lic, err := Parse(env)
 				if err != nil {
-					t.Fatalf("load: %v", err)
+					t.Fatalf("parse: %v", err)
 				}
+				m = &Manager{lic: lic, required: true}
 			}
 			err := m.CheckCapacity(testDB(t, c.users...))
 			if c.wantAllow && err != nil {
@@ -115,8 +115,11 @@ func TestCapacity(t *testing.T) {
 }
 
 func TestLoadRequired(t *testing.T) {
-	if _, err := Load("", "", true); err == nil {
-		t.Fatal("missing license with required=true accepted")
+	// Test binaries embed the source-default dev key, so enforcing a license
+	// on them must hit the dev-key guard in Load — a production deployment
+	// can never run on a development-keyed binary.
+	if _, err := Load("", "", true); err == nil || !strings.Contains(err.Error(), "development key") {
+		t.Fatalf("expected dev-key refusal, got %v", err)
 	}
 	m, err := Load("", "", false)
 	if err != nil {
@@ -129,10 +132,11 @@ func TestLoadRequired(t *testing.T) {
 
 func TestStatus(t *testing.T) {
 	env := mustEnvelope(t, enterprise(3))
-	m, err := Load("", env, true)
+	lic, err := Parse(env)
 	if err != nil {
 		t.Fatal(err)
 	}
+	m := &Manager{lic: lic, required: true}
 	st := m.Status(testDB(t, "a@x", "b@x"))
 	if st.MaxMailboxes != 3 || st.Used != 2 || !st.Valid || !st.Required {
 		t.Fatalf("unexpected status: %+v", st)

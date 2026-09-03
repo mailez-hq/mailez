@@ -6,10 +6,14 @@ import (
 	"encoding/base64"
 )
 
-// devPrivateKeyB64 is the DEV-ONLY signing key that pairs with the embedded
-// dev public key. It exists so local development and CI can issue licenses.
-// The vendor production private key is never committed; release signing uses
-// MAILEZ_LICENSE_PRIVATE_KEY (see cmd/license).
+// devPrivateKeyB64 is the development signing key. It exists so local
+// development, CI and trial evaluation can issue licenses without vendor
+// secrets. It is committed in the open source on purpose: it only authorizes
+// binaries that still embed the source-default verification key, and those
+// refuse MAILEZ_LICENSE_REQUIRED=true at startup (see Load), so it can never
+// unlock a production deployment. The vendor production private key is never
+// committed; release signing uses MAILEZ_LICENSE_PRIVATE_KEY (see
+// cmd/license).
 var devPrivateKeyB64 = "MC4CAQAwBQYDK2VwBCIEIPWzNuuTjl2NrdOHPuyv5qq1symha2KyveZ1fAPwFsR/"
 
 // DevPrivateKey returns the dev signing key.
