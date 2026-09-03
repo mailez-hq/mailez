@@ -44,8 +44,10 @@ func (h *Handler) listUsers(c *fiber.Ctx) error {
 		q = h.ManagedDomainScope(u, q)
 	}
 	if kw := strings.TrimSpace(c.Query("q")); kw != "" {
-		like := "%" + kw + "%"
-		q = q.Where("email LIKE ? OR displayed_name LIKE ?", like, like)
+		// LOWER() keeps the search case-insensitive on every dialect
+		// (PostgreSQL LIKE is case-sensitive).
+		like := "%" + strings.ToLower(kw) + "%"
+		q = q.Where("LOWER(email) LIKE ? OR LOWER(displayed_name) LIKE ?", like, like)
 	}
 	page, limit := core.PageParams(c)
 	var total int64

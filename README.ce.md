@@ -86,7 +86,7 @@ entry point:
 | Edition | Engine | Storage |
 |---|---|---|
 | **dev** (default) | mailezine | SQLite + Pebble + local FS |
-| **community** | mailezine | SQLite + Pebble + local FS (MySQL optional) |
+| **community** | mailezine | SQLite + Pebble + local FS (MySQL/PostgreSQL optional) |
 
 Every tier runs the **same mailezine engine** — same protocols, same
 features at the mail layer, same upgrade path. The tiers differ only in

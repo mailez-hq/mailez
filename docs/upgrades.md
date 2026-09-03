@@ -41,7 +41,9 @@ backend/前端/引擎镜像(构建定义在仓库根目录 `docker-bake.hcl`;
    `./deploy/mailezctl.sh down`(不要删除 `deploy/data/`)。
    建议先完整备份 `deploy/data/`。
 3. **起新栈**(默认即 SQLite;反向则设置
-   `MAILEZ_DB_DRIVER=mysql` + `MAILEZ_DB_DSN=…` 并加 `--profile mysql`)。
+   `MAILEZ_DB_DRIVER=mysql` + `MAILEZ_DB_DSN=…` 并加 `--profile mysql`;
+   PostgreSQL 同理:`MAILEZ_DB_DRIVER=postgres` +
+   `MAILEZ_DB_DSN=postgres://…` 并加 `--profile postgres`)。
 4. **导入配置**:新栈管理控制台 → 配置 → 导入(幂等,可重试)。
 5. **验证**:用原账号密码登录(密码哈希随导出迁移),确认邮箱列表、
    别名、拉取配置完整;邮件目录按邮箱地址寻址,控制面出现相同邮箱集
