@@ -54,16 +54,16 @@ command -v curl    >/dev/null  || die "curl not found"
 
 # --- defaults ----------------------------------------------------------------
 [ -n "$TAG" ] || TAG="$(head -n1 VERSION 2>/dev/null || echo latest)"
-[ -n "$EDITION" ] || { [ "$YES" = 1 ] && EDITION=community; }
+[ -n "$EDITION" ] || { [ "$YES" = 1 ] && EDITION=ce; }
 
 if [ "$YES" != 1 ]; then
   echo
   echo "  mailez installer (release $TAG)"
   echo "  -------------------------------------------------"
-  [ -n "$EDITION" ] || EDITION="$(ask "Edition 1) community  2) enterprise" 1)"
+  [ -n "$EDITION" ] || EDITION="$(ask "Edition 1) ce  2) ee" 1)"
   case "$EDITION" in
-    1|community)  EDITION=community ;;
-    2|enterprise) EDITION=enterprise ;;
+    1|ce)  EDITION=ce ;;
+    2|ee) EDITION=ee ;;
     *) die "invalid edition: $EDITION" ;;
   esac
   [ -n "$DOMAIN" ] || DOMAIN="$(ask "Mail domain (MX points here)" example.com)"
@@ -102,7 +102,7 @@ MAILEZ_ADMIN_PORT=$ADMIN_PORT
 MAILEZ_WEBMAIL_PORT=$WEBMAIL_PORT
 EOF
 
-if [ "$EDITION" = enterprise ] && [ ! -f deploy/licenses/license.lic ]; then
+if [ "$EDITION" = ee ] && [ ! -f deploy/licenses/license.lic ]; then
   warn "enterprise tier needs deploy/licenses/license.lic (the stack refuses to start without it)"
 fi
 

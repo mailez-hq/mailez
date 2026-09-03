@@ -1,7 +1,7 @@
 # Build overlay for the community profile: adds build instructions so
-#   MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up community
-# (or: docker compose --env-file mailez.env -f docker-compose.community.yml
-#      -f docker-compose.build.community.yml up -d --build)
+#   MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up ce
+# (or: docker compose --env-file mailez.env -f docker-compose.ce.yml
+#      -f docker-compose.build.ce.yml up -d --build)
 # builds all images from source instead of pulling prebuilt ones. Editions
 # are baked at build time (CE here; the enterprise overlay uses ee args and
 # the -ee image names come from the base enterprise file).

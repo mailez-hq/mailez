@@ -23,7 +23,7 @@ jobs:
       - name: Start the stack
         working-directory: deploy
         env:
-          # mailezine build context for docker-compose.build.community.yml,
+          # mailezine build context for docker-compose.build.ce.yml,
           # relative to deploy/.
           MAILEZINE_CONTEXT: ../mailezine
           MAILEZ_IMAGE_TAG: local
@@ -34,7 +34,7 @@ jobs:
           # --env-file is required: compose ${VAR:?} interpolation reads
           # shell env and the --env-file only, never the services' env_file.
           docker compose --env-file mailez.env \
-            -f docker-compose.community.yml -f docker-compose.build.community.yml \
+            -f docker-compose.ce.yml -f docker-compose.build.ce.yml \
             up -d --build
 
       - name: Wait for the backend
@@ -55,7 +55,7 @@ jobs:
       - name: Seed the admin account
         working-directory: deploy
         run: |
-          docker compose --env-file mailez.env -f docker-compose.community.yml exec -T backend mailez-seed
+          docker compose --env-file mailez.env -f docker-compose.ce.yml exec -T backend mailez-seed
 
       # The suite drives a dedicated throwaway account, not the seeded admin.
       - name: Create the e2e user

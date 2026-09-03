@@ -41,7 +41,7 @@ docker buildx bake               # one-time from the repo root: builds the maile
 
 cd deploy
 cp mailez.env.example mailez.env # set MAILEZ_SECRET_KEY / MAILEZ_DOMAIN
-MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up community
+MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up ce
 
 cd ../backend
 DB_DRIVER=mysql \

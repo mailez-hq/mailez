@@ -12,7 +12,7 @@
 
 ```sh
 # 编辑 deploy/mailez.env: MAILEZ_IMAGE_TAG=v1.2.3
-./deploy/mailezctl.sh up community           # 或 enterprise / multi / ha
+./deploy/mailezctl.sh up ce           # 或 ee / multi / ha
 ```
 
 源码部署(`MAILEZ_LOCAL_BUILD=1`):`git pull`(mailez 与 mailezine 两个

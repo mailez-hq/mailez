@@ -96,7 +96,7 @@ traditional multi-process mail architecture migrate in place with `mailezine mig
 
 ```sh
 ./deploy/mailezctl.sh up              # dev tier
-./deploy/mailezctl.sh up community    # community edition (production)
+./deploy/mailezctl.sh up ce    # community edition (production)
 ```
 
 The dev tier expects the backend on the host at `:8080` (build the images
@@ -143,7 +143,7 @@ After the stack is up, provision the admin account **inside the container**
 (the backend image ships a one-shot seeder; no local Go required):
 
 ```sh
-docker compose --env-file deploy/mailez.env -f deploy/docker-compose.community.yml exec backend mailez-seed
+docker compose --env-file deploy/mailez.env -f deploy/docker-compose.ce.yml exec backend mailez-seed
 # default: admin@example.com / MailezDemo2026! — override with
 # MAILEZ_ADMIN_EMAIL / MAILEZ_ADMIN_PASSWORD before seeding
 ```

@@ -5,7 +5,7 @@
 # (top-level dir mailez-<version>/):
 #   install.sh                      interactive installer (from scripts/)
 #   VERSION                         release version
-#   deploy/docker-compose.{community,enterprise,multi,ha}.yml
+#   deploy/docker-compose.{ce,ee,multi,ha}.yml
 #   deploy/mailezctl.sh  deploy/mailez.env.example
 #   docs/{architecture,upgrades,scaling}.md
 #
@@ -55,8 +55,8 @@ TOP="mailez-$VERSION"
 STAGE="$STAGE_ROOT/$TOP"
 mkdir -p "$STAGE"
 
-stage deploy/docker-compose.community.yml
-stage deploy/docker-compose.enterprise.yml
+stage deploy/docker-compose.ce.yml
+stage deploy/docker-compose.ee.yml
 stage deploy/docker-compose.multi.yml
 stage deploy/docker-compose.ha.yml
 stage deploy/mailezctl.sh
