@@ -73,6 +73,28 @@ services:
     ports:
       - "127.0.0.1:13306:3306"
 
+  # 可选控制面数据库：默认 SQLite 零外部依赖；`--profile postgres` 启用本
+  # 服务并将 backend 的 DB_DRIVER/DB_DSN 覆盖指向它（见文件头说明）。
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    pull_policy: missing
+    restart: always
+    environment:
+      - POSTGRES_DB=mailez
+      - POSTGRES_USER=mailez
+      - POSTGRES_PASSWORD=mailez
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mailez -d mailez"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    volumes:
+      - "./data/postgres:/var/lib/postgresql/data"
+    ports:
+      - "127.0.0.1:15432:5432"
+
   backend:
     image: ${MAILEZ_REGISTRY:-ghcr.io/mailez-hq}/mailez-backend:${MAILEZ_IMAGE_TAG:-latest}
     restart: always
