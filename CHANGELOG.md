@@ -39,8 +39,10 @@ All notable changes to mailez are documented here. The format follows
   quoted per dialect via `clause.Column`, dialect-agnostic case-insensitive
   search (`LOWER(col) LIKE LOWER(?)`), portable `[]byte` mapping for raw
   message/DLP payloads; optional `--profile postgres` tier in the CE
-  compose (migration lock is MySQL-only for now — start one replica first
-  when scaling on PostgreSQL)
+  compose; the EE compose accepts `MAILEZ_DB_DRIVER`/`MAILEZ_DB_DSN`
+  overrides (external PostgreSQL/MySQL; bundled mysql still starts);
+  migration lock is MySQL-only for now — start one replica first when
+  scaling on PostgreSQL
 
 ### Changed
 
