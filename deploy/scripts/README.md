@@ -10,7 +10,7 @@ cover development plus the two production editions:
 | --------------------------------------- | ------------ | ---------------- | ------------------------ |
 | `docker-compose.dev.yml`                | Development  | mailezine        | SQLite + Pebble + local FS |
 | `docker-compose.ce.yml`          | Community    | mailezine        | SQLite (default; MySQL/PostgreSQL optional) + Pebble + local FS |
-| `docker-compose.ee.yml`         | Enterprise   | mailezine        | MySQL (default; external PostgreSQL/MySQL via `MAILEZ_DB_*`) + TiDB + MinIO/S3  |
+| `ee/docker-compose.ee.yml` (private tree) | Enterprise   | mailezine        | MySQL (default; external PostgreSQL/MySQL via `MAILEZ_DB_*`) + TiDB + MinIO/S3  |
 
 All files belong to one compose project (`mailez`), so `ps`/`logs`/`down`
 manage the same stack whichever edition is active.
@@ -47,7 +47,7 @@ Prerequisites:
   `MailezDemo2026!`). Easiest from a container:
 
   ```sh
-  cd deploy && docker compose --env-file mailez.env -f docker-compose.ee.yml exec backend mailez-seed
+  cd deploy && docker compose --env-file mailez.env -f ee/docker-compose.ee.yml exec backend mailez-seed
   ```
 
   For a host-side seed, point `DB_DRIVER`/`DB_DSN` at the deployed database
