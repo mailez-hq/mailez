@@ -7,6 +7,7 @@ import { dashboardTarget, me } from "@/lib/api";
 import { Logo } from "@/components/logo";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { LoginForm } from "@/components/login-form";
+import { useBrand } from "@/lib/use-brand";
 
 // Home doubles as the SSO entry: an existing session cookie (e.g. from the
 // webmail app on another port) is detected via /sso/me and redirected to the
@@ -15,6 +16,9 @@ export default function Home() {
   const t = useTranslations("login");
   const router = useRouter();
   const [checking, setChecking] = useState(true);
+  // White-label: branded deployments show the org name (and logo when
+  // configured) instead of the built-in Mailez wordmark.
+  const brand = useBrand();
   // ?expired=1 is set by the API layer when a 401 bounced the user here:
   // explain the kick instead of dropping them on a silent sign-in form.
   const [expired] = useState(
@@ -44,10 +48,19 @@ export default function Home() {
         <LocaleSwitcher />
       </div>
       <div className="mb-6 flex items-center gap-3">
-        <Logo className="size-11" />
+        {brand.logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={brand.logo_url}
+            alt={brand.title}
+            className="size-11 shrink-0 rounded-lg object-contain"
+          />
+        ) : (
+          <Logo className="size-11" />
+        )}
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-            Mailez{" "}
+            {brand.title || "Mailez"}{" "}
             <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
               Admin
             </span>

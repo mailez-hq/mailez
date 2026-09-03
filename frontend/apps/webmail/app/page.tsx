@@ -296,7 +296,7 @@ export default function Home({
                   </span>
                 </span>
               )}
-              <CardTitle className="text-base font-semibold">{t("title")}</CardTitle>
+              <CardTitle className="text-base font-semibold">{brandTitle}</CardTitle>
             </CardHeader>
             <CardContent>
           {expired && (

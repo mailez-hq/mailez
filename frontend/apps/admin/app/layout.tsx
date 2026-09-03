@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { fetchPublicBrand } from "@/lib/branding";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,10 +15,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Mailez · Admin",
-  description: "Mailez mail server admin console",
-};
+// White-label: the tab title follows the admin-console branding. The layout
+// renders dynamically (cookies below), so this fetch runs per request; a
+// down backend degrades to the built-in Mailez brand.
+export async function generateMetadata(): Promise<Metadata> {
+  const brand = await fetchPublicBrand();
+  return {
+    title: brand ? `${brand.title} · Admin` : "Mailez · Admin",
+    description: brand
+      ? `${brand.title} mail server admin console`
+      : "Mailez mail server admin console",
+  };
+}
 
 // Supported locales; the language lives in the NEXT_LOCALE cookie only and the
 // URL never carries a locale segment.
