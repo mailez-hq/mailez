@@ -13,8 +13,8 @@ const API = "/api/v1";
 // set. Module-aware helpers consult it to resolve locally — the optional
 // config tabs already go through the @/modules mechanism; this covers the
 // shared config page.
-export const HAS_FULL_MODULES =
-  (process.env.NEXT_PUBLIC_MAILEZ_FULL ?? "") === "true";
+export const HAS_OPTIONAL_MODULES =
+  (process.env.NEXT_PUBLIC_MAILEZ_MODULES_ACTIVE ?? "") === "true";
 
 // ApiError carries the HTTP status and the backend's machine-readable code.
 export class ApiError extends Error {
@@ -301,7 +301,7 @@ export interface AiConfigView {
 // module set this resolves the empty list locally instead of firing a
 // request that can only 404 (and the tab is hidden anyway).
 export const getAIConfigs = (): Promise<AiConfigView[]> =>
-  HAS_FULL_MODULES ? api<AiConfigView[]>("/config/ai") : Promise.resolve([]);
+  HAS_OPTIONAL_MODULES ? api<AiConfigView[]>("/config/ai") : Promise.resolve([]);
 
 export const createAIConfig = (input: {
   name: string;
@@ -359,7 +359,7 @@ export type LdapConfigView = {
 
 // Optional-module surface: AD/LDAP directory integration (see getAIConfigs).
 export const getLDAPConfig = (): Promise<LdapConfigView> =>
-  HAS_FULL_MODULES ? api<LdapConfigView>("/ldap") : Promise.resolve({ enabled: false } as LdapConfigView);
+  HAS_OPTIONAL_MODULES ? api<LdapConfigView>("/ldap") : Promise.resolve({ enabled: false } as LdapConfigView);
 
 export const putLDAPConfig = (input: Partial<LdapConfigView> & { bind_password?: string }) =>
   apiPut<LdapConfigView>("/ldap", input);
