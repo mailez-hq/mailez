@@ -1,5 +1,6 @@
-# mailez engine-lb：多活引擎的邮件端口 L4 负载均衡（haproxy TCP 透传）。
-# 复制经 Docker DNS + server-template 动态展开；配置见 haproxy.cfg 头部说明。
+# mailez engine-lb：mailezine 邮件端口的 L4 负载均衡（haproxy TCP 透传 +
+# PROXY v1）。后端副本经 Docker DNS + server-template 动态展开；配置见
+# haproxy.cfg 头部说明。
 FROM haproxy:2.9-alpine
 
 COPY haproxy.cfg /usr/local/etc/haproxy/haproxy.cfg
