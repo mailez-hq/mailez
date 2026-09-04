@@ -227,12 +227,19 @@ export default function Home({
             {brand.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={brand.logo_url} alt={brandTitle} className="h-9 w-auto" />
-            ) : (
+            ) : brandTitle === "Mailez" ? (
               <span className="text-2xl font-extrabold tracking-tight">
                 Mail
                 <span className="bg-gradient-to-r from-[#2F8E6C] to-[#2E6E8E] bg-clip-text text-transparent">
                   ez
                 </span>
+              </span>
+            ) : (
+              // White-label without a custom logo: a monogram tile from the
+              // brand title keeps the top bar branded without leaking the
+              // built-in Mailez wordmark or icon into an org's page.
+              <span className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#2F8E6C] to-[#2E6E8E] text-lg font-extrabold text-white select-none">
+                {brandTitle.slice(0, 1)}
               </span>
             )}
             <div className="leading-tight">
