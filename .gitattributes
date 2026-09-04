@@ -6,3 +6,5 @@
 Dockerfile text eol=lf
 *.conf  text eol=lf
 *.yml   text eol=lf
+# Go sources stay LF so gofmt(1) output is stable on Windows checkouts.
+*.go    text eol=lf

@@ -1,3 +1,6 @@
+// Command qa-inspect prints a read-only snapshot of the local SQLite
+// database (first users + totals) for QA triage; it never mutates data.
+// Resets and provisioning belong to the seed tooling / admin console.
 package main
 
 import (

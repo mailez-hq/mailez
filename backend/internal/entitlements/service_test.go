@@ -1,4 +1,4 @@
-package service
+package entitlements
 
 import (
 	"crypto/ed25519"
