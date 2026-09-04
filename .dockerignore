@@ -8,6 +8,7 @@ node_modules/
 out/
 dist/
 deploy/data/
+deploy/data.bak-*/
 deploy/certs/
 deploy/.backup-legacy/
 deploy/licenses/
