@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  Archive, BadgeCheck, Database, FileStack, Globe, HardDrive, LifeBuoy, Mail, Server, ShieldAlert, Users,
+  Archive, Database, FileStack, Globe, HardDrive, LifeBuoy, Mail, Server, ShieldAlert, Users,
 } from "lucide-react";
 import { adminOverview, type AdminOverview } from "@/lib/api";
+import { OverviewExtras } from "@/modules/overview-extras";
 
 function fmtBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -28,26 +29,6 @@ export default function OverviewPage() {
   if (error) return <p className="text-sm text-destructive">{error}</p>;
   if (!data) return <p className="text-sm text-muted-foreground">{t("loading")}</p>;
 
-  // mailezine is the only engine; the edition follows the license
-  // (community = free single-node tier, dev = built-in unlimited,
-  // enterprise = licensed). A loaded license is reported separately.
-  const lic = data.license;
-  const communityEdition = lic?.edition === "community";
-  // The built-in dev license ("no file mounted, unrestricted") is not the
-  // commercial enterprise edition — label it as the development tier so a
-  // community deployment never advertises itself as 企业版. A backend that
-  // omits the license block entirely is also NOT enterprise (the contract
-  // marks it optional): fall back to the community label, never upgrade a
-  // missing license into an enterprise claim.
-  const devEdition = lic?.edition === "dev";
-  const enterpriseEdition = lic?.edition === "enterprise";
-  const editionLabel = communityEdition || !lic
-    ? t("licenseCommunity")
-    : devEdition
-      ? t("licenseDev")
-      : enterpriseEdition
-        ? t("licenseEnterprise")
-        : t("licenseCommunity");
   const engineLabel = t("engineMailezine");
   const dbLabel =
     data.db_driver === "mysql"
@@ -67,27 +48,6 @@ export default function OverviewPage() {
       : data.blob_backend === "local"
         ? t("blobLocal")
         : t("blobUnknown");
-  const licenseSub = () => {
-    // The community edition is free: it never shows license info, even if
-    // an enterprise license file happens to be mounted. A missing license
-    // block is treated the same way (see editionLabel above).
-    if (communityEdition || !lic) return t("licenseFree");
-    // The dev license is built-in: no mailbox cap, no service contract to
-    // expire — reporting "service expired" here would be misleading.
-    if (devEdition) return `${t("licenseDev")} · ${t("licenseUnlimited")}`;
-    const parts = [
-      lic.max_mailboxes > 0
-        ? t("licenseUsage", { used: lic.used, max: lic.max_mailboxes })
-        : t("licenseUnlimited"),
-      lic.service_valid
-        ? lic.expires_at
-          ? t("licenseServiceEnds", { date: lic.expires_at.slice(0, 10) })
-          : ""
-        : t("licenseServiceExpired"),
-      lic.licensee ? t("licenseLicensee", { name: lic.licensee }) : "",
-    ].filter(Boolean);
-    return parts.join(" · ");
-  };
   const serviceValue = data.service
     ? data.service.tier === "premium"
       ? t("servicePremium")
@@ -100,19 +60,13 @@ export default function OverviewPage() {
             ? t("serviceEnds", { date: data.service.expires_at.slice(0, 10) })
             : ""
           : t("serviceExpired"),
-        data.service.licensee ? t("licenseLicensee", { name: data.service.licensee }) : "",
+        data.service.licensee ? t("licensee", { name: data.service.licensee }) : "",
       ]
         .filter(Boolean)
         .join(" · ")
     : t("serviceHint");
 
   const cards = [
-    {
-      key: "license",
-      value: editionLabel,
-      sub: licenseSub(),
-      icon: BadgeCheck,
-    },
     { key: "service", value: serviceValue, sub: serviceSub, icon: LifeBuoy },
     { key: "users", value: `${data.users}`, sub: t("usersEnabled", { n: data.users_enabled }), icon: Users },
     { key: "domains", value: `${data.domains}`, sub: t("aliases", { n: data.aliases }), icon: Globe },
@@ -128,7 +82,7 @@ export default function OverviewPage() {
       <div>
         <h1 className="text-xl font-semibold">{t("title")}</h1>
         <p className="text-sm text-muted-foreground">
-          {editionLabel} · {engineLabel} ·{" "}
+          {engineLabel} ·{" "}
           {data.domain} · {data.hostname}
         </p>
       </div>
@@ -170,6 +124,7 @@ export default function OverviewPage() {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <OverviewExtras data={data} />
         {cards.map((card) => {
           const Icon = card.icon;
           return (

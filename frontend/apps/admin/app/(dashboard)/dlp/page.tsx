@@ -1,1 +1,1 @@
-export { default } from "@/edition/dlp-page";
+export { default } from "@/modules/dlp-page";

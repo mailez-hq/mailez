@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { auditLogs } from "@/lib/api";
 import type { AuditLog } from "@/lib/types";
-import { AUDIT_EXPORT } from "@/edition/audit-export";
+import { AUDIT_EXPORT } from "@/modules/audit-export";
 
 export default function AuditPage() {
   const t = useTranslations("audit");

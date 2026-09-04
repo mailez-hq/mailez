@@ -12,14 +12,13 @@ COPY packages/types/package.json packages/types/
 COPY packages/ui/package.json packages/ui/
 RUN npm ci
 COPY . .
-# Edition is a BUILD-TIME decision (materialized edition/ + baked
-# NEXT_PUBLIC_MAILEZ_EDITION); default ce, enterprise passes
-# --build-arg MAILEZ_EDITION=ee via compose.
-ARG MAILEZ_EDITION=ce
+# The module set is a BUILD-TIME decision (materialized modules/ + baked
+# NEXT_PUBLIC_MAILEZ_FULL); default: "default".
+ARG MAILEZ_MODULES=default
 # API_TARGET is equally BUILD-TIME: Next bakes rewrite destinations into
 # routes-manifest.json (see apps/webmail/Dockerfile).
 ARG API_TARGET=http://backend:8080
-RUN MAILEZ_EDITION=${MAILEZ_EDITION} API_TARGET=${API_TARGET} npm run build --workspace apps/admin
+RUN MAILEZ_MODULES=${MAILEZ_MODULES} API_TARGET=${API_TARGET} npm run build --workspace apps/admin
 
 # Runtime stage. node_modules is copied whole for robustness; switch to Next.js
 # `output: "standalone"` later for a smaller image.

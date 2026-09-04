@@ -82,7 +82,7 @@ export default function Home({
   const [expired] = useState(sp.expired === "1");
   const [ssoError] = useState(typeof sp.sso_error === "string" ? sp.sso_error : "");
 
-  // Enterprise branding from the server (admin console). Empty fields fall
+  // Login-page branding from the server (admin console). Empty fields fall
   // back to the built-in Mailez brand below.
   const brand: BrandingConfig = settings?.branding ?? {};
   const brandTitle = brand.title?.trim() || "Mailez";
@@ -220,7 +220,7 @@ export default function Home({
 
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Top bar: enterprise logo + brand name, language switcher on the right */}
+      {/* Top bar: custom logo + brand name, language switcher on the right */}
       <header className="border-b border-border/60">
         <div className="mx-auto flex w-full max-w-[1140px] flex-wrap items-center justify-between gap-3 px-5 py-4 md:px-10 min-[1440px]:max-w-[1320px]">
           <div className="flex items-center gap-3">

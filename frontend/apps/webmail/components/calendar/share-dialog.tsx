@@ -66,7 +66,7 @@ export function ShareDialog({
       setEmail("");
       await load();
     } catch (e) {
-      // The community edition allows one read-only grant; translate the
+      // The default policy allows one read-only grant; translate the
       // backend's quota rejection into friendly copy.
       setError(
         e instanceof ApiError && e.code === "quota_exceeded"

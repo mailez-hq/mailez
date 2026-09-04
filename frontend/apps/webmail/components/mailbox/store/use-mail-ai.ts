@@ -44,9 +44,9 @@ export function useMailAi({
   loadSeq: RefObject<number>;
 }) {
   const [aiEnabled, setAiEnabled] = useState(false);
-  // aiLocked marks the enterprise-only deployment (the /ai/status route itself
-  // is absent, a 404): the entry points render a visible locked hint instead
-  // of silently disappearing, so community users can see what they miss.
+  // aiLocked marks the deployment without the AI module (the /ai/status route
+  // itself is absent, a 404): the entry points render a visible locked hint
+  // instead of silently disappearing.
   const [aiLocked, setAiLocked] = useState(false);
   const [summary, setSummary] = useState("");
   const [summarizing, setSummarizing] = useState(false);

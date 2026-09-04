@@ -1,6 +1,6 @@
 // Drive share links: create/reuse/revoke a token link and the token-aware
-// download authorization. Shared by both editions; the per-edition quota on
-// active links lives in share_quota_ce.go / share_quota_ee.go.
+// download authorization. The quota on active links lives in the
+// share_quota_default.go / share_quota_ee.go seam.
 package drive
 
 import (
@@ -45,7 +45,7 @@ func (s *Service) share(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "not found"})
 	}
 	if row.ShareToken == "" {
-		// Edition quota on active links (CE: 3, EE: unlimited).
+		// Quota on active links, per the configured policy.
 		if q := s.shareQuota(); q.maxShareTokens > 0 {
 			var n int64
 			if err := s.DB.Model(&models.DriveFile{}).
@@ -55,7 +55,7 @@ func (s *Service) share(c *fiber.Ctx) error {
 			}
 			if n >= int64(q.maxShareTokens) {
 				return c.Status(403).JSON(fiber.Map{
-					"error": "share link quota reached for this edition",
+					"error": "share link quota reached",
 					"code":  "quota_exceeded",
 					"limit": q.maxShareTokens,
 				})

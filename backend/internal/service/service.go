@@ -1,8 +1,7 @@
 // Package service implements the annual technical-service entitlement
-// (技术服务). It is deliberately decoupled from the software license: both
-// the community and enterprise editions can carry a service certificate,
-// so a free-edition customer can still buy paid support, SLA and launch
-// assistance.
+// (技术服务). It is deliberately decoupled from the software license: every
+// build can carry a service certificate, so a free installation can still
+// buy paid support, SLA and launch assistance.
 //
 // A service certificate is an offline Ed25519-signed payload (same vendor
 // key as the license) carrying the licensee, the SLA tier and the service

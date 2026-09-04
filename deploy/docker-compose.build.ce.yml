@@ -2,9 +2,7 @@
 #   MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up ce
 # (or: docker compose --env-file mailez.env -f docker-compose.ce.yml
 #      -f docker-compose.build.ce.yml up -d --build)
-# builds all images from source instead of pulling prebuilt ones. Editions
-# are baked at build time (CE here; the enterprise overlay uses ee args and
-# the -ee image names come from the base enterprise file).
+# builds all images from source instead of pulling prebuilt ones.
 # Never shipped in release tarballs — pull-only deployments don't need it.
 
 services:
@@ -13,22 +11,20 @@ services:
     build:
       context: ../backend
       dockerfile: backend/Dockerfile
-      args:
-        MAILEZ_EDITION: ce
 
   frontend-admin:
     build:
       context: ../frontend
       dockerfile: apps/admin/Dockerfile
       args:
-        MAILEZ_EDITION: ce
+        MAILEZ_MODULES: default
 
   frontend-webmail:
     build:
       context: ../frontend
       dockerfile: apps/webmail/Dockerfile
       args:
-        MAILEZ_EDITION: ce
+        MAILEZ_MODULES: default
 
   gateway:
     build:
@@ -42,7 +38,6 @@ services:
       context: ${MAILEZINE_CONTEXT:-../../mailezine}
       dockerfile: Dockerfile
       args:
-        MAILEZ_EDITION: ce
         VERSION: ${MAILEZ_IMAGE_TAG:-local}
 
   macro-scanner:

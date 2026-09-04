@@ -56,18 +56,16 @@ docker compose -f docker-compose.dev.yml up -d
 开发档只有两个组件职责：redis / mail-filter(rspamd) / resolver 作为引擎
 依赖，mailezine 引擎直接发布邮件端口（25 / 1587 / 110 / 143 / 4190）到
 宿主机。引擎通过 `host.docker.internal:8080` 访问宿主机 mailez 后端的
-目录/认证接口（SQLite 存储）。两个生产版本是独立文件（全容器化）：
+目录/认证接口（SQLite 存储）。生产档是独立文件（全容器化）：
 `docker-compose.ce.yml`（社区版 mailezine + SQLite 默认控制面 +
-单节点存储）与 `ee/docker-compose.ee.yml`（企业版配方，仅私有树：
-mailezine + MySQL + TiDB + MinIO/S3），见 `deploy/scripts/README.md`。
+单节点存储），见 `deploy/scripts/README.md`。
 
 ## 启动 mailez（本地开发模式）
 
 后端（终端 1）：
 ```
 cd backend
-powershell -File .\dev-start.ps1    # 社区版（默认）；内含 SQLite DSN + 引擎端口直连配置
-powershell -File .\dev-start.ps1 -Ee # 企业版全功能（需私有树源码）
+powershell -File .\dev-start.ps1    # 内含 SQLite DSN + 引擎端口直连配置
 ```
 
 等效的手动环境变量（与 `dev-start.ps1` 一致）：
@@ -77,13 +75,12 @@ powershell -File .\dev-start.ps1 -Ee # 企业版全功能（需私有树源码�
 
 ## 引擎与存储档位
 
-存储按版本选择：
+compose 档位与存储：
 
-| 版本 | compose 文件 | 引擎 | 控制面 | 存储 |
+| 档位 | compose 文件 | 引擎 | 控制面 | 存储 |
 | ---- | ------------ | ---- | ------ | ---- |
 | 开发 | `docker-compose.dev.yml` | mailezine | SQLite（宿主机） | Pebble + 本地 FS |
 | 社区版 | `docker-compose.ce.yml` | mailezine | SQLite 默认（可选 MySQL/PostgreSQL） | Pebble + 本地 FS |
-| 企业版 | `ee/docker-compose.ee.yml`（私有树） | mailezine | MySQL | TiDB + MinIO/S3 |
 
 引擎与全部组件镜像构建：仓库根目录 `docker buildx bake`（构建定义
 `docker-bake.hcl`，默认 CE 档、tag `:local`；引擎上下文经 `MAILEZINE_CONTEXT`
@@ -125,7 +122,7 @@ mailezine 引擎的目录/认证查询都走它）。开发模式下 `MAILEZ_BAC
 `docker-compose.dev.yml` 覆盖为 `host.docker.internal`，因此宿主机后端必须
 监听 8080，前端 `next.config.ts` 的默认 `API_TARGET` 也指向
 `http://localhost:8080`。容器化部署时用环境变量 `API_TARGET=http://backend:8080`
-覆盖即可（见企业版各档 compose）。
+覆盖即可（见 compose 档注释）。
 
 ## 常见问题
 

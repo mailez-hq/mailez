@@ -8,55 +8,26 @@ All notable changes to mailez are documented here. The format follows
 
 ### Added
 
-- Multi-active engine tier — a truly distributed mail system
-  (`mailezctl up multi` / `docker-compose.multi.yml`, engine
-  `MAILEZINE_CLUSTER_MODE=multi`): every mailezine replica serves every
-  account on shared TiDB/MinIO with no leader. Outbound deliveries are
-  claimed per message in a KV transaction (a node killed mid-delivery is
-  taken over after the claim lease lapses; late writes from the stale
-  worker are fenced out), singleton workers are leased across nodes,
-  full-text indexes converge on every node by tailing the change log, and
-  an advisory per-account write gate absorbs cross-node hot-key
-  contention. New `engine-lb` service (haproxy) publishes the mail ports
-  and spreads connections across replicas, injecting PROXY protocol v1
-  so engines see real client IPs (DNSBL/policy scoring, rate limits and
-  audit operate on the true source). Semantics are
-  pinned by a kill -9 failover drill over real TiDB
-  (`TestMultiActiveFailover`, mailezine repo) and observable via
-  `mailezine_queue_claims_total{claimed|stolen|lost}`,
-  `mailezine_kv_txn_replays_total` and `mailezine_account_gate_*`
-  metrics; selection table and runbook in `docs/scaling.md`
-- Horizontal scaling for the control plane: stateless backend replicas
-  behind the gateway (`mailezctl up ha` / `docker-compose.ha.yml`), with
-  atomic outbox claims (scheduled sends cannot double-deliver under any
-  replica count; stale claims reclaim after 5 minutes), a DB-lease
-  singleton election for background workers (external fetch, web push,
-  calendar reminders, upload cleanup, EE dlp/archive/ldap sweeps; 60 s
-  automatic failover) and shared object storage for large attachments and
-  the drive (`MAILEZ_DRIVE_BACKEND=minio`); runbook in `docs/scaling.md`
 - PostgreSQL control-plane support (`DB_DRIVER=postgres` alongside
   sqlite/mysql, GORM postgres driver): reserved-word `from`/`to` columns
   quoted per dialect via `clause.Column`, dialect-agnostic case-insensitive
   search (`LOWER(col) LIKE LOWER(?)`), portable `[]byte` mapping for raw
-  message/DLP payloads; optional `--profile postgres` tier in the CE
-  compose; the EE compose accepts `MAILEZ_DB_DRIVER`/`MAILEZ_DB_DSN`
-  overrides (external PostgreSQL/MySQL; bundled mysql still starts);
-  migration lock is MySQL-only for now — start one replica first when
-  scaling on PostgreSQL
+  message payloads; optional `--profile postgres` tier in the CE
+  compose (external PostgreSQL/MySQL via `MAILEZ_DB_DRIVER`/
+  `MAILEZ_DB_DSN` overrides); migration lock is MySQL-only for now —
+  start one replica first when scaling on PostgreSQL
 
 ### Changed
 
 - Community edition control plane defaults to SQLite (`./data/mailez.db`);
   MySQL stays available through the new `--profile mysql` compose tier
   (`MAILEZ_DB_DRIVER` / `MAILEZ_DB_DSN`)
-- `mailezctl` manages three tiers (dev / community / enterprise) as one
+- `mailezctl` manages the dev / community tiers as one
   compose project; raw compose invocations require
   `--env-file mailez.env` for the `${MAILEZ_STACK_SECRET:?}` interpolation
 - First-login bootstrap via `mailez-seed` baked into the backend image
   (default `admin@example.com` / `MailezDemo2026!`, overridable with
   `MAILEZ_ADMIN_EMAIL` / `MAILEZ_ADMIN_PASSWORD`)
-- Frontend images are edition-aware: `MAILEZ_EDITION` build arg bakes CE or
-  EE bundles (community composes build `ce`, enterprise passes `ee`)
 
 ### Fixed
 
@@ -91,21 +62,11 @@ All notable changes to mailez are documented here. The format follows
   mailbox (previously showed the previous account's mail); AI search and
   the snoozed view take the same sequence guards as keyword search; the AI
   streaming compose interval is cleared on every exit path
-- Admin: CE builds no longer call the enterprise-only AI/LDAP config
-  endpoints (config page hides those tabs); a missing license block on
-  `/overview` no longer renders as "Enterprise"
 - Admin: save/create errors in the six list pages (users, domains, aliases,
   relays, tokens, fetches) were written to a state that only rendered inside
   the (closed) dialog — a failed save silently did nothing; errors now show
   inside the open dialog (cleared on reopen) while load/delete errors render
   on the page
-- Admin: archive compliance export dropped the `date_from` / `date_to` /
-  `reviewed` filters the on-screen search applied, so the exported mbox
-  could contain a different message set than the reviewed results (fixed on
-  both the frontend and the export endpoint)
-- Admin: DLP rule scope dropdown offered only hardcoded placeholder domains
-  (`example.com` / `other.com`); now a free-text domain input with the
-  served domains suggested
 - Webmail: message rows no longer re-render on every store change — the
   memoized row subscribed to the whole mailbox store context for label
   colors; the color map now lives in its own context whose identity changes
@@ -117,10 +78,6 @@ All notable changes to mailez are documented here. The format follows
 - Public self-signup is rate limited per IP (10/hour, shared store counter
   with login limiting) — an unauthenticated write endpoint previously let
   a bot provision accounts at line rate
-- Community deployments report the community edition on the admin overview
-  instead of "dev": `MAILEZ_EDITION=community` (set by the community
-  compose) makes the no-license fallback `Community()` rather than the
-  built-in unlimited dev license
 - Mailezine: `EXAMINE` is now actually read-only — STORE/COPY/MOVE/EXPUNGE
   and APPEND into the examined mailbox return `NO`, FETCH body sections no
   longer implicitly set `\Seen`, CLOSE degrades to UNSELECT, and the
@@ -140,27 +97,19 @@ All notable changes to mailez are documented here. The format follows
 - e2e CI seeds via in-container `mailez-seed` (matches the SQLite default)
 - Website: EN locale links keep the `/en` prefix (navbar and page CTAs
   previously navigated back to the Chinese pages); EN Mailezine page says
-  two counter-balanced benchmark rounds (not three); pricing/compare put
-  Rspamd in the enterprise column and name SQLite as the community control
-  plane; migration FAQ no longer promises incremental re-runs
+  two counter-balanced benchmark rounds (not three); pricing/compare table
+  wording fixed and SQLite named as the community control plane; migration
+  FAQ no longer promises incremental re-runs
 
 ### Removed
 
 - Dead env entries `MAILEZ_RELAYHOST` / `MAILEZ_REJECT_UNLISTED_RECIPIENT`
   / `MAILEZ_FTS` from `mailez.env.example` (nothing read them)
-
-### Security
-
-- Hardened the EE license trust root. Release EE images now bake the vendor
-  production Ed25519 verification key via the `MAILEZ_LICENSE_PUBKEY` /
-  `MAILEZ_SERVICE_PUBKEY` build args (docker-bake.hcl variables wired to
-  repo secrets in the release workflow, which now fails fast when the
-  secrets are missing on an EE tag), and the backend refuses to enforce
-  `MAILEZ_LICENSE_REQUIRED=true` on a binary that still embeds the built-in
-  development key (`internal/license.Load`). Previously the development
-  signing key shipped in the public source AND remained the verification
-  key of released binaries, so anyone could mint unlimited enterprise
-  licenses the official images accepted
+- Build-time configuration switches for optional capabilities: the tree
+  now builds a single community configuration; optional capabilities
+  render as visible locked entry points until their module is enabled.
+  `mailezctl` covers the dev / ce targets; the installer provisions the
+  ce compose profile
 
 ## [1.0.0-rc.1] - 2026-08-28
 
@@ -174,23 +123,9 @@ All notable changes to mailez are documented here. The format follows
 - Frontend engineering scaffold: ESLint, Prettier, Vitest and CI jobs for
   webmail and admin
 - Shared API contract types in `frontend/packages/types`
-- Exchange ActiveSync (EAS) server at `/Microsoft-Server-ActiveSync` plus
-  autodiscover: WBXML codec, device registry, FolderSync, incremental mail
-  Sync (read/flag/delete/move), Ping long-poll, SendMail/SmartReply/
-  SmartForward, Search (mailbox + GAL), Settings, ItemOperations, meeting
-  invitations and ResolveRecipients; configure iOS/Outlook with the mailbox
-  password or an app token
 - Meeting invitations (iTIP): parse REQUEST/REPLY/CANCEL, one-click
   accept/decline/tentative from the mail reader and the calendar, send new
   invitations with attendees
-- Outbound DLP and approval workflow: keyword/regex rules, hold-for-approval,
-  approver console and expiry auto-reject (Coremail-style 审批)
-- Compliance email archive: engine-side capture of inbound/outbound mail,
-  retention policies, metadata search, review notes, .eml download and mbox
-  export (Coremail-style 归档)
-- AD/LDAP directory integration: authentication fallback, organization
-  address book with department tree, group mailboxes with delivery-time
-  nested expansion, and account lifecycle sync
 - Attachment full-text search in mailezine (PDF/OOXML/ODF/text extraction
   with Tika fallback) for the mailbox search
 - Internal `/stack` API authentication via `MAILEZ_STACK_SECRET`
@@ -222,12 +157,8 @@ All notable changes to mailez are documented here. The format follows
 - Cloud drive (云盘): per-user file/folder tree with a pluggable blob store
   (local disk or MinIO via `MAILEZ_DRIVE_BACKEND=minio`), upload/list/
   download/rename/move/trash/restore, share links and an empty-trash worker
-- Exchange ActiveSync calendar & contacts sync: iOS/Outlook can now sync the
-  built-in calendar and address book (Calendar/Contacts collections with
-  add/change/delete both ways) in addition to mail
 - Admin system overview (`/admin/overview` + dashboard page): users/domains/
-  aliases, LDAP org contacts, pending DLP approvals, archived messages,
-  drive and large-attachment storage usage, engine/host identity
+  aliases, drive and large-attachment storage usage, engine/host identity
 - PWA/offline: installable web app manifest, apple-web-app metadata and
   service-worker precache of the app shell for faster offline startup
 
@@ -247,18 +178,11 @@ All notable changes to mailez are documented here. The format follows
 
 ### Fixed
 
-- EAS Sync window off-by-one: the declared WindowSize emitted only half the
-  commands, and MoreAvailable paging reused the old SyncKey without
-  persisting progress, so folders larger than the window could never be
-  fully synced (both fixed; paging now returns a fresh key with a partial
-  snapshot)
 - `mail.received` webhooks only fired for users with a browser push
   subscription; webhook-only users never received events (notifier now
   polls webhook users with a per-webhook token)
-- Compliance archive capture failed with "invalid blob id": the engine's
-  spool used `arch/<id>` as a blob key but the store rejects `/`
 - Opening a saved draft had no edit action and sending it left the draft
-  behind (`mailDelete` was not wired into the send flow)
+   behind (`mailDelete` was not wired into the send flow)
 - Snoozed messages were not hidden from the inbox (the displayMessages
   filter was never consumed by the list), and the internal `$Snoozed*`/
   `$Muted`/`$Pin` keywords surfaced as user labels case-sensitively

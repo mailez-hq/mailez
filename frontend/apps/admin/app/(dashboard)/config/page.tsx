@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Download, Upload } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { ENTERPRISE_TABS, EnterpriseConfigPanel } from "@/edition/config-enterprise";
+import { EXTRA_TABS, ExtraConfigPanel } from "@/modules/config-extra";
 import {
   exportConfig, importConfig,
   type ConfigBackup, type ConfigStats,
@@ -73,11 +73,11 @@ export default function ConfigPage() {
     }
   }
 
-  // The enterprise edition appends its own tabs (branding, AI, LDAP) via the
-  // edition module; the community build only sees the backup tab.
+  // An optional config module appends extra tabs (branding, AI, LDAP); the
+  // default module set exports no extra tabs, so only backup remains.
   const tabs: { key: ConfigTab; label: string }[] = [
     { key: "backup", label: t("backup") },
-    ...ENTERPRISE_TABS.map((key) => ({ key: key as ConfigTab, label: t(key) })),
+    ...EXTRA_TABS.map((key) => ({ key: key as ConfigTab, label: t(key) })),
   ];
 
   return (
@@ -136,7 +136,7 @@ export default function ConfigPage() {
         </Card>
       )}
 
-      {tab !== "backup" && <EnterpriseConfigPanel tab={tab} />}
+      {tab !== "backup" && <ExtraConfigPanel tab={tab} />}
     </div>
   );
 }

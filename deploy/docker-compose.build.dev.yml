@@ -14,7 +14,6 @@ services:
       context: ${MAILEZINE_CONTEXT:-../../mailezine}
       dockerfile: Dockerfile
       args:
-        MAILEZ_EDITION: ce
         VERSION: ${MAILEZ_IMAGE_TAG:-local}
 
   mail-filter:

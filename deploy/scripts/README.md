@@ -3,33 +3,30 @@
 ## `mailezctl` — unified stack management
 
 `deploy/mailezctl.ps1` (Windows) / `deploy/mailezctl.sh` (Linux/macOS) is the
-single entry point for the whole stack. Three self-contained compose files
-cover development plus the two production editions:
+single entry point for the whole stack. Two self-contained compose files
+cover development plus the community production tier:
 
-| File                                    | Edition      | Engine           | Storage                  |
+| File                                    | Tier         | Engine           | Storage                  |
 | --------------------------------------- | ------------ | ---------------- | ------------------------ |
 | `docker-compose.dev.yml`                | Development  | mailezine        | SQLite + Pebble + local FS |
 | `docker-compose.ce.yml`          | Community    | mailezine        | SQLite (default; MySQL/PostgreSQL optional) + Pebble + local FS |
-| `ee/docker-compose.ee.yml` (private tree) | Enterprise   | mailezine        | MySQL (default; external PostgreSQL/MySQL via `MAILEZ_DB_*`) + TiDB + MinIO/S3  |
 
 All files belong to one compose project (`mailez`), so `ps`/`logs`/`down`
-manage the same stack whichever edition is active.
+manage the same stack whichever file is active.
 
 ```sh
 ./deploy/mailezctl.sh up                    # dev: SQLite + Pebble + local FS
 ./deploy/mailezctl.sh up ce          # community: mailezine + SQLite (default)
-./deploy/mailezctl.sh up ee         # enterprise: mailezine + MySQL + TiDB + MinIO/S3
 ./deploy/mailezctl.sh ps                    # status (same project regardless)
-./deploy/mailezctl.sh logs ee mailezine -Follow
+./deploy/mailezctl.sh logs ce mailezine -Follow
 ./deploy/mailezctl.sh down
 ```
 
 The dev tier expects the backend on the host at `:8080` (see
-`docs/dev-setup.md`); both production editions are fully containerized.
-Switching editions does not migrate existing mail — treat the edition as a
-deployment-time choice. Engine-only development (no control plane) uses the
-scripts in the mailezine repo (`deploy/scripts/tidb-dev.ps1`,
-`tidb-storage-e2e.ps1`).
+`docs/dev-setup.md`); the community tier is fully containerized. The
+compose file is a deployment-time choice. Engine-only development (no
+control plane) uses the scripts in the mailezine repo
+(`deploy/scripts/tidb-dev.ps1`, `tidb-storage-e2e.ps1`).
 
 ## `go run ./cmd/e2e` — end-to-end mail path smoke test
 
@@ -41,13 +38,13 @@ rspamd spam headers, and (optionally) alias delivery.
 Prerequisites:
 
 - The stack is up (`mailezctl` passes `--env-file mailez.env` for you):
-  `cd deploy && ./mailezctl.sh up ee`
-  (local source build: `MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up ee`)
+  `cd deploy && ./mailezctl.sh up ce`
+  (local source build: `MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up ce`)
 - The backend has been seeded once (creates `admin@example.com` /
   `MailezDemo2026!`). Easiest from a container:
 
   ```sh
-  cd deploy && docker compose --env-file mailez.env -f ee/docker-compose.ee.yml exec backend mailez-seed
+  cd deploy && docker compose --env-file mailez.env -f docker-compose.ce.yml exec backend mailez-seed
   ```
 
   For a host-side seed, point `DB_DRIVER`/`DB_DSN` at the deployed database
