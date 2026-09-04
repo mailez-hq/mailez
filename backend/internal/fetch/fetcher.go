@@ -60,9 +60,12 @@ func (f *Fetcher) fetchAll() {
 		return
 	}
 	var fetches []models.Fetch
+	// "user" is a reserved word on PostgreSQL (and "fetch" on both dialects),
+	// so the enabled-user filter runs as a GORM-built subquery instead of a
+	// raw JOIN — GORM quotes identifiers per dialect.
+	enabled := f.DB.Model(&models.User{}).Select("email").Where("enabled = ?", true)
 	if err := f.DB.
-		Joins("JOIN user ON user.email = fetch.user_email").
-		Where("user.enabled = ?", true).
+		Where("user_email IN (?)", enabled).
 		Find(&fetches).Error; err != nil {
 		log.Printf("fetch: list: %v", err)
 		return
