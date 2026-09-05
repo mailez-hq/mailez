@@ -22,6 +22,10 @@ required to run it.
 
 ## What you get
 
+<p align="center">
+  <img src="docs/screenshots/webmail-inbox.jpg" alt="mailez webmail — three-pane inbox" width="880">
+</p>
+
 ### Webmail that feels like a native app
 
 - **Live, not refreshed** — new mail arrives over a real-time push channel, so
@@ -30,6 +34,10 @@ required to run it.
 - **Conversation view keeps threads readable** — replies under one subject
   merge into a single conversation with its full timeline, and quoted history
   in replies folds away until you expand it
+
+<p align="center">
+  <img src="docs/screenshots/webmail-conversation.jpg" alt="mailez webmail — conversation view" width="880">
+</p>
 - **Three-pane layout** — folders, list and reading pane side by side; the
   list column is draggable to your preferred width
 - **Search that just works** — type naturally (`from:`, `to:`, `has:attachment`,
@@ -81,6 +89,10 @@ required to run it.
 - **See who did what** — audit log of admin actions, role-based access
   (admin / manager / user), and a site-wide announcement banner
 - **Backup or migrate easily** — export and import your whole configuration
+
+<p align="center">
+  <img src="docs/screenshots/admin-domains.jpg" alt="mailez admin console — domains" width="880">
+</p>
 
 ### Trust and security under the hood
 
