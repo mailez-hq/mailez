@@ -185,9 +185,9 @@ func (*fakeStatError) Error() string { return "imap stat failed" }
 // fakeIdleWatcher records IdleWatch starts; each round blocks until stop
 // closes, mirroring the real client so tests can observe the lifecycle.
 type fakeIdleWatcher struct {
-	mu     sync.Mutex
-	starts []string
-	active map[string]bool
+	mu       sync.Mutex
+	starts   []string
+	active   map[string]bool
 	notified chan string
 }
 

@@ -16,10 +16,19 @@
 //
 // Usage: node scripts/check-compose-build-paths.mjs   (from the repo root)
 import {readFileSync, readdirSync, existsSync, statSync} from 'node:fs';
-import {dirname, join, resolve} from 'node:path';
+import {dirname, isAbsolute, join, relative, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+// Segment-boundary containment: a plain startsWith would treat the sibling
+// engine checkout `mailezine` as inside this repo because the string
+// "<root>/mailezine" happens to start with "<root>/mailez". Equal paths
+// (context = the repo root itself) count as inside.
+function isUnder(p, base) {
+  const rel = relative(base, p);
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+}
 
 function walk(dir, out) {
   for (const entry of readdirSync(dir, {withFileTypes: true})) {
@@ -55,7 +64,7 @@ for (const file of files) {
     const ctxDir = resolve(dirname(file), ctxValue);
     const df = resolve(ctxDir, m[2].trim());
     const relFile = file.slice(root.length + 1);
-    if (!ctxDir.startsWith(root)) {
+    if (!isUnder(ctxDir, root)) {
       // External context: only resolvable when the sibling checkout exists
       // (CI for this repo does not always carry ../mailezine). Validate the
       // Dockerfile when the context is present, otherwise report and skip.
