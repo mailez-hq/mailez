@@ -151,4 +151,4 @@ go run ./cmd/e2e
 - **Copyleft 设计** —— 任何人分发 mailez 或将其修改版上线提供服务，
   都必须以同一协议公开源码——项目与分叉保持开放
 - **商业授权** —— 闭源商用、SaaS/托管服务、OEM 嵌入可购买商业授权；
-  联系 `contact@mailez.com`
+  联系 `contact@mailez.net`

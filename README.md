@@ -197,4 +197,4 @@ go run ./cmd/e2e    # sends a test mail, checks delivery, DKIM and spam filterin
   which keeps the project and its forks open
 - **Commercial licensing** — closed-source use, SaaS/managed offerings and
   OEM embedding are available under a commercial license; contact
-  `contact@mailez.com`
+  `contact@mailez.net`
