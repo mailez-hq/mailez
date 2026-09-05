@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Please do **not** open a public issue for security problems. Report privately to
-the maintainers (mailto:security@mailez.com) and include:
+the maintainers (mailto:security@mailez.net) and include:
 
 - affected version / commit
 - a minimal reproduction

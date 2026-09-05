@@ -5,7 +5,7 @@
 
 ## 占位符与敏感信息
 
-- [ ] `SECURITY.md` 指向真实上报渠道（`security@mailez.com`），无
+- [ ] `SECURITY.md` 指向真实上报渠道（`security@mailez.net`），无
       `mailez.invalid` / `replace before release` / `TBD` 残留：
       `git grep -n -E 'mailez\.invalid|replace before|TBD|@example\.(com|org)' -- ':!backend/internal' ':!frontend/**/*_test*'`
       结果仅允许测试夹具 / 演示默认值 / RFC 保留域用法。
