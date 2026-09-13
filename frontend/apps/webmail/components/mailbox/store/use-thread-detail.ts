@@ -102,6 +102,28 @@ export function useThreadDetail({
     }
   }
 
+  // refreshThread evicts the cached conversation of the open thread and
+  // refetches it. Used after member-level actions (e.g. deleting one
+  // message of the thread) that leave the pane open but change the member
+  // set — the preload effect only fetches on a key change, so without this
+  // the deleted member would keep rendering from the stale cache.
+  async function refreshThread() {
+    if (!detail?.thread_id) return;
+    const key = `${folder}\x00${detail.thread_id}`;
+    threadCache.delete(key);
+    setThreadLoading(true);
+    try {
+      const th = normalizeThread((await mailThread(folder, detail.thread_id)) ?? { thread_id: detail.thread_id, messages: [] });
+      viewCachePut(threadCache, key, th);
+      setThread(th);
+      setThreadOpen(true);
+    } catch {
+      // Keep whatever thread state exists; the next open refetches anyway.
+    } finally {
+      setThreadLoading(false);
+    }
+  }
+
   async function selectThreadMessage(uid: number) {
     if (!detail) return;
     setError("");
@@ -128,6 +150,6 @@ export function useThreadDetail({
     detail, setDetail,
     detailLoading, setDetailLoading,
     thread, setThread, threadOpen, setThreadOpen, threadLoading,
-    toggleThread, selectThreadMessage, backToList,
+    toggleThread, refreshThread, selectThreadMessage, backToList,
   };
 }

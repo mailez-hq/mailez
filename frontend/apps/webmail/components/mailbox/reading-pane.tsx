@@ -47,6 +47,7 @@ export function ReadingPane({
   onForward,
   onArchive,
   onDelete,
+  onMemberDelete,
   onStar,
   onSpam,
   onBack,
@@ -90,6 +91,9 @@ export function ReadingPane({
   onForward: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  /** Thread view: delete exactly one member ("delete this message", Gmail
+   *  parity) while the toolbar keeps deleting the whole conversation. */
+  onMemberDelete?: (m: MailMessage) => void;
   onStar: () => void;
   onSpam: () => void;
   onBack: () => void;
@@ -591,6 +595,7 @@ export function ReadingPane({
                   setQuickReplyOpen(true);
                 }}
                 onForward={() => onForwardThread(msg)}
+                onDelete={onMemberDelete ? () => onMemberDelete(msg) : undefined}
                 actionRowExtra={
                   idx === threadMessages.length - 1 ? (
                     <>

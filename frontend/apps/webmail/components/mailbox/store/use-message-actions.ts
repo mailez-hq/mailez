@@ -288,6 +288,14 @@ export function useMessageActions({
     return moveTo(uids, "Trash", t("toastDeleted"), src);
   }
 
+  // The thread view's per-member "delete this message" action: strictly the
+  // one message, even with the conversation view on — Gmail parity, where
+  // the toolbar deletes the whole conversation but the member row offers a
+  // single-message delete.
+  async function removeSingleMessage(m: MailMessage) {
+    return moveTo([m.uid], "Trash", t("toastDeleted"), m.folder || folder);
+  }
+
   // Bulk actions act on rows the user can see. A background refresh can
   // replace the list while a selection is held; uids that fell out of the
   // current list are stale — moving them anyway would sweep invisible
@@ -527,7 +535,7 @@ export function useMessageActions({
 
   return {
     moveTo, moveSelectedTo, moveDetailTo,
-    archiveMessage, spamMessage, removeMessage,
+    archiveMessage, spamMessage, removeMessage, removeSingleMessage,
     bulkDelete, bulkArchive, bulkSpam, bulkFlag,
     setSeen, toggleRead, toggleStar, togglePin, toggleMute,
     openMessage, reportNotSpam, reportNotSpamBulk, unsubscribeAction,
