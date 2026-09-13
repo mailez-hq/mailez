@@ -61,6 +61,7 @@ export const MessageRow = memo(function MessageRow({
   density,
   showPreview,
   category,
+  conversation,
   selected,
   selectedInBulk,
   cursorActive,
@@ -77,6 +78,11 @@ export const MessageRow = memo(function MessageRow({
   density: Density;
   showPreview: boolean;
   category?: string;
+  // Conversation rows carry thread-level aggregates (unread/starred/senders/
+  // count). In flat mode each row is one individual message and must render
+  // strictly its own state — showing a thread count or participant list on a
+  // standalone message misrepresents what the row is.
+  conversation: boolean;
   selected: boolean;
   selectedInBulk: boolean;
   cursorActive: boolean;
@@ -95,13 +101,17 @@ export const MessageRow = memo(function MessageRow({
   // flags can arrive null for From-less/system mails (wire type says string[]
   // but older backend payloads carry null), so guard the array itself once.
   const flags = message.flags ?? [];
-  // Conversation-view rows carry thread-level aggregates: any member unread /
-  // starred flips the whole row, and the sender line lists the participants.
-  const unread = message.thread_unread ?? !flags.includes("\\Seen");
-  const starred = message.thread_flagged ?? flags.includes("\\Flagged");
+  // Thread aggregates only apply to conversation rows; a flat row is one
+  // message and renders strictly its own flags and sender.
+  const unread = conversation
+    ? (message.thread_unread ?? !flags.includes("\\Seen"))
+    : !flags.includes("\\Seen");
+  const starred = conversation
+    ? (message.thread_flagged ?? flags.includes("\\Flagged"))
+    : flags.includes("\\Flagged");
   const recalled = flags.includes("$RecallSent");
   const sender =
-    message.thread_senders && message.thread_senders.length > 0
+    conversation && message.thread_senders && message.thread_senders.length > 0
       ? message.thread_senders.slice(0, 2).join(", ") +
         (message.thread_senders.length > 2 ? ` +${message.thread_senders.length - 2}` : "")
       // from is an array once the backend contract fix lands; older payloads
@@ -217,7 +227,7 @@ export const MessageRow = memo(function MessageRow({
                 </span>
               );
             })}
-          {message.thread_count && message.thread_count > 1 && (
+          {conversation && message.thread_count && message.thread_count > 1 && (
             <span
               title={t("threadCount", { count: message.thread_count })}
               className="shrink-0 rounded-full bg-muted px-1.5 py-px text-[10px] font-medium text-muted-foreground"

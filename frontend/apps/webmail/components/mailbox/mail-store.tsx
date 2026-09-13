@@ -321,6 +321,7 @@ export function useMailStoreValue(me: Me) {
     folder,
     messages,
     searching,
+    conversation: prefs.conversation,
     selected,
     detail,
     selectedUids,

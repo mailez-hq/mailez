@@ -31,6 +31,7 @@ export function MessageListPanel({
   onClearSearch,
   selectedUids,
   cursor,
+  conversation,
   onOpen,
   onToggleSelect,
   onDelete,
@@ -73,6 +74,7 @@ export function MessageListPanel({
   onClearSearch: () => void;
   selectedUids: Set<number>;
   cursor: number;
+  conversation: boolean;
   onOpen: (m: MailMessage) => void;
   onToggleSelect: (m: MailMessage) => void;
   onDelete: (m: MailMessage) => void;
@@ -388,6 +390,7 @@ export function MessageListPanel({
                 density={density}
                 showPreview={listPreview}
                 category={m.category}
+                conversation={conversation}
                 selected={m.id === openId && !!openId}
                 selectedInBulk={selectedUids.has(m.uid)}
                 cursorActive={i === cursor && !searching}

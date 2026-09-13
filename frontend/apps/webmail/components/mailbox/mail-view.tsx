@@ -174,6 +174,7 @@ export function MailView() {
           onClearSearch={clearSearch}
           selectedUids={selectedUids}
           cursor={cursor}
+          conversation={prefs.conversation}
           openId={selected?.id}
           onOpen={openFromList}
           onToggleSelect={toggleSelect}

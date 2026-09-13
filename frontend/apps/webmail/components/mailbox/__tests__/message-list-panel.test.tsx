@@ -36,6 +36,7 @@ function baseProps(over: Record<string, unknown> = {}) {
     onClearSearch: vi.fn(),
     selectedUids: new Set<number>(),
     cursor: 0,
+    conversation: false,
     onOpen: vi.fn(),
     onToggleSelect: vi.fn(),
     onDelete: vi.fn(),

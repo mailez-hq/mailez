@@ -14,7 +14,7 @@ const api = vi.hoisted(() => {
     setActiveDelegateEmail: vi.fn(),
     contacts: vi.fn(async () => []),
     mailFlag: vi.fn(ok),
-    mailMove: vi.fn(ok),
+    mailMove: vi.fn(async (_src?: string, _uids?: number[], _dest?: string) => true),
     mailIdentities: vi.fn(async () => []),
     logout: vi.fn(ok),
     mailFolders: vi.fn(async () => ["Inbox", "Sent", "Trash"]),
@@ -165,6 +165,17 @@ describe("MailStore (characterization)", () => {
   });
 
   it("bulkDelete moves selected messages to Trash and offers undo that moves them back", async () => {
+    // Server-state simulation: the silent reload that follows a move must not
+    // re-serve the rows that just left the folder, or it overwrites the
+    // optimistic list filter (exactly the race moveTo's post-move reload
+    // sequencing guards against). The default static mockResolvedValue always
+    // re-served the full fixture and flaked this test.
+    let inbox = [...INBOX_MESSAGES];
+    api.mailMessages.mockImplementation(async () => ({ messages: inbox, total: inbox.length }));
+    api.mailMove.mockImplementation(async (_src?: string, uids: number[] = [], dest?: string) => {
+      if (dest === "Trash") inbox = inbox.filter((m) => !uids.includes(m.uid));
+      return true;
+    });
     const { observe } = renderMailStore(null);
     await waitFor(() => expect(observe().loading).toBe(false));
 
