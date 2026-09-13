@@ -105,7 +105,12 @@ func New(cfg core.Config) *Server {
 		// rejects unknown verbs unless they are registered here.
 		RequestMethods: append(append([]string{}, fiber.DefaultMethods...), "PROPFIND", "REPORT", "MKCOL"),
 		// Only trust X-Forwarded-For from the stack's own gateway subnet;
-		// a client-spoofed XFF must not control c.IP() (login rate limiting).
+		// a client-spoofed XFF must not control c.IP() (login rate
+		// limiting). ProxyHeader is what actually makes fiber READ the
+		// header — without it c.IP() returns the container peer address,
+		// so login alerts fired on every docker IP rotation and the audit
+		// log recorded internal IPs.
+		ProxyHeader:             "X-Forwarded-For",
 		EnableTrustedProxyCheck: true,
 		TrustedProxies:          []string{cfg.Subnet},
 		// Single error exit point: known *fiber.Error values surface their
