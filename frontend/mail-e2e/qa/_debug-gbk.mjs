@@ -104,9 +104,23 @@ try {
       `len=${body.length} snippet=${JSON.stringify(body.slice(0, 40))}`);
     check(MOD, "reader subject is decoded", detail.json?.subject === SUBJ_TEXT,
       `subject=${JSON.stringify(detail.json?.subject)}`);
+    // The same bytes are unsearchable as raw data: the body is GBK behind
+    // base64, so a TEXT search has to decode before matching.
+    // Search is served from the per-node full-text index, which converges from
+    // the change log (one sync interval), so poll rather than sampling once.
+    let hit = false;
+    let hits = 0;
+    for (let i = 0; i < 12 && !hit; i++) {
+      const found = await api(`/api/v1/mail/search?folder=Inbox&q=${encodeURIComponent(TEXT_TEXT)}`);
+      hits = (found.json || []).length;
+      hit = (found.json || []).some((m) => m.uid === row.uid);
+      if (!hit) await new Promise((r) => setTimeout(r, 2000));
+    }
+    check(MOD, "search finds the text inside the GBK base64 body", hit, `hits=${hits} wantUid=${row.uid}`);
   } else {
     check(MOD, "reader body is decoded, not replacement characters", false, "no row to open");
     check(MOD, "reader subject is decoded", false, "no row to open");
+    check(MOD, "search finds the text inside the GBK base64 body", false, "no row to open");
   }
 } finally {
   const removed = await purgeFixture().catch(() => -1);

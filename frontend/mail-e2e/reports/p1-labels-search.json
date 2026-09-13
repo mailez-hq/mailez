@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-13T21:50:17.789Z",
+  "generatedAt": "2026-09-13T23:12:14.738Z",
   "total": 15,
   "pass": 15,
   "fail": 0,
@@ -9,13 +9,13 @@
       "module": "P1-label",
       "name": "fixture: label target delivered",
       "status": "PASS",
-      "detail": "uid=610"
+      "detail": "uid=623"
     },
     {
       "module": "P1-label",
       "name": "Labels: create returns success and lists the label",
       "status": "PASS",
-      "detail": "status=200 labels=[E2E-LBLNAME-1789336053286]"
+      "detail": "status=200 labels=[E2E-LBLNAME-1789340997476]"
     },
     {
       "module": "P1-label",
@@ -27,7 +27,7 @@
       "module": "P1-label",
       "name": "Labels: applying a label shows it on the message row",
       "status": "PASS",
-      "detail": "row=\"A admin@example.com 05:47 E2E-LBL-1789336053286 E2E-LBLNAME-\""
+      "detail": "row=\"A admin@example.com 07:09 E2E-LBL-1789340997476 E2E-LBLNAME-\""
     },
     {
       "module": "P1-label",
