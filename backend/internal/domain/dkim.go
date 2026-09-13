@@ -68,7 +68,7 @@ func (h *Handler) dkimResponse(d models.Domain) fiber.Map {
 	selector := h.Cfg.DkimSelector
 	publicKey := ""
 	if d.DkimKey != "" {
-		publicKey = dkimPublicKeyTXT(d.DkimKey)
+		publicKey = DkimPublicKeyTXT(d.DkimKey)
 	}
 	return fiber.Map{
 		"domain":     d.Name,
@@ -79,9 +79,11 @@ func (h *Handler) dkimResponse(d models.Domain) fiber.Map {
 	}
 }
 
-// dkimPublicKeyTXT derives the "v=DKIM1; k=rsa; p=..." TXT value from a stored
+// DkimPublicKeyTXT derives the "v=DKIM1; k=rsa; p=..." TXT value from a stored
 // PKCS#1 private key. An empty string means the stored key is unusable.
-func dkimPublicKeyTXT(privPEM string) string {
+// Exported for the admin health center, which compares it with the live DNS
+// record.
+func DkimPublicKeyTXT(privPEM string) string {
 	block, _ := pem.Decode([]byte(privPEM))
 	if block == nil {
 		return ""

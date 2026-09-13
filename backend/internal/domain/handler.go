@@ -21,6 +21,7 @@ var currentUser = core.CurrentUser
 func (h *Handler) Register(r fiber.Router) {
 	h.registerDomains(r, h.RequireGlobalAdmin)
 	h.registerDkim(r, h.RequireGlobalAdmin)
+	h.registerDnsWizard(r, h.RequireGlobalAdmin)
 	h.registerManagers(r, h.RequireGlobalAdmin)
 	h.registerAlternatives(r, h.RequireGlobalAdmin)
 	h.registerRelays(r, h.RequireGlobalAdmin)

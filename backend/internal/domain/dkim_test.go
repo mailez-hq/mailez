@@ -117,10 +117,10 @@ func TestDkimStatusAndGenerate(t *testing.T) {
 }
 
 func TestDkimPublicKeyTXT(t *testing.T) {
-	if got := dkimPublicKeyTXT(""); got != "" {
+	if got := DkimPublicKeyTXT(""); got != "" {
 		t.Fatalf("empty input: got %q", got)
 	}
-	if got := dkimPublicKeyTXT("not a pem"); got != "" {
+	if got := DkimPublicKeyTXT("not a pem"); got != "" {
 		t.Fatalf("garbage input: got %q", got)
 	}
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -128,7 +128,7 @@ func TestDkimPublicKeyTXT(t *testing.T) {
 		t.Fatalf("generate key: %v", err)
 	}
 	privPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
-	got := dkimPublicKeyTXT(string(privPEM))
+	got := DkimPublicKeyTXT(string(privPEM))
 	if !strings.HasPrefix(got, "v=DKIM1; k=rsa; p=") || len(got) < 400 {
 		t.Fatalf("valid key: got %q", got)
 	}

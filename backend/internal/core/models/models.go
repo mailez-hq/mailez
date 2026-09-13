@@ -47,6 +47,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&DriveFile{},
 		&WorkerToken{},
 		&WebauthnCredential{},
+		&SystemFlag{},
+		&TrafficPoint{},
 		&SchemaMigration{},
 	)
 }

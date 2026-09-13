@@ -32,6 +32,8 @@
   },
   "nav": {
     "overview": "概览",
+    "health": "健康体检",
+    "reports": "流量报表",
     "domains": "域名",
     "users": "用户",
     "groups": "通讯组",
@@ -45,6 +47,11 @@
     "archive": "邮件归档",
     "dlp": "审批/DLP",
     "config": "配置",
+    "groupOverview": "概览与监控",
+    "groupOrg": "组织与账号",
+    "groupMail": "邮件服务",
+    "groupCompliance": "合规与审计",
+    "groupSystem": "系统管理",
     "logout": "退出"
   },
     "overview": {
@@ -264,7 +271,30 @@
     "dkimRotateConfirm": "为 {name} 轮换 DKIM 密钥？新 DNS 记录生效前，在途邮件可能验证失败。",
     "dkimCopied": "已复制",
     "deleteConfirm": "删除域名 {name}？",
-    "deleteAltConfirm": "删除替代域名 {name}？"
+    "deleteAltConfirm": "删除替代域名 {name}？",
+    "wizard": "DNS 向导",
+    "wizardTitle": "{name} 的 DNS 接入记录",
+    "wizardDesc": "在 DNS 服务商处发布以下记录（主机 {hostname}）。状态列为实时核验结果。",
+    "wizardRecord": "记录",
+    "wizardName": "名称",
+    "wizardValue": "值",
+    "wizardStatus": "状态",
+    "wizardCopied": "已复制",
+    "wizardStatus_ok": "已生效",
+    "wizardStatus_missing": "未配置",
+    "wizardStatus_mismatch": "不一致",
+    "wizardStatus_unknown": "无法检测",
+    "wizardIds": {
+      "mx": "收信 MX",
+      "spf": "发信授权 SPF",
+      "dkim": "DKIM 公钥",
+      "dmarc": "防冒充 DMARC",
+      "autoconfig": "Thunderbird 自动配置",
+      "autodiscover": "Outlook 自动配置",
+      "mtasts": "MTA-STS 主机",
+      "mtasts_txt": "MTA-STS 策略版本",
+      "tlsrpt": "TLS 报告收件"
+    }
   },
   "users": {
     "title": "用户",
@@ -427,10 +457,77 @@
     "export": "导出 CSV",
     "noItems": "暂无活动"
   },
+  "health": {
+    "title": "健康体检",
+    "description": "对 {hostname} 及各邮件域名的实时 DNS 与服务检查。",
+    "rerun": "重新检测",
+    "check": "检查项",
+    "statusHeader": "状态",
+    "detail": "观测值",
+    "hint": "修复建议",
+    "ok": "正常",
+    "warn": "警告",
+    "fail": "失败",
+    "unknown": "未知",
+    "systemTitle": "系统检查",
+    "status": {
+      "ok": "正常",
+      "warn": "警告",
+      "fail": "失败",
+      "unknown": "未知"
+    },
+    "checks": {
+      "mx": "MX 记录",
+      "spf": "SPF",
+      "dmarc": "DMARC",
+      "dkim": "DKIM",
+      "blacklist": "黑名单",
+      "autoconfig": "自动配置",
+      "mta_sts": "MTA-STS"
+    },
+    "hints": {
+      "mx": "在 DNS 服务商处发布 MX 记录指向本服务器（域名管理 → DNS 向导）。",
+      "spf": "发布 TXT 记录 v=spf1 mx -all，声明本服务器为合法发信源。",
+      "dmarc": "发布 _dmarc TXT 记录（建议 p=quarantine 起步）以防止域名被冒充。",
+      "dkim": "在域名编辑页生成 DKIM 密钥，并按向导发布公钥 TXT 记录。",
+      "blacklist": "服务器 IP 已被 Spamhaus 列入黑名单，前往申诉移除，否则发信会被拒收。",
+      "autoconfig": "发布 CNAME autoconfig → 本服务器后，Thunderbird 等客户端可全自动配置。",
+      "mta_sts": "发布 _mta-sts TXT 与 mta-sts CNAME 后，收件方将强制 TLS 传输。"
+    },
+    "system": {
+      "engine_imap": "引擎 IMAP",
+      "engine_mta": "引擎 MTA",
+      "redis": "Redis",
+      "database": "数据库",
+      "disk": "磁盘空间",
+      "memory": "内存",
+      "cert": "TLS 证书"
+    }
+  },
+  "reports": {
+    "title": "流量报表",
+    "description": "按日统计的收发信量（来自引擎指标采样）。",
+    "inbound": "收信量",
+    "outbound": "发信量",
+    "inboundTotal": "共接收 {n} 封",
+    "outboundTotal": "共投递 {n} 封",
+    "daily": "每日明细",
+    "date": "日期",
+    "accepted": "接收",
+    "rejected": "拒收",
+    "deferredIn": "暂缓(入)",
+    "delivered": "投递",
+    "bounced": "退信",
+    "deferredOut": "暂缓(出)",
+    "queue": "当前队列深度 {n}",
+    "noData": "暂无采样数据。",
+    "samplingOff": "未配置引擎指标采样（MAILEZ_ENGINE_METRICS_URL），报表为空。"
+  },
   "config": {
     "title": "配置",
   "desc": "服务器配置：数据备份、品牌设置、AI 模型、AD/LDAP 目录。",
     "backup": "备份",
+    "security": "安全",
     "hint": "将完整配置（域名、用户、别名、中继、外部收件、令牌）导出为 JSON。包含用户密码哈希，可用于恢复凭据。",
     "export": "导出 JSON",
     "import": "导入 JSON...",
@@ -534,6 +631,19 @@
   "ldapTestFail": "连接失败",
   "ldapSynced": "已同步：新增 {added}，更新 {updated}",
   "ldapSyncFail": "同步失败",
-  "aiFailed": "保存 AI 设置失败"
+  "aiFailed": "保存 AI 设置失败",
+  "totp": "两步验证（TOTP）",
+  "totpDesc": "为当前管理员账号启用基于时间的一次性验证码：登录时在密码之后需再输入验证器 App 中的 6 位代码。",
+  "totpState": "当前状态",
+  "totpOn": "已启用",
+  "totpOff": "未启用",
+  "totpSecret": "密钥（手动输入用）",
+  "totpSecretHint": "在验证器 App（如 Google Authenticator、Microsoft Authenticator、1Password）中选择“手动输入密钥”，粘贴上面的密钥；或复制下方 otpauth 链接导入。",
+  "totpVerifyCode": "输入验证器中的 6 位代码以启用",
+  "totpDisableCode": "输入验证器中的 6 位代码以关闭",
+  "totpEnableAction": "启用",
+  "totpDisableAction": "关闭",
+  "totpEnabledOk": "两步验证已启用：下次登录将要求验证码。",
+  "totpDisabledOk": "两步验证已关闭。"
 }
 }

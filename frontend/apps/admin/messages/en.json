@@ -32,6 +32,8 @@
   },
   "nav": {
     "overview": "Overview",
+    "health": "Health",
+    "reports": "Traffic",
     "domains": "Domains",
     "users": "Users",
     "groups": "Groups",
@@ -45,6 +47,11 @@
     "archive": "Archive",
     "dlp": "Approval / DLP",
     "config": "Config",
+    "groupOverview": "Overview & Monitoring",
+    "groupOrg": "Organization",
+    "groupMail": "Mail Services",
+    "groupCompliance": "Compliance & Audit",
+    "groupSystem": "System",
     "logout": "Logout"
   },
     "overview": {
@@ -264,7 +271,30 @@
     "dkimRotateConfirm": "Rotate DKIM key for {name}? Mail in transit may fail verification until the new DNS record propagates.",
     "dkimCopied": "Copied",
     "deleteConfirm": "Delete domain {name}?",
-    "deleteAltConfirm": "Delete alternative {name}?"
+    "deleteAltConfirm": "Delete alternative {name}?",
+    "wizard": "DNS wizard",
+    "wizardTitle": "DNS records for {name}",
+    "wizardDesc": "Publish these records at your DNS provider (host {hostname}). The status column shows live verification.",
+    "wizardRecord": "Record",
+    "wizardName": "Name",
+    "wizardValue": "Value",
+    "wizardStatus": "Status",
+    "wizardCopied": "Copied",
+    "wizardStatus_ok": "Active",
+    "wizardStatus_missing": "Not configured",
+    "wizardStatus_mismatch": "Mismatch",
+    "wizardStatus_unknown": "Unverifiable",
+    "wizardIds": {
+      "mx": "Inbound MX",
+      "spf": "Sender authorization SPF",
+      "dkim": "DKIM public key",
+      "dmarc": "Anti-spoofing DMARC",
+      "autoconfig": "Thunderbird autoconfig",
+      "autodiscover": "Outlook autodiscover",
+      "mtasts": "MTA-STS host",
+      "mtasts_txt": "MTA-STS policy version",
+      "tlsrpt": "TLS reporting"
+    }
   },
   "users": {
     "title": "Users",
@@ -427,10 +457,77 @@
     "export": "Export CSV",
     "noItems": "No activity yet"
   },
+  "health": {
+    "title": "Health checks",
+    "description": "Live DNS and service checks for {hostname} and every mail domain.",
+    "rerun": "Re-run checks",
+    "check": "Check",
+    "statusHeader": "Status",
+    "detail": "Observed",
+    "hint": "Fix hint",
+    "ok": "OK",
+    "warn": "Warning",
+    "fail": "Failed",
+    "unknown": "Unknown",
+    "systemTitle": "System checks",
+    "status": {
+      "ok": "OK",
+      "warn": "Warning",
+      "fail": "Failed",
+      "unknown": "Unknown"
+    },
+    "checks": {
+      "mx": "MX record",
+      "spf": "SPF",
+      "dmarc": "DMARC",
+      "dkim": "DKIM",
+      "blacklist": "Blacklist",
+      "autoconfig": "Autoconfig",
+      "mta_sts": "MTA-STS"
+    },
+    "hints": {
+      "mx": "Publish an MX record pointing at this server (Domains → DNS wizard).",
+      "spf": "Publish the TXT record v=spf1 mx -all declaring this server an authorized sender.",
+      "dmarc": "Publish a _dmarc TXT record (p=quarantine recommended to start) to stop spoofing.",
+      "dkim": "Generate a DKIM key in the domain editor and publish the public-key TXT record.",
+      "blacklist": "This server's IP is listed by Spamhaus — request delisting or outbound mail will be rejected.",
+      "autoconfig": "Publish CNAME autoconfig → this server so Thunderbird configures itself.",
+      "mta_sts": "Publish the _mta-sts TXT and mta-sts CNAME so receivers enforce TLS."
+    },
+    "system": {
+      "engine_imap": "Engine IMAP",
+      "engine_mta": "Engine MTA",
+      "redis": "Redis",
+      "database": "Database",
+      "disk": "Disk space",
+      "memory": "Memory",
+      "cert": "TLS certificate"
+    }
+  },
+  "reports": {
+    "title": "Traffic report",
+    "description": "Daily inbound/outbound volumes sampled from engine metrics.",
+    "inbound": "Inbound",
+    "outbound": "Outbound",
+    "inboundTotal": "{n} accepted",
+    "outboundTotal": "{n} delivered",
+    "daily": "Daily breakdown",
+    "date": "Date",
+    "accepted": "Accepted",
+    "rejected": "Rejected",
+    "deferredIn": "Deferred (in)",
+    "delivered": "Delivered",
+    "bounced": "Bounced",
+    "deferredOut": "Deferred (out)",
+    "queue": "Current queue depth {n}",
+    "noData": "No samples yet.",
+    "samplingOff": "Engine metrics sampling is not configured (MAILEZ_ENGINE_METRICS_URL), the report is empty."
+  },
   "config": {
     "title": "Configuration",
   "desc": "Server configuration: backup, branding, AI model and AD/LDAP directory.",
     "backup": "Backup",
+    "security": "Security",
     "hint": "Export the full configuration (domains, users, aliases, relays, fetches, tokens) as JSON. User password hashes are included so a backup can restore credentials.",
     "export": "Export JSON",
     "import": "Import JSON...",
@@ -534,6 +631,19 @@
   "ldapTestFail": "Connection failed",
   "ldapSynced": "Synced: {added} added, {updated} updated",
   "ldapSyncFail": "Sync failed",
-  "aiFailed": "Failed to save AI settings"
+  "aiFailed": "Failed to save AI settings",
+  "totp": "Two-factor authentication (TOTP)",
+  "totpDesc": "Enable time-based one-time codes for this admin account: after the password, sign-in asks for a 6-digit code from an authenticator app.",
+  "totpState": "Status",
+  "totpOn": "Enabled",
+  "totpOff": "Disabled",
+  "totpSecret": "Secret (manual entry)",
+  "totpSecretHint": "In your authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…) choose “enter a setup key” and paste the secret above, or import the otpauth link below.",
+  "totpVerifyCode": "Enter the 6-digit code to enable",
+  "totpDisableCode": "Enter the 6-digit code to disable",
+  "totpEnableAction": "Enable",
+  "totpDisableAction": "Disable",
+  "totpEnabledOk": "Two-factor enabled: next sign-in will ask for a code.",
+  "totpDisabledOk": "Two-factor disabled."
 }
 }

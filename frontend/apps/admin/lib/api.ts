@@ -151,6 +151,64 @@ export const adminOverview = () => api<AdminOverview>("/admin/overview");
 
 export const apiDelete = (path: string) => api(path, { method: "DELETE" });
 
+// Domain & system health center (Mail-in-a-Box-style status checks).
+export type HealthItem = {
+  id: string;
+  status: "ok" | "warn" | "fail" | "unknown";
+  detail?: string;
+};
+export type HealthDomain = { domain: string; items: HealthItem[] };
+export type HealthReport = {
+  checked_at: string;
+  hostname: string;
+  domains: HealthDomain[] | null;
+  system: HealthItem[];
+};
+export const adminHealth = () => api<HealthReport>("/admin/health");
+
+// Traffic report: per-day mail volume deltas sampled from engine metrics.
+export type TrafficDay = {
+  date: string;
+  in_accepted: number;
+  in_rejected: number;
+  in_deferred: number;
+  out_delivered: number;
+  out_bounced: number;
+  out_deferred: number;
+};
+export type TrafficReport = {
+  days: TrafficDay[];
+  latest_queue_depth: number;
+  sampling: boolean;
+};
+export const adminTraffic = (days = 14) =>
+  api<TrafficReport>(`/admin/traffic?days=${days}`);
+
+// DNS wizard: the records a domain must publish, with live verification.
+export type DnsRecordView = {
+  id: string;
+  type: string;
+  name: string;
+  value: string;
+  status: "ok" | "missing" | "mismatch" | "unknown";
+  detail?: string;
+};
+export type DnsWizardView = {
+  domain: string;
+  hostname: string;
+  records: DnsRecordView[];
+};
+export const domainDnsRecords = (name: string) =>
+  api<DnsWizardView>(`/domains/${encodeURIComponent(name)}/dns-records`);
+
+// TOTP (2FA) self-service for the signed-in admin.
+export type TotpStatus = { enabled: boolean; secret?: string; otpauth?: string };
+export const totpStatus = () => api<TotpStatus>("/me/totp");
+export const totpEnable = (code: string) =>
+  apiPost<void>("/me/totp/enable", { code });
+export const totpDisable = (code: string) =>
+  api<void>("/me/totp", { method: "DELETE", body: JSON.stringify({ code }) });
+
 export async function login(email: string, pw: string) {
   return api<LoginResult>("/sso/login", {
     method: "POST",
