@@ -89,17 +89,17 @@
 | 档位 | 引擎 | 存储 |
 |---|---|---|
 | **dev**（默认） | mailezine | SQLite + Pebble + 本地 FS |
-| **community** | mailezine | SQLite + Pebble + 本地 FS（可选 MySQL/PostgreSQL） |
+| **production** | mailezine | SQLite + Pebble + 本地 FS（可选 MySQL/PostgreSQL） |
 
 两个档位运行**同一个 mailezine 引擎**——协议一致、邮件层功能一致、升级
-路径一致。版本差别在两点：**定位**（dev 在宿主机源码构建；community 是
-完全容器化的生产栈）与**控制面存储**（默认 SQLite，可选 MySQL/
+路径一致。版本差别在两点：**定位**（dev 在宿主机源码构建；production 档为
+完全容器化的生产部署）与**控制面存储**（默认 SQLite，可选 MySQL/
 PostgreSQL compose profile）。传统多进程邮件架构的存量部署可用
 `mailezine migrate` 原地迁移到新存储。
 
 ```sh
 ./deploy/mailezctl.sh up              # dev 档
-./deploy/mailezctl.sh up ce    # 社区档（生产）
+./deploy/mailezctl.sh up ce    # 生产档（拉取预构建镜像）
 ```
 
 首次使用前编辑 `deploy/mailez.env`（由 `mailez.env.example` 复制而来），
@@ -114,7 +114,7 @@ MAILEZINE_STACK_SECRET=                      # 必须与上一行同值
 
 dev 档需要宿主机 `:8080` 上先起后端（镜像只需构建一次：仓库根目录
 `docker buildx bake`，细节见
-[`docs/dev-setup.md`](docs/dev-setup.md)）；社区档完全容器化，发布端口：
+[`docs/dev-setup.md`](docs/dev-setup.md)）；生产档完全容器化，发布端口：
 
 | 端口 | 是什么 |
 |---|---|
@@ -145,7 +145,7 @@ go run ./cmd/e2e
 - 前端：Next.js（React）——管理后台与 Webmail 两个独立应用
 - 邮件引擎统一为 **mailezine**（单 Go 二进制），走引擎无关的目录契约
   （`/stack/directory/*`）提供 SMTP/IMAP/POP3/ManageSieve，KV + blob 存储
-  均可插拔；dev 与社区档同一引擎，仅在存储（SQLite/pebble，可选
+  均可插拔；dev 与生产档同一引擎，仅在存储（SQLite/pebble，可选
   MySQL/PostgreSQL）上有别
 - 更多细节：[`docs/dev-setup.md`](docs/dev-setup.md)、
   [`docs/architecture.md`](docs/architecture.md)；

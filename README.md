@@ -108,24 +108,24 @@ entry point:
 | Tier | Engine | Storage |
 |---|---|---|
 | **dev** (default) | mailezine | SQLite + Pebble + local FS |
-| **community** | mailezine | SQLite + Pebble + local FS (MySQL/PostgreSQL optional) |
+| **production** | mailezine | SQLite + Pebble + local FS (MySQL/PostgreSQL optional) |
 
 Both tiers run the **same mailezine engine** — same protocols, same
 features at the mail layer, same upgrade path. They differ only in
-**orientation** (dev builds from source on the host; community is a fully
-containerized production stack) and **control-plane storage** (SQLite by
+**orientation** (dev builds from source on the host; production is a fully
+containerized stack) and **control-plane storage** (SQLite by
 default, with MySQL/PostgreSQL available behind compose profiles).
 Existing deployments on the traditional multi-process mail architecture
 migrate in place with `mailezine migrate`.
 
 ```sh
 ./deploy/mailezctl.sh up              # dev tier
-./deploy/mailezctl.sh up ce    # community tier (production)
+./deploy/mailezctl.sh up ce    # production tier (pull prebuilt images)
 ```
 
 The dev tier expects the backend on the host at `:8080` (build the images
 once with `docker buildx bake` from the repo root; details in
-[`docs/dev-setup.md`](docs/dev-setup.md)). The community tier is fully
+[`docs/dev-setup.md`](docs/dev-setup.md)). The production tier is fully
 containerized and publishes:
 
 | Port | What's there |
@@ -186,7 +186,7 @@ go run ./cmd/e2e    # sends a test mail, checks delivery, DKIM and spam filterin
 - Mail engine: **mailezine** (a single Go binary) speaks
   SMTP/IMAP/POP3/ManageSieve behind an engine-agnostic directory contract
   (`/stack/directory/*`) with pluggable KV + blob storage — both the dev
-  and community profiles run it; they differ only in storage
+  and production profiles run it; they differ only in storage
   (SQLite/pebble, with optional MySQL/PostgreSQL)
 - More details: [`docs/dev-setup.md`](docs/dev-setup.md),
   [`docs/architecture.md`](docs/architecture.md);
