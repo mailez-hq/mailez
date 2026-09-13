@@ -66,4 +66,5 @@ func (h *Handler) Register(r fiber.Router) {
 	h.registerRspamd(r)
 	h.registerFetch(r)
 	h.registerNotify(r)
+	h.registerAutoconfig(r)
 }

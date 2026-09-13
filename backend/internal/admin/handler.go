@@ -26,4 +26,6 @@ func (h *Handler) Register(r fiber.Router) {
 	h.registerAI(r, h.RequireGlobalAdmin)
 	h.registerLDAP(r, h.RequireGlobalAdmin)
 	h.registerOverview(r, h.RequireGlobalAdmin)
+	h.registerHealth(r, h.RequireGlobalAdmin)
+	h.registerTraffic(r, h.RequireGlobalAdmin)
 }

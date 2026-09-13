@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   AtSign,
+  BarChart3,
+  HeartPulse,
   LayoutDashboard,
   Download,
   EyeOff,
@@ -29,22 +31,60 @@ import { HAS_OPTIONAL_MODULES, logout } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { Me } from "@/lib/api";
 
-const navItems = [
-  { href: "/overview", key: "overview", roles: ["admin", "manager", "user"], icon: LayoutDashboard },
-  { href: "/domains", key: "domains", roles: ["admin"], icon: Globe },
-  { href: "/users", key: "users", roles: ["admin", "manager"], icon: Users },
-  { href: "/groups", key: "groups", roles: ["admin", "manager"], icon: UsersRound },
-  { href: "/aliases", key: "aliases", roles: ["admin", "manager"], icon: AtSign },
-  { href: "/relays", key: "relays", roles: ["admin"], icon: Server },
-  { href: "/fetches", key: "fetches", roles: ["admin"], icon: Download },
-  { href: "/tokens", key: "tokens", roles: ["admin"], icon: KeyRound },
-  { href: "/announcement", key: "announcement", roles: ["admin"], icon: Megaphone },
-  { href: "/anon-aliases", key: "anonAliases", roles: ["admin", "manager", "user"], icon: EyeOff },
-  { href: "/archive", key: "archive", roles: ["admin"], icon: Archive },
-  // Approvers (regular users listed on hold rules) also need the center.
-  { href: "/dlp", key: "dlp", roles: ["admin", "user"], icon: ShieldAlert },
-  { href: "/audit", key: "audit", roles: ["admin"], icon: ScrollText },
-  { href: "/config", key: "config", roles: ["admin"], icon: Settings },
+type NavItem = {
+  href: string;
+  key: string;
+  roles: string[];
+  icon: typeof LayoutDashboard;
+};
+
+// Navigation is grouped by workflow so related sections stay together:
+// monitoring first (what an admin opens daily), then the organization
+// hierarchy, mail-flow services, compliance, and finally system-level
+// settings at the bottom.
+const navGroups: { key: string; items: NavItem[] }[] = [
+  {
+    key: "groupOverview",
+    items: [
+      { href: "/overview", key: "overview", roles: ["admin", "manager", "user"], icon: LayoutDashboard },
+      { href: "/health", key: "health", roles: ["admin"], icon: HeartPulse },
+      { href: "/reports", key: "reports", roles: ["admin"], icon: BarChart3 },
+    ],
+  },
+  {
+    key: "groupOrg",
+    items: [
+      { href: "/domains", key: "domains", roles: ["admin"], icon: Globe },
+      { href: "/users", key: "users", roles: ["admin", "manager"], icon: Users },
+      { href: "/groups", key: "groups", roles: ["admin", "manager"], icon: UsersRound },
+      { href: "/aliases", key: "aliases", roles: ["admin", "manager"], icon: AtSign },
+    ],
+  },
+  {
+    key: "groupMail",
+    items: [
+      { href: "/relays", key: "relays", roles: ["admin"], icon: Server },
+      { href: "/fetches", key: "fetches", roles: ["admin"], icon: Download },
+      { href: "/tokens", key: "tokens", roles: ["admin"], icon: KeyRound },
+      { href: "/anon-aliases", key: "anonAliases", roles: ["admin", "manager", "user"], icon: EyeOff },
+    ],
+  },
+  {
+    key: "groupCompliance",
+    items: [
+      // Approvers (regular users listed on hold rules) also need the center.
+      { href: "/dlp", key: "dlp", roles: ["admin", "user"], icon: ShieldAlert },
+      { href: "/archive", key: "archive", roles: ["admin"], icon: Archive },
+      { href: "/audit", key: "audit", roles: ["admin"], icon: ScrollText },
+    ],
+  },
+  {
+    key: "groupSystem",
+    items: [
+      { href: "/announcement", key: "announcement", roles: ["admin"], icon: Megaphone },
+      { href: "/config", key: "config", roles: ["admin"], icon: Settings },
+    ],
+  },
 ];
 
 // Paid-edition-only sections must not surface in the community build (their
@@ -66,10 +106,12 @@ export function AppSidebar({ me }: { me: Me }) {
   // configured) instead of the built-in Mailez wordmark.
   const brand = useBrand();
   const role = me.global_admin ? "admin" : me.manager ? "manager" : "user";
-  const nav = navItems.filter(
-    (item) =>
-      (HAS_OPTIONAL_MODULES || !EE_NAV_HREFS.has(item.href)) && item.roles.includes(role),
-  );
+  const visible = (item: NavItem) =>
+    (HAS_OPTIONAL_MODULES || !EE_NAV_HREFS.has(item.href)) && item.roles.includes(role);
+  const groups = navGroups
+    .map((g) => ({ ...g, items: g.items.filter(visible) }))
+    .filter((g) => g.items.length > 0);
+  const firstHref = groups[0]?.items[0]?.href || "/overview";
 
   async function onLogout() {
     await logout();
@@ -81,7 +123,7 @@ export function AppSidebar({ me }: { me: Me }) {
     <aside className="flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       <div className="flex items-center px-4 py-4">
         <Link
-          href={nav[0]?.href || "/"}
+          href={firstHref}
           className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-foreground hover:opacity-80"
         >
           {brand.logo_url ? (
@@ -101,33 +143,42 @@ export function AppSidebar({ me }: { me: Me }) {
         </Link>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-2">
-        {nav.map((item) => {
-          const active = pathname.startsWith(item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
-                active
-                  ? // Same active language as the webmail sidebar: --sidebar-accent
-                    // barely contrasts against --sidebar, so tint with
-                    // --primary (which the data-accent families override)
-                    // and anchor with an inset bar.
-                    "bg-primary/20 font-medium text-primary shadow-[inset_2px_0_0_0_var(--primary)] hover:bg-primary/25"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
-              )}
-            >
-              {active && (
-                <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-sidebar-primary" />
-              )}
-              <Icon className={cn("size-4 shrink-0", active ? "text-sidebar-primary" : "opacity-70")} />
-              <span className="truncate">{t(item.key)}</span>
-            </Link>
-          );
-        })}
+      <nav className="flex flex-1 flex-col overflow-y-auto px-2 pb-2">
+        {groups.map((group, gi) => (
+          <div key={group.key} className={gi === 0 ? "" : "mt-3"}>
+            <p className="px-2.5 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/80">
+              {t(group.key)}
+            </p>
+            <div className="flex flex-col gap-0.5">
+              {group.items.map((item) => {
+                const active = pathname.startsWith(item.href);
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
+                      active
+                        ? // Same active language as the webmail sidebar: --sidebar-accent
+                          // barely contrasts against --sidebar, so tint with
+                          // --primary (which the data-accent families override)
+                          // and anchor with an inset bar.
+                          "bg-primary/20 font-medium text-primary shadow-[inset_2px_0_0_0_var(--primary)] hover:bg-primary/25"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                    )}
+                  >
+                    {active && (
+                      <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-sidebar-primary" />
+                    )}
+                    <Icon className={cn("size-4 shrink-0", active ? "text-sidebar-primary" : "opacity-70")} />
+                    <span className="truncate">{t(item.key)}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="border-t border-sidebar-border p-2">

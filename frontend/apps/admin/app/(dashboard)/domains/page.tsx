@@ -20,7 +20,10 @@ import { Switch } from "@/components/ui/switch";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { api, apiDelete, apiPost, apiPut, domainDkim, generateDomainDkim } from "@/lib/api";
+import {
+  api, apiDelete, apiPost, apiPut, domainDkim, domainDnsRecords, generateDomainDkim,
+  type DnsWizardView,
+} from "@/lib/api";
 import type { Alternative, DkimInfo, Domain, Page } from "@/lib/types";
 
 const fmtBytes = (n: number) =>
@@ -53,6 +56,12 @@ export default function DomainsPage() {
 
   const [dkim, setDkim] = useState<DkimInfo | null>(null);
   const [dkimCopied, setDkimCopied] = useState(false);
+
+  // DNS setup wizard per domain.
+  const [wizard, setWizard] = useState<DnsWizardView | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardLoading, setWizardLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -174,6 +183,27 @@ export default function DomainsPage() {
     setDkimCopied(true);
   }
 
+  async function openWizard(d: Domain) {
+    setWizardOpen(true);
+    setWizardLoading(true);
+    setWizard(null);
+    setCopiedId("");
+    try {
+      setWizard(await domainDnsRecords(d.name));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "load failed");
+      setWizardOpen(false);
+    } finally {
+      setWizardLoading(false);
+    }
+  }
+
+  async function copyWizardValue(id: string, value: string) {
+    if (!value) return;
+    await navigator.clipboard.writeText(value);
+    setCopiedId(id);
+  }
+
   return (
     <div className="space-y-4">
       <PageHeader title={t("title")} description={t("desc")}>
@@ -285,6 +315,78 @@ export default function DomainsPage() {
         </Dialog>
       </PageHeader>
 
+      {/* DNS setup wizard: expected records with live verification. */}
+      <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{t("wizardTitle", { name: wizard?.domain || "\u2026" })}</DialogTitle>
+          </DialogHeader>
+          {wizardLoading && <p className="text-sm text-muted-foreground">{ct("loading")}</p>}
+          {wizard && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                {t("wizardDesc", { hostname: wizard.hostname })}
+              </p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("wizardRecord")}</TableHead>
+                    <TableHead>{t("wizardName")}</TableHead>
+                    <TableHead>{t("wizardValue")}</TableHead>
+                    <TableHead>{t("wizardStatus")}</TableHead>
+                    <TableHead className="w-10" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {wizard.records.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell>
+                        <Badge variant="outline">{r.type}</Badge>{" "}
+                        <span className="text-xs">{t(`wizardIds.${r.id}`)}</span>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {r.name === "@" ? wizard.domain : `${r.name}.${wizard.domain}`}
+                      </TableCell>
+                      <TableCell className="max-w-64">
+                        {r.value ? (
+                          <code className="block break-all text-xs" title={r.value}>
+                            {r.value.length > 80 ? r.value.slice(0, 77) + "\u2026" : r.value}
+                          </code>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">\u2014</span>
+                        )}
+                        {r.detail && <p className="text-xs text-muted-foreground">{r.detail}</p>}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            r.status === "ok" ? "default" : r.status === "missing" ? "secondary" : "destructive"
+                          }
+                        >
+                          {t(`wizardStatus_${r.status}`)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {r.value && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyWizardValue(r.id, r.value)}
+                            title={ct("copy")}
+                          >
+                            {copiedId === r.id ? t("wizardCopied") : ct("copy")}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <Card>
@@ -316,7 +418,12 @@ export default function DomainsPage() {
                     )}
                   </TableCell>
                   <TableCell className="w-10">
-                    <RowActions onEdit={() => openEdit(d)} onDelete={() => remove(d)} />
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openWizard(d)} title={t("wizard")}>
+                        DNS
+                      </Button>
+                      <RowActions onEdit={() => openEdit(d)} onDelete={() => remove(d)} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

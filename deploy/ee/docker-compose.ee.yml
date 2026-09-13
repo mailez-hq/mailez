@@ -149,6 +149,15 @@ services:
       - MAIL_ENGINE_MGMT_SECRET=${MAILEZ_STACK_SECRET:?set in mailez.env}
       - FETCH_INTERVAL=300
       - AI_PROVIDER=none
+      # 管理员运维摘要邮件（off|daily|weekly，默认 daily，凌晨 3 点发给
+      # 首个全局管理员；mailez.env 里设 MAILEZ_ADMIN_EMAIL 可覆盖收件人）。
+      - MAILEZ_ADMIN_DIGEST=${MAILEZ_ADMIN_DIGEST:-daily}
+      - MAILEZ_ADMIN_DIGEST_HOUR=${MAILEZ_ADMIN_DIGEST_HOUR:-3}
+      # 流量报表采样：定时抓取引擎 Prometheus 计数器（留空=关闭报表）。
+      - MAILEZ_ENGINE_METRICS_URL=${MAILEZ_ENGINE_METRICS_URL:-}
+      # 客户端自动配置文档中公布的公网端口（网关映射后可能不同）。
+      - MAILEZ_PUBLIC_IMAP_PORT=${MAILEZ_PUBLIC_IMAP_PORT:-993}
+      - MAILEZ_PUBLIC_SMTP_PORT=${MAILEZ_PUBLIC_SMTP_PORT:-587}
       # 企业版授权（控制面按邮箱数限制建号）：与引擎共用同一授权文件。
       - MAILEZ_LICENSE_FILE=/licenses/license.lic
       - MAILEZ_LICENSE_REQUIRED=${MAILEZINE_LICENSE_REQUIRED:-true}
@@ -257,6 +266,10 @@ services:
       # 引擎数据;secret 与 backend 的 MAIL_ENGINE_MGMT_SECRET 同值。
       - MAILEZINE_MANAGEMENT_ADDR=:8090
       - MAILEZINE_MANAGEMENT_SECRET=${MAILEZ_STACK_SECRET:?set in mailez.env}
+      # 灰名单（可选，默认关）：对可疑评分的陌生发件方先回 4xx 一次，
+      # 正规服务器自动重试通过，机器投递大多放弃。大客户对时延敏感时
+      # 保持关闭并在反垃圾侧白名单重要发件方。
+      - MAILEZINE_JUNK_GREYLIST=${MAILEZINE_JUNK_GREYLIST:-false}
       - MAILEZINE_ARCHIVE_ENABLED=true
       - MAILEZINE_DLP_ENABLED=true
       - MAILEZINE_FTS_ENABLED=true

@@ -350,6 +350,14 @@ var migrations = []migration{
 			return db.AutoMigrate(&BrandingConfig{})
 		},
 	},
+	{
+		// Admin digest worker bookkeeping and the traffic sampler's
+		// scraped engine counters.
+		ID: "20261012_admin_digest_traffic",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&SystemFlag{}, &TrafficPoint{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

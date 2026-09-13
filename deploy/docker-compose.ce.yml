@@ -200,6 +200,9 @@ services:
       - MAILEZINE_ROCKS_PATH=/data/rocks
       # 反垃圾：未配 MAILEZINE_RSPAMD_URL 时走引擎内置基础档（MAILEZINE_JUNK_*
       # 可调）；配置后升级为 rspamd 扫描。
+      # 灰名单（可选，默认关）：对可疑评分的陌生发件方先回 4xx 一次，
+      # 正规服务器自动重试通过，机器投递大多放弃。
+      - MAILEZINE_JUNK_GREYLIST=${MAILEZINE_JUNK_GREYLIST:-false}
       - MAILEZINE_DKIM_VAULT_URL=http://backend:8080/stack/rspamd/vault
       - MAILEZINE_TRUSTED_NETS=${MAILEZ_SUBNET:-192.168.206.0/24}
       # 引擎直发标准端口 + 隐式 TLS（465/993/995）。

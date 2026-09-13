@@ -32,6 +32,13 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       { source: "/api/v1/:path*", destination: `${API_TARGET}/api/v1/:path*` },
+      // Client autoconfiguration + MTA-STS served by the backend (the nginx
+      // gateway rewrites the same URLs to /stack/autoconfig/* in mail
+      // deployments; these cover gateway-less web deployments).
+      { source: "/.well-known/autoconfig/:path*", destination: `${API_TARGET}/.well-known/autoconfig/:path*` },
+      { source: "/mail/config-v1.1.xml", destination: `${API_TARGET}/mail/config-v1.1.xml` },
+      { source: "/.well-known/mta-sts.txt", destination: `${API_TARGET}/.well-known/mta-sts.txt` },
+      { source: "/autodiscover/:path*", destination: `${API_TARGET}/autodiscover/:path*` },
     ];
   },
 };

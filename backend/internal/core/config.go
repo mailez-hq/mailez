@@ -95,6 +95,23 @@ type Config struct {
 	// provider. When empty it is derived from the public hostname as
 	// https://<hostname>/api/v1/sso/oidc/callback.
 	OIDCRedirectURL string
+	// PublicImapPort/PublicSmtpPort are the ports mail clients use from
+	// outside (autoconfig/autodiscover documents them). They differ from
+	// the internal MAIL_*_ADDR ports when the gateway maps them.
+	PublicImapPort int
+	PublicSmtpPort int
+	// AdminDigest controls the administrator summary email:
+	// "off" | "daily" (default) | "weekly" (Mondays).
+	AdminDigest string
+	// AdminEmail overrides the digest recipient; empty = first global
+	// admin account.
+	AdminEmail string
+	// DigestHour is the local hour (0-23) the daily digest sends.
+	DigestHour int
+	// EngineMetricsURL is the mailezine Prometheus endpoint the traffic
+	// sampler scrapes (e.g. http://mailezine:11480/metrics). Empty
+	// disables traffic reporting.
+	EngineMetricsURL string
 }
 
 // SupportedMailEngines are the mail engines the control plane can drive.
@@ -154,6 +171,12 @@ func Load() Config {
 		OIDCClientID:         env("MAILEZ_OIDC_CLIENT_ID", ""),
 		OIDCClientSecret:     env("MAILEZ_OIDC_CLIENT_SECRET", ""),
 		OIDCRedirectURL:      env("MAILEZ_OIDC_REDIRECT_URL", ""),
+		PublicImapPort:       envInt("MAILEZ_PUBLIC_IMAP_PORT", 993),
+		PublicSmtpPort:       envInt("MAILEZ_PUBLIC_SMTP_PORT", 587),
+		AdminDigest:          env("MAILEZ_ADMIN_DIGEST", "daily"),
+		AdminEmail:           env("MAILEZ_ADMIN_EMAIL", ""),
+		DigestHour:           envInt("MAILEZ_ADMIN_DIGEST_HOUR", 3),
+		EngineMetricsURL:     env("MAILEZ_ENGINE_METRICS_URL", ""),
 	}
 	// Distributed deployments opt into TiDB KV + MinIO/S3 blobs by setting
 	// MAILEZINE_STORAGE_BACKEND / MAILEZINE_S3_* explicitly. Single-node

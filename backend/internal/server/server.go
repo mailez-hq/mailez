@@ -191,6 +191,12 @@ func New(cfg core.Config) *Server {
 	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey, dlpScanner, mail.New(cfg.MailImapAddr, "", "").SetInsecureTLS(cfg.FetchInsecure)).Run(bgCtx)
 	// Calendar event reminders: mail the owner when start - reminder arrives.
 	go calendar.NewReminderWorker(db, cfg).Run(bgCtx)
+	// Administrator digest email (daily/weekly operations summary).
+	go admin.NewDigestWorker(db, cfg).Run(bgCtx)
+	// Engine traffic sampler feeding the admin traffic report.
+	if cfg.EngineMetricsURL != "" {
+		go admin.NewTrafficSampler(db, cfg).Run(bgCtx)
+	}
 	// Large-attachment relay cleanup: delete expired uploads.
 	go uploads.New(db, cfg).RunCleanup(bgCtx)
 	// Push notifier (new-mail notifications for subscribed clients).
@@ -360,6 +366,13 @@ func (s *Server) routes() {
 	dav.New(s.DB, s.basicAuthCache).Register(s.App.Group("/dav"))
 	s.App.Get("/.well-known/carddav", redirectDAV)
 	s.App.Get("/.well-known/caldav", redirectDAV)
+
+	// Client autoconfiguration + MTA-STS policy served directly (the nginx
+	// gateway rewrites the same public URLs to /stack/autoconfig/*; these
+	// root routes cover deployments without the gateway).
+	s.App.Get("/.well-known/autoconfig/mail/config-v1.1.xml", s.internal.AutoconfigMozilla)
+	s.App.Get("/mail/config-v1.1.xml", s.internal.AutoconfigMozilla)
+	s.App.Get("/.well-known/mta-sts.txt", s.internal.MtaStsPolicy)
 
 	// Optional routes mount through the seam above: nothing extra in the
 	// base build.
