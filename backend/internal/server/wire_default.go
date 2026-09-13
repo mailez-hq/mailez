@@ -59,3 +59,7 @@ func applyPublicBranding(s *Server, brand *publicBranding) {
 func startComplianceWorkers(db *gorm.DB, am *auth.Manager, cfg core.Config, bgCtx context.Context) compose.OutboundScanner {
 	return nil
 }
+
+// startAdminWorkers starts no edition-gated workers in the base build: the
+// admin digest email and the engine traffic sampler are enterprise-only.
+func startAdminWorkers(db *gorm.DB, cfg core.Config, bgCtx context.Context) {}
