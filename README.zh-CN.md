@@ -38,10 +38,8 @@
 - **搜索不用学语法** — 直接输关键词，也能用 `from:`、`to:`、`has:attachment`、
   日期等条件精确筛选；常用搜索可保存，一键切换未读/星标/带附件视图
 - **键盘优先** — 按 `/` 搜邮件、`⌘K` 打开命令面板、`?` 查看全部快捷键
-- **日常操作不折腾** — 会话线程、操作栏内直接快捷回复和 AI 摘要、延后处理、
+- **日常操作不折腾** — 会话线程、操作栏内直接快捷回复、延后处理、
   定时发送、批量移动/归档/删除带撤销提示；草稿完整保留全部收件人（含密送）
-- **AI 助手（可选）** — 长邮件一键摘要、按你想要的口吻起草回复、自动给收件箱
-  排序，或按意思搜而不是按关键词搜
 - **不只是收件箱，还是工作台** — 首页仪表盘汇总最近文件和即将到来的日程，
   点击直达上下文
 - **隐私功能内置** — PGP 签名/加密（与个性签名相互独立，支持自动签名）、
@@ -58,9 +56,7 @@
 ### 任何设备、任何客户端
 
 - **标准协议** — SMTP / IMAP / POP3（支持隐式 TLS），外加 CardDAV / CalDAV
-  与 ActiveSync 手机同步；常见客户端 走
-  autoconfig/autodiscover 自动配置
-- **邮箱委托** — 把邮箱全权委托给同事（或管理共享邮箱），无需共享密码
+  手机与桌面同步；常见客户端通过 autoconfig/autodiscover 自动配置
 - **应用令牌** — 按客户端签发令牌，随时在设置里吊销
 
 ### 管理后台：不像"做管理"的管理后台
@@ -69,7 +65,7 @@
   删除用户会自动级联清理引擎侧邮箱数据
 - **一键 DKIM** — 自动生成签名密钥并显示状态，让邮件不再被丢进垃圾箱
 - **谁做了什么一目了然** — 管理员操作审计日志、基于角色的权限
-  （admin / manager / user），外加全站公告横幅
+  （admin / manager / user）
 - **备份迁移很简单** — 整套配置可一键导出、导入
 
 <p align="center">
@@ -150,8 +146,7 @@ go run ./cmd/e2e
   均可插拔；dev 与社区档同一引擎，仅在存储（SQLite/pebble，可选
   MySQL/PostgreSQL）上有别
 - 更多细节：[`docs/dev-setup.md`](docs/dev-setup.md)、
-  [`docs/architecture.md`](docs/architecture.md)、
-  [`docs/webmail-ui-spec.md`](docs/webmail-ui-spec.md)；
+  [`docs/architecture.md`](docs/architecture.md)；
   版本间升级（含 MySQL→SQLite 控制面切换）：
   [`docs/upgrades.md`](docs/upgrades.md)
 

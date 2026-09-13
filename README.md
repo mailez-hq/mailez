@@ -45,13 +45,10 @@ required to run it.
   starred or messages with attachments
 - **Keyboard-first** — press `/` to search, `⌘K` for the command palette, `?`
   for the full shortcut list
-- **Day-to-day mail tasks made easy** — conversation threads, quick reply and
-  AI summary right in the action bar, snooze, scheduled send, undo toast for
+- **Day-to-day mail tasks made easy** — conversation threads, quick reply
+  right in the action bar, snooze, scheduled send, undo toast for
   bulk move / archive / delete, and drafts that keep every recipient including
   Bcc
-- **An AI assistant (optional)** — summarize long threads, draft replies in
-  the tone you want, auto-prioritize your inbox, or search by meaning instead
-  of keywords
 - **A workbench, not just an inbox** — the home dashboard surfaces recent
   files and upcoming events, both clickable straight into context
 - **Privacy features built in** — PGP sign and encrypt (distinct from your
@@ -73,10 +70,8 @@ required to run it.
 ### Any device, any client
 
 - **Standard protocols** — SMTP / IMAP / POP3 (implicit TLS available), plus
-  CardDAV / CalDAV and ActiveSync for phone sync; mainstream clients,
-  popular clients configure themselves via autoconfig/autodiscover
-- **Delegated mailboxes** — grant a teammate full access to your mailbox (or
-  manage a shared one) without sharing passwords
+  CardDAV / CalDAV sync for phones and desktops; popular clients configure
+  themselves via autoconfig/autodiscover
 - **App tokens** — per-client tokens you can issue and revoke from settings
 
 ### An admin console that doesn't feel like admin work
@@ -86,8 +81,8 @@ required to run it.
   engine-side mailbox automatically
 - **One-click DKIM** — generate signing keys with a status hint, so your mail
   stops landing in spam
-- **See who did what** — audit log of admin actions, role-based access
-  (admin / manager / user), and a site-wide announcement banner
+- **See who did what** — audit log of admin actions and role-based access
+  (admin / manager / user)
 - **Backup or migrate easily** — export and import your whole configuration
 
 <p align="center">
@@ -192,8 +187,7 @@ go run ./cmd/e2e    # sends a test mail, checks delivery, DKIM and spam filterin
   and community profiles run it; they differ only in storage
   (SQLite/pebble, with optional MySQL/PostgreSQL)
 - More details: [`docs/dev-setup.md`](docs/dev-setup.md),
-  [`docs/architecture.md`](docs/architecture.md),
-  [`docs/webmail-ui-spec.md`](docs/webmail-ui-spec.md);
+  [`docs/architecture.md`](docs/architecture.md);
   upgrading between versions (including the MySQL→SQLite control-plane
   switch): [`docs/upgrades.md`](docs/upgrades.md)
 
