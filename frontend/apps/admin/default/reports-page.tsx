@@ -1,6 +1,6 @@
 "use client";
 
-// Default module set: the traffic report is an enterprise module; this
+// Default module set: the traffic report ships as an optional module; this
 // placeholder keeps the deep link alive in community builds.
 import { PagePlaceholder } from "./placeholder";
 
