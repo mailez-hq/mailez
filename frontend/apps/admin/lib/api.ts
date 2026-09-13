@@ -6,7 +6,13 @@ import type {
 // Re-export the shared auth types for existing importers of @/lib/api.
 export type { Me, LoginResult };
 
-const API = "/api/v1";
+// The app's basePath (default /admin; injected by next.config.ts). Next's
+// router and <Link> prefix it automatically, but every raw absolute string
+// — fetch URLs, window.location assignments — must include it manually or
+// it escapes the app and hits whatever serves the domain root.
+export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+const API = `${BASE_PATH}/api/v1`;
 
 // Build-time marker (injected by next.config.ts from MAILEZ_MODULES):
 // "true" when an extended module set is baked in, empty for the default
@@ -82,10 +88,13 @@ function handleUnauthorized(path: string) {
   if (bouncedToLogin || typeof window === "undefined") return;
   if (authSurface(path)) return;
   bouncedToLogin = true;
-  if (window.location.pathname === "/") return; // already on the login page
+  // Already on the login page (the basePath root serves it): pathname is
+  // either BASE_PATH or BASE_PATH + "/" — or "/" for root-served builds.
+  const loginPath = BASE_PATH ? `${BASE_PATH}/` : "/";
+  if (window.location.pathname === BASE_PATH || window.location.pathname === loginPath) return;
   const here = window.location.pathname + window.location.search;
   const safe = here.startsWith("/") && !here.startsWith("//") && !here.includes("\\");
-  window.location.href = safe ? `/?expired=1&next=${encodeURIComponent(here)}` : "/?expired=1";
+  window.location.href = safe ? `${loginPath}?expired=1&next=${encodeURIComponent(here)}` : `${loginPath}?expired=1`;
 }
 
 // dashboardTarget resolves where a signed-in admin lands: the page they were
@@ -101,7 +110,7 @@ export function dashboardTarget(): string {
   } catch {
     // ignore malformed query
   }
-  return "/overview";
+  return `${BASE_PATH}/overview`;
 }
 
 // Public /server/settings shape. The admin sign-in page only consults the
@@ -278,7 +287,7 @@ export const deleteArchiveMessage = (id: number) =>
   apiDelete(`/archive/messages/${id}`);
 export const archiveExportUrl = (params: Record<string, string>) => {
   const qs = new URLSearchParams(params).toString();
-  return `/api/v1/archive/export${qs ? `?${qs}` : ""}`;
+  return `${API}/archive/export${qs ? `?${qs}` : ""}`;
 };
 
 // DLP rules + approval workflow

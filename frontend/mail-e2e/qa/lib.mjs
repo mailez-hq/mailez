@@ -20,7 +20,9 @@ import { apiLogin, USER } from "../helper.mjs";
 
 export { USER };
 export const BASE = "http://127.0.0.1:8083";
-export const ADMIN_BASE = "http://127.0.0.1:18082";
+// The admin app is served under basePath /admin (gateway location /admin);
+// the direct port keeps the same prefix.
+export const ADMIN_BASE = "http://127.0.0.1:18082/admin";
 // The engine refuses plaintext authentication ([PRIVACYREQUIRED] TLS is
 // required to authenticate), so protocol checks use the implicit-TLS port.
 // The development stack ships a self-signed cert.

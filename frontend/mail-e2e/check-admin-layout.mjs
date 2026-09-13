@@ -1,7 +1,7 @@
 import { chromium } from "playwright";
 import { apiLogin } from "./helper.mjs";
 
-const B = "http://127.0.0.1:18082";
+const B = "http://127.0.0.1:18082/admin"; // basePath /admin
 const c = await apiLogin();
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, locale: "zh-CN" });

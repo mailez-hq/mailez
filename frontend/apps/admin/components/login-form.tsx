@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ApiError, dashboardTarget, login, loginTotp, serverSettings } from "@/lib/api";
+import { ApiError, BASE_PATH, dashboardTarget, login, loginTotp, serverSettings } from "@/lib/api";
 
 export function LoginForm() {
   const t = useTranslations("login");
@@ -43,7 +43,7 @@ export function LoginForm() {
 
   function startSso() {
     window.location.href =
-      "/api/v1/sso/oidc/start?next=" + encodeURIComponent(dashboardTarget());
+      `${BASE_PATH}/api/v1/sso/oidc/start?next=` + encodeURIComponent(dashboardTarget());
   }
 
   async function onSubmit(e: React.FormEvent) {
