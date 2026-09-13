@@ -14,6 +14,12 @@ services:
     build:
       context: ../../backend
       dockerfile: Dockerfile.ee
+      args:
+        # Release builds inject the vendor production public key so the
+        # binary can enforce MAILEZ_LICENSE_REQUIRED (a dev-key build
+        # refuses to enforce — see internal/ee/license). release-ee.sh
+        # always sets this; leaving it empty yields a dev-key build.
+        MAILEZ_LICENSE_PUBKEY: ${MAILEZ_LICENSE_PUBKEY:-}
 
   frontend-admin:
     build:
@@ -42,6 +48,7 @@ services:
       dockerfile: Dockerfile.ee
       args:
         VERSION: ${MAILEZ_IMAGE_TAG:-local}
+        MAILEZ_LICENSE_PUBKEY: ${MAILEZ_LICENSE_PUBKEY:-}
 
   mail-filter:
     build:

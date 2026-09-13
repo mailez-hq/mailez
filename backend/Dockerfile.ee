@@ -16,10 +16,15 @@ COPY . .
 # internal/ee/license.Load).
 ARG MAILEZ_LICENSE_PUBKEY=""
 ARG MAILEZ_SERVICE_PUBKEY=""
-RUN [ -n "$MAILEZ_LICENSE_PUBKEY" ] && LKEYS="-X mailez/backend/internal/ee/license.publicKeyB64=$MAILEZ_LICENSE_PUBKEY" || LKEYS=""; \
-    [ -n "$MAILEZ_SERVICE_PUBKEY" ] && SKEYS="-X mailez/backend/internal/entitlements.publicKeyB64=$MAILEZ_SERVICE_PUBKEY" || SKEYS=""; \
-    go build -tags mailez_ee $LKEYS $SKEYS -o /out/mailez ./cmd/server \
- && go build -tags mailez_ee $LKEYS $SKEYS -o /out/mailez-seed ./cmd/seed
+# -X is a linker flag: it must travel inside -ldflags as ONE argument.
+# (The unquoted expansion below used to hand "-X pkg=key" straight to
+# `go build`, which rejected it — the path had simply never been
+# exercised with a real key before.)
+RUN LDFLAGS=""; \
+    [ -n "$MAILEZ_LICENSE_PUBKEY" ] && LDFLAGS="$LDFLAGS -X mailez/backend/internal/ee/license.publicKeyB64=$MAILEZ_LICENSE_PUBKEY"; \
+    [ -n "$MAILEZ_SERVICE_PUBKEY" ] && LDFLAGS="$LDFLAGS -X mailez/backend/internal/entitlements.publicKeyB64=$MAILEZ_SERVICE_PUBKEY"; \
+    go build -tags mailez_ee -ldflags "$LDFLAGS" -o /out/mailez ./cmd/server \
+ && go build -tags mailez_ee -ldflags "$LDFLAGS" -o /out/mailez-seed ./cmd/seed
 
 FROM alpine:3.21
 RUN adduser -S -u 1000 mailez
