@@ -1,6 +1,16 @@
-{{if .Greylisting}}greylist {
-  timeout = 1h;
-  expire = 48h;
-  key = "ip,from,to";
-}
+{{if .Greylisting}}# MAILEZ_GREYLISTING=true: mailez-tuned greylisting window.
+# Keys are bare: this file *is* the greylist section, so a `greylist { }`
+# wrapper nests a second section and rspamd rejects the whole block
+# ("nested section: greylist { greylist { ... } }") — the setting silently
+# never applied.
+timeout = 1h;
+expire = 48h;
+key = "ip,from,to";
+{{else}}# MAILEZ_GREYLISTING=false: rspamd loads its greylist module by default and
+# has no `enabled = false`; the module action is the supported switch. A
+# neutral action keeps the scan but never answers 4xx "try again later", so
+# mail is not delayed (an authenticated submission from a remote client used
+# to be greylisted on first contact because the engine does not pass the
+# authenticated user to rspamd).
+action = "no action";
 {{end}}.include(try=true,priority=1,duplicate=merge) "/overrides/greylist.conf"
