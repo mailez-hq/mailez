@@ -135,7 +135,7 @@ services:
       retries: 3
       start_period: 20s
     ports:
-      - "${MAILEZ_API_PORT:-8081}:8080"
+      - "127.0.0.1:${MAILEZ_API_PORT:-8081}:8080"
     volumes:
       - "./data:/data"
     depends_on:
@@ -149,7 +149,7 @@ services:
       - API_TARGET=http://backend:8080
       - PORT=3000
     ports:
-      - "${MAILEZ_ADMIN_PORT:-8082}:3000"
+      - "127.0.0.1:${MAILEZ_ADMIN_PORT:-8082}:3000"
     depends_on:
       - backend
 
@@ -160,7 +160,7 @@ services:
       - API_TARGET=http://backend:8080
       - PORT=3000
     ports:
-      - "${MAILEZ_WEBMAIL_PORT:-8083}:3000"
+      - "127.0.0.1:${MAILEZ_WEBMAIL_PORT:-8083}:3000"
     depends_on:
       - backend
 
