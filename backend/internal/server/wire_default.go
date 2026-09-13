@@ -61,5 +61,6 @@ func startComplianceWorkers(db *gorm.DB, am *auth.Manager, cfg core.Config, bgCt
 }
 
 // startAdminWorkers starts no edition-gated workers in the base build: the
-// admin digest email and the engine traffic sampler are enterprise-only.
+// admin digest email and the engine traffic sampler ship as optional
+// modules only.
 func startAdminWorkers(db *gorm.DB, cfg core.Config, bgCtx context.Context) {}
