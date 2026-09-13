@@ -12,7 +12,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { auditLogs } from "@/lib/api";
+import { BASE_PATH, auditLogs } from "@/lib/api";
 import type { AuditLog } from "@/lib/types";
 import { AUDIT_EXPORT } from "@/modules/audit-export";
 
@@ -51,7 +51,7 @@ export default function AuditPage() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{t("recent")}</CardTitle>
           {AUDIT_EXPORT && (
-            <Button variant="outline" size="sm" onClick={() => { window.location.href = "/api/v1/audit/export"; }}>
+            <Button variant="outline" size="sm" onClick={() => { window.location.href = `${BASE_PATH}/api/v1/audit/export`; }}>
               {t("export")}
             </Button>
           )}

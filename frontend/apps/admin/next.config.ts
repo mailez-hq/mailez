@@ -21,13 +21,23 @@ cpSync(moduleSrcDir, join(appRoot, "modules"), { recursive: true });
 // inside compose); container deployments override this with API_TARGET.
 const API_TARGET = process.env.API_TARGET || "http://localhost:8080";
 
+// The admin console is served under /admin: the gateway routes
+// location /admin to this app (deploy/overrides/nginx/admin.conf), so one
+// webmail domain serves both apps and the direct host port can stay on
+// loopback. Next prefixes pages, assets and rewrites automatically; raw
+// absolute strings in code must use BASE_PATH from lib/api. Overridable
+// (empty string or another prefix) for deployments serving at a domain root.
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "/admin";
+
 const nextConfig: NextConfig = {
+  basePath: BASE_PATH,
   transpilePackages: ["@mailez/ui", "@mailez/types"],
   // Client-side marker for module-aware helpers: "true" when an extended
   // module set is baked in, empty for the default set — helpers short-
   // circuit instead of firing requests that can only 404.
   env: {
     NEXT_PUBLIC_MAILEZ_MODULES_ACTIVE: moduleSet === "default" ? "" : "true",
+    NEXT_PUBLIC_BASE_PATH: BASE_PATH,
   },
   async rewrites() {
     return [
