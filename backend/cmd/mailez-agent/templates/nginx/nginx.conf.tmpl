@@ -62,6 +62,10 @@ http {
           return 204;
       }
       location ^~ /.well-known/acme-challenge/ {
+          # The ACME provider validates challenges by Host header; the
+          # default proxy Host (127.0.0.1:8008) makes every challenge
+          # mismatch and the validation server sees the self-test body.
+          proxy_set_header Host $host;
           proxy_pass http://127.0.0.1:8008;
       }
       {{ end }}      # redirect to https
@@ -134,11 +138,21 @@ http {
         include /etc/nginx/proxy.conf;
         proxy_pass http://$backend;
       }
+      # MTA-STS policy file (RFC 8461): served by the backend for the
+      # receiving domain derived from the Host header (mode "testing").
+      location = /.well-known/mta-sts.txt {
+        include /etc/nginx/proxy.conf;
+        proxy_pass http://$backend;
+      }
 
       {{ if eq .TLSFlavor "letsencrypt" }}      location ^~ /.well-known/acme-challenge/testing {
           return 204;
       }
       location ^~ /.well-known/acme-challenge/ {
+          # The ACME provider validates challenges by Host header; the
+          # default proxy Host (127.0.0.1:8008) makes every challenge
+          # mismatch and the validation server sees the self-test body.
+          proxy_set_header Host $host;
           proxy_pass http://127.0.0.1:8008;
       }
       {{ end }}
@@ -150,7 +164,18 @@ http {
       {{ else }}      include /overrides/*.conf;
 
       # Actual logic
+      {{ if .Webmail }}      # Webmail console: proxy the Next.js app (MAILEZ_WEBMAIL).
+      # proxy.conf already sets http_version; long timeouts + no buffering
+      # keep the webmail SSE stream alive.
       location / {
+        include /etc/nginx/proxy.conf;
+        proxy_pass http://{{ .Webmail }};
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_buffering off;
+        proxy_read_timeout 3600s;
+      }
+      {{ else }}      location / {
         expires $expires;
         try_files $uri =404;
       }
@@ -175,6 +200,7 @@ http {
       location /health {
         return 204;
       }
+      {{ end }}
     }
 
     # Forwarding authentication server

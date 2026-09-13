@@ -19,7 +19,7 @@ import { adminHealth, type HealthItem, type HealthReport } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const DOMAIN_CHECK_IDS = [
-  "mx", "spf", "dmarc", "dkim", "blacklist", "autoconfig", "mta_sts",
+  "mx", "spf", "dmarc", "dkim", "blacklist", "blacklist_pbl", "autoconfig", "mta_sts",
 ] as const;
 
 const SYSTEM_CHECK_IDS = [

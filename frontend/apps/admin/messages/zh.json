@@ -482,6 +482,7 @@
       "dmarc": "DMARC",
       "dkim": "DKIM",
       "blacklist": "黑名单",
+      "blacklist_pbl": "黑名单(PBL)",
       "autoconfig": "自动配置",
       "mta_sts": "MTA-STS"
     },
