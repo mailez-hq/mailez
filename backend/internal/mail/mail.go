@@ -1022,7 +1022,7 @@ func extractBody(r io.Reader) (text, html string, attachments []Attachment, inv 
 			if err != nil {
 				break
 			}
-			partType, _, _ := mime.ParseMediaType(part.Header.Get("Content-Type"))
+			partType, partParams, _ := mime.ParseMediaType(part.Header.Get("Content-Type"))
 			if strings.HasPrefix(partType, "text/calendar") && inv == nil {
 				b, _ := io.ReadAll(io.LimitReader(part, 1<<20))
 				inv = ParseInvitation(decodeBodyBytes(b, part.Header.Get("Content-Transfer-Encoding")))
@@ -1039,17 +1039,17 @@ func extractBody(r io.Reader) (text, html string, attachments []Attachment, inv 
 					Data:        base64.StdEncoding.EncodeToString(decoded),
 				})
 			} else if strings.HasPrefix(partType, "text/plain") && text == "" {
-				text = string(decoded)
+				text = decodeBodyText(b, part.Header.Get("Content-Transfer-Encoding"), partParams["charset"])
 			} else if strings.HasPrefix(partType, "text/html") && html == "" {
-				html = SanitizeHTML(string(decoded))
+				html = SanitizeHTML(decodeBodyText(b, part.Header.Get("Content-Transfer-Encoding"), partParams["charset"]))
 			}
 		}
 	} else {
 		b, _ := io.ReadAll(body)
 		if strings.HasPrefix(mt, "text/plain") {
-			text = decodeBody(b, encoding)
+			text = decodeBodyText(b, encoding, params["charset"])
 		} else if strings.HasPrefix(mt, "text/html") {
-			html = SanitizeHTML(decodeBody(b, encoding))
+			html = SanitizeHTML(decodeBodyText(b, encoding, params["charset"]))
 		} else if strings.HasPrefix(mt, "text/calendar") {
 			inv = ParseInvitation(decodeBodyBytes(b, encoding))
 		}
@@ -1072,6 +1072,16 @@ func decodeBodyBytes(b []byte, encoding string) []byte {
 		}
 	}
 	return b
+}
+
+// decodeBodyText undoes the transfer encoding of a text part and converts it
+// to UTF-8 per the charset it declares. Parts keep whatever charset their
+// sender used — GBK is what 126.com/163.com send — and forwarding those bytes
+// raw produces invalid UTF-8, which the JSON encoder turns into a body full of
+// U+FFFD. Attachments deliberately do not come through here: their bytes must
+// survive exactly as sent.
+func decodeBodyText(b []byte, encoding, charset string) string {
+	return string(decodeCharset([]byte(decodeBody(b, encoding)), charset))
 }
 
 func decodeBody(b []byte, encoding string) string {

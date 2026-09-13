@@ -84,19 +84,19 @@ func TestPreviewDecodeTransfer(t *testing.T) {
 func TestPreviewDecodeCharset(t *testing.T) {
 	// GBK bytes for 邮件预览
 	gbk := []byte{0xD3, 0xCA, 0xBC, 0xFE, 0xD4, 0xA4, 0xC0, 0xC0}
-	if got := string(previewDecodeCharset(gbk, "gbk")); got != "邮件预览" {
+	if got := string(decodeCharset(gbk, "gbk")); got != "邮件预览" {
 		t.Fatalf("gbk: %q", got)
 	}
 	// latin-1
-	if got := string(previewDecodeCharset([]byte{0xE9}, "iso-8859-1")); got != "é" {
+	if got := string(decodeCharset([]byte{0xE9}, "iso-8859-1")); got != "é" {
 		t.Fatalf("latin1: %q", got)
 	}
 	// unknown charset passes through
-	if got := string(previewDecodeCharset([]byte{0xFF}, "x-unknown")); got != "\xFF" {
+	if got := string(decodeCharset([]byte{0xFF}, "x-unknown")); got != "\xFF" {
 		t.Fatalf("unknown: %q", got)
 	}
 	// truncated multibyte tail keeps the decoded prefix
-	iso := previewDecodeCharset([]byte{0xE9, 0x62}, "iso-8859-1") // é + b — single-byte, no truncation issue
+	iso := decodeCharset([]byte{0xE9, 0x62}, "iso-8859-1") // é + b — single-byte, no truncation issue
 	if string(iso) != "éb" {
 		t.Fatalf("latin1 pair: %q", iso)
 	}

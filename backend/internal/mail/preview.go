@@ -190,7 +190,7 @@ collect:
 // whitespace and cap the length.
 func buildPreview(b []byte, encoding, charset string, isHTML bool) string {
 	decoded := previewDecodeTransfer(b, encoding)
-	decoded = previewDecodeCharset(decoded, charset)
+	decoded = decodeCharset(decoded, charset)
 	if isHTML {
 		decoded = []byte(htmlToText(string(decoded)))
 	}
@@ -231,10 +231,12 @@ func previewDecodeTransfer(b []byte, encoding string) []byte {
 	}
 }
 
-// previewDecodeCharset converts a fragment to UTF-8. The common CJK and
-// western legacy charsets are covered; unknown charsets pass through
-// unchanged (best-effort preview, never an error).
-func previewDecodeCharset(b []byte, charset string) []byte {
+// decodeCharset converts text in a legacy charset to UTF-8. The common CJK and
+// western ones are covered; unknown charsets pass through unchanged
+// (best-effort, never an error). Used for previews and for whole message
+// parts: a GBK part forwarded as-is is invalid UTF-8, which the JSON encoder
+// then turns into a field of U+FFFD replacement characters.
+func decodeCharset(b []byte, charset string) []byte {
 	var enc encoding.Encoding
 	switch strings.ToLower(strings.TrimSpace(charset)) {
 	case "", "utf-8", "utf8", "us-ascii", "ascii":
