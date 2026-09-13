@@ -79,6 +79,11 @@ install_stack() {
   # containers expect (backend 1000, engine 82).
   mkdir -p "${INSTALL_DIR}/data"
   chown -R 1000:82 "${INSTALL_DIR}/data" 2>/dev/null || warn "could not chown data dir (rootless docker?)"
+  # The engine (82:101) needs its own mount writable, otherwise it comes up
+  # with full-text search disabled ("mkdir /data/rocks.fts: permission
+  # denied") because Docker created the subdirectory as root.
+  mkdir -p "${INSTALL_DIR}/data/mailezine"
+  chown -R 82:101 "${INSTALL_DIR}/data/mailezine" 2>/dev/null || warn "could not chown engine data dir"
 
   say "generating ${INSTALL_DIR}/mailez.env"
   {
@@ -95,12 +100,22 @@ install_stack() {
     # deployment. Keep every reference-env key that has no compose-level
     # default.
     echo "MAILEZ_HOSTNAMES=${MAILEZ_HOSTNAME}"
+    # The engine greets remote MTAs with MAILEZINE_HOSTNAME; without it the
+    # banner (and EHLO) degrades to the container id, which receiving MTAs
+    # and spam filters score against.
+    echo "MAILEZINE_HOSTNAME=${MAILEZ_HOSTNAME}"
     echo "MAILEZ_SUBNET=192.168.206.0/24"
     echo "MAILEZ_SUBNET6=fd00:beef:beef::/64"
-    echo "MAILEZ_POSTMASTER=${MAILEZ_ADMIN_EMAIL}"
+    # Bare local part: the agent templates append @${MAILEZ_DOMAIN} themselves
+    # (rspamd dmarc.conf, ACME account contact). A full address here produced
+    # admin@mailez.cn@mailez.cn and every first TLS enable failed at Let's
+    # Encrypt registration with invalidContact.
+    echo "MAILEZ_POSTMASTER=postmaster"
     echo "MAILEZ_RELAYNETS="
     echo "MAILEZ_TLS=off"
-    echo "MAILEZ_TLS_PORTS=25,465,587"
+    # 443 must stay in this list: it is what makes the gateway render the
+    # HTTPS vhost after ACME succeeds (25/465/587 are engine-side).
+    echo "MAILEZ_TLS_PORTS=80,443"
     echo "MAILEZ_ANTIVIRUS=none"
     echo "MAILEZ_SCAN_MACROS=true"
     echo "MAILEZ_GREYLISTING=false"
@@ -133,8 +148,8 @@ install_stack() {
 ========================================================================
  mailez enterprise ${VERSION} is up.
 
- Admin console : http://<this-host>:8082
- Webmail       : http://<this-host>:8083
+ Admin console : http://<this-host>       (gateway :80; 127.0.0.1:8082 for local debug)
+ Webmail       : http://<this-host>       (gateway :80; 127.0.0.1:8083 for local debug)
  Admin account : ${MAILEZ_ADMIN_EMAIL}
  Admin password: ${MAILEZ_ADMIN_PASSWORD}
  Deploy dir    : ${INSTALL_DIR}   (data: ${INSTALL_DIR}/data)
