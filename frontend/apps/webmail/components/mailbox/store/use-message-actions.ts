@@ -27,6 +27,7 @@ export function useMessageActions({
   folder,
   messages,
   searching,
+  conversation,
   selected,
   detail,
   selectedUids,
@@ -48,6 +49,7 @@ export function useMessageActions({
   folder: string;
   messages: MailMessage[];
   searching: boolean;
+  conversation: boolean;
   selected: MailMessage | null;
   detail: MailMessage | null;
   selectedUids: Set<number>;
@@ -69,12 +71,15 @@ export function useMessageActions({
   // groupUidsByFolder resolves each uid to its owning folder: cross-folder
   // search results (searchAll / AI search) span folders and IMAP uids are
   // only unique within one folder — acting on them with the open folder's
-  // name would hit an unrelated message that happens to share the uid.
-  function groupUidsByFolder(uids: number[]): Map<string, number[]> {
+  // name would hit an unrelated message that happens to share the uid. The
+  // fallback covers uids that are not in the current list (e.g. thread
+  // members fetched for a conversation-wide action).
+  function groupUidsByFolder(uids: number[], fallback?: string): Map<string, number[]> {
+    const def = fallback ?? folder;
     const byUid = new Map(messages.map((m) => [m.uid, m.folder || folder]));
     const groups = new Map<string, number[]>();
     for (const u of uids) {
-      const f = byUid.get(u) || folder;
+      const f = byUid.get(u) || def;
       const list = groups.get(f);
       if (list) list.push(u);
       else groups.set(f, [u]);
@@ -88,10 +93,14 @@ export function useMessageActions({
   folderRef.current = folder;
 
   // moveTo moves messages to a folder and offers an undo that moves them back.
-  async function moveTo(uids: number[], destination: string, successLabel: string) {
+  async function moveTo(uids: number[], destination: string, successLabel: string, srcHint?: string) {
+    return moveGroups(groupUidsByFolder(uids, srcHint), destination, successLabel);
+  }
+
+  async function moveGroups(groups: Map<string, number[]>, destination: string, successLabel: string) {
+    const uids = [...groups.values()].flat();
     setError("");
     try {
-      const groups = groupUidsByFolder(uids);
       await Promise.all([...groups].map(([src, us]) => mailMove(src, us, destination)));
       refreshUnseen();
       const uidSet = new Set(uids);
@@ -133,12 +142,36 @@ export function useMessageActions({
     }
   }
 
-  function archiveMessage(m: MailMessage) {
-    return moveTo([m.uid], "Archive", t("toastArchived"));
+  // A conversation row (and the reading pane it opens) stands for its whole
+  // thread, exactly like openMessage's seen logic and toggleMute already
+  // treat it: row/detail move actions must cover every member, not just the
+  // representative — deleting only the visible member left the conversation
+  // sitting in the list with a shrunken count, looking like delete silently
+  // failed. Flat mode (conversation off) keeps strictly per-message actions.
+  async function actionTarget(m: MailMessage): Promise<{ uids: number[]; src: string }> {
+    const src = m.folder || folder;
+    if (!conversation || !m.thread_id || !m.thread_count || m.thread_count <= 1) {
+      return { uids: [m.uid], src };
+    }
+    try {
+      const th = await mailThread(src, m.thread_id);
+      const members = normalizeThread(th ?? { thread_id: m.thread_id, messages: [] }).messages;
+      const uids = members.map((x) => x.uid);
+      return { uids: uids.length ? uids : [m.uid], src };
+    } catch {
+      // Listing the thread failed; act on the visible message only.
+      return { uids: [m.uid], src };
+    }
   }
 
-  function spamMessage(m: MailMessage) {
-    return moveTo([m.uid], spamFolder, t("toastSpam"));
+  async function archiveMessage(m: MailMessage) {
+    const { uids, src } = await actionTarget(m);
+    return moveTo(uids, "Archive", t("toastArchived"), src);
+  }
+
+  async function spamMessage(m: MailMessage) {
+    const { uids, src } = await actionTarget(m);
+    return moveTo(uids, spamFolder, t("toastSpam"), src);
   }
 
   // Report not-spam: whitelist the sender and move the message back to Inbox.
@@ -250,8 +283,9 @@ export function useMessageActions({
     router.push(`/mail/${encodeURIComponent(f)}/${m.id || m.uid}`);
   }
 
-  function removeMessage(m: MailMessage) {
-    return moveTo([m.uid], "Trash", t("toastDeleted"));
+  async function removeMessage(m: MailMessage) {
+    const { uids, src } = await actionTarget(m);
+    return moveTo(uids, "Trash", t("toastDeleted"), src);
   }
 
   // Bulk actions act on rows the user can see. A background refresh can
@@ -266,20 +300,55 @@ export function useMessageActions({
   }
 
   async function bulkDelete() {
-    const ids = filterKnownUids([...selectedUids]);
-    await moveTo(ids, "Trash", t("toastDeleted"));
+    await bulkMove("Trash", t("toastDeleted"));
   }
 
   async function bulkArchive() {
-    await moveTo(filterKnownUids([...selectedUids]), "Archive", t("toastArchived"));
+    await bulkMove("Archive", t("toastArchived"));
   }
 
   async function bulkSpam() {
-    await moveTo(filterKnownUids([...selectedUids]), spamFolder, t("toastSpam"));
+    await bulkMove(spamFolder, t("toastSpam"));
   }
 
   function moveSelectedTo(destination: string) {
-    return moveTo(filterKnownUids([...selectedUids]), destination, t("toastMoved"));
+    return bulkMove(destination, t("toastMoved"));
+  }
+
+  // Bulk actions act on what the selected rows represent: with the
+  // conversation view on, each checked row is a whole thread, so the batch
+  // expands every selected thread into its members (per-folder, so
+  // cross-folder selections keep their source attribution). Flat mode moves
+  // exactly the checked messages.
+  async function bulkMove(destination: string, successLabel: string) {
+    const ids = filterKnownUids([...selectedUids]);
+    if (!conversation) return moveTo(ids, destination, successLabel);
+    const byUid = new Map(messages.map((m) => [m.uid, m]));
+    const groups = new Map<string, number[]>();
+    const push = (f: string, u: number) => {
+      const list = groups.get(f);
+      if (list) {
+        if (!list.includes(u)) list.push(u);
+      } else groups.set(f, [u]);
+    };
+    for (const u of ids) {
+      const m = byUid.get(u);
+      const src = m?.folder || folder;
+      if (m?.thread_id && m.thread_count && m.thread_count > 1) {
+        try {
+          const th = await mailThread(src, m.thread_id);
+          const members = normalizeThread(th ?? { thread_id: m.thread_id, messages: [] }).messages;
+          if (members.length) {
+            for (const x of members) push(src, x.uid);
+            continue;
+          }
+        } catch {
+          // Listing the thread failed; move the checked row only.
+        }
+      }
+      push(src, u);
+    }
+    return moveGroups(groups, destination, successLabel);
   }
 
   function moveDetailTo(destination: string) {
