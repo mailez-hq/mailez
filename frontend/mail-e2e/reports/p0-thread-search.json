@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-12T07:07:54.594Z",
+  "generatedAt": "2026-09-13T21:42:48.852Z",
   "total": 14,
   "pass": 14,
   "fail": 0,
@@ -9,19 +9,19 @@
       "module": "P0-thread",
       "name": "Thread: root message delivered",
       "status": "PASS",
-      "detail": "uid=538"
+      "detail": "uid=601"
     },
     {
       "module": "P0-thread",
       "name": "Thread: root exposes a Message-ID for replies",
       "status": "PASS",
-      "detail": "message-id=<262482d2944c0bb393abeed4@example.com>"
+      "detail": "message-id=<769e2fb830c072ad20080a5e@example.com>"
     },
     {
       "module": "P0-thread",
       "name": "Thread: conversation view reports 3 members (API)",
       "status": "PASS",
-      "detail": "thread_count=3 subject=Re: E2E-THR-1789196775099"
+      "detail": "thread_count=3 subject=Re: E2E-THR-1789335645418"
     },
     {
       "module": "P0-thread",
@@ -51,7 +51,7 @@
       "module": "P0-thread",
       "name": "Attachment: message with a CJK-named attachment is delivered",
       "status": "PASS",
-      "detail": "uid=541 has_attachment=true"
+      "detail": "uid=604 has_attachment=true"
     },
     {
       "module": "P0-thread",
@@ -69,7 +69,7 @@
       "module": "P0-thread",
       "name": "Search: has:attachment returns the attachment message",
       "status": "PASS",
-      "detail": "snippet=\"云山大学 A Write AI compose A admin@example.com Workspace FOLDERS Inbox 3 Sent Draft\""
+      "detail": "snippet=\"云山大学 A Write AI compose A admin@example.com Workspace FOLDERS Inbox 4 Sent Draft\""
     },
     {
       "module": "P0-thread",
@@ -81,13 +81,13 @@
       "module": "P0-thread",
       "name": "Search: hostile query string is handled without a crash",
       "status": "PASS",
-      "detail": "chars=307"
+      "detail": "chars=305"
     },
     {
       "module": "P0-thread",
       "name": "Cleanup: thread/search subjects purged",
       "status": "PASS",
-      "detail": "expunged=8"
+      "detail": "expunged=10"
     }
   ]
 }

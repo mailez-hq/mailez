@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-12T07:27:49.303Z",
+  "generatedAt": "2026-09-13T21:47:30.685Z",
   "total": 20,
   "pass": 20,
   "fail": 0,
@@ -21,19 +21,19 @@
       "module": "P0",
       "name": "Auth: sign-out leaves the signed-in area",
       "status": "PASS",
-      "detail": "url=http://127.0.0.1:8083/?next=%2Fhome"
+      "detail": "url=http://127.0.0.1:8083/?expired=1&next=%2Fhome"
     },
     {
       "module": "P0",
       "name": "Compose: UI send delivers to own Inbox (API)",
       "status": "PASS",
-      "detail": "uid=566"
+      "detail": "uid=605"
     },
     {
       "module": "P0",
       "name": "Compose: delivered copy visible over IMAP",
       "status": "PASS",
-      "detail": "imap=[566]"
+      "detail": "imap=[605]"
     },
     {
       "module": "P0",
@@ -75,25 +75,25 @@
       "module": "P0",
       "name": "Reply: subject prefixed and original quoted",
       "status": "PASS",
-      "detail": "subject=\"Re: E2E-SEND-1789197844533\" quotedChars=43"
+      "detail": "subject=\"Re: E2E-SEND-1789335770576\" quotedChars=43"
     },
     {
       "module": "P0",
       "name": "Reply: reply is delivered back to the inbox",
       "status": "PASS",
-      "detail": "uid=569"
+      "detail": "uid=608"
     },
     {
       "module": "P0",
       "name": "Forward: subject prefixed",
       "status": "PASS",
-      "detail": "subject=\"Fwd: E2E-SEND-1789197844533\""
+      "detail": "subject=\"Fwd: E2E-SEND-1789335770576\""
     },
     {
       "module": "P0",
       "name": "Forward: forwarded copy is delivered",
       "status": "PASS",
-      "detail": "uid=570"
+      "detail": "uid=609"
     },
     {
       "module": "P0",
@@ -105,7 +105,7 @@
       "module": "P0",
       "name": "Draft: reopening restores subject and body",
       "status": "PASS",
-      "detail": "editorOpen=true subject=\"E2E-DRAFT-1789197844533\" bodyChars=16"
+      "detail": "editorOpen=true subject=\"E2E-DRAFT-1789335770576\" bodyChars=16"
     },
     {
       "module": "P0",
@@ -123,7 +123,7 @@
       "module": "P0",
       "name": "Cleanup: E2E-* subjects purged from all folders",
       "status": "PASS",
-      "detail": "expunged=11"
+      "detail": "expunged=14"
     }
   ]
 }
