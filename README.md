@@ -4,6 +4,8 @@
 
 # mailez — mail easy
 
+**English** | [简体中文](README.zh-CN.md)
+
 Self-hosted email that scales with you: from a personal mailbox of one to
 ten-thousand-person organizations — teams, companies and public-sector
 agencies alike. Send and receive mail with your own domain, keep your data in
