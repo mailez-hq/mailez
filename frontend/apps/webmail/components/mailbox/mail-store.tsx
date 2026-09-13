@@ -150,7 +150,7 @@ export function useMailStoreValue(me: Me) {
     selected, setSelected, detail, setDetail,
     detailLoading, setDetailLoading,
     thread, setThread, threadOpen, setThreadOpen, threadLoading,
-    toggleThread, selectThreadMessage, backToList,
+    toggleThread, refreshThread, selectThreadMessage, backToList,
   } = useThreadDetail({ folder, router, conversation: prefs.conversation, setError });
 
   // ---- search & virtual views (keyword box, specs, label filters, saved
@@ -313,7 +313,7 @@ export function useMailStoreValue(me: Me) {
   // ---- message actions: move family, flags, open, sender actions ----
   const {
     moveTo, moveSelectedTo, moveDetailTo,
-    archiveMessage, spamMessage, removeMessage,
+    archiveMessage, spamMessage, removeMessage, removeSingleMessage,
     bulkDelete, bulkArchive, bulkSpam, bulkFlag,
     setSeen, toggleRead, toggleStar, togglePin, toggleMute,
     openMessage, reportNotSpam, reportNotSpamBulk, unsubscribeAction,
@@ -340,6 +340,15 @@ export function useMailStoreValue(me: Me) {
     loadMessages,
     openCompose,
   });
+
+  // Member-level delete inside the thread view: moves strictly that one
+  // message (Gmail's "delete this message"), then refreshes the open
+  // conversation AFTER the move landed so the member disappears from the
+  // pane instead of being re-served by a stale cache.
+  async function removeThreadMember(m: MailMessage) {
+    await removeSingleMessage(m);
+    await refreshThread();
+  }
 
   // ---- scheduled sends & snoozed messages ----
   const {
@@ -781,6 +790,7 @@ export function useMailStoreValue(me: Me) {
     openMessage,
     toggleSelect,
     removeMessage,
+    removeThreadMember,
     toggleStar,
     togglePin,
     snoozeMessage,

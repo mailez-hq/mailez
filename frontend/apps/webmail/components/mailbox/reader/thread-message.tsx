@@ -8,6 +8,7 @@ import {
   Reply,
   ReplyAll,
   Send,
+  Trash2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -43,6 +44,7 @@ export function ThreadMessage({
   onReply,
   onReplyAll,
   onForward,
+  onDelete,
   actionRowExtra,
   belowActions,
 }: {
@@ -60,6 +62,9 @@ export function ThreadMessage({
   onReply: () => void;
   onReplyAll: () => void;
   onForward: () => void;
+  /** Delete exactly this member of the conversation ("delete this message").
+   *  Optional: omitted when no single-message delete is wired (flat view). */
+  onDelete?: () => void;
   /** Extra controls appended after the forward button (thread-level quick
    * reply / AI summary on the newest member). */
   actionRowExtra?: React.ReactNode;
@@ -274,6 +279,20 @@ export function ThreadMessage({
           {t("forward")}
         </Button>
         {actionRowExtra}
+        {onDelete && (
+          // Single-message delete, pushed to the row's end so the primary
+          // reply/forward flow stays visually grouped (Gmail keeps it in the
+          // per-message menu; an icon-only button is the flat-row equivalent).
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onDelete}
+            title={t("deleteThisMessage")}
+            className="ml-auto text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
+        )}
       </div>
       {belowActions}
     </div>

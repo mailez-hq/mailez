@@ -98,6 +98,7 @@ export function MailView() {
     setCategoryFilter,
     toggleSelect,
     removeMessage,
+    removeThreadMember,
     toggleStar,
     archiveMessage,
     bulkDelete,
@@ -235,6 +236,7 @@ export function MailView() {
             onForwardThread={forwardFrom}
             onArchive={() => archiveMessage(detail)}
             onDelete={() => removeMessage(detail)}
+            onMemberDelete={removeThreadMember}
             onStar={() => toggleStar(detail)}
             onSpam={() => spamMessage(detail)}
             onBack={backToList}

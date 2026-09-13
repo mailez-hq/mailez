@@ -99,6 +99,7 @@
     "replyAll": "全部回复",
     "forward": "转发",
     "delete": "删除",
+    "deleteThisMessage": "删除此邮件",
     "archive": "归档",
     "spam": "垃圾",
     "toastArchived": "已移入归档",

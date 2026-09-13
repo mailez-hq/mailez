@@ -72,6 +72,7 @@
     "replyAll": "Reply all",
     "forward": "Forward",
     "delete": "Delete",
+    "deleteThisMessage": "Delete this message",
     "archive": "Archive",
     "spam": "Spam",
     "toastArchived": "Moved to Archive",
