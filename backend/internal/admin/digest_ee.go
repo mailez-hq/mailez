@@ -1,7 +1,10 @@
-// Administrator digest email: a daily (or weekly) operations summary in the
-// Mail-in-a-Box spirit — counts, recent activity, failed logins and the
-// domain health verdict, delivered to the admin mailbox through the engine
-// MTA. One replica sends it (DB lease) and a system flag dedupes per day.
+//go:build mailez_ee
+
+// Administrator digest email (enterprise): a daily (or weekly) operations
+// summary in the Mail-in-a-Box spirit — counts, recent activity, failed
+// logins and the domain health verdict, delivered to the admin mailbox
+// through the engine MTA. One replica sends it (DB lease) and a system
+// flag dedupes per day.
 package admin
 
 import (

@@ -14,9 +14,11 @@ func statusExtras(db *gorm.DB) map[string]any {
 	return map[string]any{"license": license.FromEnv().Status(db)}
 }
 
-// registerExtraRoutes mounts /admin/license for the admin console.
+// registerExtraRoutes mounts /admin/license and the enterprise-only traffic
+// report for the admin console.
 func (h *Handler) registerExtraRoutes(r fiber.Router, mw fiber.Handler) {
 	r.Get("/admin/license", mw, func(c *fiber.Ctx) error {
 		return c.JSON(license.FromEnv().Status(h.DB.WithContext(c.Context())))
 	})
+	h.registerTraffic(r, mw)
 }

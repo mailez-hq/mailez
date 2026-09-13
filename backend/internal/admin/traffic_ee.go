@@ -1,7 +1,10 @@
-// Traffic reporting: the backend samples the engine's Prometheus counters
-// every few minutes into traffic_points, and /admin/traffic aggregates the
-// per-day deltas (engine restarts reset counters; a decreasing value counts
-// as an absolute restart baseline instead of negative traffic).
+//go:build mailez_ee
+
+// Traffic reporting (enterprise): the backend samples the engine's
+// Prometheus counters every few minutes into traffic_points, and
+// /admin/traffic aggregates the per-day deltas (engine restarts reset
+// counters; a decreasing value counts as an absolute restart baseline
+// instead of negative traffic).
 package admin
 
 import (

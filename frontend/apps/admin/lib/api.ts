@@ -181,8 +181,10 @@ export type TrafficReport = {
   latest_queue_depth: number;
   sampling: boolean;
 };
-export const adminTraffic = (days = 14) =>
-  api<TrafficReport>(`/admin/traffic?days=${days}`);
+export const adminTraffic = (days = 14): Promise<TrafficReport> =>
+  HAS_OPTIONAL_MODULES
+    ? api<TrafficReport>(`/admin/traffic?days=${days}`)
+    : Promise.resolve({ days: [], latest_queue_depth: 0, sampling: false });
 
 // DNS wizard: the records a domain must publish, with live verification.
 export type DnsRecordView = {

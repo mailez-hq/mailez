@@ -191,12 +191,9 @@ func New(cfg core.Config) *Server {
 	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey, dlpScanner, mail.New(cfg.MailImapAddr, "", "").SetInsecureTLS(cfg.FetchInsecure)).Run(bgCtx)
 	// Calendar event reminders: mail the owner when start - reminder arrives.
 	go calendar.NewReminderWorker(db, cfg).Run(bgCtx)
-	// Administrator digest email (daily/weekly operations summary).
-	go admin.NewDigestWorker(db, cfg).Run(bgCtx)
-	// Engine traffic sampler feeding the admin traffic report.
-	if cfg.EngineMetricsURL != "" {
-		go admin.NewTrafficSampler(db, cfg).Run(bgCtx)
-	}
+	// Edition-gated workers (admin digest email, engine traffic sampler)
+	// start through the build seam: no-ops in the base build.
+	startAdminWorkers(db, cfg, bgCtx)
 	// Large-attachment relay cleanup: delete expired uploads.
 	go uploads.New(db, cfg).RunCleanup(bgCtx)
 	// Push notifier (new-mail notifications for subscribed clients).

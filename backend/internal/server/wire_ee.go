@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	"mailez/backend/internal/auth"
+	"mailez/backend/internal/admin"
 	"mailez/backend/internal/compose"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
@@ -105,4 +106,14 @@ func startComplianceWorkers(db *gorm.DB, am *auth.Manager, cfg core.Config, bgCt
 	// Organization address book refresh (AD/LDAP) when directory sync is on.
 	go eeldap.RunSyncWorker(bgCtx, db, cfg.SecretKey)
 	return outboundScannerAdapter{svc: dlpSvc}
+}
+
+// startAdminWorkers starts the enterprise-only admin workers: the daily or
+// weekly operations digest email, and the engine traffic sampler feeding
+// the admin traffic report (off unless MAILEZ_ENGINE_METRICS_URL is set).
+func startAdminWorkers(db *gorm.DB, cfg core.Config, bgCtx context.Context) {
+	go admin.NewDigestWorker(db, cfg).Run(bgCtx)
+	if cfg.EngineMetricsURL != "" {
+		go admin.NewTrafficSampler(db, cfg).Run(bgCtx)
+	}
 }
