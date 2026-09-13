@@ -2,9 +2,9 @@
   <img src="branding/mailez-logo.svg" alt="mailez" width="320">
 </p>
 
-# mailez — mail easy
+<p align="center"><a href="README.md">English</a> | <b>简体中文</b></p>
 
-[English](README.md) | **简体中文**
+# mailez — mail easy
 
 从小用到大：小到个人用户的专属邮箱，大到万人规模的集团企业，对数据主权
 要求严格的政企单位同样适用。完全自托管，用自己的域名收发邮件，数据留在

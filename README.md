@@ -2,9 +2,9 @@
   <img src="branding/mailez-logo.svg" alt="mailez" width="320">
 </p>
 
-# mailez — mail easy
+<p align="center"><b>English</b> | <a href="README.zh-CN.md">简体中文</a></p>
 
-**English** | [简体中文](README.zh-CN.md)
+# mailez — mail easy
 
 Self-hosted email that scales with you: from a personal mailbox of one to
 ten-thousand-person organizations — teams, companies and public-sector
