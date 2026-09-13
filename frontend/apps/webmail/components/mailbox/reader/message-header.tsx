@@ -121,6 +121,13 @@ export function MessageHeader({
   labelMenuRef: RefObject<HTMLDivElement | null>;
 }) {
   const t = useTranslations("mail");
+  // Labels-row content: only the chips actually on this message (plus the
+  // muted badge). With nothing to show, the row is dropped entirely instead
+  // of reserving a line for a lone picker icon — Gmail/Outlook render label
+  // chips conditionally and keep the label action in the toolbar, which is
+  // where the tag picker now lives below.
+  const activeLabels = labels.filter((l) => (detail.flags ?? []).includes(l));
+  const hasLabelRow = muted || activeLabels.length > 0;
   return (
     <div className="sticky top-0 z-10 border-b border-border bg-card/95 px-4 py-3 backdrop-blur-sm md:px-6">
       {/* Mobile back */}
@@ -219,6 +226,80 @@ export function MessageHeader({
           >
             {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
           </Button>
+          <div className="relative" ref={labelMenuRef}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setLabelOpen((v) => !v)}
+              title={t("labels")}
+              className="size-8 text-muted-foreground"
+            >
+              <Tag className="size-4" />
+            </Button>
+            {labelOpen && (
+              <div className="absolute top-full left-0 z-20 mt-1 w-52 rounded-lg border border-border bg-popover p-2 shadow-lg">
+                <div className="mb-2 flex flex-wrap gap-1">
+                  {labels.map((l) => {
+                    const has = (detail.flags ?? []).includes(l);
+                    return (
+                      <button
+                        key={l}
+                        type="button"
+                        onClick={() => onToggleLabel(l)}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] transition-colors",
+                          has
+                            ? "border-transparent font-medium"
+                            : "border-border text-muted-foreground hover:bg-muted",
+                        )}
+                        style={
+                          has
+                            ? {
+                                backgroundColor: `${labelColor(l, labelColors?.[l])}1f`,
+                                color: labelColor(l, labelColors?.[l]),
+                              }
+                            : undefined
+                        }
+                      >
+                        <span
+                          className="size-1.5 rounded-full"
+                          style={{ backgroundColor: labelColor(l, labelColors?.[l]) }}
+                        />
+                        {l}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-1">
+                  <Input
+                    value={newLabel}
+                    onChange={(e) => setNewLabel(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newLabel.trim()) {
+                        onToggleLabel(newLabel.trim());
+                        setNewLabel("");
+                        setLabelOpen(false);
+                      }
+                    }}
+                    placeholder={t("newLabel")}
+                    className="h-7 text-xs"
+                  />
+                  <Button
+                    size="xs"
+                    onClick={() => {
+                      if (newLabel.trim()) {
+                        onToggleLabel(newLabel.trim());
+                        setNewLabel("");
+                        setLabelOpen(false);
+                      }
+                    }}
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
           <Button
             size="sm"
             variant="ghost"
@@ -304,16 +385,17 @@ export function MessageHeader({
         </div>
       </div>
 
-      {/* Labels / tags */}
-      <div className="mt-1.5 flex flex-wrap items-center gap-1">
-        {muted && (
-          <span className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-            {t("mutedBadge")}
-          </span>
-        )}
-        {labels
-          .filter((l) => (detail.flags ?? []).includes(l))
-          .map((l) => {
+      {/* Labels / tags — only when there is something to show (a muted badge
+          or at least one chip); the picker lives in the toolbar above, so an
+          unlabeled message no longer burns a line on an empty row. */}
+      {hasLabelRow && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1">
+          {muted && (
+            <span className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+              {t("mutedBadge")}
+            </span>
+          )}
+          {activeLabels.map((l) => {
             const color = labelColor(l, labelColors?.[l]);
             return (
               <span
@@ -329,81 +411,8 @@ export function MessageHeader({
               </span>
             );
           })}
-        <div className="relative" ref={labelMenuRef}>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setLabelOpen((v) => !v)}
-            title={t("labels")}
-            className="h-5 px-1.5 text-[11px]"
-          >
-            <Tag className="size-3" />
-          </Button>
-          {labelOpen && (
-            <div className="absolute top-full left-0 z-20 mt-1 w-52 rounded-lg border border-border bg-popover p-2 shadow-lg">
-              <div className="mb-2 flex flex-wrap gap-1">
-                {labels.map((l) => {
-                  const has = (detail.flags ?? []).includes(l);
-                  return (
-                    <button
-                      key={l}
-                      type="button"
-                      onClick={() => onToggleLabel(l)}
-                      className={cn(
-                        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] transition-colors",
-                        has
-                          ? "border-transparent font-medium"
-                          : "border-border text-muted-foreground hover:bg-muted",
-                      )}
-                      style={
-                        has
-                          ? {
-                              backgroundColor: `${labelColor(l, labelColors?.[l])}1f`,
-                              color: labelColor(l, labelColors?.[l]),
-                            }
-                          : undefined
-                      }
-                    >
-                      <span
-                        className="size-1.5 rounded-full"
-                        style={{ backgroundColor: labelColor(l, labelColors?.[l]) }}
-                      />
-                      {l}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex gap-1">
-                <Input
-                  value={newLabel}
-                  onChange={(e) => setNewLabel(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && newLabel.trim()) {
-                      onToggleLabel(newLabel.trim());
-                      setNewLabel("");
-                      setLabelOpen(false);
-                    }
-                  }}
-                  placeholder={t("newLabel")}
-                  className="h-7 text-xs"
-                />
-                <Button
-                  size="xs"
-                  onClick={() => {
-                    if (newLabel.trim()) {
-                      onToggleLabel(newLabel.trim());
-                      setNewLabel("");
-                      setLabelOpen(false);
-                    }
-                  }}
-                >
-                  +
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
