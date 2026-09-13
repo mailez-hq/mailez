@@ -167,6 +167,15 @@ func acmeLoop(cfg NginxConfig) {
 			if err := regenerateChains(); err != nil {
 				fmt.Fprintf(os.Stderr, "nginx: regenerate chains after renew: %v\n", err)
 			}
+			// First boot renders the config before any certificate exists, so
+			// the HTTPS vhost is missing until the container is restarted.
+			// Re-render from a fresh env read (it now sees the certificate)
+			// before reloading, so a first install serves HTTPS straight away.
+			if fresh, err := loadNginxConfig(); err == nil {
+				if err := renderNginxConfigs(fresh); err != nil {
+					fmt.Fprintf(os.Stderr, "nginx: re-render after renew: %v\n", err)
+				}
+			}
 			_ = execNginxReload()
 		}
 	}
