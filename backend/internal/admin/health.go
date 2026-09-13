@@ -216,8 +216,11 @@ func checkDKIM(ctx context.Context, d models.Domain, selector string) CheckItem 
 }
 
 // checkBlacklist queries Spamhaus ZEN for every IPv4 address of the mail
-// host. Queries through public resolvers are refused by Spamhaus; that maps
-// to unknown rather than a false pass.
+// host and grades the listing: SBL/XBL hits (spam or exploit evidence) are
+// a hard failure, while PBL (127.0.0.10/11) is the default policy state of
+// nearly every cloud provider IP block — an advisory for outbound relay
+// planning, not a spam verdict. Queries through public resolvers are
+// refused by Spamhaus; that maps to unknown rather than a false pass.
 func checkBlacklist(ctx context.Context, hostname string) CheckItem {
 	addrs, err := dnscheck.Hosts(ctx, hostname)
 	if err != nil || len(addrs) == 0 {
@@ -238,6 +241,11 @@ func checkBlacklist(ctx context.Context, hostname string) CheckItem {
 		ans, err := dnscheck.Hosts(ctx, rev)
 		switch {
 		case err == nil && len(ans) > 0:
+			if onlyPBL(ans) {
+				// PBL: cloud-IP policy listing — outbound should relay
+				// (or request removal); inbound delivery is unaffected.
+				return warn("blacklist_pbl", a+" PBL ("+strings.Join(ans, ", ")+") — cloud IP policy, use an outbound relay or request removal")
+			}
 			return fail("blacklist", a+" listed ("+strings.Join(ans, ", ")+")")
 		case err == nil || dnscheck.IsNotFound(err):
 			clean++
@@ -249,6 +257,18 @@ func checkBlacklist(ctx context.Context, hostname string) CheckItem {
 		return ok("blacklist", strings.Join(ipv4, ", "))
 	}
 	return unknown("blacklist", "inconclusive")
+}
+
+// onlyPBL reports whether every ZEN answer code is a PBL entry
+// (127.0.0.10 = Spamhaus-maintained, 127.0.0.11 = ISP-maintained).
+func onlyPBL(ans []string) bool {
+	pbl := 0
+	for _, a := range ans {
+		if a == "127.0.0.10" || a == "127.0.0.11" {
+			pbl++
+		}
+	}
+	return pbl == len(ans) && pbl > 0
 }
 
 // checkHosted verifies that a service hostname (autoconfig./mta-sts.)

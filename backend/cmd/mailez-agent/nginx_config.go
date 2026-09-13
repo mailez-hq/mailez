@@ -42,6 +42,10 @@ type NginxConfig struct {
 	MessageSizeLimitPlus int
 	CPUCount             int
 	API                  bool
+	// Webmail, when set (host:port of the frontend-webmail service),
+	// proxies the server root to the webmail console instead of serving
+	// static files — the "https://mail.example.com/ opens webmail" path.
+	Webmail              string
 	Postmaster           string
 	Domain               string
 	Engine               string // mailezine (the only engine; kept for template compat)
@@ -65,6 +69,7 @@ func loadNginxConfig() (NginxConfig, error) {
 		TLSFlavor:          agent.Getenv("MAILEZ_TLS", "off"),
 		TLSPermissive:      envBool("TLS_PERMISSIVE", false),
 		API:                envBool("MAILEZ_API", true),
+		Webmail:            strings.TrimSpace(agent.Getenv("MAILEZ_WEBMAIL", "")),
 		Postmaster:         agent.Getenv("MAILEZ_POSTMASTER", "postmaster"),
 		Domain:             agent.Getenv("MAILEZ_DOMAIN", "example.com"),
 		Subnet6:            os.Getenv("MAILEZ_SUBNET6") != "",
