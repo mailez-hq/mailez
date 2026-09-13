@@ -91,9 +91,14 @@ func TestPreviewDecodeCharset(t *testing.T) {
 	if got := string(decodeCharset([]byte{0xE9}, "iso-8859-1")); got != "é" {
 		t.Fatalf("latin1: %q", got)
 	}
-	// unknown charset passes through
-	if got := string(decodeCharset([]byte{0xFF}, "x-unknown")); got != "\xFF" {
-		t.Fatalf("unknown: %q", got)
+	// An unknown label is sniffed rather than passed through: GBK bytes still
+	// come out as Chinese even when the sender mislabelled them.
+	if got := string(decodeCharset(gbk, "x-unknown")); got != "邮件预览" {
+		t.Fatalf("unknown label with gbk bytes: %q", got)
+	}
+	// A single high byte is Latin-1 text under the same unknown label.
+	if got := string(decodeCharset([]byte{0xFF}, "x-unknown")); got != "ÿ" {
+		t.Fatalf("unknown label single byte: %q", got)
 	}
 	// truncated multibyte tail keeps the decoded prefix
 	iso := decodeCharset([]byte{0xE9, 0x62}, "iso-8859-1") // é + b — single-byte, no truncation issue

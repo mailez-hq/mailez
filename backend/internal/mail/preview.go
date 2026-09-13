@@ -9,11 +9,6 @@ import (
 
 	"github.com/emersion/go-imap"
 	"golang.org/x/net/html"
-	"golang.org/x/text/encoding"
-	"golang.org/x/text/encoding/charmap"
-	"golang.org/x/text/encoding/simplifiedchinese"
-	"golang.org/x/text/encoding/traditionalchinese"
-	"golang.org/x/text/encoding/unicode"
 )
 
 // List-row previews: a short plain-text excerpt of each message body shown
@@ -229,45 +224,6 @@ func previewDecodeTransfer(b []byte, encoding string) []byte {
 	default:
 		return b
 	}
-}
-
-// decodeCharset converts text in a legacy charset to UTF-8. The common CJK and
-// western ones are covered; unknown charsets pass through unchanged
-// (best-effort, never an error). Used for previews and for whole message
-// parts: a GBK part forwarded as-is is invalid UTF-8, which the JSON encoder
-// then turns into a field of U+FFFD replacement characters.
-func decodeCharset(b []byte, charset string) []byte {
-	var enc encoding.Encoding
-	switch strings.ToLower(strings.TrimSpace(charset)) {
-	case "", "utf-8", "utf8", "us-ascii", "ascii":
-		return b
-	case "gbk", "cp936", "gb_2312":
-		enc = simplifiedchinese.GBK
-	case "gb2312", "hz-gb-2312":
-		enc = simplifiedchinese.HZGB2312
-	case "gb18030":
-		enc = simplifiedchinese.GB18030
-	case "big5", "big5-hkscs", "big5hkscs":
-		enc = traditionalchinese.Big5
-	case "iso-8859-1", "latin1", "cp819":
-		enc = charmap.ISO8859_1
-	case "windows-1252", "cp1252":
-		enc = charmap.Windows1252
-	case "utf-16", "utf-16le":
-		enc = unicode.UTF16(unicode.LittleEndian, unicode.UseBOM)
-	case "utf-16be":
-		enc = unicode.UTF16(unicode.BigEndian, unicode.UseBOM)
-	default:
-		return b
-	}
-	out, err := enc.NewDecoder().Bytes(b)
-	if err != nil {
-		if len(out) > 0 {
-			return out // truncated multibyte tail: keep the decoded prefix
-		}
-		return b
-	}
-	return out
 }
 
 // htmlToText extracts visible text from an HTML fragment. Block-level tags

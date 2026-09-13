@@ -1025,10 +1025,16 @@ func extractBody(r io.Reader) (text, html string, attachments []Attachment, inv 
 			partType, partParams, _ := mime.ParseMediaType(part.Header.Get("Content-Type"))
 			if strings.HasPrefix(partType, "text/calendar") && inv == nil {
 				b, _ := io.ReadAll(io.LimitReader(part, 1<<20))
-				inv = ParseInvitation(decodeBodyBytes(b, part.Header.Get("Content-Transfer-Encoding")))
+				inv = ParseInvitation(decodeBodyBytes(b, part.Header.Get("Content-Transfer-Encoding"), partParams["charset"]))
 			}
 			disposition, dparams, _ := mime.ParseMediaType(part.Header.Get("Content-Disposition"))
-			filename := dparams["filename"]
+			// RFC 2231 (filename*=…) is decoded by ParseMediaType; RFC 2047
+			// words are not, and that is how Chinese and Japanese senders
+			// spell attachment names.
+			filename := decodeHeaderWords(dparams["filename"])
+			if filename == "" {
+				filename = decodeHeaderWords(partParams["name"])
+			}
 			b, _ := io.ReadAll(part)
 			decoded := []byte(decodeBody(b, part.Header.Get("Content-Transfer-Encoding")))
 			if disposition == "attachment" || filename != "" {
@@ -1051,27 +1057,27 @@ func extractBody(r io.Reader) (text, html string, attachments []Attachment, inv 
 		} else if strings.HasPrefix(mt, "text/html") {
 			html = SanitizeHTML(decodeBodyText(b, encoding, params["charset"]))
 		} else if strings.HasPrefix(mt, "text/calendar") {
-			inv = ParseInvitation(decodeBodyBytes(b, encoding))
+			inv = ParseInvitation(decodeBodyBytes(b, encoding, params["charset"]))
 		}
 	}
 	return text, html, attachments, inv, nil
 }
 
-// decodeBodyBytes is decodeBody returning []byte (for ICS parsing).
-func decodeBodyBytes(b []byte, encoding string) []byte {
+// decodeBodyBytes is decodeBodyText returning []byte (for ICS parsing).
+func decodeBodyBytes(b []byte, encoding, charset string) []byte {
 	switch strings.ToLower(encoding) {
 	case "base64":
 		if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(b))); err == nil {
-			return decoded
+			return decodeCharset(decoded, charset)
 		}
 	case "quoted-printable":
 		if r := quotedprintable.NewReader(bytes.NewReader(b)); r != nil {
 			if decoded, err := io.ReadAll(r); err == nil {
-				return decoded
+				return decodeCharset(decoded, charset)
 			}
 		}
 	}
-	return b
+	return decodeCharset(b, charset)
 }
 
 // decodeBodyText undoes the transfer encoding of a text part and converts it
