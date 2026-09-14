@@ -170,7 +170,10 @@ services:
       retries: 3
       start_period: 20s
     ports:
-      - "127.0.0.1:${MAILEZ_API_PORT:-8081}:8080"
+      # MAILEZ_BIND: interface for the control-plane HTTP ports. Loopback by
+      # default (evaluations, SSH tunnels); a real deployment sets 0.0.0.0 in
+      # mailez.env instead of editing this file, so upgrades keep working.
+      - "${MAILEZ_BIND:-127.0.0.1}:${MAILEZ_API_PORT:-8081}:8080"
     volumes:
       - "../data:/data"
       - "../licenses:/licenses:ro"
@@ -187,8 +190,13 @@ services:
     environment:
       - API_TARGET=http://backend:8080
       - PORT=3000
+      # Server-rendered timestamps use the process timezone. These two
+      # services take only this short env list (never the stack env file, so
+      # the secrets stay out of the web containers) — without TZ they ran in
+      # UTC and SSR times were eight hours off for CST operators.
+      - TZ=${TZ:-UTC}
     ports:
-      - "127.0.0.1:${MAILEZ_ADMIN_PORT:-8082}:3000"
+      - "${MAILEZ_BIND:-127.0.0.1}:${MAILEZ_ADMIN_PORT:-8082}:3000"
     depends_on:
       - backend
 
@@ -198,8 +206,9 @@ services:
     environment:
       - API_TARGET=http://backend:8080
       - PORT=3000
+      - TZ=${TZ:-UTC}
     ports:
-      - "127.0.0.1:${MAILEZ_WEBMAIL_PORT:-8083}:3000"
+      - "${MAILEZ_BIND:-127.0.0.1}:${MAILEZ_WEBMAIL_PORT:-8083}:3000"
     depends_on:
       - backend
 
@@ -255,11 +264,13 @@ services:
       - MAILEZINE_SMTPS_ADDR=:465
       - MAILEZINE_IMAPS_ADDR=:993
       - MAILEZINE_POP3S_ADDR=:995
-      # TLS 默认关闭；启用隐式 TLS（465/993/995）时在 mailez.env 设置：
+      # TLS 默认关闭；启用隐式 TLS（465/993/995）时在 mailez.env 设置
+      # （这里必须做插值：写死的空值会盖掉 env 文件里的值，README 的
+      #  说明按 env 文件操作，曾经因此静默失效）：
       #   MAILEZINE_TLS_CERT_FILE=/certs/letsencrypt/live/mailez/nginx-chain.pem
       #   MAILEZINE_TLS_KEY_FILE=/certs/letsencrypt/live/mailez/privkey.pem
-      - MAILEZINE_TLS_CERT_FILE=
-      - MAILEZINE_TLS_KEY_FILE=
+      - MAILEZINE_TLS_CERT_FILE=${MAILEZINE_TLS_CERT_FILE:-}
+      - MAILEZINE_TLS_KEY_FILE=${MAILEZINE_TLS_KEY_FILE:-}
       - MAILEZINE_OUTBOUND_ENABLED=true
       - MAILEZINE_OUTBOUND_PORT=25
       # 管理 API(8090,compose 网络内):backend 删除用户时经此级联清除
@@ -284,15 +295,20 @@ services:
       - "../certs:/certs:ro"
       - "../licenses:/licenses:ro"
     ports:
-      - "127.0.0.1:25:25"
-      - "127.0.0.1:465:465"
-      - "127.0.0.1:587:1587"
+      # MAILEZ_MAIL_BIND: interface for the mail protocols. Public by default
+      # (a mail server receives from the internet); set 127.0.0.1 in
+      # mailez.env to keep an evaluation instance local-only. The control
+      # plane (8081-8083) is the reverse: loopback by default, served to
+      # users through the gateway (webmail at /, admin console at /admin).
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:25:25"
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:465:465"
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:587:1587"
       - "127.0.0.1:1587:1587"
-      - "127.0.0.1:110:110"
-      - "127.0.0.1:995:995"
-      - "127.0.0.1:143:143"
-      - "127.0.0.1:993:993"
-      - "127.0.0.1:4190:4190"
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:110:110"
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:995:995"
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:143:143"
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:993:993"
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:4190:4190"
     depends_on:
       gateway:
         condition: service_started

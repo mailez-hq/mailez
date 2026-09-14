@@ -20,6 +20,11 @@ services:
         # refuses to enforce — see internal/ee/license). release-ee.sh
         # always sets this; leaving it empty yields a dev-key build.
         MAILEZ_LICENSE_PUBKEY: ${MAILEZ_LICENSE_PUBKEY:-}
+        # Same keypair signs the technical-service certificate
+        # (internal/entitlements). Without it the console can never verify a
+        # service.lic — the Service card stays "Not subscribed" even after
+        # the certificate is installed.
+        MAILEZ_SERVICE_PUBKEY: ${MAILEZ_SERVICE_PUBKEY:-}
 
   frontend-admin:
     build:

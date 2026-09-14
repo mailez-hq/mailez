@@ -74,6 +74,19 @@ install_stack() {
   say "preparing ${INSTALL_DIR}"
   mkdir -p "${INSTALL_DIR}/ee" "${INSTALL_DIR}/certs" "${INSTALL_DIR}/licenses"
   cp "${HERE}/ee/docker-compose.ee.yml" "${INSTALL_DIR}/ee/"
+  # Operator overrides from the bundle (nginx drop-ins at the top level so the
+  # gateway's `include /overrides/*.conf;` picks them up — that is what routes
+  # /admin and /dav on the webmail domain; reinstall keeps operator edits
+  # because existing files are only filled in, never replaced).
+  if [ -d "${HERE}/overrides" ]; then
+    mkdir -p "${INSTALL_DIR}/overrides"
+    for f in "${HERE}"/overrides/*; do
+      [ -e "$f" ] || continue
+      b="$(basename "$f")"
+      [ -e "${INSTALL_DIR}/overrides/${b}" ] && continue
+      cp -a "$f" "${INSTALL_DIR}/overrides/${b}"
+    done
+  fi
   # The compose file references ../data, ../certs, ../licenses and
   # ../mailez.env relative to ee/ — pre-create data with the uid:gid the
   # containers expect (backend 1000, engine 82).

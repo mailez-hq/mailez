@@ -10,6 +10,10 @@
 # images can never enforce MAILEZ_LICENSE_REQUIRED, so shipping one by
 # accident gives away the product.
 #
+# The technical-service certificate (service.lic) is verified with the same
+# keypair, so MAILEZ_SERVICE_PUBKEY defaults to MAILEZ_LICENSE_PUBKEY. Set it
+# explicitly only when service certificates are signed with a separate key.
+#
 # Output: dist/mailez-ee-<version>/
 #   images.tar.gz        all 12 images (8 built + 4 third-party) for docker load
 #   ee/docker-compose.ee.yml, install-ee.sh, README-INSTALL-EE.md,
@@ -54,6 +58,8 @@ if [ -z "${PUBKEY}" ]; then
   fi
 fi
 export MAILEZ_LICENSE_PUBKEY="${PUBKEY}"
+MAILEZ_SERVICE_PUBKEY="${MAILEZ_SERVICE_PUBKEY:-${PUBKEY}}"
+export MAILEZ_SERVICE_PUBKEY
 export MAILEZ_IMAGE_TAG="${VERSION}"
 
 COMPOSE_FILES=(-f ee/docker-compose.ee.yml -f ee/docker-compose.build.ee.yml)
@@ -77,7 +83,7 @@ THIRD_PARTY_IMAGES=(
   "minio/minio:latest"
 )
 
-echo "== release-ee ${VERSION} (pubkey: ${PUBKEY:+set}${PUBKEY:-DEVKEY}) =="
+echo "== release-ee ${VERSION} (license pubkey: ${PUBKEY:+set}${PUBKEY:-DEVKEY}; service pubkey: ${MAILEZ_SERVICE_PUBKEY:+set}${MAILEZ_SERVICE_PUBKEY:-none}) =="
 # deploy/ sits two levels below the workspace root that also holds the
 # mailezine checkout (compose resolves the engine context the same way,
 # three levels from deploy/ee/).
@@ -115,6 +121,19 @@ cp ee/install-ee.sh "${DIST}/"
 cp ee/README-INSTALL-EE.md "${DIST}/"
 cp mailez.env.example "${DIST}/"
 echo "${VERSION}" > "${DIST}/VERSION"
+
+# Operator overrides ship with the bundle. nginx drop-ins must sit at the top
+# level of the installed overrides dir — the gateway config does
+# `include /overrides/*.conf;` — while rspamd reads its own subdirectory
+# through the mail-filter mount. Without this the installed gateway serves
+# webmail only and the admin console stays reachable just on its host port.
+mkdir -p "${DIST}/overrides"
+if [ -d overrides/nginx ]; then
+  cp overrides/nginx/*.conf "${DIST}/overrides/" 2>/dev/null || true
+fi
+if [ -d overrides/rspamd ]; then
+  cp -a overrides/rspamd "${DIST}/overrides/"
+fi
 
 echo "== assembling shippable bundle =="
 tar -C dist -czf "dist/mailez-ee-${VERSION}.tar.gz" "mailez-ee-${VERSION}"
