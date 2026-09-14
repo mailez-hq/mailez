@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -93,7 +94,16 @@ func TestUploadDownloadDelete(t *testing.T) {
 	}
 	badResp.Body.Close()
 	// Good token streams the file.
-	good := httptest.NewRequest(http.MethodGet, out.URL, nil)
+	// The API hands back an absolute URL, but the in-process test client
+	// speaks origin-form (path + query) with an explicit Host header — the
+	// form a real client sends on the wire. Newer fasthttp rejects a
+	// request line carrying an absolute URI and no Host header.
+	parsed, perr := url.Parse(out.URL)
+	if perr != nil {
+		t.Fatalf("download url %q: %v", out.URL, perr)
+	}
+	good := httptest.NewRequest(http.MethodGet, parsed.RequestURI(), nil)
+	good.Header.Set("Host", parsed.Host)
 	goodResp, err := app.Test(good)
 	if err != nil {
 		t.Fatal(err)
