@@ -46,3 +46,7 @@ frontend/apps/*/modules/
 
 # Local CE mirror exports (private export tooling output)
 build/
+# The vendor production public key belongs next to the EE tooling
+# (deploy/ee/prod.pub, which the CE export strips). Never keep a copy at the
+# repository root: export-ce.sh would publish it with the community tree.
+/.prod-pub.b64
