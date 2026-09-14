@@ -28,6 +28,7 @@ export function FolderNav({
   savedSearches,
   current,
   email,
+  isAdmin,
   quotaBytes,
   quotaUsed,
   open,
@@ -70,6 +71,8 @@ export function FolderNav({
   savedSearches?: SavedSearch[];
   current: string;
   email: string;
+  /** Global admins only: the console entry is hidden for everyone else. */
+  isAdmin?: boolean;
   quotaBytes?: number;
   quotaUsed?: number;
   open: boolean;
@@ -316,6 +319,7 @@ export function FolderNav({
         </nav>
 
         <SidebarFooter
+          isAdmin={isAdmin}
           quotaPercent={quotaPercent}
           quotaBarColor={quotaBarColor}
           onContacts={onContacts}

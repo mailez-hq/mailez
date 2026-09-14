@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL || "/admin";
 
 export function SidebarFooter({
+  isAdmin,
   quotaPercent,
   quotaBarColor,
   onContacts,
@@ -31,6 +32,8 @@ export function SidebarFooter({
   onDrive,
   onSieve,
 }: {
+  /** Global admins only — everyone else never sees the console entry. */
+  isAdmin?: boolean;
   quotaPercent: number | null;
   quotaBarColor: string;
   onContacts: () => void;
@@ -71,12 +74,16 @@ export function SidebarFooter({
               <Filter className="size-4" />
               {t("filterRules")}
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => window.open(ADMIN_URL, "_blank", "noopener,noreferrer")}
-            >
-              <ExternalLink className="size-4" />
-              {t("adminConsole")}
-            </DropdownMenuItem>
+            {/* Admin console requires global-admin, so the entry is hidden
+                for regular users and delegated mailboxes alike. */}
+            {isAdmin && (
+              <DropdownMenuItem
+                onClick={() => window.open(ADMIN_URL, "_blank", "noopener,noreferrer")}
+              >
+                <ExternalLink className="size-4" />
+                {t("adminConsole")}
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
