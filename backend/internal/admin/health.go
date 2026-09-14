@@ -219,8 +219,9 @@ func checkDKIM(ctx context.Context, d models.Domain, selector string) CheckItem 
 // host and grades the listing: SBL/XBL hits (spam or exploit evidence) are
 // a hard failure, while PBL (127.0.0.10/11) is the default policy state of
 // nearly every cloud provider IP block — an advisory for outbound relay
-// planning, not a spam verdict. Queries through public resolvers are
-// refused by Spamhaus; that maps to unknown rather than a false pass.
+// planning, not a spam verdict. Spamhaus answers in 127.255.255.x are error
+// codes (public/open-resolver refusal, zone-name typo, excessive query
+// volume), never listings — those map to unknown rather than a false fail.
 func checkBlacklist(ctx context.Context, hostname string) CheckItem {
 	addrs, err := dnscheck.Hosts(ctx, hostname)
 	if err != nil || len(addrs) == 0 {
@@ -241,6 +242,11 @@ func checkBlacklist(ctx context.Context, hostname string) CheckItem {
 		ans, err := dnscheck.Hosts(ctx, rev)
 		switch {
 		case err == nil && len(ans) > 0:
+			if onlySpamhausErrCode(ans) {
+				// 127.255.255.x: the mirror refused the query (public/open
+				// resolver, rate limit, typo) — a probe failure, not a listing.
+				return unknown("blacklist", a+" Spamhaus error code ("+strings.Join(ans, ", ")+") — not a listing; resolve via a private/attributable resolver")
+			}
 			if onlyPBL(ans) {
 				// PBL: cloud-IP policy listing — outbound should relay
 				// (or request removal); inbound delivery is unaffected.
@@ -257,6 +263,21 @@ func checkBlacklist(ctx context.Context, hostname string) CheckItem {
 		return ok("blacklist", strings.Join(ipv4, ", "))
 	}
 	return unknown("blacklist", "inconclusive")
+}
+
+// onlySpamhausErrCode reports whether every ZEN answer is a 127.255.255.x
+// error code: Spamhaus public mirrors return 127.255.255.254 for queries
+// through public/open resolvers (or unattributable rDNS), 127.255.255.252
+// for zone-name typos, and 127.255.255.253/255 for excessive query volume.
+// They grade the probe, not the IP.
+func onlySpamhausErrCode(ans []string) bool {
+	errs := 0
+	for _, a := range ans {
+		if strings.HasPrefix(a, "127.255.255.") {
+			errs++
+		}
+	}
+	return errs == len(ans) && errs > 0
 }
 
 // onlyPBL reports whether every ZEN answer code is a PBL entry
