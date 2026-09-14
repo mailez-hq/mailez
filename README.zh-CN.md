@@ -66,12 +66,20 @@
 - **一个地方管所有** — 域名、邮箱账号、别名、中继、外部邮箱收信、应用令牌；
   删除用户会自动级联清理引擎侧邮箱数据
 - **一键 DKIM** — 自动生成签名密钥并显示状态，让邮件不再被丢进垃圾箱
+- **域名健康体检** — 「健康」页按域实时核验 MX / SPF / DMARC / DKIM 公钥比对 /
+  Spamhaus 黑名单 / autoconfig / MTA-STS，外加引擎、数据库、磁盘与证书有效期
+  探测，逐项给出状态与修复建议；DNS 向导列出全部应发布记录并实时核验，
+  上线照抄即可
 - **谁做了什么一目了然** — 管理员操作审计日志、基于角色的权限
   （admin / manager / user）
 - **备份迁移很简单** — 整套配置可一键导出、导入
 
 <p align="center">
   <img src="docs/screenshots/admin-domains.jpg" alt="mailez 管理后台 — 域名管理" width="880">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/health-check.png" alt="mailez 管理后台 — 域名健康体检" width="880">
 </p>
 
 ### 安全与可信，藏在细节里

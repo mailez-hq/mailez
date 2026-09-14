@@ -83,12 +83,21 @@ required to run it.
   engine-side mailbox automatically
 - **One-click DKIM** — generate signing keys with a status hint, so your mail
   stops landing in spam
+- **Domain health checks** — the Health page live-verifies MX / SPF / DMARC /
+  DKIM key comparison / Spamhaus blocklists / autoconfig / MTA-STS for every
+  domain, plus engine, database, disk and certificate-expiry probes — each
+  item with a status and a fix hint; the DNS wizard lists every record you
+  must publish and verifies each one live, so going live is copy-paste
 - **See who did what** — audit log of admin actions and role-based access
   (admin / manager / user)
 - **Backup or migrate easily** — export and import your whole configuration
 
 <p align="center">
   <img src="docs/screenshots/admin-domains.jpg" alt="mailez admin console — domains" width="880">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/health-check.png" alt="mailez admin console — domain health checks" width="880">
 </p>
 
 ### Trust and security under the hood
