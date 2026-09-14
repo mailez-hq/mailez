@@ -1,7 +1,7 @@
-// Domain health center: live DNS and service checks in the style of
-// Mail-in-a-Box's status page. Every check renders a stable id plus a status
-// (ok/warn/fail/unknown) and a technical detail string; the admin console
-// maps ids to localized labels and fix hints.
+// Domain health center: live DNS and service status checks. Every check
+// renders a stable id plus a status (ok/warn/fail/unknown) and a technical
+// detail string; the admin console maps ids to localized labels and fix
+// hints.
 package admin
 
 import (

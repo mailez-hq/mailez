@@ -46,7 +46,7 @@ check("reports page renders", /Traffic report|流量报表/.test(repText));
 const nav = await page.locator("aside").innerText();
 check("nav: Health + Traffic entries", /Health|健康体检/.test(nav) && /Traffic|流量报表/.test(nav));
 
-await page.screenshot({ path: "mail-e2e/artifacts/miab-features.png", fullPage: false });
+await page.screenshot({ path: "mail-e2e/artifacts/ops-features.png", fullPage: false });
 console.log(results.join("\n"));
 await browser.close();
 process.exit(results.some((r) => r.startsWith("FAIL")) ? 1 : 0);
