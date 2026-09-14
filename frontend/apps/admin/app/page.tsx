@@ -61,9 +61,8 @@ export default function Home() {
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
             {brand.title || "Mailez"}{" "}
-            <span className="bg-gradient-to-r from-[#60A5FA] to-[#2563EB] bg-clip-text text-transparent">
-              Admin
-            </span>
+            {/* Theme primary (teal), matching the sidebar lockup. */}
+            <span className="text-primary">Admin</span>
           </h1>
         </div>
       </div>

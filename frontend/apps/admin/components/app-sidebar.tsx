@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Download,
   EyeOff,
+  ExternalLink,
   Globe,
   KeyRound,
   LogOut,
@@ -28,6 +29,11 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 import { Logo } from "@/components/logo";
 import { useBrand } from "@/lib/use-brand";
 import { HAS_OPTIONAL_MODULES, logout } from "@/lib/api";
+
+// The webmail console is the deployment root (the gateway serves it at "/"
+// and this console under "/admin"); local dev can override with
+// NEXT_PUBLIC_WEBMAIL_URL (e.g. http://localhost:3001).
+const WEBMAIL_URL = process.env.NEXT_PUBLIC_WEBMAIL_URL || "/";
 import { cn } from "@/lib/utils";
 import type { Me } from "@/lib/api";
 
@@ -137,9 +143,9 @@ export function AppSidebar({ me }: { me: Me }) {
             <Logo className="size-9" />
           )}
           {brand.title || "Mailez"}{" "}
-          <span className="bg-gradient-to-r from-[#60A5FA] to-[#2563EB] bg-clip-text text-transparent">
-            Admin
-          </span>
+          {/* Theme primary (teal) rather than the old blue gradient, so the
+              lockup follows light/dark with the rest of the console. */}
+          <span className="text-primary">Admin</span>
         </Link>
       </div>
 
@@ -198,6 +204,15 @@ export function AppSidebar({ me }: { me: Me }) {
           </p>
           <p className="truncate text-xs text-muted-foreground">{roleLabel(me)}</p>
         </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => window.open(WEBMAIL_URL, "_blank", "noopener,noreferrer")}
+          title={t("webmail")}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <ExternalLink className="size-4" />
+        </Button>
         <Button
           variant="ghost"
           size="icon-sm"

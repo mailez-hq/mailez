@@ -52,7 +52,8 @@
     "groupMail": "邮件服务",
     "groupCompliance": "合规与审计",
     "groupSystem": "系统管理",
-    "logout": "退出"
+    "logout": "退出",
+    "webmail": "Webmail 邮箱"
   },
     "overview": {
       "title": "系统概览",
