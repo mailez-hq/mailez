@@ -5,6 +5,11 @@
 #   MAILEZ_LICENSE_PUBKEY=<base64 DER PKIX> bash ee/release-ee.sh v1.0.0
 #   bash ee/release-ee.sh v1.0.0 --pubkey-file prod.pub        # same, from file
 #
+# With neither set, ee/prod.pub is used when present: the vendor public key
+# lives next to the EE tooling (a path the CE export strips), so a clone of
+# this private repository can cut a release without exporting the key from
+# the secret store, and the public tree never carries it.
+#
 # The public key MUST be the vendor production key (license genkey output).
 # A release without it is refused unless MAILEZ_ALLOW_DEVKEY=1 — dev-key
 # images can never enforce MAILEZ_LICENSE_REQUIRED, so shipping one by
@@ -25,6 +30,7 @@ cd "$(dirname "$0")/.."   # deploy/
 
 VERSION=""
 PUBKEY_FILE=""
+DEFAULT_PUBKEY_FILE="ee/prod.pub"
 while [ $# -gt 0 ]; do
   case "$1" in
     --pubkey-file) PUBKEY_FILE="${2:-}"; shift 2 ;;
@@ -40,9 +46,16 @@ while [ $# -gt 0 ]; do
 done
 
 PUBKEY="${MAILEZ_LICENSE_PUBKEY:-}"
+PUBKEY_SOURCE=""
+[ -n "${PUBKEY}" ] && PUBKEY_SOURCE="env MAILEZ_LICENSE_PUBKEY"
 if [ -n "${PUBKEY_FILE}" ]; then
   [ -f "${PUBKEY_FILE}" ] || { echo "release-ee: pubkey file not found: ${PUBKEY_FILE}" >&2; exit 1; }
   PUBKEY="$(tr -d ' \t\r\n' < "${PUBKEY_FILE}")"
+  PUBKEY_SOURCE="file ${PUBKEY_FILE}"
+fi
+if [ -z "${PUBKEY}" ] && [ -f "${DEFAULT_PUBKEY_FILE}" ]; then
+  PUBKEY="$(tr -d ' \t\r\n' < "${DEFAULT_PUBKEY_FILE}")"
+  PUBKEY_SOURCE="file ${DEFAULT_PUBKEY_FILE}"
 fi
 if [ -z "${PUBKEY}" ]; then
   if [ "${MAILEZ_ALLOW_DEVKEY:-0}" = "1" ]; then
@@ -50,6 +63,7 @@ if [ -z "${PUBKEY}" ]; then
     echo "            This image can NEVER enforce a license; do not ship it." >&2
   else
     echo "release-ee: refusing to build without MAILEZ_LICENSE_PUBKEY." >&2
+    echo "            Looked for the vendor key in ${DEFAULT_PUBKEY_FILE} as well." >&2
     echo "            Generate the production keypair with:" >&2
     echo "              go run -tags mailez_ee ./internal/ee/license/cmd/license genkey" >&2
     echo "            (keep the private key offline; pass the public key here)." >&2
@@ -83,7 +97,15 @@ THIRD_PARTY_IMAGES=(
   "minio/minio:latest"
 )
 
-echo "== release-ee ${VERSION} (license pubkey: ${PUBKEY:+set}${PUBKEY:-DEVKEY}; service pubkey: ${MAILEZ_SERVICE_PUBKEY:+set}${MAILEZ_SERVICE_PUBKEY:-none}) =="
+# Report where the keys came from, never the key material itself.
+if [ -z "${MAILEZ_SERVICE_PUBKEY}" ]; then
+  SERVICE_SOURCE="none"
+elif [ "${MAILEZ_SERVICE_PUBKEY}" = "${PUBKEY}" ]; then
+  SERVICE_SOURCE="same as license"
+else
+  SERVICE_SOURCE="separate key"
+fi
+echo "== release-ee ${VERSION} (license pubkey: ${PUBKEY_SOURCE:-DEVKEY}; service pubkey: ${SERVICE_SOURCE}) =="
 # deploy/ sits two levels below the workspace root that also holds the
 # mailezine checkout (compose resolves the engine context the same way,
 # three levels from deploy/ee/).
