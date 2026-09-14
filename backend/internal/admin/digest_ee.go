@@ -87,7 +87,12 @@ func (w *DigestWorker) flush() {
 
 func (w *DigestWorker) flag(key string) string {
 	var f models.SystemFlag
-	if err := w.DB.First(&f, "key = ?", key).Error; err != nil {
+	// Struct-based condition so GORM quotes the identifier per dialect. The
+	// former `First(&f, "key = ?", key)` is a syntax error on MySQL (`key` is
+	// reserved): every read failed, the "already sent today" check silently
+	// returned "" and the digest went out on every 10-minute tick inside the
+	// configured hour.
+	if err := w.DB.Where(&models.SystemFlag{Key: key}).First(&f).Error; err != nil {
 		return ""
 	}
 	return f.Value

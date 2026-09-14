@@ -7,6 +7,11 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	// Embed the IANA timezone database: the runtime images ship without
+	// /usr/share/zoneinfo, so TZ=Asia/Shanghai silently resolved to UTC and
+	// scheduled work (the admin digest hour) fired eight hours off the
+	// operator's intent.
+	_ "time/tzdata"
 
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/server"
