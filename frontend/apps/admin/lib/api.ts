@@ -160,7 +160,7 @@ export const adminOverview = () => api<AdminOverview>("/admin/overview");
 
 export const apiDelete = (path: string) => api(path, { method: "DELETE" });
 
-// Domain & system health center (Mail-in-a-Box-style status checks).
+// Domain & system health center (live status checks with fix hints).
 export type HealthItem = {
   id: string;
   status: "ok" | "warn" | "fail" | "unknown";
