@@ -13,9 +13,7 @@ type LicensedOverview = AdminOverview & {
     licensee?: string;
     max_mailboxes: number;
     used: number;
-    expires_at?: string;
     valid: boolean;
-    service_valid: boolean;
     required: boolean;
     features?: string[];
   };
@@ -24,6 +22,13 @@ type LicensedOverview = AdminOverview & {
 export function OverviewExtras({ data }: { data: AdminOverview }) {
   const lic = (data as LicensedOverview).license;
   if (!lic) return null;
+
+  // The technical-service state comes from the overview's own `service`
+  // snapshot (the entitlements certificate). It was previously read as
+  // lic.service_valid / lic.expires_at — fields the license status never
+  // carried, so every deployment displayed "service expired" no matter what
+  // service certificate was installed.
+  const svc = data.service;
 
   // The built-in dev license ("no file mounted, unrestricted") is not the
   // commercial edition — label it as the development tier.
@@ -40,11 +45,13 @@ export function OverviewExtras({ data }: { data: AdminOverview }) {
           lic.max_mailboxes > 0
             ? `${lic.used}/${lic.max_mailboxes} 邮箱 mailboxes`
             : "不限 / Unlimited",
-          lic.service_valid
-            ? lic.expires_at
-              ? `服务至 / service until ${lic.expires_at.slice(0, 10)}`
-              : ""
-            : "服务已到期 / service expired",
+          !svc
+            ? "未订阅技术服务 / no service plan"
+            : svc.valid
+              ? svc.expires_at
+                ? `服务至 / service until ${svc.expires_at.slice(0, 10)}`
+                : "技术服务有效 / service active"
+              : "服务已到期 / service expired",
           lic.licensee ? `${lic.licensee}` : "",
         ]
           .filter(Boolean)

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { dashboardTarget, me } from "@/lib/api";
+import { dashboardRoute, me } from "@/lib/api";
 import { Logo } from "@/components/logo";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { LoginForm } from "@/components/login-form";
@@ -29,7 +29,7 @@ export default function Home() {
 
   useEffect(() => {
     me()
-      .then(() => router.replace(dashboardTarget()))
+      .then(() => router.replace(dashboardRoute()))
       .catch(() => {})
       .finally(() => setChecking(false));
   }, [router]);
