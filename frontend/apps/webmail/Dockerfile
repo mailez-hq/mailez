@@ -28,6 +28,10 @@ RUN MAILEZ_MODULES=${MAILEZ_MODULES} API_TARGET=${API_TARGET} \
 # Runtime stage. node_modules is copied whole for robustness; switch to Next.js
 # `output: "standalone"` later for a smaller image.
 FROM node:22-alpine AS runtime
+# tzdata keeps the container's own clock (busybox `date`, any child process)
+# in the operator's timezone; Node itself already resolves zone names through
+# its bundled ICU data once TZ is set.
+RUN apk add --no-cache tzdata
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
