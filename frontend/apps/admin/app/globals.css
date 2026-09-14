@@ -64,81 +64,82 @@
 }
 
 :root {
-  /* Fresh light palette (slate neutrals + vivid blue), custom-designed
-     Webmail's design tokens — shared with apps/webmail so both apps read
-     as one product. */
+  /* Slate neutrals + teal primary (restored), custom-designed Webmail's
+     design tokens — shared with apps/webmail so both apps read as one
+     product. */
   --background: #ffffff;
   --foreground: #0f172a;
   --card: #ffffff;
   --card-foreground: #0f172a;
   --popover: #ffffff;
   --popover-foreground: #0f172a;
-  --primary: #3b82f6;
+  --primary: #2f8e6c;
   --primary-foreground: #ffffff;
   --secondary: #f8fafc;
   --secondary-foreground: #0f172a;
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
-  --accent: #dbeafe;
-  --accent-foreground: #1e40af;
+  --accent: #e5f2ec;
+  --accent-foreground: #175a44;
   --destructive: #ef4444;
   --border: #e2e8f0;
   --input: #e2e8f0;
-  --ring: #94a3b8;
-  --ai: #3b82f6;
+  --ring: #2f8e6c;
+  --ai: #2e6e8e;
   --ai-foreground: #ffffff;
-  --chart-1: #3b82f6;
-  --chart-2: #22c55e;
-  --chart-3: #f59e0b;
-  --chart-4: #ef4444;
-  --chart-5: #8b5cf6;
+  --chart-1: #2f8e6c;
+  --chart-2: #2e6e8e;
+  --chart-3: #71717a;
+  --chart-4: #c9a227;
+  --chart-5: #5b8c5a;
   --radius: 0.5rem;
   --sidebar: #f8fafc;
   --sidebar-foreground: #0f172a;
-  --sidebar-primary: #3b82f6;
+  --sidebar-primary: #2f8e6c;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f1f5f9;
-  --sidebar-accent-foreground: #0f172a;
+  --sidebar-accent: #e5f2ec;
+  --sidebar-accent-foreground: #175a44;
   --sidebar-border: #e2e8f0;
-  --sidebar-ring: #94a3b8;
+  --sidebar-ring: #2f8e6c;
 }
 
 .dark {
-  /* Monochrome near-black dark mode (minimal-style): ink surfaces, white
-     primary actions, hairline gray borders, blue reserved for accents/AI. */
+  /* Near-black dark mode with the teal primary restored: ink surfaces,
+     teal primary actions and accents, hairline gray borders, steel-blue
+     reserved for AI. */
   --background: #0a0a0a;
   --foreground: #fafafa;
   --card: #141414;
   --card-foreground: #fafafa;
   --popover: #1c1c1c;
   --popover-foreground: #fafafa;
-  --primary: #fafafa;
-  --primary-foreground: #171717;
+  --primary: #3ba77f;
+  --primary-foreground: #0b231b;
   --secondary: #262626;
   --secondary-foreground: #fafafa;
   --muted: #262626;
   --muted-foreground: #a3a3a3;
-  --accent: #1e3a8a;
-  --accent-foreground: #dbeafe;
+  --accent: #1f3d33;
+  --accent-foreground: #8fd9be;
   --destructive: #ef4444;
   --border: rgba(128, 128, 128, 0.3);
   --input: #262626;
-  --ring: #d4d4d4;
-  --ai: #60a5fa;
-  --ai-foreground: #0a0a0a;
-  --chart-1: #60a5fa;
-  --chart-2: #4ade80;
-  --chart-3: #fbbf24;
-  --chart-4: #f87171;
-  --chart-5: #a78bfa;
+  --ring: #3ba77f;
+  --ai: #4d8fac;
+  --ai-foreground: #0e1d26;
+  --chart-1: #3ba77f;
+  --chart-2: #4d8fac;
+  --chart-3: #a1a1aa;
+  --chart-4: #c9a227;
+  --chart-5: #5b8c5a;
   --sidebar: #0a0a0a;
   --sidebar-foreground: #fafafa;
-  --sidebar-primary: #fafafa;
-  --sidebar-primary-foreground: #171717;
-  --sidebar-accent: #1a1a1a;
-  --sidebar-accent-foreground: #fafafa;
+  --sidebar-primary: #3ba77f;
+  --sidebar-primary-foreground: #0b231b;
+  --sidebar-accent: #1f3d33;
+  --sidebar-accent-foreground: #8fd9be;
   --sidebar-border: #262626;
-  --sidebar-ring: #d4d4d4;
+  --sidebar-ring: #3ba77f;
 }
 
 @layer base {
