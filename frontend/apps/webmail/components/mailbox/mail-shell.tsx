@@ -249,6 +249,7 @@ export function MailShell({ children }: { children: React.ReactNode }) {
           savedSearches={savedSearches}
           current={currentFolder}
           email={me.email}
+          isAdmin={me.global_admin}
           quotaBytes={me.quota_bytes}
           quotaUsed={me.quota_bytes_used}
           open={sidebarOpen}
