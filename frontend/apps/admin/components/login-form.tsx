@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ApiError, BASE_PATH, dashboardTarget, login, loginTotp, serverSettings } from "@/lib/api";
+import { ApiError, BASE_PATH, dashboardRoute, dashboardTarget, login, loginTotp, serverSettings } from "@/lib/api";
 
 export function LoginForm() {
   const t = useTranslations("login");
@@ -57,7 +57,7 @@ export function LoginForm() {
       } else {
         // Overview is the landing page; ?next= (session-expiry bounce)
         // sends the admin back to where they were instead.
-        router.push(dashboardTarget());
+        router.push(dashboardRoute());
         router.refresh();
       }
     } catch (err) {
@@ -73,7 +73,7 @@ export function LoginForm() {
     setLoading(true);
     try {
       await loginTotp(pendingToken, code);
-      router.push(dashboardTarget());
+      router.push(dashboardRoute());
       router.refresh();
     } catch (err) {
       setError(loginError(err));

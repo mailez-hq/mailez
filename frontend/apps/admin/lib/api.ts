@@ -113,6 +113,19 @@ export function dashboardTarget(): string {
   return `${BASE_PATH}/overview`;
 }
 
+// dashboardRoute is the router flavour of dashboardTarget. dashboardTarget is
+// absolute (it feeds window.location and the OIDC ?next= parameter), but
+// Next's router prepends basePath itself — passing the absolute form to
+// router.push() lands on /admin/admin/overview and 404s.
+export function dashboardRoute(): string {
+  const target = dashboardTarget();
+  if (BASE_PATH && target === BASE_PATH) return "/";
+  if (BASE_PATH && target.startsWith(`${BASE_PATH}/`)) {
+    return target.slice(BASE_PATH.length);
+  }
+  return target;
+}
+
 // Public /server/settings shape. The admin sign-in page only consults the
 // OIDC advertisement (optional module) to decide whether to render the
 // federated sign-in button.
