@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  AtSign, Bell, Filter, Forward, IdCard, KeyRound, Lock, MessageSquareReply,
+  AtSign, Bell, Filter, Forward, IdCard, KeyRound, Lock, MessageCircle, MessageSquareReply,
   Palette, CalendarDays, ShieldAlert, ShieldCheck, Sparkles, User, Users, Webhook as WebhookIcon,
 } from "lucide-react";
 import {
@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 const BASE_SETTINGS_SECTIONS = [
   { id: "appearance", icon: Palette, label: "appearance" },
   { id: "calendarSync", icon: CalendarDays, label: "calendarSync" },
+  { id: "deltachat", icon: MessageCircle, label: "deltachat" },
   { id: "accounts", icon: AtSign, label: "accounts" },
   { id: "delegations", icon: Users, label: "delegations" },
   { id: "ai", icon: Sparkles, label: "aiFeatures" },
@@ -200,6 +201,11 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
   const [davNewToken, setDavNewToken] = useState<AppTokenResult | null>(null);
   const [davTokenBusy, setDavTokenBusy] = useState(false);
 
+  // Delta Chat onboarding: a freshly minted app token rendered as a DCLOGIN
+  // QR; the one-time plaintext only lives until the dialog closes.
+  const [dcNewToken, setDcNewToken] = useState<AppTokenResult | null>(null);
+  const [dcTokenBusy, setDcTokenBusy] = useState(false);
+
   // Clear per-open transient state synchronously (render-phase adjustment —
   // React-recommended over synchronous setState in an effect); everything
   // else below reloads asynchronously.
@@ -209,6 +215,7 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
     if (open) {
       setError("");
       setDavNewToken(null);
+      setDcNewToken(null);
     }
   }
 
@@ -611,6 +618,22 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
     }
   }
 
+  async function createDcToken() {
+    setDcTokenBusy(true);
+    setError("");
+    try {
+      const t = await appTokenCreate();
+      setDcNewToken(t);
+      // Keep the DAV token list in sync: the Delta Chat QR mints the same
+      // kind of app password, and users revoke what they can see listed.
+      setDavTokens((ts) => [t, ...ts]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "token create failed");
+    } finally {
+      setDcTokenBusy(false);
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Fixed height (not max-h): tabs have different content heights and the
@@ -814,6 +837,9 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
               davTokenBusy={davTokenBusy}
               onCreateDavToken={createDavToken}
               onDeleteDavToken={removeDavToken}
+              dcNewToken={dcNewToken}
+              dcTokenBusy={dcTokenBusy}
+              onCreateDcToken={createDcToken}
               setError={setError}
               oldPw={oldPw}
               setOldPw={setOldPw}

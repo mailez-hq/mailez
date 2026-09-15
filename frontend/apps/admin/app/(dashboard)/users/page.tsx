@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Plus } from "lucide-react";
+import { MessageCircle, Plus } from "lucide-react";
+import QRCode from "qrcode";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { RowActions } from "@/components/row-actions";
@@ -21,6 +22,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { api, apiDelete, apiPost, apiPut } from "@/lib/api";
+import { buildDcLoginUri, fetchDcServerSettings } from "@/lib/deltachat";
 import type { Page, User } from "@/lib/types";
 
 const fmtBytes = (n: number) => `${Math.round(n / 1e6) / 1000} GB`;
@@ -145,6 +147,41 @@ export default function UsersPage() {
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "delete failed");
+    }
+  }
+
+  // Delta Chat onboarding: mint a one-time app token for the user and render
+  // it as a DCLOGIN QR (address + password + IMAP/SMTP settings from the
+  // deployment's own autoconfig). The token lands in the global tokens page
+  // like any other app password, so it stays revocable.
+  const [dcUser, setDcUser] = useState<User | null>(null);
+  const [dcOpen, setDcOpen] = useState(false);
+  const [dcBusy, setDcBusy] = useState(false);
+  const [dcToken, setDcToken] = useState("");
+  const [dcQr, setDcQr] = useState("");
+  const [dcError, setDcError] = useState("");
+
+  async function openDcQr(u: User) {
+    setDcUser(u);
+    setDcOpen(true);
+    setDcBusy(true);
+    setDcToken("");
+    setDcQr("");
+    setDcError("");
+    try {
+      const res = await apiPost<{ token: string }>("/tokens", {
+        email: u.email,
+        ip: "delta-chat-qr",
+      });
+      const settings = await fetchDcServerSettings();
+      const uri = buildDcLoginUri(u.email, res.token, settings);
+      const dataUrl = await QRCode.toDataURL(uri, { margin: 1, width: 220 });
+      setDcToken(res.token);
+      setDcQr(dataUrl);
+    } catch (err) {
+      setDcError(err instanceof Error ? err.message : "token create failed");
+    } finally {
+      setDcBusy(false);
     }
   }
 
@@ -328,7 +365,17 @@ export default function UsersPage() {
                     )}
                   </TableCell>
                   <TableCell className="w-10">
-                    <RowActions onEdit={() => openEdit(u)} onDelete={() => remove(u)} />
+                    <RowActions
+                      onEdit={() => openEdit(u)}
+                      onDelete={() => remove(u)}
+                      extra={[
+                        {
+                          label: t("deltachatQr"),
+                          icon: <MessageCircle />,
+                          onSelect: () => openDcQr(u),
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -348,6 +395,49 @@ export default function UsersPage() {
           />
         </CardContent>
       </Card>
+
+      <Dialog open={dcOpen} onOpenChange={setDcOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("deltachatQr")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>{t("deltachatAccount")}</Label>
+              <Input readOnly value={dcUser?.email || ""} />
+            </div>
+            {dcError && <p className="text-sm text-red-600">{dcError}</p>}
+            {dcBusy && <p className="text-sm text-muted-foreground">{t("deltachatGenerating")}</p>}
+            {dcQr && (
+              <>
+                <div className="flex justify-center rounded-md border p-3">
+                  <img src={dcQr} alt="Delta Chat" className="h-[220px] w-[220px]" />
+                </div>
+                <div className="space-y-1">
+                  <Label>{t("deltachatPassword")}</Label>
+                  <div className="flex items-center gap-2">
+                    <Input readOnly value={dcToken} className="font-mono" />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigator.clipboard?.writeText(dcToken)}
+                    >
+                      {ct("copy")}
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">{t("deltachatHint")}</p>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDcOpen(false)}>
+              {ct("close")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
