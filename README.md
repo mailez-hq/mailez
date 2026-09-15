@@ -75,6 +75,9 @@ required to run it.
 - **Standard protocols** — SMTP / IMAP / POP3 (implicit TLS available), plus
   CardDAV / CalDAV sync for phones and desktops; popular clients configure
   themselves via autoconfig/autodiscover
+- **Delta Chat** — generate a login QR in settings and scan it with the
+  Delta Chat app to turn the mailbox into an end-to-end-encrypted chat
+  account, server setup included in the scan
 - **App tokens** — per-client tokens you can issue and revoke from settings
 
 ### An admin console that doesn't feel like admin work
