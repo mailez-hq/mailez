@@ -100,6 +100,7 @@ git filter-repo \
   --path frontend/apps/webmail/shots-features.mjs \
   --path frontend/scripts/set-edition.mjs \
   --path deploy/ee/ \
+  --path deploy/overrides/nginx/eas.conf \
   --path deploy/docker-compose.ee.yml \
   --path deploy/docker-compose.ee.dev.yml \
   --path deploy/docker-compose.build.ee.yml \
