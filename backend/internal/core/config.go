@@ -120,6 +120,14 @@ type Config struct {
 	// HealthAlertMute lists probe keys (comma-separated, e.g.
 	// "system:cert,domain:example.com:resolver") that never alert.
 	HealthAlertMute string
+	// BanMaxRetry is the authentication-failure count within
+	// BanFindTimeSec that bans a source IP across every auth surface;
+	// 0 disables the ban engine.
+	BanMaxRetry int
+	// BanFindTimeSec is the failure-counting window in seconds.
+	BanFindTimeSec int
+	// BanWhitelist lists CIDRs (comma-separated) that are never banned.
+	BanWhitelist string
 	// OutboundProbeHost overrides the host the outbound-relay health check
 	// dials on port 25; empty uses the built-in default.
 	OutboundProbeHost string
@@ -195,6 +203,9 @@ func Load() Config {
 		HealthAlertIntervalMin: envInt("MAILEZ_HEALTH_ALERT_INTERVAL_MIN", 60),
 		HealthAlertWebhook:     env("MAILEZ_HEALTH_ALERT_WEBHOOK", ""),
 		HealthAlertMute:        env("MAILEZ_HEALTH_ALERT_MUTE", ""),
+		BanMaxRetry:            envInt("MAILEZ_BAN_MAX_RETRY", 20),
+		BanFindTimeSec:         envInt("MAILEZ_BAN_FINDTIME_SEC", 600),
+		BanWhitelist:           env("MAILEZ_BAN_WHITELIST", ""),
 		OutboundProbeHost:      env("MAILEZ_OUTBOUND_PROBE_HOST", ""),
 		EngineMetricsURL:       env("MAILEZ_ENGINE_METRICS_URL", ""),
 	}

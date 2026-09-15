@@ -188,6 +188,20 @@ export type HealthReport = {
 };
 export const adminHealth = () => api<HealthReport>("/admin/health");
 
+// Active IP bans (ban engine) with the manual lift action.
+export type BanRecord = {
+  id: number;
+  ip: string;
+  surface: string;
+  failed: number;
+  until: string;
+  created_at: string;
+  lifted_at?: string;
+};
+export const adminBans = () => api<BanRecord[]>("/admin/bans");
+export const adminBanLift = (id: number) =>
+  api(`/admin/bans/${id}`, { method: "DELETE" });
+
 // Traffic report: per-day mail volume deltas sampled from engine metrics.
 export type TrafficDay = {
   date: string;

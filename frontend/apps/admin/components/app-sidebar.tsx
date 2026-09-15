@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   AtSign,
+  Ban,
   BarChart3,
   HeartPulse,
   LayoutDashboard,
@@ -55,6 +56,7 @@ const navGroups: { key: string; items: NavItem[] }[] = [
       { href: "/overview", key: "overview", roles: ["admin", "manager", "user"], icon: LayoutDashboard },
       { href: "/health", key: "health", roles: ["admin"], icon: HeartPulse },
       { href: "/reports", key: "reports", roles: ["admin"], icon: BarChart3 },
+      { href: "/bans", key: "bans", roles: ["admin"], icon: Ban },
     ],
   },
   {
