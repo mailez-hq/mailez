@@ -49,6 +49,9 @@ func AutoMigrate(db *gorm.DB) error {
 		&WebauthnCredential{},
 		&SystemFlag{},
 		&TrafficPoint{},
+		&HealthSnapshot{},
+		&BanRecord{},
+		&BackupRun{},
 		&SchemaMigration{},
 	)
 }
