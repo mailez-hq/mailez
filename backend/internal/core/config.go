@@ -108,6 +108,9 @@ type Config struct {
 	AdminEmail string
 	// DigestHour is the local hour (0-23) the daily digest sends.
 	DigestHour int
+	// OutboundProbeHost overrides the host the outbound-relay health check
+	// dials on port 25; empty uses the built-in default.
+	OutboundProbeHost string
 	// EngineMetricsURL is the mailezine Prometheus endpoint the traffic
 	// sampler scrapes (e.g. http://mailezine:11480/metrics). Empty
 	// disables traffic reporting.
@@ -176,6 +179,7 @@ func Load() Config {
 		AdminDigest:          env("MAILEZ_ADMIN_DIGEST", "daily"),
 		AdminEmail:           env("MAILEZ_ADMIN_EMAIL", ""),
 		DigestHour:           envInt("MAILEZ_ADMIN_DIGEST_HOUR", 3),
+		OutboundProbeHost:    env("MAILEZ_OUTBOUND_PROBE_HOST", ""),
 		EngineMetricsURL:     env("MAILEZ_ENGINE_METRICS_URL", ""),
 	}
 	// Distributed deployments opt into TiDB KV + MinIO/S3 blobs by setting

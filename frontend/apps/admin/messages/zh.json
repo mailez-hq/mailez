@@ -508,7 +508,10 @@
       "database": "数据库",
       "disk": "磁盘空间",
       "memory": "内存",
-      "cert": "TLS 证书"
+      "cert": "TLS 证书",
+      "outbound25": "出站端口 25",
+      "ptr": "反向 DNS (PTR)",
+      "resolver": "DNS 解析器"
     }
   },
   "reports": {

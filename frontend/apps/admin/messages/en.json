@@ -508,7 +508,10 @@
       "database": "Database",
       "disk": "Disk space",
       "memory": "Memory",
-      "cert": "TLS certificate"
+      "cert": "TLS certificate",
+      "outbound25": "Outbound port 25",
+      "ptr": "Reverse DNS (PTR)",
+      "resolver": "DNS resolver"
     }
   },
   "reports": {
