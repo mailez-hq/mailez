@@ -318,11 +318,23 @@ func (h *Handler) systemChecks(ctx context.Context) []CheckItem {
 	} else {
 		items = append(items, ok("database", h.Cfg.DBDriver))
 	}
-	items = append(items, diskCheck(h.Cfg.UploadDir), memCheck())
+	items = append(items, diskCheck(h.Cfg.UploadDir), memCheck(), h.banProbe())
 	if host := h.Cfg.Hostname; host != "" && host != "localhost" && host != "127.0.0.1" {
 		items = append(items, certCheck(host, h.Cfg.PublicImapPort))
 	}
 	return append(items, h.networkChecks(ctx)...)
+}
+
+// banProbe surfaces ban-engine activity: any active ban is a warning, and
+// recent bans stay visible even after they expire.
+func (h *Handler) banProbe() CheckItem {
+	var recent, active int64
+	h.DB.Model(&models.BanRecord{}).Where("created_at > ?", time.Now().Add(-24*time.Hour)).Count(&recent)
+	h.DB.Model(&models.BanRecord{}).Where("lifted_at IS NULL AND until > ?", time.Now()).Count(&active)
+	if active > 0 {
+		return warn("bans", itoa(int(active))+" active, "+itoa(int(recent))+" in the last 24h")
+	}
+	return ok("bans", itoa(int(recent))+" in the last 24h")
 }
 
 func tcpCheck(id, addr string) CheckItem {

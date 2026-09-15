@@ -46,6 +46,9 @@ func (m *Manager) ssoLogin(c *fiber.Ctx) error {
 	if !m.checkLoginAttempt(c.Context(), c.IP()) {
 		return c.Status(fiber.StatusTooManyRequests).JSON(models.APIError{Error: "too many login attempts, try again later", Code: "rate_limited"})
 	}
+	if m.Bans != nil && m.Bans.Active(c.Context(), c.IP()) {
+		return c.Status(fiber.StatusTooManyRequests).JSON(models.APIError{Error: "banned due to authentication failures, try again later", Code: "rate_limited"})
+	}
 	sid, user, err := m.Login(c.Context(), req.Email, req.Password)
 	// Directory fallback: when local credentials fail and an LDAP
 	// integration is configured, bind against the directory and provision
@@ -62,6 +65,9 @@ func (m *Manager) ssoLogin(c *fiber.Ctx) error {
 		}
 	}
 	if err != nil {
+		if m.Bans != nil {
+			m.Bans.Failure(c.Context(), c.IP(), "web")
+		}
 		if m.loginFailed(c.Context(), req.Email) {
 			// Per-email lockout: the failure limit is already exceeded, so
 			// burn no bcrypt on further attempts from any IP.
@@ -70,12 +76,18 @@ func (m *Manager) ssoLogin(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "wrong e-mail or password"})
 	}
 	if user == nil {
+		if m.Bans != nil {
+			m.Bans.Failure(c.Context(), c.IP(), "web")
+		}
 		if m.loginFailed(c.Context(), req.Email) {
 			return c.Status(fiber.StatusTooManyRequests).JSON(models.APIError{Error: "too many failed logins for this account, try again later", Code: "rate_limited"})
 		}
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "wrong e-mail or password"})
 	}
 	m.loginSucceeded(c.Context(), user.Email)
+	if m.Bans != nil {
+		m.Bans.Reset(c.Context(), c.IP())
+	}
 	// Security alert: a login from an unrecognized IP raises an email so the
 	// account owner can spot unauthorized access early.
 	if m.NotifyLogin != nil && m.rememberLoginIP(c.Context(), user.Email, c.IP()) {

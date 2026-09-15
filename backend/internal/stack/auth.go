@@ -152,11 +152,25 @@ func (h *Handler) authEmail(c *fiber.Ctx) error {
 	userEmail, _ := url.QueryUnescape(c.Get("Auth-User"))
 	authPass, _ := url.QueryUnescape(c.Get("Auth-Pass"))
 	clientIP, _ := url.QueryUnescape(c.Get("Client-Ip"))
+	if clientIP == "" {
+		clientIP = c.IP()
+	}
+	if h.Auth.Bans != nil && h.Auth.Bans.Active(c.Context(), clientIP) {
+		// Banned for repeated failures across surfaces: answer with the
+		// protocol's throttling code so well-behaved clients back off.
+		c.Set("Auth-Status", "Too many authentication failures")
+		c.Set("Auth-Error-Code", throttleCode(protocol))
+		c.Set("Auth-Wait", "60")
+		return c.SendStatus(fiber.StatusOK)
+	}
 
 	var user models.User
 	userFound := h.DB.WithContext(c.Context()).First(&user, "email = ?", userEmail).Error == nil
 
 	if userFound && h.checkCredentials(&user, authPass, clientIP, protocol, authPort, c) {
+		if h.Auth.Bans != nil {
+			h.Auth.Bans.Reset(c.Context(), clientIP)
+		}
 		server, port := h.serverFor(protocol, true)
 		c.Set("Auth-Status", "OK")
 		c.Set("Auth-Server", server)
@@ -172,6 +186,9 @@ func (h *Handler) authEmail(c *fiber.Ctx) error {
 		if ok, err := h.Auth.LDAP.Authenticate(c.Context(), userEmail, authPass); err == nil && ok {
 			if h.Auth.LDAP.EnsureLocalUser(c.Context(), userEmail) == nil {
 				if h.DB.WithContext(c.Context()).First(&user, "email = ?", userEmail).Error == nil && user.Enabled {
+					if h.Auth.Bans != nil {
+						h.Auth.Bans.Reset(c.Context(), clientIP)
+					}
 					server, port := h.serverFor(protocol, true)
 					c.Set("Auth-Status", "OK")
 					c.Set("Auth-Server", server)
@@ -184,6 +201,9 @@ func (h *Handler) authEmail(c *fiber.Ctx) error {
 		}
 	}
 
+	if h.Auth.Bans != nil {
+		h.Auth.Bans.Failure(c.Context(), clientIP, protocol)
+	}
 	c.Set("Auth-Status", "Authentication credentials invalid")
 	c.Set("Auth-Error-Code", statuses["authentication"][protocol])
 	c.Set("Auth-User", userEmail)
@@ -277,6 +297,15 @@ func (h *Handler) delegatedAppToken(c *fiber.Ctx, pw, owner string) bool {
 		}
 	}
 	return false
+}
+
+// throttleCode maps a protocol to its back-off code for banned clients;
+// unknown protocols fall back to the SMTP deferred code.
+func throttleCode(protocol string) string {
+	if code := statuses["ratelimit"][protocol]; code != "" {
+		return code
+	}
+	return statuses["ratelimit"]["smtp"]
 }
 
 // serverFor resolves the backend host:port for a protocol. Hosts come from

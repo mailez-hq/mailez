@@ -34,6 +34,7 @@
     "overview": "Overview",
     "health": "Health",
     "reports": "Traffic",
+    "bans": "IP bans",
     "domains": "Domains",
     "users": "Users",
     "groups": "Groups",
@@ -511,8 +512,23 @@
       "cert": "TLS certificate",
       "outbound25": "Outbound port 25",
       "ptr": "Reverse DNS (PTR)",
-      "resolver": "DNS resolver"
+      "resolver": "DNS resolver",
+      "bans": "IP bans"
     }
+  },
+  "bans": {
+    "title": "IP bans",
+    "description": "Source IPs banned after repeated authentication failures (web login and mail clients share one count); lift them manually before expiry if needed.",
+    "ip": "Source IP",
+    "surface": "Trigger",
+    "failed": "Failures",
+    "bannedAt": "Banned at",
+    "until": "Until",
+    "lift": "Lift",
+    "lifting": "Lifting…",
+    "liftFailed": "Lift failed",
+    "empty": "No active bans.",
+    "rerun": "Rerun"
   },
   "reports": {
     "title": "Traffic report",

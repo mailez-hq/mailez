@@ -366,6 +366,14 @@ var migrations = []migration{
 			return db.AutoMigrate(&HealthSnapshot{})
 		},
 	},
+	{
+		// IP ban engine: one row per ban, kept as history after expiry or
+		// a manual lift.
+		ID: "20261021_ban_records",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&BanRecord{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

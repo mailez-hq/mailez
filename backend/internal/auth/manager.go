@@ -21,6 +21,15 @@ type LDAPAuthenticator interface {
 	EnsureLocalUser(ctx context.Context, email string) error
 }
 
+// BanGate gates authentication by source IP: the ban engine bans addresses
+// whose authentication failures cross the configured threshold, shared by
+// the web login and the mail SASL gate. Nil disables the check.
+type BanGate interface {
+	Active(ctx context.Context, ip string) bool
+	Failure(ctx context.Context, ip, surface string)
+	Reset(ctx context.Context, ip string)
+}
+
 // Manager coordinates sessions, login and temporary tokens.
 type Manager struct {
 	Store       Store
@@ -42,6 +51,10 @@ type Manager struct {
 	// an IP the account has not used before. The server wires it to the
 	// security-alert email delivery.
 	NotifyLogin func(email, ip, userAgent string)
+	// Bans, when wired, bans source IPs whose authentication failures cross
+	// the configured threshold, shared by the web login and the mail SASL
+	// gate. Nil disables it.
+	Bans BanGate
 }
 
 const sessionKeyPrefix = "mailez:session:"

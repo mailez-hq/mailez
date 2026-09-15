@@ -34,6 +34,7 @@
     "overview": "概览",
     "health": "健康体检",
     "reports": "流量报表",
+    "bans": "登录封禁",
     "domains": "域名",
     "users": "用户",
     "groups": "通讯组",
@@ -511,8 +512,23 @@
       "cert": "TLS 证书",
       "outbound25": "出站端口 25",
       "ptr": "反向 DNS (PTR)",
-      "resolver": "DNS 解析器"
+      "resolver": "DNS 解析器",
+      "bans": "登录封禁"
     }
+  },
+  "bans": {
+    "title": "登录封禁",
+    "description": "多次认证失败后被封禁的来源 IP（网页登录与邮件客户端共享计数），可在到期前手动解除。",
+    "ip": "来源 IP",
+    "surface": "触发面",
+    "failed": "失败次数",
+    "bannedAt": "封禁时间",
+    "until": "解禁时间",
+    "lift": "解除",
+    "lifting": "解除中…",
+    "liftFailed": "解除失败",
+    "empty": "当前没有生效中的封禁。",
+    "rerun": "重新检查"
   },
   "reports": {
     "title": "流量报表",

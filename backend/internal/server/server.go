@@ -28,6 +28,7 @@ import (
 	"mailez/backend/internal/alias"
 	"mailez/backend/internal/auth"
 	"mailez/backend/internal/authcache"
+	"mailez/backend/internal/ban"
 	"mailez/backend/internal/calendar"
 	"mailez/backend/internal/compose"
 	"mailez/backend/internal/contacts"
@@ -147,6 +148,8 @@ func New(cfg core.Config) *Server {
 	s := &Server{App: app, DB: db, Redis: rdb, Cfg: cfg, bgCtx: bgCtx, bgCancel: bgCancel}
 	s.events = push.NewHub()
 	s.Auth = auth.NewManager(db, newStore(rdb, cfg.Env), "mailez_session", time.Duration(cfg.SessionLifetime)*time.Second)
+	// IP ban engine shared by the web login and the mail SASL gate.
+	s.Auth.Bans = ban.New(db, s.Auth.Store, cfg)
 	// Passkey (WebAuthn) sign-in: enabled whenever the relying-party config
 	// resolves; a misconfiguration logs and keeps the feature off rather
 	// than blocking startup.
