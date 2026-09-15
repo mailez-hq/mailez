@@ -334,7 +334,12 @@
     "enableSpam": "Enable spam filter",
     "markAsRead": "Mark as read",
     "threshold": "Threshold (0-100)",
-    "deleteConfirm": "Delete user {email}?"
+    "deleteConfirm": "Delete user {email}?",
+    "deltachatQr": "Delta Chat QR code",
+    "deltachatAccount": "Account (email address)",
+    "deltachatGenerating": "Generating…",
+    "deltachatPassword": "Password (app password)",
+    "deltachatHint": "Scan this code at \"Add account\" in the Delta Chat app to finish setup. The app password is shown once, independent of the main password, and can be revoked any time on the App Passwords page."
   },
   "groups": {
     "title": "Distribution Groups",

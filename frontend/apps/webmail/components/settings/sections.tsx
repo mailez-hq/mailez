@@ -9,6 +9,7 @@ import type { Accent, Density, Landing, Preferences, ReaderFontSize, ReadingPane
 import { AppearanceSection } from "./sections/appearance-section";
 import { AccountsSection } from "./sections/accounts-section";
 import { CalendarSyncSection } from "./sections/calendar-sync-section";
+import { DeltaChatSection } from "./sections/deltachat-section";
 import { DelegationsSection } from "@/modules/delegations-section";
 import { PasswordSection } from "./sections/password-section";
 import { PgpSection } from "./sections/pgp-section";
@@ -134,6 +135,9 @@ export type SettingsSectionsProps = {
   davTokenBusy: boolean;
   onCreateDavToken: () => void;
   onDeleteDavToken: (id: number) => void;
+  dcNewToken: AppTokenResult | null;
+  dcTokenBusy: boolean;
+  onCreateDcToken: () => void;
   setError: (v: string) => void;
   oldPw: string; setOldPw: (v: string) => void;
   newPw: string; setNewPw: (v: string) => void;
@@ -178,6 +182,7 @@ export function SettingsSections(props: SettingsSectionsProps) {
     delegationList, delEmail, setDelEmail, delCanSend, setDelCanSend, delFullAccess, setDelFullAccess,
     delSaving, onAddDelegation, onUpdateDelegation, onDeleteDelegation,
     davTokens, davNewToken, davTokenBusy, onCreateDavToken, onDeleteDavToken,
+    dcNewToken, dcTokenBusy, onCreateDcToken,
     setError,
     oldPw, setOldPw, newPw, setNewPw, confirmPw, setConfirmPw,
   } = props;
@@ -199,6 +204,21 @@ export function SettingsSections(props: SettingsSectionsProps) {
             davTokenBusy={davTokenBusy}
             onCreateDavToken={onCreateDavToken}
             onDeleteDavToken={onDeleteDavToken}
+          />
+        </div>
+      )}
+
+      {/* Delta Chat onboarding renders standalone for the same reason as the
+          calendar sync section: read-only display plus one-shot token
+          generation, no shared profile form state. */}
+      {section === "deltachat" && (
+        <div key={section} className="h-full overflow-y-auto p-5">
+          <DeltaChatSection
+            t={t}
+            profile={profile}
+            newToken={dcNewToken}
+            busy={dcTokenBusy}
+            onCreate={onCreateDcToken}
           />
         </div>
       )}

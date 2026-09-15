@@ -334,7 +334,12 @@
     "enableSpam": "启用垃圾邮件过滤",
     "markAsRead": "标记为已读",
     "threshold": "阈值（0-100）",
-    "deleteConfirm": "删除用户 {email}？"
+    "deleteConfirm": "删除用户 {email}？",
+    "deltachatQr": "Delta Chat 二维码",
+    "deltachatAccount": "账号（邮箱地址）",
+    "deltachatGenerating": "生成中…",
+    "deltachatPassword": "密码（应用密码）",
+    "deltachatHint": "在 Delta Chat 应用「添加账户」处扫描此二维码即可完成配置。应用密码只显示一次，与主密码独立，可在「应用密码」页随时撤销。"
   },
   "groups": {
     "title": "通讯组",

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -9,13 +10,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 // RowActions collapses the per-row edit/delete actions into a "..." menu so
-// the table keeps a clean right edge.
+// the table keeps a clean right edge. Pages with row-scoped extras (e.g. the
+// Delta Chat QR on the users page) pass additional menu items via `extra`.
 export function RowActions({
   onEdit,
   onDelete,
+  extra,
 }: {
   onEdit?: () => void;
   onDelete?: () => void;
+  extra?: { label: string; icon?: ReactNode; onSelect: () => void }[];
 }) {
   const ct = useTranslations("common");
   return (
@@ -34,6 +38,12 @@ export function RowActions({
             {ct("edit")}
           </DropdownMenuItem>
         )}
+        {extra?.map((item) => (
+          <DropdownMenuItem key={item.label} onClick={item.onSelect}>
+            {item.icon}
+            {item.label}
+          </DropdownMenuItem>
+        ))}
         {onDelete && (
           <DropdownMenuItem variant="destructive" onClick={onDelete}>
             <Trash2 />
