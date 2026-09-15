@@ -134,15 +134,18 @@ export function useCompose({
   // known, so a second overlapping save would create a duplicate draft instead
   // of updating the first one.
   const draftSavingRef = useRef(false);
-  // Mirror of the compose content, refreshed on EVERY render. The close
+  // Mirror of the compose content, refreshed on every commit. The close
   // paths must save what the editor holds NOW — a close handler holding a
   // stale closure once re-saved the pre-edit body over the user's just
-  // saved edits (the "draft lost my typing" bug).
+  // saved edits (the "draft lost my typing" bug). Written from an effect
+  // (like folderRef below): react-hooks/refs rejects render-time ref writes.
   const composeLatestRef = useRef({
     to: [] as string[], cc: [] as string[], bcc: [] as string[],
     subject: "", body: "", bodyText: "", attachments: [] as OutboundAttachment[],
   });
-  composeLatestRef.current = {to, cc, bcc, subject, body, bodyText, attachments};
+  useEffect(() => {
+    composeLatestRef.current = {to, cc, bcc, subject, body, bodyText, attachments};
+  });
   // Signature of the content currently on the server (set by every
   // successful save). Close with unchanged content must not save again.
   const lastSavedSigRef = useRef<string | null>(null);

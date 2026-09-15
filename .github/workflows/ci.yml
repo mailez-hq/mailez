@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    # dev is what the mirror publishes, so gate it here too.
+    branches: [main, master, dev]
   pull_request:
 
 jobs:

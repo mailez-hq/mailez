@@ -20,6 +20,16 @@ jobs:
           repository: mailez-hq/mailezine
           path: mailezine
 
+      # Containers run unprivileged (backend 1000, engine 82:101) and a
+      # fresh checkout's data dir belongs to the runner, so SQLite cannot
+      # create ./data/mailez.db. Same ownership the installer applies.
+      - name: Prepare the data directories
+        working-directory: deploy
+        run: |
+          mkdir -p data data/mailezine
+          sudo chown -R 1000:82 data
+          sudo chown -R 82:101 data/mailezine
+
       - name: Start the stack
         working-directory: deploy
         env:
