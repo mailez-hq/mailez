@@ -22,6 +22,7 @@ func (h *Handler) Register(r fiber.Router) {
 	h.registerAudit(r, h.RequireGlobalAdmin)
 	h.registerAuditExtra(r, h.RequireGlobalAdmin)
 	h.registerBans(r, h.RequireGlobalAdmin)
+	h.registerBackup(r, h.RequireGlobalAdmin)
 	h.registerConfig(r, h.RequireGlobalAdmin)
 	h.registerBranding(r, h.RequireGlobalAdmin)
 	h.registerAI(r, h.RequireGlobalAdmin)

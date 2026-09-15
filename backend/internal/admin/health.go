@@ -319,6 +319,9 @@ func (h *Handler) systemChecks(ctx context.Context) []CheckItem {
 		items = append(items, ok("database", h.Cfg.DBDriver))
 	}
 	items = append(items, diskCheck(h.Cfg.UploadDir), memCheck(), h.banProbe())
+	if item, have := h.backupProbe(); have {
+		items = append(items, item)
+	}
 	if host := h.Cfg.Hostname; host != "" && host != "localhost" && host != "127.0.0.1" {
 		items = append(items, certCheck(host, h.Cfg.PublicImapPort))
 	}
@@ -335,6 +338,31 @@ func (h *Handler) banProbe() CheckItem {
 		return warn("bans", itoa(int(active))+" active, "+itoa(int(recent))+" in the last 24h")
 	}
 	return ok("bans", itoa(int(recent))+" in the last 24h")
+}
+
+// backupProbe grades backup freshness: ok inside a week, warn inside two,
+// fail beyond. Disabled backups are not surfaced here; the admin console
+// shows the configuration instead.
+func (h *Handler) backupProbe() (CheckItem, bool) {
+	if h.Cfg.BackupTarget == "" || h.Cfg.BackupTarget == "off" {
+		return CheckItem{}, false
+	}
+	var rec models.BackupRun
+	if err := h.DB.Where("ok = ?", true).Order("id desc").First(&rec).Error; err != nil {
+		return warn("backup", "no successful backup yet"), true
+	}
+	if rec.FinishedAt == nil {
+		return warn("backup", "no successful backup yet"), true
+	}
+	days := int(time.Since(*rec.FinishedAt).Hours() / 24)
+	switch {
+	case days < 7:
+		return ok("backup", "last run "+itoa(days)+"d ago"), true
+	case days < 14:
+		return warn("backup", "last run "+itoa(days)+"d ago"), true
+	default:
+		return fail("backup", "stale: last run "+itoa(days)+"d ago"), true
+	}
 }
 
 func tcpCheck(id, addr string) CheckItem {

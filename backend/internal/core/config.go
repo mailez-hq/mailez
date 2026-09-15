@@ -128,6 +128,17 @@ type Config struct {
 	BanFindTimeSec int
 	// BanWhitelist lists CIDRs (comma-separated) that are never banned.
 	BanWhitelist string
+	// BackupTarget selects the scheduled encrypted backup destination:
+	// "" or "off" (default), "local:<dir>", or "s3" (the MAILEZINE_S3_*
+	// credentials under the mailez-backup/ prefix).
+	BackupTarget string
+	// BackupKey is the passphrase backup archives are encrypted with; the
+	// scheduler refuses to run without one — no plaintext backups.
+	BackupKey string
+	// BackupKeep is how many recent archives each target retains.
+	BackupKeep int
+	// BackupHour is the local hour (0-23) the daily backup runs.
+	BackupHour int
 	// OutboundProbeHost overrides the host the outbound-relay health check
 	// dials on port 25; empty uses the built-in default.
 	OutboundProbeHost string
@@ -206,6 +217,10 @@ func Load() Config {
 		BanMaxRetry:            envInt("MAILEZ_BAN_MAX_RETRY", 20),
 		BanFindTimeSec:         envInt("MAILEZ_BAN_FINDTIME_SEC", 600),
 		BanWhitelist:           env("MAILEZ_BAN_WHITELIST", ""),
+		BackupTarget:           env("MAILEZ_BACKUP_TARGET", ""),
+		BackupKey:              env("MAILEZ_BACKUP_KEY", ""),
+		BackupKeep:             envInt("MAILEZ_BACKUP_KEEP", 14),
+		BackupHour:             envInt("MAILEZ_BACKUP_HOUR", 3),
 		OutboundProbeHost:      env("MAILEZ_OUTBOUND_PROBE_HOST", ""),
 		EngineMetricsURL:       env("MAILEZ_ENGINE_METRICS_URL", ""),
 	}

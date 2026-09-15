@@ -28,6 +28,7 @@ import (
 	"mailez/backend/internal/alias"
 	"mailez/backend/internal/auth"
 	"mailez/backend/internal/authcache"
+	"mailez/backend/internal/backup"
 	"mailez/backend/internal/ban"
 	"mailez/backend/internal/calendar"
 	"mailez/backend/internal/compose"
@@ -203,6 +204,8 @@ func New(cfg core.Config) *Server {
 	// schedule and reports only status transitions (email + optional
 	// webhook).
 	go admin.NewHealthAlertWorker(db, cfg).Run(bgCtx)
+	// Scheduled encrypted backups of the control plane.
+	go backup.New(db, cfg).Run(bgCtx)
 	// Edition-gated workers (admin digest email, engine traffic sampler)
 	// start through the build seam: no-ops in the base build.
 	startAdminWorkers(db, cfg, bgCtx)

@@ -374,6 +374,14 @@ var migrations = []migration{
 			return db.AutoMigrate(&BanRecord{})
 		},
 	},
+	{
+		// Scheduled encrypted backups: run history for the admin console
+		// and the backup-freshness health probe.
+		ID: "20261022_backup_runs",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&BackupRun{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in
