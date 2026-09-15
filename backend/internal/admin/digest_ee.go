@@ -104,17 +104,8 @@ func (w *DigestWorker) setFlag(key, value string) {
 	}
 }
 
-// recipient resolves the digest mailbox: explicit config wins, else the
-// first enabled global admin.
 func (w *DigestWorker) recipient() string {
-	if w.Cfg.AdminEmail != "" {
-		return w.Cfg.AdminEmail
-	}
-	var u models.User
-	if err := w.DB.First(&u, "global_admin = ? AND enabled = ?", true, true).Error; err != nil {
-		return ""
-	}
-	return u.Email
+	return adminRecipient(w.DB, w.Cfg)
 }
 
 // send builds and delivers the digest. weekly widens the activity window to
