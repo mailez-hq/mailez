@@ -135,7 +135,7 @@ services:
       retries: 3
       start_period: 20s
     ports:
-      - "127.0.0.1:${MAILEZ_API_PORT:-8081}:8080"
+      - "${MAILEZ_BIND:-127.0.0.1}:${MAILEZ_API_PORT:-8081}:8080"
     volumes:
       - "./data:/data"
     depends_on:
@@ -149,7 +149,7 @@ services:
       - API_TARGET=http://backend:8080
       - PORT=3000
     ports:
-      - "127.0.0.1:${MAILEZ_ADMIN_PORT:-8082}:3000"
+      - "${MAILEZ_BIND:-127.0.0.1}:${MAILEZ_ADMIN_PORT:-8082}:3000"
     depends_on:
       - backend
 
@@ -160,7 +160,7 @@ services:
       - API_TARGET=http://backend:8080
       - PORT=3000
     ports:
-      - "127.0.0.1:${MAILEZ_WEBMAIL_PORT:-8083}:3000"
+      - "${MAILEZ_BIND:-127.0.0.1}:${MAILEZ_WEBMAIL_PORT:-8083}:3000"
     depends_on:
       - backend
 
@@ -232,15 +232,19 @@ services:
       - "./data/mailezine:/data"
       - "./certs:/certs:ro"
     ports:
-      - "127.0.0.1:25:25"
-      - "127.0.0.1:465:465"
-      - "127.0.0.1:587:1587"
+      # Mail protocol ports must be reachable from the public internet in a
+      # production deployment (inbound MX delivery, client IMAP/POP/Submission).
+      # MAILEZ_MAIL_BIND defaults to 0.0.0.0; local trials can pin everything
+      # to loopback via MAILEZ_BIND/MAILEZ_MAIL_BIND in mailez.env.
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:25:25"
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:465:465"
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:587:1587"
       - "127.0.0.1:1587:1587"
-      - "127.0.0.1:110:110"
-      - "127.0.0.1:995:995"
-      - "127.0.0.1:143:143"
-      - "127.0.0.1:993:993"
-      - "127.0.0.1:4190:4190"
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:110:110"
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:995:995"
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:143:143"
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:993:993"
+      - "${MAILEZ_MAIL_BIND:-0.0.0.0}:4190:4190"
     depends_on:
       gateway:
         condition: service_started

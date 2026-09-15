@@ -23,6 +23,11 @@ All notable changes to mailez are documented here. The format follows
 
 ### Fixed
 
+- Community compose shipped with the engine's mail ports (25/465/587/110/
+  995/143/993/4190) bound to 127.0.0.1, so a fresh `mailezctl up ce`
+  deployment could not receive external mail; they now default to
+  `${MAILEZ_MAIL_BIND:-0.0.0.0}` while the debug ports keep the
+  loopback default (`${MAILEZ_BIND:-127.0.0.1}`), matching the EE stacks
 - Webmail no longer shows the admin console entry to non-admin accounts
 - Web containers run in the operator's timezone
 
