@@ -8,6 +8,58 @@ All notable changes to mailez are documented here. The format follows
 
 ### Added
 
+- Delta Chat onboarding: a DCLOGIN v1 login QR (email address + one-time
+  app token + IMAP/SMTP settings from the deployment's own autoconfig
+  XML) generated in the webmail settings dialog, plus a per-user
+  "Delta Chat QR" action in the admin users page
+- Admin sidebar: quick Webmail entry and a theme-coloured console lockup
+
+### Changed
+
+- Deploy: operator override compose file, host bind knobs and service
+  key passthrough for first-deployment hardening
+- Dependency upgrades across the backend Go modules and the frontend
+  workspace (Next.js 16.3.5, React 19.3.0)
+
+### Fixed
+
+- Webmail no longer shows the admin console entry to non-admin accounts
+- Web containers run in the operator's timezone
+
+## [1.0.0] - 2026-09-14
+
+### Added
+
+- Domain health center: `GET /admin/health` plus the admin "Health" page
+  run per-domain live DNS checks (MX / SPF / DMARC / DKIM published-key
+  comparison / Spamhaus ZEN blacklist / autoconfig / MTA-STS) and system
+  probes (engine IMAP+MTA dial, Redis, database, disk, memory, cert
+  expiry), each with ok/warn/fail/unknown and localized fix hints;
+  Spamhaus PBL listings grade as advisories and 127.255.255.x error
+  codes as probe errors rather than listings
+- DNS wizard: `GET /domains/:name/dns-records` lists the nine records a
+  deployment must publish with expected values and live verification;
+  per-row wizard dialog on the domains page
+- Client autoconfiguration endpoints: Mozilla autoconfig
+  (`/mail/config-v1.1.xml` incl. `/.well-known/`), Microsoft
+  autodiscover (XML + JSON), Apple mobileconfig profile and the MTA-STS
+  policy file (`/.well-known/mta-sts.txt`, STSv1 mode `testing`), served
+  through both frontends and the gateway
+- Admin digest email (daily/weekly operations summary to the first
+  admin) and the traffic report page with per-day aggregates, as
+  optional modules
+- TOTP self-enrollment: secret + `otpauth://` URI with verify-to-enable
+  on the config page's Security tab
+- Greylisting switch (`MAILEZINE_JUNK_GREYLIST`) exposed in the CE and
+  EE compose files
+- Gateway topology: the admin console is served under `/admin` on the
+  webmail domain (basePath-aware), CardDAV/CalDAV route through
+  `/dav/`, and the backend debug ports 8081–8083 bind to loopback only
+  by default
+- Webmail: per-message delete inside a conversation (undo restores just
+  that message)
+- Admin sidebar grouped by workflow: Overview & Monitoring /
+  Organization / Mail Services / Compliance & Audit / System
 - PostgreSQL control-plane support (`DB_DRIVER=postgres` alongside
   sqlite/mysql, GORM postgres driver): reserved-word `from`/`to` columns
   quoted per dialect via `clause.Column`, dialect-agnostic case-insensitive
@@ -19,6 +71,8 @@ All notable changes to mailez are documented here. The format follows
 
 ### Changed
 
+- Admin console theme restored to the teal colour family (light `#2f8e6c`
+  / dark `#3ba77f` primaries, teal accents, charts and sidebar)
 - Community edition control plane defaults to SQLite (`./data/mailez.db`);
   MySQL stays available through the new `--profile mysql` compose tier
   (`MAILEZ_DB_DRIVER` / `MAILEZ_DB_DSN`)
@@ -31,6 +85,8 @@ All notable changes to mailez are documented here. The format follows
 
 ### Fixed
 
+- Message parts are decoded through their declared charset (GBK and other
+  legacy encodings render correctly instead of mojibake)
 - External POP3/IMAP fetch disabled TLS verification (now verified by default;
   `FETCH_INSECURE` opts out)
 - Email HTML rendering was vulnerable to stored XSS; sanitized on both sides
