@@ -11,8 +11,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 
-	"mailez/backend/internal/auth"
 	"mailez/backend/internal/admin"
+	"mailez/backend/internal/auth"
 	"mailez/backend/internal/compose"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"

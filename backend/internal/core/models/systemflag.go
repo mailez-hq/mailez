@@ -14,13 +14,13 @@ type SystemFlag struct {
 // are cumulative per engine process; day deltas (with restart detection)
 // are computed at read time.
 type TrafficPoint struct {
-	ID          uint      `gorm:"primaryKey" json:"id"`
-	TS          time.Time `gorm:"index" json:"ts"`
-	InAccepted  int64     `json:"in_accepted"`
-	InRejected  int64     `json:"in_rejected"`
-	InDeferred  int64     `json:"in_deferred"`
-	OutDelivered int64    `json:"out_delivered"`
-	OutBounced  int64     `json:"out_bounced"`
-	OutDeferred int64     `json:"out_deferred"`
-	QueueDepth  int64     `json:"queue_depth"`
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	TS           time.Time `gorm:"index" json:"ts"`
+	InAccepted   int64     `json:"in_accepted"`
+	InRejected   int64     `json:"in_rejected"`
+	InDeferred   int64     `json:"in_deferred"`
+	OutDelivered int64     `json:"out_delivered"`
+	OutBounced   int64     `json:"out_bounced"`
+	OutDeferred  int64     `json:"out_deferred"`
+	QueueDepth   int64     `json:"queue_depth"`
 }

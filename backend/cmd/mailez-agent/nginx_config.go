@@ -45,11 +45,11 @@ type NginxConfig struct {
 	// Webmail, when set (host:port of the frontend-webmail service),
 	// proxies the server root to the webmail console instead of serving
 	// static files — the "https://mail.example.com/ opens webmail" path.
-	Webmail              string
-	Postmaster           string
-	Domain               string
-	Engine               string // mailezine (the only engine; kept for template compat)
-	RecipientDelimiter   string
+	Webmail            string
+	Postmaster         string
+	Domain             string
+	Engine             string // mailezine (the only engine; kept for template compat)
+	RecipientDelimiter string
 }
 
 var (
