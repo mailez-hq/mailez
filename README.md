@@ -40,6 +40,7 @@ required to run it.
 <p align="center">
   <img src="docs/screenshots/webmail-conversation.jpg" alt="mailez webmail — conversation view" width="880">
 </p>
+
 - **Three-pane layout** — folders, list and reading pane side by side; the
   list column is draggable to your preferred width
 - **Search that just works** — type naturally (`from:`, `to:`, `has:attachment`,
