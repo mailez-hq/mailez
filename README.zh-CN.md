@@ -59,6 +59,8 @@
 
 - **标准协议** — SMTP / IMAP / POP3（支持隐式 TLS），外加 CardDAV / CalDAV
   手机与桌面同步；常见客户端通过 autoconfig/autodiscover 自动配置
+- **Delta Chat** — 设置里生成登录二维码，用 Delta Chat 应用扫码即把邮箱
+  变成端到端加密的聊天工具，服务器配置随码带齐
 - **应用令牌** — 按客户端签发令牌，随时在设置里吊销
 
 ### 管理后台：不像"做管理"的管理后台
