@@ -13,6 +13,36 @@ All notable changes to mailez are documented here. The format follows
   XML) generated in the webmail settings dialog, plus a per-user
   "Delta Chat QR" action in the admin users page
 - Admin sidebar: quick Webmail entry and a theme-coloured console lockup
+- Outbound network probes on the health page: outbound port 25
+  reachability (probe host overridable via `MAILEZ_OUTBOUND_PROBE_HOST`),
+  PTR/EHLO hostname agreement for the mail hostname, and public-resolver
+  detection (reputation DNSBLs refuse queries answered from public
+  resolvers), reported as `outbound25` / `ptr` / `resolver` checks
+- Change-based health alerting: a worker re-runs the health-center
+  checks on a schedule (default hourly) and announces only status
+  transitions — a status must hold for two consecutive runs before it
+  is announced, the first run records a baseline only, and recoveries
+  are reported too. Delivery goes to the operations mailbox plus an
+  optional JSON webhook (`MAILEZ_HEALTH_ALERT_WEBHOOK`,
+  Slack/DingTalk/WeCom-compatible); `MAILEZ_HEALTH_ALERT_MUTE` silences
+  noisy probes, `MAILEZ_HEALTH_ALERT=off` disables the worker
+- IP ban engine: authentication failures count per source IP across the
+  web login and the mail-proxy SASL gate; crossing `MAILEZ_BAN_MAX_RETRY`
+  (default 20) within `MAILEZ_BAN_FINDTIME_SEC` (600) bans the address,
+  with the duration escalating on its 30-day history (15 min up to 24 h).
+  Loopback, the deployment's own addresses and `MAILEZ_BAN_WHITELIST`
+  CIDRs are exempt, so probes can never ban themselves. The admin console
+  gains a Bans page (list and lift, audited) and ban activity feeds the
+  health center
+- Scheduled encrypted backups: a daily worker (`MAILEZ_BACKUP_HOUR`)
+  archives a consistent SQLite snapshot (`VACUUM INTO`) plus the upload
+  tree, encrypts with chunked AES-256-GCM (`MAILEZ_BACKUP_KEY` — nothing
+  runs without it, no plaintext archives) and publishes to a local
+  directory (`MAILEZ_BACKUP_TARGET=local:<dir>`) or S3-compatible
+  storage (`s3`), pruning beyond `MAILEZ_BACKUP_KEEP` (default 14). The
+  admin Backups page shows configuration and run history, triggers a
+  manual run and verifies archives (re-read + decrypt from the target);
+  the health center grades backup freshness (warn at 7 days, fail at 14)
 
 ### Changed
 
@@ -30,6 +60,9 @@ All notable changes to mailez are documented here. The format follows
   loopback default (`${MAILEZ_BIND:-127.0.0.1}`), matching the EE stacks
 - Webmail no longer shows the admin console entry to non-admin accounts
 - Web containers run in the operator's timezone
+- `models.AutoMigrate` (the full-schema helper used by tests and tooling)
+  was missing the health-snapshot, ban-record and backup-run tables;
+  production migrations were unaffected
 
 ## [1.0.0] - 2026-09-14
 
