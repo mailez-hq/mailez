@@ -24,7 +24,7 @@ const DOMAIN_CHECK_IDS = [
 
 const SYSTEM_CHECK_IDS = [
   "engine_imap", "engine_mta", "redis", "database", "disk", "memory", "cert",
-  "outbound25", "ptr", "resolver", "bans",
+  "outbound25", "ptr", "resolver", "bans", "backup",
 ] as const;
 
 function statusColor(status: string) {

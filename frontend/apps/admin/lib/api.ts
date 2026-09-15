@@ -202,6 +202,32 @@ export const adminBans = () => api<BanRecord[]>("/admin/bans");
 export const adminBanLift = (id: number) =>
   api(`/admin/bans/${id}`, { method: "DELETE" });
 
+// Scheduled encrypted backups: configuration, run history, manual trigger
+// and per-run verification.
+export type BackupRun = {
+  id: number;
+  started_at: string;
+  finished_at?: string;
+  ok: boolean;
+  size: number;
+  target: string;
+  detail: string;
+};
+export type BackupStatus = {
+  configured: boolean;
+  target: string;
+  key_set: boolean;
+  keep: number;
+  hour: number;
+  running: boolean;
+  runs: BackupRun[];
+};
+export const adminBackup = () => api<BackupStatus>("/admin/backup");
+export const adminBackupRun = () =>
+  api("/admin/backup/run", { method: "POST" });
+export const adminBackupVerify = (id: number) =>
+  api<{ ok: boolean; entries: number }>(`/admin/backup/verify/${id}`, { method: "POST" });
+
 // Traffic report: per-day mail volume deltas sampled from engine metrics.
 export type TrafficDay = {
   date: string;

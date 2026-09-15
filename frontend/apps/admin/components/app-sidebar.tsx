@@ -7,6 +7,7 @@ import {
   AtSign,
   Ban,
   BarChart3,
+  Database,
   HeartPulse,
   LayoutDashboard,
   Download,
@@ -90,6 +91,7 @@ const navGroups: { key: string; items: NavItem[] }[] = [
     key: "groupSystem",
     items: [
       { href: "/announcement", key: "announcement", roles: ["admin"], icon: Megaphone },
+      { href: "/backups", key: "backups", roles: ["admin"], icon: Database },
       { href: "/config", key: "config", roles: ["admin"], icon: Settings },
     ],
   },
