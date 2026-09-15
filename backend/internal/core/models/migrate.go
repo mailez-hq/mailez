@@ -358,6 +358,14 @@ var migrations = []migration{
 			return db.AutoMigrate(&SystemFlag{}, &TrafficPoint{})
 		},
 	},
+	{
+		// Health-change alerter memory: per-probe announced status plus
+		// pending-transition bookkeeping for flap suppression.
+		ID: "20261020_health_alert_snapshot",
+		Up: func(db *gorm.DB) error {
+			return db.AutoMigrate(&HealthSnapshot{})
+		},
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

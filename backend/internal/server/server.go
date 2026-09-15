@@ -196,6 +196,10 @@ func New(cfg core.Config) *Server {
 	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey, dlpScanner, mail.New(cfg.MailImapAddr, "", "").SetInsecureTLS(cfg.FetchInsecure)).Run(bgCtx)
 	// Calendar event reminders: mail the owner when start - reminder arrives.
 	go calendar.NewReminderWorker(db, cfg).Run(bgCtx)
+	// Health-change alerter: re-runs the health center's checks on a
+	// schedule and reports only status transitions (email + optional
+	// webhook).
+	go admin.NewHealthAlertWorker(db, cfg).Run(bgCtx)
 	// Edition-gated workers (admin digest email, engine traffic sampler)
 	// start through the build seam: no-ops in the base build.
 	startAdminWorkers(db, cfg, bgCtx)
