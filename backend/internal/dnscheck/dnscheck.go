@@ -73,6 +73,21 @@ func Hosts(ctx context.Context, name string) ([]string, error) {
 	return addrs, nil
 }
 
+// Reverse returns the PTR host names for ip with trailing dots trimmed.
+func Reverse(ctx context.Context, ip string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	names, err := resolver.LookupAddr(ctx, ip)
+	if err != nil {
+		return nil, classify(err)
+	}
+	out := make([]string, 0, len(names))
+	for _, n := range names {
+		out = append(out, strings.TrimSuffix(n, "."))
+	}
+	return out, nil
+}
+
 // NormalizeTXT collapses DNS label splitting, whitespace and case so two
 // renderings of the same record compare equal. Case-insensitive comparison
 // is safe for record *policies* (v=SPF1 / v=DKIM1 / key tags); the base64

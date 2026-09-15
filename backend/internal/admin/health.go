@@ -50,9 +50,9 @@ type HealthReport struct {
 	System    []CheckItem    `json:"system"`
 }
 
-func ok(id, detail string) CheckItem    { return CheckItem{id, statusOK, detail} }
-func warn(id, detail string) CheckItem  { return CheckItem{id, statusWarn, detail} }
-func fail(id, detail string) CheckItem  { return CheckItem{id, statusFail, detail} }
+func ok(id, detail string) CheckItem   { return CheckItem{id, statusOK, detail} }
+func warn(id, detail string) CheckItem { return CheckItem{id, statusWarn, detail} }
+func fail(id, detail string) CheckItem { return CheckItem{id, statusFail, detail} }
 func unknown(id, detail string) CheckItem {
 	return CheckItem{id, statusUnknown, detail}
 }
@@ -94,7 +94,7 @@ func (h *Handler) healthReport(c *fiber.Ctx) error {
 		CheckedAt: time.Now().UTC(),
 		Hostname:  h.Cfg.Hostname,
 		Domains:   reports,
-		System:    h.systemChecks(),
+		System:    h.systemChecks(ctx),
 	})
 }
 
@@ -304,8 +304,9 @@ func checkHosted(ctx context.Context, name, id string) CheckItem {
 	return warn(id, "not published")
 }
 
-// systemChecks probes local services and resources.
-func (h *Handler) systemChecks() []CheckItem {
+// systemChecks probes local services, resources and the outbound network
+// path.
+func (h *Handler) systemChecks(ctx context.Context) []CheckItem {
 	items := []CheckItem{
 		tcpCheck("engine_imap", h.Cfg.MailImapAddr),
 		tcpCheck("engine_mta", h.Cfg.MailMtaAddr),
@@ -321,7 +322,7 @@ func (h *Handler) systemChecks() []CheckItem {
 	if host := h.Cfg.Hostname; host != "" && host != "localhost" && host != "127.0.0.1" {
 		items = append(items, certCheck(host, h.Cfg.PublicImapPort))
 	}
-	return items
+	return append(items, h.networkChecks(ctx)...)
 }
 
 func tcpCheck(id, addr string) CheckItem {
