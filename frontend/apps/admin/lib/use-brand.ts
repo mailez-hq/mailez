@@ -7,6 +7,7 @@
 // the server graph.
 import { useEffect, useState } from "react";
 import type { PublicBrand } from "@/lib/branding";
+import { BASE_PATH } from "@/lib/api";
 
 const NO_BRAND: PublicBrand = { title: "", logo_url: "" };
 
@@ -14,7 +15,7 @@ let memoized: Promise<PublicBrand> | null = null;
 
 function brandPromise(): Promise<PublicBrand> {
   if (!memoized) {
-    memoized = fetch("/api/v1/server/settings")
+    memoized = fetch(`${BASE_PATH}/api/v1/server/settings`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         const title = String(d?.branding?.title ?? "").trim();

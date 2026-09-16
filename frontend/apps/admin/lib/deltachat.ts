@@ -3,6 +3,7 @@
 // embeds the user's address, a one-time app token as the password and the
 // deployment's public IMAP/SMTP settings from the autoconfig XML, so the
 // Delta Chat app configures itself from a single scan.
+import { BASE_PATH } from "@/lib/api";
 
 export type DcServerSettings = {
   imapHost: string;
@@ -34,7 +35,7 @@ const socketType = (raw: string | null | undefined): "ssl" | "starttls" => {
 export async function fetchDcServerSettings(): Promise<DcServerSettings> {
   const fallback = fallbackSettings();
   try {
-    const res = await fetch("/mail/config-v1.1.xml", { headers: { Accept: "application/xml" } });
+    const res = await fetch(`${BASE_PATH}/mail/config-v1.1.xml`, { headers: { Accept: "application/xml" } });
     if (!res.ok) return fallback;
     const text = await res.text();
     const doc = new DOMParser().parseFromString(text, "application/xml");
