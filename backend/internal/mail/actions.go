@@ -58,32 +58,59 @@ func (c *Client) MarkAllRead(email, token, folder string) error {
 	}
 	// Fetch the UIDs of unseen messages so the store batch only touches the
 	// messages that need the flag (cheap for folders with few unread).
-	seqset := new(imap.SeqSet)
-	seqset.AddRange(1, mbox.Messages)
-	messages := make(chan *imap.Message, 32)
-	done := make(chan error, 1)
-	go func() { done <- cli.Fetch(seqset, []imap.FetchItem{imap.FetchUid, imap.FetchFlags}, messages) }()
-	uids := new(imap.SeqSet)
-	for msg := range messages {
-		seen := false
-		for _, f := range msg.Flags {
-			if strings.EqualFold(f, imap.SeenFlag) {
-				seen = true
-				break
+	// Window both phases so a large folder cannot time the request out.
+	const window = 1000
+	const storeBatch = 500
+	for start := uint32(1); start <= mbox.Messages; start += window {
+		end := start + window - 1
+		if end > mbox.Messages {
+			end = mbox.Messages
+		}
+		seqset := new(imap.SeqSet)
+		seqset.AddRange(start, end)
+		messages := make(chan *imap.Message, 64)
+		done := make(chan error, 1)
+		go func() {
+			done <- cli.Fetch(seqset, []imap.FetchItem{imap.FetchUid, imap.FetchFlags}, messages)
+		}()
+		uids := new(imap.SeqSet)
+		pending := 0
+		flush := func() error {
+			if uids.Empty() {
+				return nil
+			}
+			if err := cli.UidStore(uids, imap.AddFlags, []interface{}{imap.RawString(`\Seen`)}, nil); err != nil {
+				return fmt.Errorf("imap store seen: %w", err)
+			}
+			uids = new(imap.SeqSet)
+			pending = 0
+			return nil
+		}
+		for msg := range messages {
+			seen := false
+			for _, f := range msg.Flags {
+				if strings.EqualFold(f, imap.SeenFlag) {
+					seen = true
+					break
+				}
+			}
+			if seen {
+				continue
+			}
+			uids.AddNum(msg.Uid)
+			pending++
+			if pending >= storeBatch {
+				if err := flush(); err != nil {
+					return err
+				}
 			}
 		}
-		if !seen {
-			uids.AddNum(msg.Uid)
+		if err := <-done; err != nil {
+			return fmt.Errorf("imap fetch: %w", err)
 		}
-	}
-	if err := <-done; err != nil {
-		return fmt.Errorf("imap fetch: %w", err)
-	}
-	if uids.Empty() {
-		return nil
-	}
-	if err := cli.UidStore(uids, imap.AddFlags, []interface{}{imap.RawString(`\Seen`)}, nil); err != nil {
-		return fmt.Errorf("imap store seen: %w", err)
+		if err := flush(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
