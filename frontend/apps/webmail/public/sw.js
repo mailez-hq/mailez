@@ -30,7 +30,8 @@ self.addEventListener("push", (event) => {
   } catch {
     // non-JSON payload; show a generic notification
   }
-  const d = data as { title?: string; body?: string; url?: string; tag?: string };
+  // plain JS: a type assertion here makes the browser reject the worker
+  const d = data;
   event.waitUntil(
     self.registration.showNotification(d.title || "Mailez", {
       body: d.body || "",
