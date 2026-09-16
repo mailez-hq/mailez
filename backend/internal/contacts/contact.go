@@ -207,8 +207,13 @@ func (h *Handler) deleteContact(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid id"})
 	}
-	if err := h.DB.Delete(&models.Contact{}, "id = ? AND user_email = ?", id, currentUser(c).Email).Error; err != nil {
-		return core.Fail(c, 400, err, "delete failed")
+	res := h.DB.Delete(&models.Contact{}, "id = ? AND user_email = ?", id, currentUser(c).Email)
+	if res.Error != nil {
+		return core.Fail(c, 400, res.Error, "delete failed")
+	}
+	// A scoped delete that matched nothing is a miss, not a success.
+	if res.RowsAffected == 0 {
+		return c.Status(404).JSON(fiber.Map{"error": "contact not found"})
 	}
 	return c.SendStatus(204)
 }
