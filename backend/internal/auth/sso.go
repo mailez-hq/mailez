@@ -43,10 +43,17 @@ func (m *Manager) ssoLogin(c *fiber.Ctx) error {
 	// Normalize the identifier so case/whitespace never breaks an exact-match
 	// lookup (the directory fallback below already lowercases).
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
-	if !m.checkLoginAttempt(c.Context(), c.IP()) {
+	// A request that arrives through a trusted proxy without a forwarded
+	// header resolves to an empty address, which would put every such caller
+	// in one rate-limit bucket. Fall back to the socket address.
+	clientIP := c.IP()
+	if clientIP == "" {
+		clientIP = c.Context().RemoteIP().String()
+	}
+	if !m.checkLoginAttempt(c.Context(), clientIP) {
 		return c.Status(fiber.StatusTooManyRequests).JSON(models.APIError{Error: "too many login attempts, try again later", Code: "rate_limited"})
 	}
-	if m.Bans != nil && m.Bans.Active(c.Context(), c.IP()) {
+	if m.Bans != nil && m.Bans.Active(c.Context(), clientIP) {
 		return c.Status(fiber.StatusTooManyRequests).JSON(models.APIError{Error: "banned due to authentication failures, try again later", Code: "rate_limited"})
 	}
 	sid, user, err := m.Login(c.Context(), req.Email, req.Password)
