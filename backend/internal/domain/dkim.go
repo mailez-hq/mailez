@@ -15,7 +15,7 @@ import (
 
 func (h *Handler) registerDkim(r fiber.Router, mw fiber.Handler) {
 	r.Get("/domains/:name/dkim", mw, h.dkimStatus)
-	r.Post("/domains/:name/dkim", mw, h.dkimGenerate)
+	r.Post("/domains/:name/dkim", h.RequireGlobalAdmin, h.dkimGenerate)
 }
 
 // dkimStatus reports whether the domain has a DKIM key and, if so, the DNS
@@ -31,6 +31,9 @@ func (h *Handler) dkimStatus(c *fiber.Ctx) error {
 	d, err := h.findDomain(c.Params("name"))
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "domain not found"})
+	}
+	if !h.CanManageDomain(currentUser(c), d.Name) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "no access to this domain"})
 	}
 	return c.JSON(h.dkimResponse(d))
 }

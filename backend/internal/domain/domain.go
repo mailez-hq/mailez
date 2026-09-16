@@ -9,10 +9,10 @@ import (
 
 func (h *Handler) registerDomains(r fiber.Router, mw fiber.Handler) {
 	r.Get("/domains", mw, h.listDomains)
-	r.Post("/domains", mw, h.createDomain)
 	r.Get("/domains/:name", mw, h.getDomain)
-	r.Put("/domains/:name", mw, h.updateDomain)
-	r.Delete("/domains/:name", mw, h.deleteDomain)
+	r.Post("/domains", h.RequireGlobalAdmin, h.createDomain)
+	r.Put("/domains/:name", h.RequireGlobalAdmin, h.updateDomain)
+	r.Delete("/domains/:name", h.RequireGlobalAdmin, h.deleteDomain)
 }
 
 // listDomains returns all domains (admin), paginated.
@@ -25,14 +25,15 @@ func (h *Handler) registerDomains(r fiber.Router, mw fiber.Handler) {
 // @Failure 403 {object} models.APIError
 // @Router /domains [get]
 func (h *Handler) listDomains(c *fiber.Ctx) error {
+	q := h.scopeDomains(currentUser(c), h.DB)
 	page, limit := core.PageParams(c)
 	var total int64
-	if err := h.DB.Model(&models.Domain{}).Count(&total).Error; err != nil {
+	if err := q.Model(&models.Domain{}).Count(&total).Error; err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
 	var domains []models.Domain
 	offset := (page - 1) * limit
-	if err := h.DB.Order("name").Limit(limit).Offset(offset).Find(&domains).Error; err != nil {
+	if err := q.Order("name").Limit(limit).Offset(offset).Find(&domains).Error; err != nil {
 		return core.Fail(c, 500, err, "internal error")
 	}
 	return core.Page(c, domains, int(total), page, limit)
@@ -49,6 +50,9 @@ func (h *Handler) getDomain(c *fiber.Ctx) error {
 	var d models.Domain
 	if err := h.DB.First(&d, "name = ?", c.Params("name")).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "domain not found"})
+	}
+	if !h.CanManageDomain(currentUser(c), d.Name) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "no access to this domain"})
 	}
 	return c.JSON(d)
 }
