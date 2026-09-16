@@ -95,7 +95,8 @@ services:
       - MAIL_SMTP_ADDR=engine-lb:1587
       - MAIL_SIEVE_ADDR=engine-lb:4190
       - MAIL_MTA_ADDR=engine-lb:25
-      - MAIL_ENGINE_MGMT_ADDR=mailezine:8090
+      # 带 scheme：backend 直接拼接该值作为请求 URL。
+      - MAIL_ENGINE_MGMT_ADDR=http://mailezine:8090
 
   # 邮件端口负载均衡：TCP 透传 + PROXY v1 注入 + DNS 副本展开 + 健康检查。
   engine-lb:

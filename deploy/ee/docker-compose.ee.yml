@@ -145,7 +145,8 @@ services:
       - MAIL_SIEVE_ADDR=mailezine:4190
       # 删除用户时级联清除引擎侧数据(管理 API,compose 网络内可达)。secret
       # 必须与 mailezine 服务的 MAILEZINE_MANAGEMENT_SECRET 同值。
-      - MAIL_ENGINE_MGMT_ADDR=mailezine:8090
+      # 带 scheme：backend 直接拼接该值作为请求 URL。
+      - MAIL_ENGINE_MGMT_ADDR=http://mailezine:8090
       - MAIL_ENGINE_MGMT_SECRET=${MAILEZ_STACK_SECRET:?set in mailez.env}
       - FETCH_INTERVAL=300
       - AI_PROVIDER=none
