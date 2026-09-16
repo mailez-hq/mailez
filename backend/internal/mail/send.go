@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Send delivers a message via the submission port using the temp token auth.
@@ -322,7 +323,7 @@ func BuildMessage(from string, to, cc []string, subject, text, html string, atta
 			b.WriteString("Content-Type: text/plain; charset=UTF-8\r\n")
 			b.WriteString("Content-Transfer-Encoding: 8bit\r\n")
 			b.WriteString("\r\n")
-			b.WriteString(text)
+			b.WriteString(foldLongLines(text))
 			b.WriteString("\r\n")
 		}
 		return b.String()
@@ -354,8 +355,44 @@ func writePart(b *strings.Builder, boundary, contentType, body string) {
 	b.WriteString("Content-Type: " + contentType + "; charset=UTF-8\r\n")
 	b.WriteString("Content-Transfer-Encoding: 8bit\r\n")
 	b.WriteString("\r\n")
-	b.WriteString(body)
+	b.WriteString(foldLongLines(body))
 	b.WriteString("\r\n")
+}
+
+// smtpLineLimit is RFC 5321's text line limit (998 octets plus CRLF). Bodies
+// carry 8bit encoding, so an over-long line reaches the server as written and
+// is refused.
+const smtpLineLimit = 998
+
+// foldLongLines wraps over-long lines at a rune boundary and normalises line
+// endings to CRLF.
+func foldLongLines(body string) string {
+	if body == "" {
+		return body
+	}
+	body = strings.ReplaceAll(body, "\r\n", "\n")
+	lines := strings.Split(body, "\n")
+	for i, line := range lines {
+		if len(line) <= smtpLineLimit {
+			continue
+		}
+		var out []string
+		rest := line
+		for len(rest) > smtpLineLimit {
+			cut := smtpLineLimit
+			for cut > 0 && !utf8.RuneStart(rest[cut]) {
+				cut--
+			}
+			if cut == 0 {
+				cut = smtpLineLimit
+			}
+			out = append(out, rest[:cut])
+			rest = rest[cut:]
+		}
+		out = append(out, rest)
+		lines[i] = strings.Join(out, "\r\n")
+	}
+	return strings.Join(lines, "\r\n")
 }
 
 func writeAttachmentPart(b *strings.Builder, boundary string, a Attachment) {
