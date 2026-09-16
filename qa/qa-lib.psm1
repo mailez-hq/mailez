@@ -24,11 +24,27 @@ function Api {
         $r = Invoke-WebRequest @params
         $json = $null
         try { $json = [Text.Encoding]::UTF8.GetString($r.RawContentStream.ToArray()) | ConvertFrom-Json } catch {}
-        return @{ Status = [int]$r.StatusCode; Data = $json; Raw = $r }
+        return @{ Status = [int]$r.StatusCode; Data = $json; Raw = $r; Body = "" }
     } catch {
         $code = 0
-        if ($_.Exception.Response) { $code = [int]$_.Exception.Response.StatusCode }
-        return @{ Status = $code; Data = $null; Raw = $null; Err = $_.Exception.Message }
+        $text = ""
+        $json = $null
+        if ($_.Exception.Response) {
+            $code = [int]$_.Exception.Response.StatusCode
+            # Keep the error body: checks assert on the code/message in it.
+            # PS7 exposes it as ErrorDetails.Message, the stream read is the
+            # fallback.
+            try {
+                if ($_.ErrorDetails -and $_.ErrorDetails.Message) { $text = [string]$_.ErrorDetails.Message }
+                if (-not $text) {
+                    $stream = $_.Exception.Response.GetResponseStream()
+                    $reader = New-Object System.IO.StreamReader($stream, [Text.Encoding]::UTF8)
+                    $text = $reader.ReadToEnd()
+                }
+                if ($text) { try { $json = $text | ConvertFrom-Json } catch {} }
+            } catch {}
+        }
+        return @{ Status = $code; Data = $json; Raw = $null; Err = $_.Exception.Message; Body = $text }
     }
 }
 
