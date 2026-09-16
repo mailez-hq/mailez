@@ -42,9 +42,14 @@ func newDkimTestHandler(t *testing.T) (*Handler, *fiber.App) {
 	mgr := auth.NewManager(db, auth.NewMemoryStore(), "mailez_session", time.Hour)
 	h := New(core.New(db, mgr, cfg))
 	app := fiber.New()
-	// Register only the DKIM routes with a pass-through middleware; role/auth
-	// enforcement is covered by the shared auth flow elsewhere.
-	h.registerDkim(app.Group("/api/v1"), func(c *fiber.Ctx) error { return c.Next() })
+	// Register only the DKIM routes. Role/auth enforcement is covered by the
+	// shared auth flow elsewhere, but the handlers (and the admin-only POST)
+	// still read the caller, so the group stub places one in the context.
+	authed := app.Group("/api/v1", func(c *fiber.Ctx) error {
+		c.Locals("user", &models.User{Email: "a@example.com", Enabled: true, GlobalAdmin: true})
+		return c.Next()
+	})
+	h.registerDkim(authed, func(c *fiber.Ctx) error { return c.Next() })
 	return h, app
 }
 
