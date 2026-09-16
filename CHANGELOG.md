@@ -50,6 +50,17 @@ All notable changes to mailez are documented here. The format follows
   key passthrough for first-deployment hardening
 - Dependency upgrades across the backend Go modules and the frontend
   workspace (Next.js 16.3.5, React 19.3.0)
+- Bulk flag operations (mark-all-read, moving or deleting many messages)
+  no longer cost a transaction per message: the engine commits a batch
+  of flag changes in one write, and the control plane walks a large
+  folder in windows instead of one pass. On a 300-message mailbox
+  `UID STORE 1:* +FLAGS \Seen` went from ~34 s to ~7 s and
+  `POST /mail/read-all` from ~30 s to ~14 s
+- Domain reads are open to the domain's managers: `GET /domains`,
+  `GET /domains/:name`, the DKIM status and the DNS wizard return the
+  domains a manager holds, while every domain mutation (create, update,
+  delete, key generation, managers, alternatives, relays) stays
+  global-admin only
 
 ### Fixed
 
@@ -63,6 +74,38 @@ All notable changes to mailez are documented here. The format follows
 - `models.AutoMigrate` (the full-schema helper used by tests and tooling)
   was missing the health-snapshot, ban-record and backup-run tables;
   production migrations were unaffected
+- External POP3 aggregation re-delivered every message on each poll: the
+  delivered-UIDL list went to a column that does not exist, so the write
+  failed silently and the cursor never advanced. The list is now stored
+  in `seen_uid_ls`, and a failed cursor write is logged instead of
+  dropped
+- Deleting a user left the engine-side mailbox behind on the EE stacks:
+  `MAIL_ENGINE_MGMT_ADDR` was passed without a URL scheme, so the purge
+  request failed with `unsupported protocol scheme "mailezine"`; the
+  compose files now carry `http://`
+- Sorting a mailbox by sender, subject or size returned an empty page:
+  the UIDs in an IMAP `SORT` response were read as integers while
+  go-imap hands them back as strings, so the collector dropped every one
+- A message containing a single very long line (a pasted URL or log
+  line) failed with `mail service error`; bodies are now folded at the
+  RFC 5321 line limit before submission
+- A recipient over quota, or a message with an over-long line, produced
+  a bare 502; both now answer 422 with `recipient_quota_exceeded` /
+  `line_too_long` and a message the sender can act on
+- Admin console requested its logo, branding and autoconfig XML from
+  the site root, so all three 404'd on deployments that serve the
+  console under `/admin`
+- Webmail's service worker never registered (a TypeScript assertion had
+  slipped into the shipped `sw.js`), which disabled offline support and
+  the notification-click handler
+- Login rate limiting and the ban engine keyed trusted-proxy requests
+  without a forwarded header into one empty-address bucket, so such
+  callers shared a single limit; the socket address is used instead
+- Deleting a contact that belongs to another user answered 204; it now
+  answers 404
+- `POST /mail/send` ignored the `text` field that `POST /mail/draft`
+  uses for the body, so a caller following the draft API sent an empty
+  message; both field names are accepted
 
 ## [1.0.0] - 2026-09-14
 
