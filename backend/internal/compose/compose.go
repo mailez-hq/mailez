@@ -164,6 +164,18 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 		// outage: the message will never be accepted, so surface it as a
 		// client error with the engine's own wording instead of a bare
 		// "mail service error" that tells the user nothing.
+		if msg, ok := quotaRejection(err); ok {
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+				"error": msg,
+				"code":  "recipient_quota_exceeded",
+			})
+		}
+		if msg, ok := lineTooLongRejection(err); ok {
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+				"error": msg,
+				"code":  "line_too_long",
+			})
+		}
 		if msg, ok := policyRejection(err); ok {
 			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
 				"error": msg,
