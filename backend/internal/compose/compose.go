@@ -78,12 +78,15 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 		return core.DialFailure(c, err)
 	}
 	var in struct {
-		From        string            `json:"from"`
-		To          core.StringList   `json:"to"`
-		Cc          core.StringList   `json:"cc"`
-		Bcc         core.StringList   `json:"bcc"`
-		Subject     string            `json:"subject"`
-		Body        string            `json:"body"`
+		From    string          `json:"from"`
+		To      core.StringList `json:"to"`
+		Cc      core.StringList `json:"cc"`
+		Bcc     core.StringList `json:"bcc"`
+		Subject string          `json:"subject"`
+		Body    string          `json:"body"`
+		// Drafts name the same field "text"; accept it so a caller following
+		// the draft call does not send an empty body.
+		Text        string            `json:"text"`
 		HTML        string            `json:"html"`
 		Attachments []mail.Attachment `json:"attachments"`
 		UndoSeconds int               `json:"undo_seconds"`
@@ -95,6 +98,9 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 	}
 	if err := c.BodyParser(&in); err != nil || len(in.To) == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "to is required"})
+	}
+	if in.Body == "" {
+		in.Body = in.Text
 	}
 	// Threading headers may arrive as the base64url routable id the webmail
 	// uses in URLs (the quick-reply path predates this); turn those back

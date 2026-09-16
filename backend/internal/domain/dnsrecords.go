@@ -56,6 +56,9 @@ func (h *Handler) dnsRecords(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "domain not found"})
 	}
+	if !h.CanManageDomain(currentUser(c), d.Name) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "no access to this domain"})
+	}
 	ctx := context.Background()
 	host := h.Cfg.Hostname
 	records := []DNSRecord{
