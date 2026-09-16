@@ -97,8 +97,13 @@ func (f *Fetcher) fetchOne(fetch *models.Fetch) {
 // markDelivered persists the per-message deduplication state right after a
 // successful delivery so a later failure never re-delivers the same message.
 func (f *Fetcher) markDelivered(fetch *models.Fetch, updates map[string]any) {
-	if len(updates) > 0 {
-		f.DB.Model(fetch).Updates(updates)
+	if len(updates) == 0 {
+		return
+	}
+	// A dropped write here means the cursor never advances and every later
+	// poll re-downloads the same mail, so do not swallow the error.
+	if err := f.DB.Model(fetch).Updates(updates).Error; err != nil {
+		log.Printf("fetch %s@%s: persist dedupe state %v: %v", fetch.Username, fetch.Host, updates, err)
 	}
 }
 
@@ -264,7 +269,7 @@ func (f *Fetcher) fetchPOP3(fetch *models.Fetch, password string) error {
 		}
 		seen = append(seen, e.UIDL)
 		seenSet[e.UIDL] = struct{}{}
-		f.markDelivered(fetch, map[string]any{"seen_uidls": marshalUIDLs(seen)})
+		f.markDelivered(fetch, map[string]any{"seen_uid_ls": marshalUIDLs(seen)})
 	}
 	return nil
 }
