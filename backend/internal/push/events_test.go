@@ -109,12 +109,18 @@ func TestEventWatcherDetectsNewMail(t *testing.T) {
 
 	w := &EventWatcher{Mail: fake, Hub: hub, baseline: map[string]map[string]uint64{}}
 
-	// First poll only establishes the baseline.
+	// The first poll announces the baseline itself: the client re-reads on
+	// connect, and a message that landed between that read and this one would
+	// otherwise be absorbed by the baseline (the "first message after
+	// subscribing never pushes" report).
 	w.pollOnce()
 	select {
 	case ev := <-ch:
-		t.Fatalf("baseline poll must not publish, got %+v", ev)
+		if ev.Type != "mail" {
+			t.Fatalf("unexpected baseline event: %+v", ev)
+		}
 	default:
+		t.Fatal("the first poll must announce the baseline")
 	}
 
 	// New mail bumps the mailbox version.
@@ -177,6 +183,11 @@ func TestEventWatcherToleratesErrorsAndPrunes(t *testing.T) {
 	fake.set("a@example.com", "Inbox", 5)
 	w := &EventWatcher{Mail: fake, Hub: hub, baseline: map[string]map[string]uint64{}}
 	w.pollOnce() // baseline
+	select {     // consume the baseline announcement
+	case <-ch:
+	default:
+		t.Fatal("expected the baseline announcement")
+	}
 
 	// Transient error: keep the old baseline, no event.
 	fake.err = errStat

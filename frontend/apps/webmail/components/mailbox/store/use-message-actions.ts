@@ -4,6 +4,7 @@ import { useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 
 import {
+  mailDelete,
   mailFlag,
   mailMove,
   mailThread,
@@ -101,7 +102,15 @@ export function useMessageActions({
     const uids = [...groups.values()].flat();
     setError("");
     try {
-      await Promise.all([...groups].map(([src, us]) => mailMove(src, us, destination)));
+      // Destination Trash from a source folder that is already Trash means
+      // "delete for good": the server purges instead of moving.
+      await Promise.all(
+        [...groups].map(([src, us]) =>
+          destination.toLowerCase() === "trash" && src.toLowerCase() === "trash"
+            ? mailDelete(src, us)
+            : mailMove(src, us, destination),
+        ),
+      );
       refreshUnseen();
       const uidSet = new Set(uids);
       setMessages((ms) => ms.filter((x) => !uidSet.has(x.uid)));

@@ -39,6 +39,12 @@ func newDriveApp(t *testing.T) (*fiber.App, *Service) {
 		t.Fatal(err)
 	}
 	app := fiber.New()
+	// Same order as server.go: the token-only share download is public, the
+	// rest of the drive sits behind the session middleware.
+	svc.RegisterPublic(app.Group("/api/v1", func(c *fiber.Ctx) error {
+		c.Locals("user", &models.User{Email: "alice@example.com", DomainName: "example.com", Enabled: true})
+		return c.Next()
+	}))
 	authed := app.Group("/api/v1", func(c *fiber.Ctx) error {
 		c.Locals("user", &models.User{Email: "alice@example.com", DomainName: "example.com", Enabled: true})
 		return c.Next()

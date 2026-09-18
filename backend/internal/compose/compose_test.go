@@ -50,7 +50,7 @@ func (f *fakeGateway) SaveDraft(email, token string, to, cc, bcc []string, subje
 	return f.savedUID, nil
 }
 
-func newTestApp(t *testing.T, gw mail.Gateway) (*fiber.App, *fakeGateway) {
+func newTestApp(t *testing.T, gw mail.Gateway, tweak ...func(*core.App)) (*fiber.App, *fakeGateway) {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "compose.db")), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{SingularTable: true},
@@ -70,8 +70,11 @@ func newTestApp(t *testing.T, gw mail.Gateway) (*fiber.App, *fakeGateway) {
 
 	mgr := auth.NewManager(db, auth.NewMemoryStore(), "mailez_session", time.Hour)
 	app := core.New(db, mgr, core.Config{SecretKey: "test-secret", Domain: "example.com"})
+	app.Mail = gw
 	fake, _ := gw.(*fakeGateway)
-	app.Mail = fake
+	for _, fn := range tweak {
+		fn(app)
+	}
 
 	h := New(app)
 	f := fiber.New()
