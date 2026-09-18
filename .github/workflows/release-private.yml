@@ -38,19 +38,24 @@ jobs:
       - name: Require the engine images for this tag
         run: |
           for i in $(seq 1 20); do
-            missing=""
-            for image in mailez-mailezine mailez-mailezine-ee; do
-              docker manifest inspect "ghcr.io/mailez-hq/$image:${GITHUB_REF_NAME}" >/dev/null 2>&1 || missing="$missing $image"
-            done
-            if [ -z "$missing" ]; then
-              echo "engine images for ${GITHUB_REF_NAME} are published"
-              exit 0
+            if docker manifest inspect "ghcr.io/mailez-hq/mailez-mailezine:${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+              echo "community engine image for ${GITHUB_REF_NAME} is published"
+              break
             fi
-            echo "attempt $i/20: waiting for$missing:${GITHUB_REF_NAME}"
+            echo "attempt $i/20: waiting for mailez-mailezine:${GITHUB_REF_NAME}"
             sleep 30
           done
-          echo "::error::engine images for ${GITHUB_REF_NAME} are not published (missing:$missing) — tag the mailezine repo with the same tag first; see docs/release-process.md"
-          exit 1
+          if ! docker manifest inspect "ghcr.io/mailez-hq/mailez-mailezine:${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            echo "::error::ghcr.io/mailez-hq/mailez-mailezine:${GITHUB_REF_NAME} is not published — tag the mailezine repo first; see docs/release-process.md"
+            exit 1
+          fi
+          # The private engine image is published by the OTHER repository, so
+          # this workflow's token cannot read it without an explicit package
+          # link. The EE smoke job pulls it directly and fails loudly if it is
+          # missing, so a warning is enough here.
+          if ! docker manifest inspect "ghcr.io/mailez-hq/mailez-mailezine-ee:${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            echo "::warning::mailez-mailezine-ee:${GITHUB_REF_NAME} is not readable by this workflow (expected: it is a private package of another repository)"
+          fi
 
   build-images:
     runs-on: ubuntu-latest
