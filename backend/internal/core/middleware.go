@@ -18,6 +18,19 @@ func (a *App) RequireAuth(c *fiber.Ctx) error {
 	return c.Next()
 }
 
+// OptionalAuth attaches the signed-in user when the request carries a valid
+// session and otherwise continues anonymously. Routes that authenticate by
+// some other means — the drive share link authorizes by token — still need to
+// recognize their owner when the owner happens to be signed in, without
+// demanding a session from everyone else.
+func (a *App) OptionalAuth(c *fiber.Ctx) error {
+	sid := c.Cookies(a.Auth.SessionName)
+	if user, err := a.Auth.UserFromSession(c.Context(), sid); err == nil && user != nil && user.Enabled {
+		c.Locals("user", user)
+	}
+	return c.Next()
+}
+
 // RequireGlobalAdmin restricts a route to global administrators.
 func (a *App) RequireGlobalAdmin(c *fiber.Ctx) error {
 	if !CurrentUser(c).GlobalAdmin {

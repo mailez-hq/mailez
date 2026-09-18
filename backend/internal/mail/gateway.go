@@ -53,6 +53,11 @@ type Gateway interface {
 	ReplaceKeyword(email, token, oldKw, newKw string) error
 	MoveMany(email, token, folder string, uids []uint32, destination string) error
 	Delete(email, token, folder string, uid uint32) error
+	// Purge permanently removes messages from a folder (flag + expunge).
+	// Deleting inside Trash goes through this instead of Delete, which only
+	// moves to Trash and would be a no-op there.
+	Purge(email, token, folder string, uid uint32) error
+	PurgeMany(email, token, folder string, uids []uint32) error
 	Snooze(email, token, folder string, uid uint32, until *time.Time) error
 	SnoozedMessages(email, token string) ([]SnoozedMessage, error)
 

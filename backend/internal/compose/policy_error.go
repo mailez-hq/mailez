@@ -50,3 +50,21 @@ func policyRejection(err error) (string, bool) {
 	}
 	return "the mail server refused this message by policy (attachment type or content was rejected)", true
 }
+
+// recipientRejectionRe matches a refusal of the recipient list itself: a bad
+// address (501), a mailbox that does not exist (550), or a relay the server
+// will not accept mail for (553). The engine reports these as
+// `smtp rcpt not-an-email: 501 5.1.3 ...`.
+var recipientRejectionRe = regexp.MustCompile(`(?i)\b(50[01]|55[013])\b.*?(rcpt|recipient|address|relay|mailbox)`)
+
+// recipientRejection reports a message that can never be delivered to the
+// addresses as written — a client error, not a service outage.
+func recipientRejection(err error) (string, bool) {
+	if err == nil {
+		return "", false
+	}
+	if !recipientRejectionRe.MatchString(err.Error()) {
+		return "", false
+	}
+	return "the mail server refused at least one recipient address; check the addresses and try again", true
+}

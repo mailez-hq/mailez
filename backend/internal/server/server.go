@@ -349,6 +349,17 @@ func (s *Server) routes() {
 	// (same pattern as /health, /server/settings and user.RegisterPublic).
 	calendarHandler := calendar.New(app)
 	calendarHandler.RegisterPublic(v1)
+	// The drive is assembled here so its token-only share download can be
+	// mounted publicly (a share link has to open without a session) while
+	// every other drive route stays behind RequireAuth.
+	driveSvc, driveErr := drive.New(s.DB, s.Cfg)
+	if driveErr != nil {
+		log.Printf("drive: %v", driveErr)
+	} else {
+		// Optional, not required: the share download has to work for an
+		// anonymous visitor, and still has to recognize the owner.
+		driveSvc.RegisterPublic(v1.Group("", app.OptionalAuth))
+	}
 	authed := v1.Group("", app.RequireAuth, app.Audit)
 
 	user.New(app).Register(authed)
@@ -364,10 +375,8 @@ func (s *Server) routes() {
 	fetch.RegisterAPI(authed, app)
 	push.RegisterAPI(authed, app, s.events)
 	uploads.New(s.DB, s.Cfg).Register(authed)
-	if driveSvc, derr := drive.New(s.DB, s.Cfg); derr == nil {
+	if driveSvc != nil {
 		driveSvc.Register(authed)
-	} else {
-		log.Printf("drive: %v", derr)
 	}
 
 	stackGroup := s.App.Group("/stack", requireStackSecret(s.Cfg.StackSecret))

@@ -23,7 +23,9 @@ func (s *Service) registerShare(r fiber.Router) {
 
 // shareAuthorize: the owner, or anyone presenting the file's share token.
 func (s *Service) shareAuthorize(row *models.DriveFile, email, token string) bool {
-	if strings.EqualFold(row.UserEmail, email) {
+	// email is empty for an anonymous share-link visitor; EqualFold("", "")
+	// must not be mistaken for ownership.
+	if email != "" && strings.EqualFold(row.UserEmail, email) {
 		return true
 	}
 	return row.ShareToken != "" && token == row.ShareToken

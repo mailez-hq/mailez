@@ -616,8 +616,10 @@ export const mailTemplateSave = (tpl: {id?: number; name: string; subject?: stri
 export const mailTemplateDelete = (id: number) =>
   api(`/mail/templates/${id}`, { method: "DELETE" });
 
-export const mailDelete = (folder: string, uid: number) =>
-  apiPost("/mail/delete", { folder, uid });
+// Deleting deletes: from any folder the message goes to Trash, from Trash
+// itself the server purges it.
+export const mailDelete = (folder: string, uids: number | number[]) =>
+  apiPost("/mail/delete", { folder, uids: Array.isArray(uids) ? uids : [uids] });
 
 // Contacts.
 export const contactsDedupe = () => apiPost<{merged: number; removed: number}>("/contacts/dedupe", {});

@@ -53,7 +53,11 @@ func EnsureWorkerToken(ctx context.Context, db *gorm.DB, secretKey, email string
 	if err != nil {
 		return "", err
 	}
-	row = models.WorkerToken{UserEmail: email, TokenEnc: enc}
+	// Carry the row's created_at over: Save() writes every field, and MySQL
+	// (strict mode — the EE default) rejects the zero time as '0000-00-00'.
+	// A zero value also means the row did not exist, in which case GORM falls
+	// through to an insert that fills it.
+	row = models.WorkerToken{UserEmail: email, TokenEnc: enc, CreatedAt: row.CreatedAt}
 	if err := db.WithContext(ctx).Save(&row).Error; err != nil {
 		return "", err
 	}

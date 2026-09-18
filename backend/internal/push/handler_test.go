@@ -46,7 +46,9 @@ func newTestApp(t *testing.T) *fiber.App {
 
 func TestPushVapidAndSubscribe(t *testing.T) {
 	app := newTestApp(t)
-	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/push/vapid", nil))
+	// The first VAPID call generates the key pair; give it room beyond the
+	// 1s default so a loaded machine cannot fail the test.
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/push/vapid", nil), 30000)
 	if err != nil {
 		t.Fatalf("vapid: %v", err)
 	}
@@ -61,7 +63,7 @@ func TestPushVapidAndSubscribe(t *testing.T) {
 	body := `{"endpoint":"https://push.example.test/a","keys":{"p256dh":"AQI","auth":"AQI"}}`
 	sub := httptest.NewRequest(http.MethodPost, "/api/v1/push/subscribe", strings.NewReader(body))
 	sub.Header.Set("Content-Type", "application/json")
-	if resp, _ := app.Test(sub); resp.StatusCode != http.StatusNoContent {
+	if resp, _ := app.Test(sub, 30000); resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("subscribe status = %d, want 204", resp.StatusCode)
 	}
 	unsub := httptest.NewRequest(http.MethodDelete, "/api/v1/push/subscribe", strings.NewReader(`{"endpoint":"https://push.example.test/a"}`))

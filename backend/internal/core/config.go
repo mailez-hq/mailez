@@ -142,6 +142,11 @@ type Config struct {
 	// OutboundProbeHost overrides the host the outbound-relay health check
 	// dials on port 25; empty uses the built-in default.
 	OutboundProbeHost string
+	// MaxAttachmentBytes caps one attachment on the API path. The webmail
+	// picker refuses anything larger, but the API is reachable directly and
+	// the gateway only bounds the whole request body, so the limit has to be
+	// enforced here too. 0 disables the check.
+	MaxAttachmentBytes int
 	// EngineMetricsURL is the mailezine Prometheus endpoint the traffic
 	// sampler scrapes (e.g. http://mailezine:11480/metrics). Empty
 	// disables traffic reporting.
@@ -222,6 +227,7 @@ func Load() Config {
 		BackupKeep:             envInt("MAILEZ_BACKUP_KEEP", 14),
 		BackupHour:             envInt("MAILEZ_BACKUP_HOUR", 3),
 		OutboundProbeHost:      env("MAILEZ_OUTBOUND_PROBE_HOST", ""),
+		MaxAttachmentBytes:     envInt("MAILEZ_MAX_ATTACHMENT_BYTES", 20<<20),
 		EngineMetricsURL:       env("MAILEZ_ENGINE_METRICS_URL", ""),
 	}
 	// Distributed deployments opt into TiDB KV + MinIO/S3 blobs by setting

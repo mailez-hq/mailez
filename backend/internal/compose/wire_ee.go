@@ -216,6 +216,9 @@ func (h *Handler) mailMerge(c *fiber.Ctx) error {
 	if len(in.Recipients) == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "recipients are required"})
 	}
+	if a, n, over := oversizedAttachment(in.Attachments, h.Cfg.MaxAttachmentBytes); over {
+		return attachmentRefusal(c, a, n, h.Cfg.MaxAttachmentBytes)
+	}
 	from := in.From
 	if from == "" {
 		from = d.Email

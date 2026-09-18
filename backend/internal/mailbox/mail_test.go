@@ -28,9 +28,24 @@ type fakeGateway struct {
 	moved    [][2]string
 	marked   []string
 	flags    []string
+	purged   []purgeCall
+}
+
+type purgeCall struct {
+	folder string
+	uids   []uint32
 }
 
 func (f *fakeGateway) With(dial mail.Dial) mail.Gateway { return f }
+
+func (f *fakeGateway) Purge(email, token, folder string, uid uint32) error {
+	return f.PurgeMany(email, token, folder, []uint32{uid})
+}
+
+func (f *fakeGateway) PurgeMany(email, token, folder string, uids []uint32) error {
+	f.purged = append(f.purged, purgeCall{folder: folder, uids: append([]uint32(nil), uids...)})
+	return nil
+}
 
 func (f *fakeGateway) ListMessages(email, token, folder string, page int) ([]mail.Message, int, error) {
 	return f.messages, f.total, nil
@@ -122,6 +137,47 @@ func TestMailMove(t *testing.T) {
 	}
 	if len(fake.moved) != 1 || fake.moved[0] != [2]string{"INBOX", "Archive"} {
 		t.Errorf("moved = %v", fake.moved)
+	}
+}
+
+// Deleting from an ordinary folder files the message under Trash.
+func TestMailDeleteMovesToTrash(t *testing.T) {
+	app, fake := newTestApp(t, &fakeGateway{})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/mail/delete", strings.NewReader(`{"folder":"INBOX","uid":5}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", resp.StatusCode)
+	}
+	if len(fake.moved) != 1 || fake.moved[0] != [2]string{"INBOX", "Trash"} {
+		t.Errorf("moved = %v, want INBOX → Trash", fake.moved)
+	}
+	if len(fake.purged) != 0 {
+		t.Errorf("purged = %v, want none", fake.purged)
+	}
+}
+
+// Regression: deleting inside Trash used to issue Trash → Trash, which the
+// engine treats as a no-op, so the message stayed in the trash forever.
+func TestMailDeleteInTrashPurges(t *testing.T) {
+	app, fake := newTestApp(t, &fakeGateway{})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/mail/delete", strings.NewReader(`{"folder":"Trash","uids":[7,8]}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", resp.StatusCode)
+	}
+	if len(fake.purged) != 1 || fake.purged[0].folder != "Trash" || len(fake.purged[0].uids) != 2 {
+		t.Fatalf("purged = %v, want one Trash call with two uids", fake.purged)
+	}
+	if len(fake.moved) != 0 {
+		t.Errorf("moved = %v, want no move", fake.moved)
 	}
 }
 
