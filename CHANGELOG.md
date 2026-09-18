@@ -6,8 +6,14 @@ All notable changes to mailez are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-09-18
+
 ### Added
 
+- Server-side per-attachment size limit (`MAILEZ_MAX_ATTACHMENT_BYTES`,
+  20 MiB by default, matching the webmail picker): the API now refuses a
+  file the picker itself would reject, answering `422 attachment_too_large`.
+  Set it to 0 to disable the check
 - Delta Chat onboarding: a DCLOGIN v1 login QR (email address + one-time
   app token + IMAP/SMTP settings from the deployment's own autoconfig
   XML) generated in the webmail settings dialog, plus a per-user
@@ -46,6 +52,11 @@ All notable changes to mailez are documented here. The format follows
 
 ### Changed
 
+- Engine `SORT` no longer opens one blob per message: sort keys are read
+  from the header block the store caches at delivery (the listing already
+  carried it), falling back to the blob only for messages that predate the
+  cache. Sorting a 600-message folder used to spend tens of seconds opening
+  blobs
 - Deploy: operator override compose file, host bind knobs and service
   key passthrough for first-deployment hardening
 - Dependency upgrades across the backend Go modules and the frontend
@@ -64,6 +75,40 @@ All notable changes to mailez are documented here. The format follows
 
 ### Fixed
 
+- Deleting a message while it was already in Trash did nothing: the API
+  moved Trash → Trash, which the engine treats as a no-op, so the message
+  stayed in the trash forever. `/mail/delete` now flags and UID-EXPUNGEs
+  the message when the folder is Trash (and accepts a `uids` batch), and
+  webmail's delete button inside Trash uses it
+- Drive share links answered 401 to everyone without a session: the
+  token-only download route sat inside the authenticated group, so the
+  share token never had a chance. The route is public now (with optional
+  session, so the owner still downloads without a token)
+- `/api/v1/events` returned 500 on MySQL-backed deployments whenever the
+  worker token had to be re-minted: `Save` wrote a zero `created_at`, which
+  MySQL's strict mode rejects (SQLite accepted it). The row never updated,
+  the freshly minted secret was never persisted, and every retry minted
+  another Token row and failed the same way — wiping out SSE push and the
+  outbox worker for that user
+- The event watcher swallowed the first message that arrived right after a
+  client subscribed: the first read was a pure baseline, so anything that
+  landed between the client's own refresh and that read was baked into the
+  baseline and never announced. The first check now announces the baseline
+  (and runs as soon as the stream connects)
+- Webmail's sign-in page logged a React hydration error (#418) on every
+  visit: `passkeySupported()` was called during render, so the server
+  emitted the form without the passkey button and the client emitted it
+  with one. It is read through `useSyncExternalStore` with a server
+  snapshot now
+- An out-of-order SMTP command answered 502 ("Missing MAIL FROM command.");
+  RFC 5321 §4.3.2 asks for 503. The plaintext SMTP listeners rewrite that
+  reply (go-smtp v0.25.0 has no hook for it; encrypted streams are left
+  byte-for-byte alone)
+- Login rate limiting and the ban engine keyed trusted-proxy requests
+  without a forwarded header into one empty-address bucket, so such
+  callers shared a single limit; the socket address is used instead
+- Deleting a contact that belongs to another user answered 204; it now
+  answers 404
 - Community compose shipped with the engine's mail ports (25/465/587/110/
   995/143/993/4190) bound to 127.0.0.1, so a fresh `mailezctl up ce`
   deployment could not receive external mail; they now default to
@@ -98,14 +143,14 @@ All notable changes to mailez are documented here. The format follows
 - Webmail's service worker never registered (a TypeScript assertion had
   slipped into the shipped `sw.js`), which disabled offline support and
   the notification-click handler
-- Login rate limiting and the ban engine keyed trusted-proxy requests
-  without a forwarded header into one empty-address bucket, so such
-  callers shared a single limit; the socket address is used instead
-- Deleting a contact that belongs to another user answered 204; it now
-  answers 404
 - `POST /mail/send` ignored the `text` field that `POST /mail/draft`
   uses for the body, so a caller following the draft API sent an empty
   message; both field names are accepted
+- Exchange ActiveSync was unreachable from the outside: the gateway
+  template shipped no route for `/Microsoft-Server-ActiveSync`, so the
+  mail hostname answered 404 and phones could only talk to the loopback
+  backend port. `deploy/overrides/nginx/eas.conf` now publishes the
+  endpoint on the mail hostname over 443 (EE)
 
 ## [1.0.0] - 2026-09-14
 

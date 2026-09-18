@@ -23,8 +23,38 @@ permissions:
   packages: write
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # The engine images come from mailezine's own release workflow. Building
+      # and pushing the mailez images before that tag exists leaves the release
+      # half-published (images up, smoke waiting, no release assets), so wait
+      # for the engine tag here instead. See docs/release-process.md.
+      - name: Require the engine images for this tag
+        run: |
+          for i in $(seq 1 20); do
+            missing=""
+            for image in mailez-mailezine mailez-mailezine-ee; do
+              docker manifest inspect "ghcr.io/mailez-hq/$image:${GITHUB_REF_NAME}" >/dev/null 2>&1 || missing="$missing $image"
+            done
+            if [ -z "$missing" ]; then
+              echo "engine images for ${GITHUB_REF_NAME} are published"
+              exit 0
+            fi
+            echo "attempt $i/20: waiting for$missing:${GITHUB_REF_NAME}"
+            sleep 30
+          done
+          echo "::error::engine images for ${GITHUB_REF_NAME} are not published (missing:$missing) — tag the mailezine repo with the same tag first; see docs/release-process.md"
+          exit 1
+
   build-images:
     runs-on: ubuntu-latest
+    needs: preflight
     strategy:
       fail-fast: false
       matrix:
