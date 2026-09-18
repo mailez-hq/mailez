@@ -54,6 +54,9 @@ func (h *Handler) mailSaveDraft(c *fiber.Ctx) error {
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
 	}
+	if a, n, over := oversizedAttachment(in.Attachments, h.Cfg.MaxAttachmentBytes); over {
+		return attachmentRefusal(c, a, n, h.Cfg.MaxAttachmentBytes)
+	}
 	uid, err := h.Mail.With(d).SaveDraft(d.Email, d.Token, in.To, in.Cc, in.Bcc, in.Subject, in.Text, in.HTML, in.Attachments, in.ReplaceUID)
 	if err != nil {
 		return core.Fail(c, 502, err, "mail service error")
@@ -98,6 +101,9 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 	}
 	if err := c.BodyParser(&in); err != nil || len(in.To) == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "to is required"})
+	}
+	if a, n, over := oversizedAttachment(in.Attachments, h.Cfg.MaxAttachmentBytes); over {
+		return attachmentRefusal(c, a, n, h.Cfg.MaxAttachmentBytes)
 	}
 	if in.Body == "" {
 		in.Body = in.Text
@@ -174,6 +180,12 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
 				"error": msg,
 				"code":  "recipient_quota_exceeded",
+			})
+		}
+		if msg, ok := recipientRejection(err); ok {
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+				"error": msg,
+				"code":  "recipient_rejected",
 			})
 		}
 		if msg, ok := lineTooLongRejection(err); ok {

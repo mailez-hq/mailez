@@ -205,6 +205,11 @@ func NewEventWatcher(cfg core.Config, hub *Hub) *EventWatcher {
 // SSE connection (hub onJoin). Token lookup must happen here — the hub has
 // it from Subscribe.
 func (w *EventWatcher) startIdleWatch(email string) {
+	// Prime the baseline as soon as the client connects. The stream sends a
+	// "ready" event that makes the client re-read its folders, and without
+	// this check the first poll tick (up to Interval later) would record the
+	// baseline that the ready-refresh already raced against.
+	go w.checkEmail(email)
 	if w.Idle == nil {
 		return
 	}
@@ -334,7 +339,13 @@ func (w *EventWatcher) checkEmail(email string) {
 	var changed []string
 	w.mu.Lock()
 	prev, ok := w.baseline[email]
-	if ok {
+	if !ok {
+		// First observation for this connection: the version just read may
+		// already include a message that landed after the client's own
+		// refresh, so the baseline is announced once (the client re-reads the
+		// folder). Every later change goes through the diff below.
+		changed = append(changed, watchedFolders...)
+	} else {
 		for _, folder := range watchedFolders {
 			cur, haveCur := versions[folder]
 			old, haveOld := prev[folder]

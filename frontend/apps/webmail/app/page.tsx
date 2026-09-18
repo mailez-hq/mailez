@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, use } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore, use } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Fingerprint, Globe, LayoutDashboard, Mail, ShieldCheck } from "lucide-react";
@@ -41,6 +41,12 @@ function mailboxTarget(): string {
   return last ? `/mail/${encodeURIComponent(last)}` : "/mail/Inbox";
 }
 
+// Passkeys need a secure context and the WebAuthn API, both browser-only.
+// Reading that during render would put the button in the client tree but not
+// the server one, so it is read after hydration with a server snapshot of
+// false.
+const subscribeNoop = () => () => {};
+
 // The root route is the sign-in page. An already-authenticated visitor is
 // sent straight into the mailbox; after a successful login we route into it.
 export default function Home({
@@ -54,6 +60,7 @@ export default function Home({
   // is the classic hydration trap: server gets false, client gets true.)
   const sp = use(searchParams);
   const t = useTranslations("login");
+  const passkeyAvailable = useSyncExternalStore(subscribeNoop, passkeySupported, () => false);
   const loginError = (err: unknown) =>
     err instanceof ApiError && err.code === "rate_limited"
       ? t("rateLimited")
@@ -385,7 +392,7 @@ export default function Home({
               <Button type="submit" className="w-full" disabled={busy}>
                 {busy ? t("submitting") : t("submit")}
               </Button>
-              {passkeySupported() && (
+              {passkeyAvailable && (
                 <Button
                   type="button"
                   variant="outline"

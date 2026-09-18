@@ -43,13 +43,19 @@ func (s *Service) Register(r fiber.Router) {
 	r.Get("/drive/trash", s.listTrash)
 	r.Post("/drive/folders", s.createFolder)
 	r.Post("/drive/upload", s.upload)
-	r.Get("/drive/download/:id", s.download)
 	r.Post("/drive/rename", s.rename)
 	r.Post("/drive/move", s.move)
 	r.Post("/drive/trash", s.trash)
 	r.Post("/drive/restore", s.restore)
 	r.Post("/drive/trash/empty", s.emptyTrash)
 	s.registerShare(r)
+}
+
+// RegisterPublic mounts the share-link download outside RequireAuth: it has to
+// answer for visitors with no account here, and authorizes by the file's share
+// token instead. Every other drive route stays behind the session middleware.
+func (s *Service) RegisterPublic(r fiber.Router) {
+	r.Get("/drive/download/:id", s.download)
 }
 
 func view(f *models.DriveFile) fiber.Map {
@@ -190,8 +196,13 @@ func (s *Service) download(c *fiber.Ctx) error {
 	if err := s.DB.First(&row, "id = ?", id).Error; err != nil {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
-	user := core.CurrentUser(c)
-	if !s.shareAuthorize(&row, user.Email, c.Query("token")) {
+	// This route is public (a share link must open without a session), so the
+	// caller may be anonymous.
+	email := ""
+	if user := core.CurrentUser(c); user != nil {
+		email = user.Email
+	}
+	if !s.shareAuthorize(&row, email, c.Query("token")) {
 		return c.SendStatus(fiber.StatusForbidden)
 	}
 	rc, err := s.Store.Get(c.Context(), row.StoredPath)

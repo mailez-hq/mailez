@@ -12,6 +12,10 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// trashFolder is the canonical Trash mailbox name shared by the engine, the
+// backend and the webmail UI.
+const trashFolder = "Trash"
+
 func (h *Handler) registerMail(r fiber.Router) {
 	r.Get("/mail/folders", h.mailFolders)
 	r.Post("/mail/folders", h.mailFolderCreate)
@@ -186,7 +190,9 @@ func (h *Handler) mailMove(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-// mailDelete moves a message to Trash.
+// mailDelete deletes messages: from any other folder they go to Trash, from
+// Trash itself they are purged. A message the caller deletes in the trash is
+// gone for good.
 // @Summary Delete message
 // @Tags mail
 // @Accept json
@@ -199,13 +205,25 @@ func (h *Handler) mailDelete(c *fiber.Ctx) error {
 		return core.DialFailure(c, err)
 	}
 	var in struct {
-		Folder string `json:"folder"`
-		UID    uint32 `json:"uid"`
+		Folder string   `json:"folder"`
+		UID    uint32   `json:"uid"`
+		Uids   []uint32 `json:"uids"`
 	}
-	if err := c.BodyParser(&in); err != nil || in.Folder == "" || in.UID == 0 {
+	if err := c.BodyParser(&in); err != nil || in.Folder == "" || (in.UID == 0 && len(in.Uids) == 0) {
 		return c.Status(400).JSON(fiber.Map{"error": "folder and uid are required"})
 	}
-	if err := h.Mail.With(d).Delete(d.Email, d.Token, in.Folder, in.UID); err != nil {
+	uids := in.Uids
+	if len(uids) == 0 {
+		uids = []uint32{in.UID}
+	}
+	gw := h.Mail.With(d)
+	if strings.EqualFold(strings.TrimSpace(in.Folder), trashFolder) {
+		if err := gw.PurgeMany(d.Email, d.Token, in.Folder, uids); err != nil {
+			return core.Fail(c, 502, err, "mail service error")
+		}
+		return c.SendStatus(fiber.StatusNoContent)
+	}
+	if err := gw.MoveMany(d.Email, d.Token, in.Folder, uids, trashFolder); err != nil {
 		return core.Fail(c, 502, err, "mail service error")
 	}
 	return c.SendStatus(fiber.StatusNoContent)
