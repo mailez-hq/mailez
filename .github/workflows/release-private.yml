@@ -104,6 +104,75 @@ jobs:
             *.cache-from=type=gha,scope=release-${{ matrix.group }}
             *.cache-to=type=gha,scope=release-${{ matrix.group }},mode=max
 
+  # The community images are only useful if an anonymous client can pull them
+  # (a package published from a private repo defaults to private, and a private
+  # package answers `denied` for everyone outside the org). Fail the release
+  # here rather than at the first user who tries `docker compose pull`.
+  public-check:
+    runs-on: ubuntu-latest
+    needs: build-images
+    env:
+      REGISTRY: ghcr.io/mailez-hq
+      CE_IMAGES: mailez-backend mailez-admin mailez-webmail mailez-nginx mailez-mailezine mailez-rspamd mailez-unbound mailez-macro-scanner mailez-engine-lb
+      EE_IMAGES: mailez-backend-ee mailez-admin-ee mailez-webmail-ee mailez-mailezine-ee
+    steps:
+      - name: Community images must be anonymously pullable
+        run: |
+          fail=0
+          for repo in ${CE_IMAGES}; do
+            token=$(curl -fsS "https://ghcr.io/token?service=ghcr.io&scope=repository:${REGISTRY}/${repo}:pull" \
+              | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+            if [ -z "${token}" ]; then
+              echo "::error::${REGISTRY}/${repo} is not public: an anonymous pull token was denied. Set the package visibility to Public (Org → Packages → ${repo} → Package settings → Change visibility)."
+              fail=1
+              continue
+            fi
+            code=$(curl -s -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Bearer ${token}" \
+              -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json' \
+              "https://${REGISTRY}/v2/${repo}/manifests/${GITHUB_REF_NAME}")
+            if [ "${code}" != "200" ]; then
+              echo "::error::${REGISTRY}/${repo}:${GITHUB_REF_NAME} is not anonymously fetchable (HTTP ${code}) — was the tag published, and is the package public?"
+              fail=1
+            fi
+          done
+          exit ${fail}
+
+      - name: Enterprise images must stay private
+        run: |
+          for repo in ${EE_IMAGES}; do
+            token=$(curl -fsS "https://ghcr.io/token?service=ghcr.io&scope=repository:${REGISTRY}/${repo}:pull" \
+              | sed -n 's/.*"token":"\([^"]*\)".*/\1/p' || true)
+            if [ -n "${token}" ]; then
+              echo "::warning::${REGISTRY}/${repo} answers an anonymous pull token — enterprise images must not be public."
+            fi
+          done
+
+  # `latest` is what a fresh community checkout pulls (mailezctl up ce with no
+  # MAILEZ_IMAGE_TAG), so a stable release has to move it. Pre-release tags
+  # (v1.0.1-rc.1) leave it where it is.
+  publish-latest:
+    runs-on: ubuntu-latest
+    needs: build-images
+    if: ${{ !contains(github.ref_name, '-') }}
+    env:
+      REGISTRY: ghcr.io/mailez-hq
+      CE_IMAGES: mailez-backend mailez-admin mailez-webmail mailez-nginx mailez-mailezine mailez-rspamd mailez-unbound mailez-macro-scanner mailez-engine-lb
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Align the latest tag with this release
+        run: |
+          for repo in ${CE_IMAGES}; do
+            docker buildx imagetools create \
+              -t "${REGISTRY}/${repo}:latest" \
+              "${REGISTRY}/${repo}:${GITHUB_REF_NAME}"
+          done
+
   smoke:
     runs-on: ubuntu-latest
     needs: build-images
@@ -200,7 +269,7 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    needs: [build-images, smoke, smoke-ee]
+    needs: [build-images, smoke, smoke-ee, public-check, publish-latest]
     steps:
       - uses: actions/checkout@v4
       - name: Build the release tarball
