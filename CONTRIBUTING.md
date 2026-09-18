@@ -36,6 +36,13 @@ CI runs exactly these checks, so `make verify` must be green locally.
 - One logical change per commit; keep working trees clean
 - Never commit secrets, `deploy/*.env`, `*.db`, or local logs (see `.gitignore`)
 
+## Releasing
+
+Cutting a version is documented in [`docs/release-process.md`](docs/release-process.md):
+the engine repo (`mailezine`) has to be tagged first, because its workflow is
+what publishes `ghcr.io/mailez-hq/mailez-mailezine[-ee]:<tag>`, and the mailez
+release workflow refuses to build until those images exist.
+
 ## License
 
 By contributing you agree your work is licensed under the project license
