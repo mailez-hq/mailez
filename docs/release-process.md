@@ -74,6 +74,29 @@ git push gitee  v1.0.1
 - 部署侧升级：`deploy/mailez.env` 里 `MAILEZ_IMAGE_TAG=vX.Y.Z`，然后
   `./deploy/mailezctl.sh up ce`（引擎可用 `MAILEZINE_IMAGE_TAG` 单独钉）。
 
+## 5.1 镜像可见性：社区安装的前提
+
+GHCR 上的 `mailez-*` 镜像必须**对匿名客户端可拉取**。包默认跟随发布它的仓库
+可见性，从私有仓库发出来的包默认是私有的，私有包对组织外的人一律回 `denied`
+——社区用户 `docker compose pull` 就是死在这一步（不是 tag 不存在，是没权限）。
+
+发布工作流里有两道闸：
+
+- `public-check`：镜像推完后用匿名 token 接口逐个验证社区镜像和当前 tag 是否
+  可取。任何一个拿不到就判定发布失败，并打印要改的包名；同时会检查四个
+  `-ee` 镜像没有被公开（命中只告警，不拦发布）。
+- `publish-latest`：稳定 tag（名字里不带 `-`）会把 `latest` 指到本次发布，
+  预发布（如 `v1.0.1-rc.1`）不动 `latest`。`latest` 是社区快速开始的默认
+  tag，不推的话新 clone 的仓库会拉到不存在的镜像。
+
+包可见性只能在 GitHub 上改，CI 无权代劳：组织 → Packages → 选包 →
+Package settings → Change visibility → Public（需要公开的按上文的镜像清单，
+四个 `-ee` 保持私有）。新包第一次发布一定是私有的，`public-check` 就是为了
+在用户撞上之前把这件事暴露出来。
+
+引擎镜像 `mailez-mailezine` 由引擎仓库自己的工作流发布，同一套检查在那边也有
+一份。
+
 ## 6. 失败与重跑
 
 - 只是某个作业失败：在 Actions 页面 **Re-run failed jobs**。buildx 推同一
