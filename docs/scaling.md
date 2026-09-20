@@ -11,7 +11,7 @@
            /      |       \
      backend×N  admin×N  webmail×N             ← 控制面/前端：无状态副本
          |   \___________/
-   MySQL(共享库)  MinIO(共享对象存储)             ← 超大附件 + 云盘 + 正文 blob
+   MySQL(共享库)  RustFS(共享对象存储)             ← 超大附件 + 云盘 + 正文 blob
    TiDB(引擎 KV)  mailezine(active-passive)     ← 存储层横向组件 + 引擎单写者
 ```
 
@@ -56,11 +56,11 @@ webmail 实时流（SSE EventWatcher）是副本本地的：每个副本只轮�
 
 ### 3. 对象存储共享（超大附件 + 云盘）
 
-`MAILEZ_DRIVE_BACKEND=minio`（复用 `MAILEZINE_S3_*` 连接配置）时：
-- 超大附件（uploads）与云盘（drive）都落 MinIO/S3；
+`MAILEZ_DRIVE_BACKEND=s3`（复用 `MAILEZINE_S3_*` 连接配置）时：
+- 超大附件（uploads）与云盘（drive）都落 RustFS/S3 兼容对象存储；
 - 上传落 A 副本、下载走 B 副本不再 404；
 - 本地盘后端（默认）行为与历史版本完全兼容（键 = 上传目录下的相对路径）。
-  从本地切到 MinIO 时，历史文件需要一次性 `rsync uploads/` 到桶根目录
+  从本地切到对象存储时，历史文件需要一次性 `rsync uploads/` 到桶根目录
   （键即对象名）；之后写入的对象无需再迁移。
 
 ## 三、各层横向能力一览
@@ -72,7 +72,7 @@ webmail 实时流（SSE EventWatcher）是副本本地的：每个副本只轮�
 | 前端 | admin / webmail | **副本数随意** | 无服务端状态 |
 | 队列/异步 | 控制面 worker | 内置选主/认领 | 见上表 |
 | 引擎 KV | TiDB | TiDB 集群原生横向 | compose 档为单节点 unistore，生产换 TiUP 集群，DSN 不变 |
-| 引擎 blob | MinIO/S3 | MinIO 分布式模式 / 云 S3 | 内容寻址 + 幂等写，天然多节点安全 |
+| 引擎 blob | RustFS/S3 | RustFS（默认）/ MinIO / 云 S3 | 内容寻址 + 幂等写，天然多节点安全 |
 | 引擎服务 | mailezine | active-passive（租约）**或多活（multi 档）** | 单写者容灾见 §六；`MAILEZINE_CLUSTER_MODE=multi` 下全服务多副本多活 |
 
 ## 四、运维要点
@@ -87,7 +87,7 @@ webmail 实时流（SSE EventWatcher）是副本本地的：每个副本只轮�
    覆盖（指向外部 MySQL/PostgreSQL；捆绑的 mysql 容器仍会启动，可忽略）。
 3. **Redis**：限流/缓存走 DB 的部分（如登录限流）随 DB 共享；Redis 仅加速，
    丢失可重建。
-4. **备份**：MySQL + MinIO + TiDB 三者都要备（企业档 `./data/` 整体备份覆盖
+4. **备份**：MySQL + 对象存储（RustFS/MinIO）+ TiDB 三者都要备（企业档 `./data/` 整体备份覆盖
    compose 形态）。
 5. **升级**：滚动更新安全——认领与租约保证新旧副本共存期间不双发/不漏发；
    迁移由 GET_LOCK 保证只跑一次。
@@ -101,7 +101,7 @@ webmail 实时流（SSE EventWatcher）是副本本地的：每个副本只轮�
 |---|---|---|
 | 引擎形态 | 1 主 + N standby（租约选主，60s 故障转移） | N 副本全活，无主备 |
 | 吞吐 | 单写者，standby 不提升吞吐 | SMTP/IMAP/投递随副本线性分摊 |
-| 存储要求 | TiDB + MinIO（同左） | TiDB + MinIO（同左） |
+| 存储要求 | TiDB + RustFS（同左） | TiDB + RustFS（同左） |
 | 配置 | `MAILEZINE_HA_ENABLED=true` | `MAILEZINE_CLUSTER_MODE=multi`（与 HA 互斥，启动时校验拒绝同时开启） |
 | FTS | 正常（bleve，单写者） | 追踪收敛（见下），最终一致 |
 | 适用 | 改动最小、只要容灾 | 真正的分布式多活，扩容即加副本 |
@@ -114,7 +114,7 @@ webmail 实时流（SSE EventWatcher）是副本本地的：每个副本只轮�
  MX/L4-LB ──> engine-lb(haproxy) ──PROXY v1──> mailezine×N  ← 邮件端口按连接轮询
                     ↑
  backend×N ─ IMAP/SMTP/Sieve/内部 MTA 也经 LB；管理 API(8090) 直连
- MySQL   MinIO(共享对象存储：正文 blob)
+ MySQL   RustFS(共享对象存储：正文 blob)
  TiDB(引擎 KV：队列元数据 / 邮箱索引 / 租约)
 ```
 
@@ -175,7 +175,7 @@ MAILEZ_ENGINE_REPLICAS=3 ./mailezctl.sh up multi
      投递中途**（调大 `MAILEZINE_QUEUE_CLAIM_LEASE_SECONDS` 或排查节点）；
    - `mailezine_kv_txn_replays_total`——KV 乐观事务因写冲突的重放计数
      （多写者争用同一账户热键的信号，见下条决策）。
-7. **跨机部署**：每台主机跑一个 mailezine 指向同一 TiDB/MinIO/控制面，
+7. **跨机部署**：每台主机跑一个 mailezine 指向同一 TiDB/S3/控制面，
    MX 指向 L4 LB 即可；无任何节点间专线要求（协调全部经共享存储事务）。
 8. **客户端明文登录（实测）**：multi 档引擎带证书后 IMAP 143 拒绝明文
    LOGIN（`NO [PRIVACYREQUIRED] TLS is required`）——客户端须改用 993/
@@ -211,7 +211,7 @@ modseq/quota/changelog 热键上冲突重放。语义：
 ```bash
 # 与集群共享的三个地址（全部主机同值）：
 MAILEZINE_STORAGE_DSN=root@tcp(tidb.example:4000)/mailez
-MAILEZINE_S3_ENDPOINT=minio.example:9000
+MAILEZINE_S3_ENDPOINT=rustfs.example:9000
 MAILEZINE_BACKEND_ADDRESS=backend.example:8080
 
 # 本机唯一（hostname 即可）：

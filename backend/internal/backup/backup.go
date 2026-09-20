@@ -435,7 +435,7 @@ func (e *Engine) publish(ctx context.Context, staging, name string) error {
 }
 
 func (e *Engine) publishS3(ctx context.Context, staging, name string) error {
-	if e.Cfg.MinioEndpoint == "" {
+	if e.Cfg.S3Endpoint == "" {
 		return errors.New("s3 target selected but MAILEZINE_S3_ENDPOINT is unset")
 	}
 	f, err := os.Open(staging)
@@ -447,14 +447,14 @@ func (e *Engine) publishS3(ctx context.Context, staging, name string) error {
 	if err != nil {
 		return err
 	}
-	client, err := minio.New(e.Cfg.MinioEndpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(e.Cfg.MinioAccessKey, e.Cfg.MinioSecretKey, ""),
-		Secure: e.Cfg.MinioUseSSL,
+	client, err := minio.New(e.Cfg.S3Endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(e.Cfg.S3AccessKey, e.Cfg.S3SecretKey, ""),
+		Secure: e.Cfg.S3UseSSL,
 	})
 	if err != nil {
 		return err
 	}
-	_, err = client.PutObject(ctx, e.Cfg.MinioBucket, "mailez-backup/"+name, f, info.Size(),
+	_, err = client.PutObject(ctx, e.Cfg.S3Bucket, "mailez-backup/"+name, f, info.Size(),
 		minio.PutObjectOptions{ContentType: "application/octet-stream"})
 	return err
 }
@@ -483,7 +483,7 @@ func (e *Engine) listArchives(ctx context.Context) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		objects := client.ListObjects(ctx, e.Cfg.MinioBucket, minio.ListObjectsOptions{Prefix: "mailez-backup/", Recursive: true})
+		objects := client.ListObjects(ctx, e.Cfg.S3Bucket, minio.ListObjectsOptions{Prefix: "mailez-backup/", Recursive: true})
 		for obj := range objects {
 			if obj.Err != nil {
 				return nil, obj.Err
@@ -528,18 +528,18 @@ func (e *Engine) remove(ctx context.Context, name string) error {
 		if err != nil {
 			return err
 		}
-		return client.RemoveObject(ctx, e.Cfg.MinioBucket, "mailez-backup/"+name, minio.RemoveObjectOptions{})
+		return client.RemoveObject(ctx, e.Cfg.S3Bucket, "mailez-backup/"+name, minio.RemoveObjectOptions{})
 	}
 	return fmt.Errorf("unknown backup target %q", t)
 }
 
 func (e *Engine) s3(ctx context.Context) (*minio.Client, error) {
-	if e.Cfg.MinioEndpoint == "" {
+	if e.Cfg.S3Endpoint == "" {
 		return nil, errors.New("s3 target selected but MAILEZINE_S3_ENDPOINT is unset")
 	}
-	return minio.New(e.Cfg.MinioEndpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(e.Cfg.MinioAccessKey, e.Cfg.MinioSecretKey, ""),
-		Secure: e.Cfg.MinioUseSSL,
+	return minio.New(e.Cfg.S3Endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(e.Cfg.S3AccessKey, e.Cfg.S3SecretKey, ""),
+		Secure: e.Cfg.S3UseSSL,
 	})
 }
 
@@ -570,7 +570,7 @@ func (e *Engine) Verify(ctx context.Context, runID uint) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		obj, err := client.GetObject(ctx, e.Cfg.MinioBucket, "mailez-backup/"+name, minio.GetObjectOptions{})
+		obj, err := client.GetObject(ctx, e.Cfg.S3Bucket, "mailez-backup/"+name, minio.GetObjectOptions{})
 		if err != nil {
 			return 0, err
 		}

@@ -195,7 +195,7 @@ services:
       - MAILEZ_BACKEND_ADDRESS=backend
       - MAILEZINE_DIRECTORY_MODE=mailez
       - MAILEZINE_AUTH_MODE=mailez
-      # 社区版单节点存储：pebble KV + 本地 FS blob（默认，无需 TiDB/MinIO）。
+      # 社区版单节点存储：pebble KV + 本地 FS blob（默认，无需 TiDB/对象存储）。
       - MAILEZINE_STORAGE_BACKEND=pebble
       - MAILEZINE_ROCKS_PATH=/data/rocks
       # 反垃圾：未配 MAILEZINE_RSPAMD_URL 时走引擎内置基础档（MAILEZINE_JUNK_*

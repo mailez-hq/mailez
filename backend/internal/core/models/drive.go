@@ -4,7 +4,7 @@ import "time"
 
 // DriveFile is one entry of the built-in cloud drive (云盘): folders form a
 // tree via ParentID (0 = root); file blobs live behind the drive storage
-// backend (local disk or MinIO/S3), referenced by StoredPath.
+// backend (local disk or S3-compatible object store), referenced by StoredPath.
 type DriveFile struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	UserEmail   string    `gorm:"size:255;not null;index:idx_drive_user_parent,priority:1" json:"-"`

@@ -1,11 +1,11 @@
 # mailez 控制面横向扩容档（叠加在 docker-compose.ee.yml 之上）。
 #
-# 前提：控制面 DB 已是 MySQL、KV 已是 TiDB、blob 已是 MinIO（enterprise 档
-# 自带）；backend 无状态化依赖本仓库的三个机制——
+# 前提：控制面 DB 已是 MySQL、KV 已是 TiDB、blob 已是 S3 兼容对象存储
+# （enterprise 档默认 RustFS，MinIO 亦可）；backend 无状态化依赖本仓库的三个机制——
 #   1. 定时发送 outbox 原子认领（多副本不双发，崩溃自动回收）；
 #   2. singleton worker 的 DB 租约选主（fetch/推送/提醒/清理/ retention/
 #      DLP/LDAP，每副本都起进程，只有租约持有者干活，TTL 60s 自动 failover）；
-#   3. 超大附件/云盘走共享对象存储（MAILEZ_DRIVE_BACKEND=minio，本档设置）。
+#   3. 超大附件/云盘走共享对象存储（MAILEZ_DRIVE_BACKEND=s3，本档设置）。
 #
 # 用法：
 #   cd deploy
@@ -20,7 +20,7 @@
 # - frontend 副本无状态，Docker 发布端口层面即已轮询。
 # - 引擎(mailezine)服务层仍为 active-passive 租约单写者：跨主机再加
 #   standby 节点（同 MAILEZINE_STORAGE_DSN/S3 即可自动接管），compose 单机
-#   档不展开；KV(TiDB)/blob(MinIO) 本身即横向组件。
+#   档不展开；KV(TiDB)/blob(S3 兼容) 本身即横向组件。
 
 services:
 
@@ -31,8 +31,8 @@ services:
     # gateway 内网访问。!override 覆盖 enterprise 档的端口列表。
     ports: !override []
     environment:
-      # 超大附件 + 云盘落 MinIO：上传与下载可落在不同副本。
-      - MAILEZ_DRIVE_BACKEND=minio
+      # 超大附件 + 云盘落共享对象存储（RustFS/MinIO）：上传与下载可落在不同副本。
+      - MAILEZ_DRIVE_BACKEND=s3
 
   frontend-admin:
     deploy:

@@ -4,9 +4,12 @@
 # Not exported to the public source tree. The public mailezctl only knows
 # the dev / ce profiles; this companion adds the extended deployment
 # recipes that live under deploy/ee/:
-#   ee    = ee/docker-compose.ee.yml      (mailezine + MySQL + TiDB + MinIO/S3)
+#   ee    = ee/docker-compose.ee.yml      (mailezine + MySQL + TiDB + S3 blob)
 #   ha    = ee + ee/docker-compose.ha.yml (control-plane replicas)
 #   multi = ee + ee/docker-compose.multi.yml (multi-active engine)
+#
+# Object store (ee/ha/multi): MAILEZ_OBJECT_STORE=rustfs|minio, default
+# rustfs; the compose file carries both services behind profiles.
 #
 # Usage:
 #   ./deploy/ee/mailezctl-ee.sh up ee     # production (pull)
@@ -56,6 +59,24 @@ fi
 
 ARGS=(--env-file mailez.env)
 for f in "${FILES[@]}"; do ARGS+=(-f "$f"); done
+
+# Object-store selection (ee/ha/multi): exactly one of the two storage
+# profiles runs at a time. down enables both so a stack comes down no
+# matter which one was up.
+case "$TARGET" in
+  ee|ha|multi)
+    OBJECT_STORE="${MAILEZ_OBJECT_STORE:-rustfs}"
+    case "$OBJECT_STORE" in
+      rustfs|minio) ;;
+      *) echo "unknown MAILEZ_OBJECT_STORE: $OBJECT_STORE (rustfs|minio)" >&2; exit 2 ;;
+    esac
+    if [ "$ACTION" = "down" ]; then
+      ARGS+=(--profile rustfs --profile minio)
+    else
+      ARGS+=(--profile "$OBJECT_STORE")
+    fi
+    ;;
+esac
 case "$ACTION" in
   up)     ARGS+=(up -d) ;;
   down)   ARGS+=(down) ;;

@@ -50,14 +50,16 @@ type Config struct {
 	// UploadDir is where the large-attachment relay (超大附件) stores files.
 	UploadDir string
 	// DriveBackend selects the cloud drive blob backend: "local" (default)
-	// or "minio". MinIO settings reuse the MAILEZINE_S3_* variables so the
-	// existing minio service in the compose profile works out of the box.
+	// or an S3-compatible object store ("s3", i.e. RustFS or MinIO; the
+	// legacy value "minio" is still accepted). Settings reuse the
+	// MAILEZINE_S3_* variables so the object-storage service in the compose
+	// profile works out of the box.
 	DriveBackend     string
-	MinioEndpoint    string
-	MinioAccessKey   string
-	MinioSecretKey   string
-	MinioBucket      string
-	MinioUseSSL      bool
+	S3Endpoint       string
+	S3AccessKey      string
+	S3SecretKey      string
+	S3Bucket         string
+	S3UseSSL         bool
 	AIProvider       string
 	AIBaseURL        string
 	AIAPIKey         string
@@ -76,8 +78,8 @@ type Config struct {
 	// reported on the admin overview; single-node deployments default to
 	// pebble with local-FS blobs.
 	KVBackend string
-	// BlobBackend is the message-body blob store: "minio" when an S3/MinIO
-	// endpoint is configured, otherwise "local".
+	// BlobBackend is the message-body blob store: "s3" when an S3-compatible
+	// endpoint (RustFS/MinIO) is configured, otherwise "local".
 	BlobBackend string
 	// ServiceFile / Service carry the annual technical-service certificate
 	// (MAILEZ_SERVICE_FILE / MAILEZ_SERVICE). It is engine-independent: any
@@ -184,11 +186,11 @@ func Load() Config {
 		MailMtaAddr:            env("MAIL_MTA_ADDR", ""),
 		UploadDir:              env("MAILEZ_UPLOAD_DIR", defaultUploadDir()),
 		DriveBackend:           env("MAILEZ_DRIVE_BACKEND", ""),
-		MinioEndpoint:          env("MAILEZINE_S3_ENDPOINT", ""),
-		MinioAccessKey:         env("MAILEZINE_S3_ACCESS_KEY", ""),
-		MinioSecretKey:         env("MAILEZINE_S3_SECRET_KEY", ""),
-		MinioBucket:            env("MAILEZINE_S3_BUCKET", "mailezine"),
-		MinioUseSSL:            envBool("MAILEZINE_S3_USE_SSL", false),
+		S3Endpoint:             env("MAILEZINE_S3_ENDPOINT", ""),
+		S3AccessKey:            env("MAILEZINE_S3_ACCESS_KEY", ""),
+		S3SecretKey:            env("MAILEZINE_S3_SECRET_KEY", ""),
+		S3Bucket:               env("MAILEZINE_S3_BUCKET", "mailezine"),
+		S3UseSSL:               envBool("MAILEZINE_S3_USE_SSL", false),
 		AIProvider:             env("AI_PROVIDER", "none"),
 		AIBaseURL:              env("AI_BASE_URL", "https://api.openai.com/v1"),
 		AIAPIKey:               env("AI_API_KEY", ""),
@@ -230,26 +232,26 @@ func Load() Config {
 		MaxAttachmentBytes:     envInt("MAILEZ_MAX_ATTACHMENT_BYTES", 20<<20),
 		EngineMetricsURL:       env("MAILEZ_ENGINE_METRICS_URL", ""),
 	}
-	// Distributed deployments opt into TiDB KV + MinIO/S3 blobs by setting
-	// MAILEZINE_STORAGE_BACKEND / MAILEZINE_S3_* explicitly. Single-node
-	// deployments keep the pebble/local-FS defaults — the engine has no
-	// TiDB or MinIO to report.
+	// Distributed deployments opt into TiDB KV + S3-compatible blobs by
+	// setting MAILEZINE_STORAGE_BACKEND / MAILEZINE_S3_* explicitly.
+	// Single-node deployments keep the pebble/local-FS defaults — the engine
+	// has no TiDB or object store to report.
 	cfg.KVBackend = env("MAILEZINE_STORAGE_BACKEND", "")
 	if cfg.KVBackend == "" && cfg.MailEngine == "mailezine" {
 		cfg.KVBackend = "pebble"
 	}
 	if os.Getenv("MAILEZINE_S3_ENDPOINT") != "" {
-		cfg.BlobBackend = "minio"
+		cfg.BlobBackend = "s3"
 	} else {
 		cfg.BlobBackend = "local"
 	}
 	// The drive shares the blob backend decision: a deployment that points
-	// MAILEZINE_S3_* at MinIO gets MinIO-backed drive files instead of a
+	// MAILEZINE_S3_* at RustFS/MinIO gets S3-backed drive files instead of a
 	// CWD-relative "uploads" directory that is not writable in containers.
 	// An explicit MAILEZ_DRIVE_BACKEND still wins.
 	if cfg.DriveBackend == "" {
 		if os.Getenv("MAILEZINE_S3_ENDPOINT") != "" {
-			cfg.DriveBackend = "minio"
+			cfg.DriveBackend = "s3"
 		} else {
 			cfg.DriveBackend = "local"
 		}
@@ -258,6 +260,37 @@ func Load() Config {
 		cfg.MailMtaAddr = "mailezine:25"
 	}
 	return cfg
+}
+
+// BlobVendor names the concrete S3-compatible implementation for the admin
+// console. The S3 wire carries no server identity (RustFS and MinIO both
+// omit a Server header), so trust only what the deployment itself declared:
+// an explicit MAILEZ_DRIVE_BACKEND spelling first, then the endpoint
+// hostname. "" means unknown — the console must then stay vendor-neutral.
+func (c Config) BlobVendor() string {
+	if c.BlobBackend != "s3" {
+		return ""
+	}
+	switch strings.ToLower(c.DriveBackend) {
+	case "rustfs":
+		return "rustfs"
+	case "minio":
+		return "minio"
+	}
+	host := strings.ToLower(c.S3Endpoint)
+	if i := strings.Index(host, "://"); i >= 0 {
+		host = host[i+3:]
+	}
+	if i := strings.IndexAny(host, "/:"); i >= 0 {
+		host = host[:i]
+	}
+	switch {
+	case strings.Contains(host, "rustfs"):
+		return "rustfs"
+	case strings.Contains(host, "minio"):
+		return "minio"
+	}
+	return ""
 }
 
 func env(key, fallback string) string {

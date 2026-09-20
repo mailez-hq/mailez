@@ -1,6 +1,6 @@
 # mailez 引擎多活档（叠加在 docker-compose.ee.yml 之上）。
 #
-# 目标形态：引擎(mailezine) N 副本对同一份共享存储（TiDB KV + MinIO/S3
+# 目标形态：引擎(mailezine) N 副本对同一份共享存储（TiDB KV + RustFS/S3
 # blob）全服务多活——SMTP 收发、IMAP/POP3、ManageSieve 在任意副本上服务
 # 任意账户；没有 leader/standby（与 docker-compose.ha.yml 互斥）。
 #
@@ -75,7 +75,7 @@ services:
       # 这三个端口，engine-lb 对应后端会 DOWN）。
       - MAILEZINE_TLS_CERT_FILE=/certs/cert.pem
       - MAILEZINE_TLS_KEY_FILE=/certs/key.pem
-    # 状态全在 TiDB/MinIO；本地仅剩 bleve 索引（派生数据，可随时全量
+    # 状态全在 TiDB/S3 兼容对象存储；本地仅剩 bleve 索引（派生数据，可随时全量
     # 重建）。匿名卷按副本隔离——同一卷被两个副本共享会互写损坏：
     #   /data/rocks.fts       ← 本节点 FTS 索引（重启保留）
     #   /data/rocks.fts.sync.json ← 追踪水位（副本重建后从 0 重放全量）

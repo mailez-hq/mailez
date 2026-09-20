@@ -2,7 +2,8 @@
 #
 # 不导出到公仓源码树。公仓的 mailezctl 只认识 dev / ce 两档；本配套脚本
 # 补充 deploy/ee/ 下的扩展部署配方：
-#   ee    = ee/docker-compose.ee.yml        （mailezine + MySQL + TiDB + MinIO/S3）
+#   ee    = ee/docker-compose.ee.yml        （mailezine + MySQL + TiDB + S3 blob；
+#                                            MAILEZ_OBJECT_STORE=rustfs|minio，默认 rustfs）
 #   ha    = ee + ee/docker-compose.ha.yml   （控制面多副本）
 #   multi = ee + ee/docker-compose.multi.yml（引擎多活）
 #
@@ -62,6 +63,21 @@ if ($env:MAILEZ_LOCAL_BUILD -eq "1" -or $Target -eq "dev") {
 
 $compose = @("docker", "compose", "--env-file", "mailez.env")
 foreach ($f in $files) { $compose += @("-f", $f) }
+
+# 对象存储选择（ee/ha/multi）：两 profile 同时只跑一个；down 两个都开，
+# 保证无论此前起的是哪个都能拆干净。
+if ($Target -in @("ee", "ha", "multi")) {
+    $objectStore = if ($env:MAILEZ_OBJECT_STORE) { $env:MAILEZ_OBJECT_STORE } else { "rustfs" }
+    if ($objectStore -notin @("rustfs", "minio")) {
+        Write-Error "unknown MAILEZ_OBJECT_STORE: $objectStore (rustfs|minio)"
+        exit 2
+    }
+    if ($Action -eq "down") {
+        $compose += @("--profile", "rustfs", "--profile", "minio")
+    } else {
+        $compose += @("--profile", $objectStore)
+    }
+}
 switch ($Action) {
     "up"     { $compose += @("up", "-d") }
     "down"   { $compose += @("down") }

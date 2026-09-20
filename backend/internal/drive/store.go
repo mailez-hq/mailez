@@ -1,7 +1,8 @@
 package drive
 
 // Blob storage backends for the cloud drive: local disk (default) or
-// MinIO/S3. Files are addressed by an opaque key (StoredPath).
+// an S3-compatible object store (RustFS, MinIO, cloud S3). Files are
+// addressed by an opaque key (StoredPath).
 import (
 	"context"
 	"crypto/sha256"
@@ -25,10 +26,18 @@ type Store interface {
 	Delete(ctx context.Context, key string) error
 }
 
+// s3Configured reports whether DriveBackend selects the S3-compatible blob
+// store. "minio" stays accepted as the legacy spelling of "s3".
+func s3Configured(backend string) bool {
+	return strings.EqualFold(backend, "s3") ||
+		strings.EqualFold(backend, "minio") ||
+		strings.EqualFold(backend, "rustfs")
+}
+
 // NewStore builds the configured backend.
 func NewStore(cfg core.Config) (Store, error) {
-	if strings.EqualFold(cfg.DriveBackend, "minio") {
-		return newMinioStore(cfg)
+	if s3Configured(cfg.DriveBackend) {
+		return newS3Store(cfg)
 	}
 	root := cfg.UploadDir
 	if root == "" {
@@ -38,12 +47,12 @@ func NewStore(cfg core.Config) (Store, error) {
 }
 
 // NewUploadsStore builds the blob backend for the large-attachment relay:
-// the same MinIO/S3 backend as the drive when configured, but the local
-// root stays the upload dir so keys remain the on-disk relative paths
-// existing deployments already have.
+// the same S3-compatible backend as the drive when configured, but the
+// local root stays the upload dir so keys remain the on-disk relative
+// paths existing deployments already have.
 func NewUploadsStore(cfg core.Config) (Store, error) {
-	if strings.EqualFold(cfg.DriveBackend, "minio") {
-		return newMinioStore(cfg)
+	if s3Configured(cfg.DriveBackend) {
+		return newS3Store(cfg)
 	}
 	root := cfg.UploadDir
 	if root == "" {
@@ -87,21 +96,21 @@ func (s *LocalStore) Delete(_ context.Context, key string) error {
 	return err
 }
 
-// MinioStore stores blobs in an S3-compatible bucket (MinIO).
-type MinioStore struct {
+// S3Store stores blobs in an S3-compatible bucket (RustFS, MinIO, cloud S3).
+type S3Store struct {
 	client *minio.Client
 	bucket string
 }
 
-func newMinioStore(cfg core.Config) (Store, error) {
-	client, err := minio.New(cfg.MinioEndpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(cfg.MinioAccessKey, cfg.MinioSecretKey, ""),
-		Secure: cfg.MinioUseSSL,
+func newS3Store(cfg core.Config) (Store, error) {
+	client, err := minio.New(cfg.S3Endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(cfg.S3AccessKey, cfg.S3SecretKey, ""),
+		Secure: cfg.S3UseSSL,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("minio client: %w", err)
+		return nil, fmt.Errorf("s3 client: %w", err)
 	}
-	bucket := cfg.MinioBucket
+	bucket := cfg.S3Bucket
 	if bucket == "" {
 		bucket = "mailezine"
 	}
@@ -109,22 +118,22 @@ func newMinioStore(cfg core.Config) (Store, error) {
 		// AlreadyExists is fine; other errors surface on first Put.
 		exists, _ := client.BucketExists(context.Background(), bucket)
 		if !exists {
-			return nil, fmt.Errorf("minio bucket %s: %w", bucket, err)
+			return nil, fmt.Errorf("s3 bucket %s: %w", bucket, err)
 		}
 	}
-	return &MinioStore{client: client, bucket: bucket}, nil
+	return &S3Store{client: client, bucket: bucket}, nil
 }
 
-func (s *MinioStore) Put(ctx context.Context, key string, r io.Reader, size int64, contentType string) error {
+func (s *S3Store) Put(ctx context.Context, key string, r io.Reader, size int64, contentType string) error {
 	_, err := s.client.PutObject(ctx, s.bucket, key, r, size, minio.PutObjectOptions{ContentType: contentType})
 	return err
 }
 
-func (s *MinioStore) Get(ctx context.Context, key string) (io.ReadCloser, error) {
+func (s *S3Store) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 	return s.client.GetObject(ctx, s.bucket, key, minio.GetObjectOptions{})
 }
 
-func (s *MinioStore) Delete(ctx context.Context, key string) error {
+func (s *S3Store) Delete(ctx context.Context, key string) error {
 	return s.client.RemoveObject(ctx, s.bucket, key, minio.RemoveObjectOptions{})
 }
 

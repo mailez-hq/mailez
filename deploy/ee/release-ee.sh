@@ -87,14 +87,16 @@ ENGINE_IMAGES=(
   "ghcr.io/mailez-hq/mailez-macro-scanner:${VERSION}"
   "ghcr.io/mailez-hq/mailez-unbound:${VERSION}"
 )
-# Third-party base images the compose file references. redis:alpine and
-# minio:latest are floating tags: whatever this host resolves now is what
-# ships (pin exact tags here once a version policy exists).
+# Third-party base images the compose file references. redis:alpine,
+# minio:latest and rustfs:latest are floating tags: whatever this host
+# resolves now is what ships (pin exact tags here once a version policy
+# exists).
 THIRD_PARTY_IMAGES=(
   "redis:alpine"
   "mysql:8.0"
   "pingcap/tidb:v8.5.1"
   "minio/minio:latest"
+  "rustfs/rustfs:latest"
 )
 
 # Report where the keys came from, never the key material itself.
