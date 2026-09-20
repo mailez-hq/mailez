@@ -8,6 +8,10 @@ All notable changes to mailez are documented here. The format follows
 
 ### Fixed
 
+- `install.sh` reported success when seeding the admin account failed: the
+  failure was downgraded to a `seed failed (maybe already seeded)` warning,
+  which left a running stack with no admin account at all. A failed seed is
+  now a failed install, with the command to re-run once the cause is fixed
 - Passkey registration failed before a credential was ever created, with
   `Failed to execute 'atob' on 'Window': The string to be decoded contains
   characters outside of the Latin1 range`. The ceremony was configured with
