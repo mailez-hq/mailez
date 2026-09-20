@@ -1,7 +1,11 @@
 package webauthn
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -127,5 +131,47 @@ func TestListAndDeleteScopedToOwner(t *testing.T) {
 	svc.DB.Model(&models.WebauthnCredential{}).Count(&count)
 	if count != 1 {
 		t.Fatalf("credential count after delete = %d, want 1", count)
+	}
+}
+
+// The webmail decodes the ceremony's user.id with atob() after normalising
+// base64url (apps/webmail/lib/webauthn.ts), so the member has to be a base64url
+// string of the raw handle. With EncodeUserIDAsString the 32 bytes of
+// sha256(email) went out as a plain JSON string, encoding/json replaced every
+// byte that is not valid UTF-8 with U+FFFD, and atob() threw for characters
+// outside Latin-1: no credential was ever created (issue #2).
+func TestBeginRegistrationEncodesUserIDAsBase64URL(t *testing.T) {
+	svc := newTestService(t)
+	options, err := svc.BeginRegistration("a@example.com")
+	if err != nil {
+		t.Fatalf("begin registration: %v", err)
+	}
+	body, err := json.Marshal(map[string]any{"options": options})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if bytes.ContainsRune(body, '\uFFFD') {
+		t.Fatalf("user handle was mangled on the way out: %s", body)
+	}
+	var out struct {
+		Options struct {
+			PublicKey struct {
+				User struct {
+					ID string `json:"id"`
+				} `json:"user"`
+			} `json:"publicKey"`
+		} `json:"options"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	id := out.Options.PublicKey.User.ID
+	got, err := base64.RawURLEncoding.DecodeString(id)
+	if err != nil {
+		t.Fatalf("user.id %q is not unpadded base64url: %v", id, err)
+	}
+	want := sha256.Sum256([]byte("a@example.com"))
+	if !bytes.Equal(got, want[:]) {
+		t.Fatalf("user.id decodes to %x, want sha256(email) %x", got, want[:])
 	}
 }

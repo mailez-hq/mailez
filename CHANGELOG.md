@@ -8,6 +8,15 @@ All notable changes to mailez are documented here. The format follows
 
 ### Fixed
 
+- Passkey registration failed before a credential was ever created, with
+  `Failed to execute 'atob' on 'Window': The string to be decoded contains
+  characters outside of the Latin1 range`. The ceremony was configured with
+  `EncodeUserIDAsString`, which puts the user handle into a JSON string,
+  while `WebAuthnID()` returns the raw 32 bytes of `sha256(email)`:
+  `encoding/json` replaced every byte that is not valid UTF-8 with `U+FFFD`
+  and the webmail's `atob()` rejected the result. The handle now leaves as
+  the base64url string the specification asks for (go-webauthn's default),
+  which is what the webmail decodes
 - `install.sh` dropped the image tag: it rewrote `MAILEZ_IMAGE_TAG` in place,
   but the shipped `mailez.env.example` keeps that key commented out, so the
   substitution matched nothing, the generated `deploy/mailez.env` carried no
