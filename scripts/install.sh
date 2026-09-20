@@ -121,7 +121,7 @@ done
 
 log "seeding the initial admin account"
 ( cd deploy && docker compose --env-file mailez.env -f "docker-compose.$TARGET.yml" exec -T backend mailez-seed ) \
-  || warn "seed failed (maybe already seeded)"
+  || die "seeding failed; the stack is up but there is no admin account. Fix the error above, then re-run: (cd deploy && docker compose --env-file mailez.env -f docker-compose.$TARGET.yml exec -T backend mailez-seed)"
 
 cat <<EOF
 
