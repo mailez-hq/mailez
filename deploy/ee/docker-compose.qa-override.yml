@@ -1,0 +1,17 @@
+# TEST-ONLY overlay for the QA run (never shipped, not referenced by
+# mailezctl). Two knobs are added on top of the stock multi/EE stack so that
+# two QA cases become observable without editing shipped files:
+#
+#   FETCH_INSECURE=true
+#     The external-mailbox poller verifies TLS certificates by default. The
+#     stack's own engine certificate is self-signed, so aggregating from the
+#     second instance (engine-lb:995) needs the documented opt-out.
+#
+# (The management-address override that used to live here is gone: the stock
+#  compose files now carry the scheme, so the rebuild verifies the shipped
+#  value directly.)
+services:
+
+  backend:
+    environment:
+      - FETCH_INSECURE=true
