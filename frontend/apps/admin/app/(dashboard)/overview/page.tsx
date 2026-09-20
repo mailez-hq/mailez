@@ -43,10 +43,14 @@ export default function OverviewPage() {
         ? t("kvPebble")
         : t("blobUnknown");
   const blobLabel =
-    data.blob_backend === "minio"
-      ? t("blobMinio")
-      : data.blob_backend === "local"
-        ? t("blobLocal")
+    data.blob_backend === "local"
+      ? t("blobLocal")
+      : data.blob_backend
+        ? data.blob_vendor === "rustfs"
+          ? t("blobRustfs")
+          : data.blob_vendor === "minio"
+            ? t("blobMinio")
+            : t("blobS3")
         : t("blobUnknown");
   const serviceValue = data.service
     ? data.service.tier === "premium"

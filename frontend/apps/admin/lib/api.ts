@@ -159,6 +159,7 @@ export type AdminOverview = {
   db_driver: string;
   kv_backend: string;
   blob_backend: string;
+  blob_vendor?: string;
   service?: {
     licensee?: string;
     tier: string;

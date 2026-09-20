@@ -381,7 +381,7 @@ func (h *Handler) purgeUserData(email string) error {
 	if err != nil {
 		return err
 	}
-	// Drive blobs (FS or MinIO depending on config).
+	// Drive blobs (local FS or S3 object store depending on config).
 	store, storeErr := drive.NewStore(h.Cfg)
 	if storeErr != nil {
 		log.Printf("user delete: drive store unavailable, blobs for %s left in place: %v", email, storeErr)

@@ -58,6 +58,7 @@ func (h *Handler) overview(c *fiber.Ctx) error {
 	out["db_driver"] = h.Cfg.DBDriver
 	out["kv_backend"] = h.Cfg.KVBackend
 	out["blob_backend"] = h.Cfg.BlobBackend
+	out["blob_vendor"] = h.Cfg.BlobVendor()
 	out["service"] = h.Service.Status(time.Now())
 	for k, v := range statusExtras(h.DB.WithContext(c.Context())) {
 		out[k] = v

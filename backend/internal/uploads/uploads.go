@@ -43,10 +43,10 @@ func New(db *gorm.DB, cfg core.Config) *Service {
 	return &Service{DB: db, Cfg: cfg}
 }
 
-// backend lazily builds the blob backend: MinIO/S3 when the deployment
-// configures it (MAILEZ_DRIVE_BACKEND=minio), the local upload dir
-// otherwise. Sharing the object store is what lets the relay work behind
-// several backend replicas: an upload may land on one replica and be
+// backend lazily builds the blob backend: the S3-compatible object store
+// configured for the deployment (MAILEZ_DRIVE_BACKEND=s3), or the local
+// upload dir otherwise. Sharing the object store is what lets the relay work
+// behind several backend replicas: an upload may land on one replica and be
 // downloaded from another.
 func (s *Service) backend() (drive.Store, error) {
 	s.once.Do(func() { s.blobs, s.blobsErr = drive.NewUploadsStore(s.Cfg) })
