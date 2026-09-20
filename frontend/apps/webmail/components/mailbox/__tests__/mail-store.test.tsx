@@ -183,7 +183,7 @@ describe("MailStore (characterization)", () => {
       observe().toggleSelect(INBOX_MESSAGES[0]);
       observe().toggleSelect(INBOX_MESSAGES[2]);
     });
-    expect([...observe().selectedUids]).toEqual([1, 3]);
+    expect([...observe().selectedUids]).toEqual(["Inbox/1", "Inbox/3"]);
 
     await act(async () => {
       await observe().bulkDelete();
@@ -221,6 +221,27 @@ describe("MailStore (characterization)", () => {
     await waitFor(() => {
       expect(observe().messages.find((m: MailMessage) => m.uid === 1)?.flags).toContain("\\Flagged");
     });
+  });
+
+  it("bulk actions hit the checked row, not its same-uid twin in another folder", async () => {
+    // Search-all mixes mailboxes; uid alone must not address a selection.
+    const twins = [
+      makeMsg({ uid: 5, id: "m5", seq: 5, subject: "Inbox copy" }),
+      makeMsg({ uid: 5, id: "n5", seq: 6, subject: "Sent copy", folder: "Sent" }),
+    ];
+    api.mailMessages.mockResolvedValue({ messages: twins, total: 2 });
+    const { observe } = renderMailStore(null);
+    await waitFor(() => expect(observe().loading).toBe(false));
+
+    await act(async () => {
+      observe().toggleSelect(observe().messages[1]);
+    });
+    expect([...observe().selectedUids]).toEqual(["Sent/5"]);
+
+    await act(async () => {
+      await observe().bulkDelete();
+    });
+    expect(api.mailMove).toHaveBeenCalledWith("Sent", [5], "Trash");
   });
 
   it("doSearch routes a keyword query through the structured search endpoint", async () => {

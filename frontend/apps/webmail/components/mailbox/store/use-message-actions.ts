@@ -13,7 +13,7 @@ import {
   updateMeSettings,
   type MailMessage,
 } from "@/lib/api";
-import { PIN_FLAG, MUTE_FLAG, isPinned, isMuted, normalizeThread } from "@/components/mailbox/mail-utils";
+import { PIN_FLAG, MUTE_FLAG, isPinned, isMuted, normalizeThread, selectionKey } from "@/components/mailbox/mail-utils";
 import type { Translate } from "./use-folder-mgmt";
 import { detailCache } from "./view-caches";
 
@@ -53,13 +53,13 @@ export function useMessageActions({
   conversation: boolean;
   selected: MailMessage | null;
   detail: MailMessage | null;
-  selectedUids: Set<number>;
+  selectedUids: Set<string>;
   spamFolder: string;
   setSelected: Dispatch<SetStateAction<MailMessage | null>>;
   setDetail: Dispatch<SetStateAction<MailMessage | null>>;
   setMessages: Dispatch<SetStateAction<MailMessage[]>>;
   setTotal: Dispatch<SetStateAction<number>>;
-  setSelectedUids: Dispatch<SetStateAction<Set<number>>>;
+  setSelectedUids: Dispatch<SetStateAction<Set<string>>>;
   setError: Dispatch<SetStateAction<string>>;
   showToast: (label: string, onUndo?: () => void, duration?: number) => void;
   t: Translate;
@@ -126,7 +126,8 @@ export function useMessageActions({
       void loadMessages(folderRef.current, 0, true);
       setSelectedUids((prev) => {
         const next = new Set(prev);
-        uids.forEach((u) => next.delete(u));
+        // Keys come from the same folder-qualified rows as the groups.
+        for (const [src, us] of groups) us.forEach((u) => next.delete(`${src}/${u}`));
         return next;
       });
       // Check both: a path may set detail without selected (thread detail).
@@ -202,13 +203,10 @@ export function useMessageActions({
 
   // Bulk release from the quarantine (junk) folder: whitelist every selected
   // sender in one settings update, then move all of them back to Inbox.
-  async function reportNotSpamBulk(uids: number[]) {
-    const uidSet = new Set(uids);
+  async function reportNotSpamBulk() {
+    const rows = selectedRows();
     const senders = [...new Set(
-      messages
-        .filter((m) => uidSet.has(m.uid))
-        .map((m) => m.from[0]?.email)
-        .filter((x): x is string => Boolean(x)),
+      rows.map((m) => m.from[0]?.email).filter((x): x is string => Boolean(x)),
     )];
     setError("");
     try {
@@ -221,7 +219,7 @@ export function useMessageActions({
           await updateMeSettings({ whitelist: merged.join(", ") });
         }
       }
-      await moveTo(uids, "Inbox", t("toastNotSpam"));
+      await moveGroups(groupRowsByFolder(rows), "Inbox", t("toastNotSpam"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "not spam failed");
     }
@@ -305,15 +303,25 @@ export function useMessageActions({
     return moveTo([m.uid], "Trash", t("toastDeleted"), m.folder || folder);
   }
 
-  // Bulk actions act on rows the user can see. A background refresh can
-  // replace the list while a selection is held; uids that fell out of the
-  // current list are stale — moving them anyway would sweep invisible
-  // messages under the open folder's name (a stale select-all once moved an
-  // entire mailbox to Trash this way). Single-message actions (row/detail)
-  // keep their own resolution and are not filtered here.
-  function filterKnownUids(uids: number[]): number[] {
-    const known = new Set(messages.map((m) => m.uid));
-    return uids.filter((u) => known.has(u));
+  // Bulk actions act on rows the user can see: the selection resolves through
+  // the live row list, so keys of rows that fell out of it never reach the
+  // operation. Single-message actions keep their own resolution.
+  function selectedRows(): MailMessage[] {
+    return messages.filter((m) => selectedUids.has(selectionKey(m, folder)));
+  }
+
+  // groupRowsByFolder buckets rows into per-mailbox uid lists: IMAP uids
+  // only identify a message within its own folder.
+  function groupRowsByFolder(rows: MailMessage[]): Map<string, number[]> {
+    const groups = new Map<string, number[]>();
+    for (const m of rows) {
+      const f = m.folder || folder;
+      const list = groups.get(f);
+      if (list) {
+        if (!list.includes(m.uid)) list.push(m.uid);
+      } else groups.set(f, [m.uid]);
+    }
+    return groups;
   }
 
   async function bulkDelete() {
@@ -338,9 +346,8 @@ export function useMessageActions({
   // cross-folder selections keep their source attribution). Flat mode moves
   // exactly the checked messages.
   async function bulkMove(destination: string, successLabel: string) {
-    const ids = filterKnownUids([...selectedUids]);
-    if (!conversation) return moveTo(ids, destination, successLabel);
-    const byUid = new Map(messages.map((m) => [m.uid, m]));
+    const rows = selectedRows();
+    if (!conversation) return moveGroups(groupRowsByFolder(rows), destination, successLabel);
     const groups = new Map<string, number[]>();
     const push = (f: string, u: number) => {
       const list = groups.get(f);
@@ -348,10 +355,9 @@ export function useMessageActions({
         if (!list.includes(u)) list.push(u);
       } else groups.set(f, [u]);
     };
-    for (const u of ids) {
-      const m = byUid.get(u);
-      const src = m?.folder || folder;
-      if (m?.thread_id && m.thread_count && m.thread_count > 1) {
+    for (const m of rows) {
+      const src = m.folder || folder;
+      if (m.thread_id && m.thread_count && m.thread_count > 1) {
         try {
           const th = await mailThread(src, m.thread_id);
           const members = normalizeThread(th ?? { thread_id: m.thread_id, messages: [] }).messages;
@@ -363,7 +369,7 @@ export function useMessageActions({
           // Listing the thread failed; move the checked row only.
         }
       }
-      push(src, u);
+      push(src, m.uid);
     }
     return moveGroups(groups, destination, successLabel);
   }
@@ -373,15 +379,15 @@ export function useMessageActions({
   }
 
   async function bulkFlag(flag: string, value: boolean) {
-    const ids = filterKnownUids([...selectedUids]);
+    const rows = selectedRows();
     setError("");
     try {
-      const groups = groupUidsByFolder(ids);
+      const groups = groupRowsByFolder(rows);
       await Promise.all([...groups].map(([src, us]) => us.map((uid) => mailFlag(src, uid, flag, value))).flat());
       refreshUnseen();
       setMessages((ms) =>
         ms.map((m) =>
-          selectedUids.has(m.uid)
+          selectedUids.has(selectionKey(m, folder))
             ? { ...m, flags: value ? [...m.flags, flag] : m.flags.filter((f) => f !== flag) }
             : m,
         ),

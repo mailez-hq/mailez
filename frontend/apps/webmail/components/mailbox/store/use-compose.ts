@@ -880,6 +880,11 @@ export function useCompose({
         setBodyText("");
         setScheduleAt("");
         setDraftSaved(false);
+        // Merge/receipt/burn settings are per-message: do not carry them over.
+        setMergeOn(false);
+        setMergeText("");
+        setReceiptOn(false);
+        setBurnAfter(0);
         draftUidRef.current = null;
         draftClosingRef.current = false;
         lastSavedSigRef.current = null;

@@ -187,7 +187,7 @@ export function MailView() {
           onBulkSpam={bulkSpam}
           onBulkFlag={bulkFlag}
           spamFolder={spamFolder}
-          onBulkRelease={() => reportNotSpamBulk([...selectedUids])}
+          onBulkRelease={reportNotSpamBulk}
           onBulkLabel={bulkLabel}
           labels={knownLabels}
           onMarkAllRead={() => markAllRead(folder)}
