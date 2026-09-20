@@ -6,6 +6,22 @@ All notable changes to mailez are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- `install.sh` dropped the image tag: it rewrote `MAILEZ_IMAGE_TAG` in place,
+  but the shipped `mailez.env.example` keeps that key commented out, so the
+  substitution matched nothing, the generated `deploy/mailez.env` carried no
+  tag at all and the stack fell back to pulling `:latest`. `--tag` and the
+  interactive prompt now land in the file (the closing summary also prints the
+  admin address as `admin@<MAILEZ_DOMAIN>`)
+- `mailez-seed` panicked with `slice bounds out of range [:-1]` on a
+  deployment whose `MAILEZ_DOMAIN` was as long as the default
+  `admin@example.com`: the local part was cut off the email by subtracting
+  the domain length, so equal lengths meant a negative bound (and any other
+  mismatch wrote a wrong local part in silence). The account is now
+  `admin@<MAILEZ_DOMAIN>` by default, and an explicit `MAILEZ_ADMIN_EMAIL`
+  outside that domain stops with a message naming both values
+
 ## [1.0.1] - 2026-09-18
 
 ### Added
