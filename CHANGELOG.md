@@ -8,6 +8,11 @@ All notable changes to mailez are documented here. The format follows
 
 ### Fixed
 
+- Web push missed the first message after a subscription or a restart: the
+  notifier primes its baseline from the account's first unseen read, so mail
+  that landed before that read was folded into the baseline and never pushed.
+  A delivery receipt now announces its Inbox copies directly, without waiting
+  for the unseen count to agree. Junk copies stay quiet
 - `install.sh` reported success when seeding the admin account failed: the
   failure was downgraded to a `seed failed (maybe already seeded)` warning,
   which left a running stack with no admin account at all. A failed seed is

@@ -197,7 +197,7 @@ func New(cfg core.Config) *Server {
 	// The outbound scanner seam (content filter/审批) returns nil when the
 	// optional content filter is not installed.
 	dlpScanner := startComplianceWorkers(db, s.Auth, cfg, bgCtx)
-	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey, dlpScanner, mail.New(cfg.MailImapAddr, "", "").SetInsecureTLS(cfg.FetchInsecure)).Run(bgCtx)
+	go compose.NewOutboxWorker(db, cfg.MailMtaAddr, cfg.SecretKey, dlpScanner, mail.New(cfg.MailImapAddr, "", "").SetInsecureTLS(cfg.FetchInsecure).SetForceTLS(cfg.MailForceTLS)).Run(bgCtx)
 	// Calendar event reminders: mail the owner when start - reminder arrives.
 	go calendar.NewReminderWorker(db, cfg).Run(bgCtx)
 	// Health-change alerter: re-runs the health center's checks on a

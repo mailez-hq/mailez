@@ -156,7 +156,9 @@ func (c *Client) UIDByMessageID(email, token, folder, id string) (uint32, error)
 	// Normalize both sides by stripping RFC 822 delimiter brackets so the
 	// comparison is robust to whether the envelope carries them or not.
 	want := strings.Trim(strings.TrimSpace(msgID), "<>")
-	key := folder + "\x00" + want
+	// The cache lives on the process-wide client, so the account belongs in
+	// the key: message IDs are not unique across mailboxes.
+	key := email + "\x00" + folder + "\x00" + want
 
 	if uid, ok := c.msgIDToUID.get(key); ok {
 		return uid, nil

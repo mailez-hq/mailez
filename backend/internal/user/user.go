@@ -372,8 +372,10 @@ func (h *Handler) purgeUserData(email string) error {
 			}
 		}
 		// Delegations carry the owner in owner_email (user_email would be
-		// the grantee side).
-		if err := tx.Where("owner_email = ?", email).Delete(&models.MailDelegation{}).Error; err != nil {
+		// the grantee side). Purge both directions, or a grantee keeps
+		// access to someone else's mailbox after the account is deleted.
+		if err := tx.Where("owner_email = ? OR delegate_email = ?", email, email).
+			Delete(&models.MailDelegation{}).Error; err != nil {
 			return err
 		}
 		return nil

@@ -11,10 +11,13 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"mailez/backend/internal/core"
+	"mailez/backend/internal/netguard"
 )
 
-// unsubscribeClient is the shared HTTP client for one-click unsubscribes.
-var unsubscribeClient = &http.Client{Timeout: 10 * time.Second}
+// unsubscribeClient is the shared HTTP client for one-click unsubscribes: no
+// redirects, private targets refused at dial time. checkUnsubscribeURL still
+// runs first so the user gets a precise message instead of a dial error.
+var unsubscribeClient = netguard.NewClient(10 * time.Second)
 
 // mailUnsubscribe triggers a sender's List-Unsubscribe URL server-side, so
 // the user's browser never has to fight CORS or leak its IP to the sender.

@@ -134,9 +134,22 @@ type Client struct {
 	// trusted by deployment; external servers must verify by default or a
 	// network attacker can harvest user credentials and mail.
 	insecureTLS bool
+
+	// forceTLS aborts a dial whose STARTTLS fails (MAIL_FORCE_TLS); see
+	// core.Config.MailForceTLS.
+	forceTLS bool
 }
 
-// New creates a mail gateway client.
+// SetForceTLS requires internal IMAP/SMTP dials to upgrade to TLS before
+// authenticating. The plaintext fallback remains for gateway-terminated
+// deployments.
+func (c *Client) SetForceTLS(v bool) *Client {
+	c.forceTLS = v
+	return c
+}
+
+// New creates a mail gateway client. Internal dials fall back to plaintext
+// unless SetForceTLS(true) is given.
 func New(imapAddr, smtpAddr, sieveAddr string) *Client {
 	return &Client{
 		IMAPAddr:  imapAddr,
@@ -188,6 +201,10 @@ func (c *Client) dialIMAP(email, token string) (*client.Client, error) {
 	}
 	cli.Timeout = imapInternalCmdTimeout
 	if err := cli.StartTLS(c.tlsConfig()); err != nil {
+		if c.forceTLS {
+			_ = cli.Logout()
+			return nil, fmt.Errorf("imap starttls on %s failed (MAIL_FORCE_TLS is on; unset it for a plaintext internal link): %w", c.IMAPAddr, err)
+		}
 		// MAILEZ_TLS=off deployments serve plaintext on the internal proxy
 		// port; fall back to the trusted internal link without encryption.
 		// Log the miss so a misconfigured gateway is visible in operations.
