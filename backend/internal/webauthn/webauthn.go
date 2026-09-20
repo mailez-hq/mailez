@@ -54,10 +54,16 @@ func New(db *gorm.DB, store Store, rpID, rpName string, origins []string) (*Serv
 		rpName = "Mailez"
 	}
 	wa, err := webauthn.New(&webauthn.Config{
-		RPID:                 rpID,
-		RPDisplayName:        rpName,
-		RPOrigins:            origins,
-		EncodeUserIDAsString: true,
+		RPID:          rpID,
+		RPDisplayName: rpName,
+		RPOrigins:     origins,
+		// The user handle is the raw SHA-256 of the e-mail, so it leaves here
+		// as the spec's base64url string (the library default) — what the
+		// webmail decodes with atob(). EncodeUserIDAsString is only for
+		// printable-ASCII handles: with it on, encoding/json replaced every
+		// hash byte that is not valid UTF-8 with U+FFFD and the browser threw
+		// "characters outside of the Latin1 range" before any credential was
+		// created.
 	})
 	if err != nil {
 		return nil, fmt.Errorf("webauthn: %w", err)
