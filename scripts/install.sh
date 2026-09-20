@@ -82,11 +82,14 @@ sed -i.bak \
   -e "s/^MAILEZINE_STACK_SECRET=.*/MAILEZINE_STACK_SECRET=$STACK_SECRET/" \
   -e "s/^MAILEZ_DOMAIN=.*/MAILEZ_DOMAIN=$DOMAIN/" \
   -e "s/^MAILEZ_HOSTNAMES=.*/MAILEZ_HOSTNAMES=mail.$DOMAIN/" \
-  -e "s/^MAILEZ_IMAGE_TAG=.*/MAILEZ_IMAGE_TAG=$TAG/" \
   "$ENV_FILE" && rm -f "$ENV_FILE.bak"
 cat >> "$ENV_FILE" <<EOF
 
 # --- written by install.sh ---
+# Appended, not sed-ed: mailez.env.example ships MAILEZ_IMAGE_TAG
+# commented out, so a ^-anchored rewrite matched nothing and the stack
+# silently pulled :latest instead of the requested tag.
+MAILEZ_IMAGE_TAG=$TAG
 MAILEZ_HTTP_PORT=$HTTP_PORT
 MAILEZ_HTTPS_PORT=$HTTPS_PORT
 MAILEZ_API_PORT=$API_PORT
@@ -124,7 +127,7 @@ cat <<EOF
 
   mailez is up
   -------------------------------------------------
-    admin    http://localhost:$ADMIN_PORT   (admin@example.com / MailezDemo2026!)
+    admin    http://localhost:$ADMIN_PORT   (admin@$DOMAIN / MailezDemo2026!)
     webmail  http://localhost:$WEBMAIL_PORT
     api      http://localhost:$API_PORT/api/v1/health
 
