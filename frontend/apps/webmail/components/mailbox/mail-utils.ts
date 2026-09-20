@@ -37,6 +37,13 @@ export function normalizeThread(th: MailThread): MailThread {
   return { ...th, messages: (th?.messages ?? []).map(normalizeMessage) };
 }
 
+// selectionKey identifies a list row in the bulk-selection set. IMAP uids are
+// unique per mailbox only, and search-all mixes folders, so a bare uid can
+// name two different rows.
+export function selectionKey(m: MailMessage, fallbackFolder: string): string {
+  return `${m.folder || fallbackFolder}/${m.uid}`;
+}
+
 // Custom keywords are case-insensitive on the wire and go-imap canonicalizes
 // unknown flags to lowercase, so match case-insensitively.
 const hasFlag = (flags: string[], flag: string) =>

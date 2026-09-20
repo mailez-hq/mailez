@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 
 import { mailMessages, type MailMessage } from "@/lib/api";
-import { normalizeMessage } from "@/components/mailbox/mail-utils";
+import { normalizeMessage, selectionKey } from "@/components/mailbox/mail-utils";
 
 /**
  * Message-list cluster: the loaded folder page set (messages/total/page),
@@ -25,7 +25,8 @@ export function useMailList({
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState(0);
-  const [selectedUids, setSelectedUids] = useState<Set<number>>(new Set());
+  // Selection holds selectionKey() strings, not bare uids.
+  const [selectedUids, setSelectedUids] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState("date");
   const [sortDir, setSortDir] = useState("desc");
   const [refreshing, setRefreshing] = useState(false);
@@ -84,10 +85,11 @@ export function useMailList({
   }
 
   function toggleSelect(m: MailMessage) {
+    const key = selectionKey(m, folder);
     setSelectedUids((prev) => {
       const next = new Set(prev);
-      if (next.has(m.uid)) next.delete(m.uid);
-      else next.add(m.uid);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }

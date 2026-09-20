@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { MessageRow, rowHeightFor } from "@/components/mailbox/message-row";
 import { VirtualList } from "@/components/mailbox/virtual-list";
 import { buildFolderTree, flattenTree, folderLabel } from "@/components/mailbox/folder-tree";
+import { selectionKey } from "@/components/mailbox/mail-utils";
 
 const SKELETON_ROWS = 8;
 
@@ -72,7 +73,7 @@ export function MessageListPanel({
   query: string;
   searchSpec: MailSearchSpec | null;
   onClearSearch: () => void;
-  selectedUids: Set<number>;
+  selectedUids: Set<string>;
   cursor: number;
   conversation: boolean;
   onOpen: (m: MailMessage) => void;
@@ -392,7 +393,7 @@ export function MessageListPanel({
                 category={m.category}
                 conversation={conversation}
                 selected={m.id === openId && !!openId}
-                selectedInBulk={selectedUids.has(m.uid)}
+                selectedInBulk={selectedUids.has(selectionKey(m, folder))}
                 cursorActive={i === cursor && !searching}
                 // Handlers pass straight through (no per-row closures) so
                 // MessageRow's memoization sees stable identities.

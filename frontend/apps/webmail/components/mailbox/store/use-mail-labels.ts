@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 
 import { mailFlag, mailLabelDelete, mailLabelRename, mailLabelSave, mailLabels, type MailLabel, type MailMessage } from "@/lib/api";
-import { isUserLabel } from "@/components/mailbox/mail-utils";
+import { isUserLabel, selectionKey } from "@/components/mailbox/mail-utils";
 
 /**
  * Label cluster: server-side label definitions (name + color), the user
@@ -31,8 +31,8 @@ export function useMailLabels({
   activeLabel: string;
   /** Switching/renaming/deleting the active label must re-run the filter. */
   selectLabel: (label: string) => void;
-  selectedUids: Set<number>;
-  setSelectedUids: Dispatch<SetStateAction<Set<number>>>;
+  selectedUids: Set<string>;
+  setSelectedUids: Dispatch<SetStateAction<Set<string>>>;
   setError: Dispatch<SetStateAction<string>>;
   setMessages: Dispatch<SetStateAction<MailMessage[]>>;
   setDetail: Dispatch<SetStateAction<MailMessage | null>>;
@@ -156,16 +156,16 @@ export function useMailLabels({
         const saved = await mailLabelSave(name, "");
         setLabelDefs((ds) => [...ds, saved]);
       }
-      // Resolve each uid to its owning folder (IMAP uids are per-folder):
-      // cross-folder searchAll / AI-search selections must flag the message
-      // they visibly represent, not a same-uid stranger in the open folder.
-      const byUid = new Map(messages.map((m) => [m.uid, m.folder || folder]));
+      // Resolve each selected row to the message it represents: uids are
+      // per-folder, so a cross-folder selection must not hit a same-uid row
+      // in the open folder.
       const byFolder = new Map<string, number[]>();
-      for (const uid of selectedUids) {
-        const f = byUid.get(uid) || folder;
+      for (const m of messages) {
+        if (!selectedUids.has(selectionKey(m, folder))) continue;
+        const f = m.folder || folder;
         const list = byFolder.get(f);
-        if (list) list.push(uid);
-        else byFolder.set(f, [uid]);
+        if (list) list.push(m.uid);
+        else byFolder.set(f, [m.uid]);
       }
       await Promise.all(
         [...byFolder].map(([f, uids]) => Promise.all(uids.map((u) => mailFlag(f, u, name, true)))),
