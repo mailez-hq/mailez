@@ -181,7 +181,8 @@ After the stack is up, provision the admin account **inside the container**
 
 ```sh
 docker compose --env-file deploy/mailez.env -f deploy/docker-compose.ce.yml exec backend mailez-seed
-# default: admin@example.com / MailezDemo2026! — override with
+# default: admin@$MAILEZ_DOMAIN (admin@example.com on the shipped example
+# domain) / MailezDemo2026! — override with
 # MAILEZ_ADMIN_EMAIL / MAILEZ_ADMIN_PASSWORD before seeding
 ```
 

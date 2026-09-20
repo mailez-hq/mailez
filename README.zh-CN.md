@@ -139,7 +139,8 @@ dev 档需要宿主机 `:8080` 上先起后端（镜像只需构建一次：仓�
 启动后可跑一遍端到端验证，确认整个邮件链路正常：
 
 ```sh
-# 容器化档位：镜像内置 seed 器（默认 admin@example.com / MailezDemo2026!，
+# 容器化档位：镜像内置 seed 器（默认 admin@$MAILEZ_DOMAIN，例如域名为
+# example.com 时是 admin@example.com / MailezDemo2026!，
 # 可用 MAILEZ_ADMIN_EMAIL / MAILEZ_ADMIN_PASSWORD 覆盖）
 cd deploy && docker compose --env-file mailez.env -f docker-compose.ce.yml exec backend mailez-seed
 # 本地 dev 档（SQLite 在宿主机）：
