@@ -40,7 +40,7 @@ Prerequisites:
 - The stack is up (`mailezctl` passes `--env-file mailez.env` for you):
   `cd deploy && ./mailezctl.sh up ce`
   (local source build: `MAILEZ_LOCAL_BUILD=1 ./mailezctl.sh up ce`)
-- The backend has been seeded once (creates `admin@example.com` /
+- The backend has been seeded once (creates `admin@$MAILEZ_DOMAIN` /
   `MailezDemo2026!`). Easiest from a container:
 
   ```sh
