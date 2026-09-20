@@ -139,17 +139,23 @@ func userAliases(db *gorm.DB, user *models.User) []models.Alias {
 // aliases, or a mailbox that delegated sending to them (the same rule the
 // mail services apply for spoofing protection).
 func MaySendAs(app *core.App, user *models.User, from string) bool {
+	return MaySendAsDB(app.DB, user, from)
+}
+
+// MaySendAsDB is MaySendAs for callers that hold only a database handle
+// (e.g. the ActiveSync service).
+func MaySendAsDB(db *gorm.DB, user *models.User, from string) bool {
 	from = strings.ToLower(strings.TrimSpace(from))
 	if from == "" || strings.EqualFold(from, user.Email) {
 		return true
 	}
-	for _, a := range userAliases(app.DB, user) {
+	for _, a := range userAliases(db, user) {
 		if strings.EqualFold(a.Email, from) {
 			return true
 		}
 	}
 	var dep models.MailDelegation
-	if err := app.DB.Where("owner_email = ? AND delegate_email = ? AND (can_send = ? OR full_access = ?)",
+	if err := db.Where("owner_email = ? AND delegate_email = ? AND (can_send = ? OR full_access = ?)",
 		from, strings.ToLower(user.Email), true, true).
 		First(&dep).Error; err == nil {
 		return true

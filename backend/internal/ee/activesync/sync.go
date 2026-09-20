@@ -127,14 +127,14 @@ func (s *Service) syncOne(c *fiber.Ctx, req *easRequest, user *models.User, cred
 		out.Add(nsAirSync, "Status", "12")
 		return out
 	}
-	// Client-side commands (flag changes, deletes) are applied first so the
-	// snapshot reflects them.
-	if err := s.applyClientCommands(c, user, credential, folder, col); err != nil {
-		log.Printf("activesync: client commands on %s: %v", col.id, err)
-		out.Add(nsAirSync, "Status", "130")
-		return out
-	}
 	if col.syncKey == "" || col.syncKey == "0" {
+		// Client-side commands (flag changes, deletes) are applied first so the
+		// snapshot reflects them.
+		if err := s.applyClientCommands(c, user, credential, folder, col); err != nil {
+			log.Printf("activesync: client commands on %s: %v", col.id, err)
+			out.Add(nsAirSync, "Status", "130")
+			return out
+		}
 		// Initial sync: return the empty window so the client re-syncs with
 		// the returned key and receives the full folder.
 		key, err := s.saveSyncState(c.Context(), user.Email, req.deviceID, col.id, folder, emptySnapshot(0))
@@ -148,6 +148,8 @@ func (s *Service) syncOne(c *fiber.Ctx, req *easRequest, user *models.User, cred
 		return out
 	}
 
+	// Validate the sync key first: a stale-key client must not have its
+	// deletes applied against a snapshot the server is about to discard.
 	snap, storedKey, _, err := s.loadSyncState(c.Context(), user.Email, req.deviceID, col.id)
 	if err != nil {
 		log.Printf("activesync: load state: %v", err)
@@ -157,6 +159,11 @@ func (s *Service) syncOne(c *fiber.Ctx, req *easRequest, user *models.User, cred
 	if storedKey != "" && storedKey != col.syncKey {
 		out.Add(nsAirSync, "SyncKey", col.syncKey)
 		out.Add(nsAirSync, "Status", "103")
+		return out
+	}
+	if err := s.applyClientCommands(c, user, credential, folder, col); err != nil {
+		log.Printf("activesync: client commands on %s: %v", col.id, err)
+		out.Add(nsAirSync, "Status", "130")
 		return out
 	}
 

@@ -86,47 +86,50 @@ func (s *Service) syncCalendar(c *fiber.Ctx, req *easRequest, user *models.User,
 	if col.getChanges {
 		var commandEls []*Element
 		remaining := window
-		for i, ev := range adds {
-			if i >= remaining {
-				more = true
-				break
-			}
+		nAdd := min(len(adds), remaining)
+		remaining -= nAdd
+		nChg := min(len(changes), remaining)
+		remaining -= nChg
+		nDel := min(len(deletes), remaining)
+		if nAdd+nChg+nDel < total {
+			more = true
+		}
+		for _, ev := range adds[:nAdd] {
 			el := &Element{NS: nsAirSync, Name: "Add"}
 			el.Add(nsAirSync, "ServerId", eventServerID(ev.ID))
 			el.Children = append(el.Children, eventToEASAppData(&ev))
 			commandEls = append(commandEls, el)
-			remaining--
 		}
-		used := window - remaining
-		remaining = window - used
-		for i, ev := range changes {
-			if i >= remaining {
-				more = true
-				break
-			}
+		for _, ev := range changes[:nChg] {
 			el := &Element{NS: nsAirSync, Name: "Change"}
 			el.Add(nsAirSync, "ServerId", eventServerID(ev.ID))
 			el.Children = append(el.Children, eventToEASAppData(&ev))
 			commandEls = append(commandEls, el)
-			remaining--
 		}
-		used = window - remaining
-		remaining = window - used
-		for i, id := range deletes {
-			if i >= remaining {
-				more = true
-				break
-			}
+		for _, id := range deletes[:nDel] {
 			el := &Element{NS: nsAirSync, Name: "Delete"}
 			el.Add(nsAirSync, "ServerId", id)
 			commandEls = append(commandEls, el)
-			remaining--
 		}
 		if len(commandEls) > 0 {
 			commands := out.Add(nsAirSync, "Commands", "")
 			commands.Children = append(commands.Children, commandEls...)
 		}
 		if more {
+			// A MoreAvailable page keeps its sync key, so advance the
+			// snapshot or the follow-up Sync repeats this window.
+			for _, ev := range adds[:nAdd] {
+				snap.Items[eventServerID(ev.ID)] = snapshotItem{UpdatedAt: ev.UpdatedAt.Unix()}
+			}
+			for _, ev := range changes[:nChg] {
+				snap.Items[eventServerID(ev.ID)] = snapshotItem{UpdatedAt: ev.UpdatedAt.Unix()}
+			}
+			for _, id := range deletes[:nDel] {
+				delete(snap.Items, id)
+			}
+			if kerr := s.updateSyncStateSnapshot(c.Context(), user.Email, req.deviceID, col.id, snap); kerr != nil {
+				log.Printf("activesync: advance calendar page state: %v", kerr)
+			}
 			out.Add(nsAirSync, "MoreAvailable", "")
 			out.Add(nsAirSync, "SyncKey", col.syncKey)
 		} else {
@@ -216,47 +219,50 @@ func (s *Service) syncContacts(c *fiber.Ctx, req *easRequest, user *models.User,
 	if col.getChanges {
 		var commandEls []*Element
 		remaining := window
-		for i, ct := range adds {
-			if i >= remaining {
-				more = true
-				break
-			}
+		nAdd := min(len(adds), remaining)
+		remaining -= nAdd
+		nChg := min(len(changes), remaining)
+		remaining -= nChg
+		nDel := min(len(deletes), remaining)
+		if nAdd+nChg+nDel < total {
+			more = true
+		}
+		for _, ct := range adds[:nAdd] {
 			el := &Element{NS: nsAirSync, Name: "Add"}
 			el.Add(nsAirSync, "ServerId", contactServerID(ct.ID))
 			el.Children = append(el.Children, contactToEASAppData(&ct))
 			commandEls = append(commandEls, el)
-			remaining--
 		}
-		used := window - remaining
-		remaining = window - used
-		for i, ct := range changes {
-			if i >= remaining {
-				more = true
-				break
-			}
+		for _, ct := range changes[:nChg] {
 			el := &Element{NS: nsAirSync, Name: "Change"}
 			el.Add(nsAirSync, "ServerId", contactServerID(ct.ID))
 			el.Children = append(el.Children, contactToEASAppData(&ct))
 			commandEls = append(commandEls, el)
-			remaining--
 		}
-		used = window - remaining
-		remaining = window - used
-		for i, id := range deletes {
-			if i >= remaining {
-				more = true
-				break
-			}
+		for _, id := range deletes[:nDel] {
 			el := &Element{NS: nsAirSync, Name: "Delete"}
 			el.Add(nsAirSync, "ServerId", id)
 			commandEls = append(commandEls, el)
-			remaining--
 		}
 		if len(commandEls) > 0 {
 			commands := out.Add(nsAirSync, "Commands", "")
 			commands.Children = append(commands.Children, commandEls...)
 		}
 		if more {
+			// A MoreAvailable page keeps its sync key, so advance the
+			// snapshot or the follow-up Sync repeats this window.
+			for _, ct := range adds[:nAdd] {
+				snap.Items[contactServerID(ct.ID)] = snapshotItem{UpdatedAt: ct.UpdatedAt.Unix()}
+			}
+			for _, ct := range changes[:nChg] {
+				snap.Items[contactServerID(ct.ID)] = snapshotItem{UpdatedAt: ct.UpdatedAt.Unix()}
+			}
+			for _, id := range deletes[:nDel] {
+				delete(snap.Items, id)
+			}
+			if kerr := s.updateSyncStateSnapshot(c.Context(), user.Email, req.deviceID, col.id, snap); kerr != nil {
+				log.Printf("activesync: advance contacts page state: %v", kerr)
+			}
 			out.Add(nsAirSync, "MoreAvailable", "")
 			out.Add(nsAirSync, "SyncKey", col.syncKey)
 		} else {

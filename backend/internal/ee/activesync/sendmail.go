@@ -13,7 +13,15 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	"mailez/backend/internal/alias"
 	"mailez/backend/internal/core/models"
+)
+
+// SendMail bounds on the client-built MIME, matching the web composer's
+// attachment budget and keeping one device off the mass-mail path.
+const (
+	maxSendMailBytes      = 40 << 20
+	maxSendMailRecipients = 500
 )
 
 // cmdSendMail delivers a client-supplied MIME message. The same handler
@@ -64,11 +72,23 @@ func (s *Service) cmdSendMail(c *fiber.Ctx, req *easRequest, user *models.User, 
 		return c.SendStatus(fiber.StatusBadRequest)
 	}
 	from, recipients := mimeEnvelope(string(raw), user.Email)
+	if len(raw) > maxSendMailBytes {
+		log.Printf("activesync: %s rejected for %s: %d bytes over send limit", variant, user.Email, len(raw))
+		return sendMailFailure(c, req, clientID, titleCommand(variant))
+	}
+	if len(recipients) > maxSendMailRecipients {
+		log.Printf("activesync: %s rejected for %s: %d recipients over limit", variant, user.Email, len(recipients))
+		return sendMailFailure(c, req, clientID, titleCommand(variant))
+	}
+	// The From header is client-supplied; the web composer refuses the same
+	// thing through alias.MaySendAs.
+	if !alias.MaySendAsDB(s.DB, user, from) {
+		log.Printf("activesync: %s refused: %s attempted to send as %s", variant, user.Email, from)
+		return sendMailFailure(c, req, clientID, titleCommand(variant))
+	}
 	if err := s.Mail.SubmitRawAs(user.Email, credential, from, recipients, string(raw)); err != nil {
 		log.Printf("activesync: %s failed for %s: %v", variant, user.Email, err)
-		resp := &Element{NS: nsComposeMail, Name: titleCommand(variant)}
-		resp.Add(nsComposeMail, "Status", "130")
-		return writeWBXML(c, resp, req.protocolVer)
+		return sendMailFailure(c, req, clientID, titleCommand(variant))
 	}
 	if saveInSent {
 		// Exchange semantics: the server keeps a copy in Sent Items when the
@@ -94,6 +114,17 @@ func titleCommand(variant string) string {
 	default:
 		return "SendMail"
 	}
+}
+
+// sendMailFailure answers a SendMail-family command with the generic failure
+// status, echoing ClientId so the client can match it to the queued message.
+func sendMailFailure(c *fiber.Ctx, req *easRequest, clientID, title string) error {
+	resp := &Element{NS: nsComposeMail, Name: title}
+	if clientID != "" {
+		resp.Add(nsComposeMail, "ClientId", clientID)
+	}
+	resp.Add(nsComposeMail, "Status", "130")
+	return writeWBXML(c, resp, req.protocolVer)
 }
 
 // mimeEnvelope extracts the envelope sender and recipients from a raw MIME

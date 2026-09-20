@@ -181,6 +181,11 @@ func entryEmail(e *ldap.Entry, cfg *models.LdapConfig) string {
 // false (not an error) when the directory is disabled or the user is absent,
 // so local password auth keeps working as the fallback.
 func (s *Service) Authenticate(ctx context.Context, email, password string) (bool, error) {
+	if password == "" {
+		// RFC 4513 §5.1.2: an empty simple bind is anonymous, so it never
+		// authenticates.
+		return false, nil
+	}
 	cfg, err := s.config(ctx)
 	if err != nil {
 		return false, nil

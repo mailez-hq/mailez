@@ -12,7 +12,13 @@ import (
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/crypto"
+	"mailez/backend/internal/netguard"
 )
+
+// cardDAVClient fetches user-configured CardDAV endpoints: no redirects, and
+// private targets are refused at dial time. The save path validates the URL
+// first so the user sees the reason instead of a dial error.
+var cardDAVClient = netguard.NewClient(30 * time.Second)
 
 // cardDAVView is the API shape of a stored CardDAV config (password omitted).
 type cardDAVView struct {
@@ -59,6 +65,9 @@ func (h *Handler) contactsCardDAVSet(c *fiber.Ctx) error {
 			return core.Fail(c, 500, err, "db error")
 		}
 		return c.SendStatus(fiber.StatusNoContent)
+	}
+	if err := netguard.Validate(in.URL); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 	var cfg models.CardDAVConfig
 	if err := h.DB.Where("user_email = ?", user.Email).FirstOrCreate(&cfg, models.CardDAVConfig{
@@ -108,7 +117,7 @@ func (h *Handler) contactsCardDAVSync(c *fiber.Ctx) error {
 		}
 		req.SetBasicAuth(cfg.Username, pw)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := cardDAVClient.Do(req)
 	if err != nil {
 		return core.Fail(c, 502, err, "carddav sync failed")
 	}

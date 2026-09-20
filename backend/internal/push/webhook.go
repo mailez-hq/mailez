@@ -20,10 +20,15 @@ import (
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/crypto"
+	"mailez/backend/internal/netguard"
 	"mailez/backend/internal/password"
 )
 
 const webhookTimeout = 10 * time.Second
+
+// webhookClient fetches user-supplied webhook endpoints through netguard: no
+// redirects, private targets refused at dial time.
+var webhookClient = netguard.NewClient(webhookTimeout)
 
 // supportedWebhookEvents is the closed set of event names a webhook can opt
 // into. Adding a new event here also enables it for existing subscriptions.
@@ -96,8 +101,7 @@ func deliverWebhook(db *gorm.DB, h models.Webhook, event string, data map[string
 		mac.Write(body)
 		req.Header.Set("X-Mailez-Signature", "sha256="+hex.EncodeToString(mac.Sum(nil)))
 	}
-	client := &http.Client{Timeout: webhookTimeout}
-	resp, err := client.Do(req)
+	resp, err := webhookClient.Do(req)
 	if err != nil {
 		recordDelivery(db, h, 0, err)
 		return
@@ -350,8 +354,8 @@ func buildWebhook(userEmail string, in webhookIn) (models.Webhook, string) {
 }
 
 func validateWebhook(url, events string) string {
-	if url == "" || !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-		return "url must be http(s)"
+	if err := netguard.Validate(url); err != nil {
+		return err.Error()
 	}
 	return ""
 }
@@ -378,8 +382,7 @@ func deliverWebhookSync(h models.Webhook, event string, data map[string]any) (in
 		mac.Write(body)
 		req.Header.Set("X-Mailez-Signature", "sha256="+hex.EncodeToString(mac.Sum(nil)))
 	}
-	client := &http.Client{Timeout: webhookTimeout}
-	resp, err := client.Do(req)
+	resp, err := webhookClient.Do(req)
 	if err != nil {
 		return 0, err
 	}

@@ -37,7 +37,7 @@ func NewNotifier(db *gorm.DB, cfg core.Config) *Notifier {
 	return &Notifier{
 		DB:   db,
 		Cfg:  cfg,
-		Mail: mail.New(cfg.MailImapAddr, "", "").SetInsecureTLS(cfg.FetchInsecure),
+		Mail: mail.New(cfg.MailImapAddr, "", "").SetInsecureTLS(cfg.FetchInsecure).SetForceTLS(cfg.MailForceTLS),
 		last: map[string]int{},
 	}
 }
@@ -163,14 +163,15 @@ func (n *Notifier) pollOnce(ctx context.Context) {
 		}
 	}
 	for _, t := range targets {
-		n.checkTarget(ctx, key, t.email, t.token)
+		n.checkTarget(ctx, key, t.email, t.token, 0)
 	}
 }
 
 // checkTarget runs the unseen-delta check and fan-out for one account. The
 // poll loop and the delivery-receipt Kick share it so their behaviour cannot
-// drift.
-func (n *Notifier) checkTarget(ctx context.Context, key *models.VapidKey, email, token string) {
+// drift. delivered counts the Inbox copies the engine says just landed; it is
+// zero on the poll path.
+func (n *Notifier) checkTarget(ctx context.Context, key *models.VapidKey, email, token string, delivered int) {
 	counts, err := n.Mail.UnseenCounts(email, token)
 	if err != nil {
 		if isAuthFailure(err) {
@@ -193,24 +194,48 @@ func (n *Notifier) checkTarget(ctx context.Context, key *models.VapidKey, email,
 	prev, ok := n.last[email]
 	n.last[email] = total
 	n.mu.Unlock()
-	if ok && total > prev {
-		body := fmt.Sprintf("%d 封新邮件", total-prev)
-		if err := Notify(n.DB, key, email, "mailez", body, "/", n.Cfg.Domain); err != nil {
-			log.Printf("push: notify %s: %v", email, err)
-		}
-		DispatchWebhooks(n.DB, email, "mail.received", map[string]any{
-			"folder":       "Inbox",
-			"new_count":    total - prev,
-			"unseen_total": total,
-		})
+	if !ok {
+		// First observation for this account since the process started.
+		log.Printf("push: baseline for %s: unseen=%d delivered=%d", email, total, delivered)
 	}
+	newCount, raise := notifyDelta(prev, ok, total, delivered)
+	if !raise {
+		return
+	}
+	body := fmt.Sprintf("%d 封新邮件", newCount)
+	if err := Notify(n.DB, key, email, "mailez", body, "/", n.Cfg.Domain); err != nil {
+		log.Printf("push: notify %s: %v", email, err)
+	}
+	DispatchWebhooks(n.DB, email, "mail.received", map[string]any{
+		"folder":       "Inbox",
+		"new_count":    newCount,
+		"unseen_total": total,
+	})
+}
+
+// notifyDelta reports how many new messages to announce, if any. A delivery
+// receipt is announced on its own, because the unseen read is a separate round
+// trip that can run before the delivery is visible. Without a receipt only
+// growth against an existing baseline counts.
+func notifyDelta(prev int, havePrev bool, total, delivered int) (int, bool) {
+	if delivered > 0 {
+		if havePrev && total > prev && total-prev > delivered {
+			return total - prev, true
+		}
+		return delivered, true
+	}
+	if havePrev && total > prev {
+		return total - prev, true
+	}
+	return 0, false
 }
 
 // Kick checks one account immediately (engine delivery receipt). It
 // coalesces within kickWindow so a burst of receipts for one account costs
 // at most one IMAP round trip, and runs asynchronously: the HTTP caller gets
-// its 202 without waiting on the mailbox.
-func (n *Notifier) Kick(ctx context.Context, email string) {
+// its 202 without waiting on the mailbox. delivered is the number of Inbox
+// copies the receipt names.
+func (n *Notifier) Kick(ctx context.Context, email string, delivered int) {
 	if email == "" {
 		return
 	}
@@ -235,7 +260,7 @@ func (n *Notifier) Kick(ctx context.Context, email string) {
 			log.Printf("push: vapid: %v", err)
 			return
 		}
-		n.checkTarget(ctx, key, email, token)
+		n.checkTarget(ctx, key, email, token, delivered)
 	}()
 }
 

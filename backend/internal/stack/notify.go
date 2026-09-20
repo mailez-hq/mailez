@@ -1,6 +1,9 @@
 package stack
 
 import (
+	"log"
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -38,7 +41,19 @@ func (h *Handler) notifyDelivered(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "account is required"})
 	}
 	if h.Notifier != nil {
-		h.Notifier.Kick(c.UserContext(), in.Account)
+		// Push counts Inbox copies only; junk is filed quietly.
+		inbox := 0
+		for _, d := range in.Deliveries {
+			switch {
+			case strings.EqualFold(d.Mailbox, "Inbox"):
+				inbox++
+			case strings.EqualFold(d.Mailbox, "Junk"):
+			default:
+				// An unknown spelling would disable push for this delivery.
+				log.Printf("notify: receipt for %s names an unknown mailbox %q", in.Account, d.Mailbox)
+			}
+		}
+		h.Notifier.Kick(c.UserContext(), in.Account, inbox)
 	}
 	if h.EventWatcher != nil {
 		h.EventWatcher.Kick(in.Account)

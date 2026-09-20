@@ -220,6 +220,9 @@ func (c *Client) openSMTP(email, token string) (*smtp.Client, error) {
 	var auth smtp.Auth
 	if tlsErr == nil {
 		auth = smtp.PlainAuth("", email, token, serverHost)
+	} else if c.forceTLS {
+		cl.Close()
+		return nil, fmt.Errorf("smtp starttls on %s failed (MAIL_FORCE_TLS is on; unset it for a plaintext internal link): %w", host, tlsErr)
 	} else {
 		// MAILEZ_TLS=off deployments accept plaintext on the internal
 		// submission port; net/smtp refuses PlainAuth over plaintext, so use

@@ -9,6 +9,17 @@ import (
 	"testing"
 )
 
+// Regression: with MAIL_FORCE_TLS on, a link that cannot upgrade must abort
+// before any credential goes out.
+func TestDialIMAPAbortsWhenForceTLSCannotUpgrade(t *testing.T) {
+	addr := fakeIMAPServer(t, map[string][]fakeIMAPMsg{"Inbox": {}})
+	c := New(addr, "", "").SetForceTLS(true)
+	_, err := c.ListFolders("amy@example.com", "token")
+	if err == nil || !strings.Contains(err.Error(), "starttls") {
+		t.Fatalf("ListFolders error = %v, want STARTTLS abort", err)
+	}
+}
+
 // fakeIMAPMsg is one canned message in the fake IMAP mailbox.
 type fakeIMAPMsg struct {
 	uid   uint32

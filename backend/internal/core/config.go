@@ -73,7 +73,12 @@ type Config struct {
 	CORSOrigins      string
 	LogLevel         string
 	FetchInsecure    bool // skip TLS verification for external fetch (opt-out)
-	DkimSelector     string
+	// MailForceTLS aborts an internal IMAP/SMTP dial when STARTTLS fails,
+	// instead of authenticating in the clear. Set MAIL_FORCE_TLS=1 when the
+	// engine has its own certificate; the default topology terminates TLS at
+	// the gateway and talks plaintext inside.
+	MailForceTLS bool
+	DkimSelector string
 	// KVBackend is the engine storage KV backend ("pebble" | "tidb"). It is
 	// reported on the admin overview; single-node deployments default to
 	// pebble with local-FS blobs.
@@ -204,6 +209,7 @@ func Load() Config {
 		CORSOrigins:            env("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001"),
 		LogLevel:               env("LOG_LEVEL", "info"),
 		FetchInsecure:          envBool("FETCH_INSECURE", false),
+		MailForceTLS:           envBool("MAIL_FORCE_TLS", false),
 		DkimSelector:           env("MAILEZ_DKIM_SELECTOR", "dkim"),
 		StackSecret:            env("MAILEZ_STACK_SECRET", ""),
 		ServiceFile:            env("MAILEZ_SERVICE_FILE", ""),

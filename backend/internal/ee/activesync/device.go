@@ -128,6 +128,22 @@ func (s *Service) saveSyncState(ctx context.Context, email, deviceID, collection
 	return key, s.DB.WithContext(ctx).Save(&st).Error
 }
 
+// updateSyncStateSnapshot advances the stored snapshot under the existing sync
+// key. A MoreAvailable page keeps its key, so the server alone records what was
+// already sent.
+func (s *Service) updateSyncStateSnapshot(ctx context.Context, email, deviceID, collectionID string, snap syncSnapshot) error {
+	res := s.DB.WithContext(ctx).Model(&models.EasSyncState{}).
+		Where("user_email = ? AND device_id = ? AND collection_id = ?", email, deviceID, collectionID).
+		Updates(map[string]interface{}{"snapshot": snap.marshal(), "updated_at": time.Now()})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("activesync: sync state row vanished mid-sync")
+	}
+	return nil
+}
+
 // pingState is the folder counter set the device last observed.
 type pingState struct {
 	UidNext  uint32

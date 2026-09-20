@@ -266,7 +266,12 @@ type wbxmlDecoder struct {
 	book    []*codePageDef
 	current byte
 	table   []byte
+	depth   int
 }
+
+// maxWBXMLDepth bounds element nesting: a small body can nest deep enough to
+// overflow the goroutine stack, which recover() cannot catch.
+const maxWBXMLDepth = 64
 
 // DecodeWBXML parses a WBXML byte stream into an element tree.
 func DecodeWBXML(data []byte, book []*codePageDef) (*Element, error) {
@@ -327,6 +332,11 @@ func (d *wbxmlDecoder) readMBUint32() (uint32, error) {
 
 // element parses one element (including any leading SWITCH_PAGE tokens).
 func (d *wbxmlDecoder) element() (*Element, error) {
+	d.depth++
+	defer func() { d.depth-- }()
+	if d.depth > maxWBXMLDepth {
+		return nil, errors.New("wbxml: element nesting too deep")
+	}
 	tok, err := d.r.ReadByte()
 	if err != nil {
 		return nil, err
