@@ -115,6 +115,7 @@ git filter-repo \
   --path backend/internal/compose/enterprise_ee.go \
   --path backend/internal/compose/enterprise_test.go \
   --path docs/engines/ \
+  --path docs/roadmap.md \
   --path docs/webmail-ui-spec.md \
   --path docs/rollout-runbook.md \
   --path docs/scaling.md \
