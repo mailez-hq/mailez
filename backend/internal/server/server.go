@@ -175,7 +175,7 @@ func New(cfg core.Config) *Server {
 	}
 	// AD/LDAP directory integration (login fallback, mail-proxy auth,
 	// address-book sync) is optional: the seam returns nil without it.
-	dirSync := newDirectorySync(db, cfg.SecretKey)
+	dirSync := newDirectorySync(db, cfg)
 	s.Auth.LDAP = dirSync
 	s.LDAP = dirSync
 	basicAuthCache := authcache.New(basicAuthCacheTTL())

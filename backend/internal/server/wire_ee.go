@@ -7,6 +7,7 @@ package server
 
 import (
 	"context"
+	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -24,12 +25,20 @@ import (
 	"mailez/backend/internal/ee/dlp"
 	eeldap "mailez/backend/internal/ee/ldap"
 	"mailez/backend/internal/ee/license"
+	"mailez/backend/internal/mail"
 )
 
 // newDirectorySync builds the AD/LDAP integration (login fallback,
 // auto-provisioning, address-book sync).
-func newDirectorySync(db *gorm.DB, secretKey string) core.DirectorySync {
-	return eeldap.New(db, secretKey)
+func newDirectorySync(db *gorm.DB, cfg core.Config) core.DirectorySync {
+	svc := eeldap.New(db, cfg.SecretKey)
+	// An offboarded account keeps its open mail sessions otherwise.
+	svc.Disconnect = func(email string) {
+		if err := mail.DisconnectSessions(cfg.MailEngineMgmtAddr, cfg.MailEngineMgmtSecret, email); err != nil {
+			log.Printf("ldap sync: engine disconnect for %s failed: %v", email, err)
+		}
+	}
+	return svc
 }
 
 // wireAppDirectory wires the directory integration into the app shell and

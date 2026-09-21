@@ -39,6 +39,33 @@ All notable changes to mailez are documented here. The format follows
   mismatch wrote a wrong local part in silence). The account is now
   `admin@<MAILEZ_DOMAIN>` by default, and an explicit `MAILEZ_ADMIN_EMAIL`
   outside that domain stops with a message naming both values
+- The per-user "Enable IMAP" toggle was silently ineffective on port 143:
+  the mail auth endpoint exempted every credential that arrived on a webmail
+  port, and 143 is both webmail's internal IMAP hop and the port the engine
+  publishes to the internet, so a mailbox password or an app token logged in
+  with a full IMAP client even after the operator had disabled IMAP for that
+  account (the toggle only held on the unadvertised implicit-TLS port 993).
+  The exemption now covers nothing but webmail's own short-lived `token-`
+  session credential, and no longer consults the listener port at all — the
+  engine serves webmail and the internet on the same one, so the port said
+  nothing about who was connecting
+- The engine's authentication cache replayed a success across protocols: its
+  key was the credential pair alone, and every protocol shares one cache, so
+  a single authenticated SMTP submission with an account's password let the
+  next IMAP login through without the control plane ever being asked --
+  re-enabling IMAP for an account whose `enable_imap` was off. Real client
+  credentials (passwords and app tokens) now always go to the control plane,
+  and only webmail's session token — the credential the pooled IMAP/SMTP
+  dials re-present — is memoised, so an operator's change also applies to the
+  next login instead of one TTL later
+- Disabling an account, turning IMAP/POP3 off or rotating a password left
+  already-open IMAP sessions serving mail, because authorization is decided
+  at login: the control plane now tells the engine (`POST
+  /v1/accounts/{email}/disconnect` on the management API) to drop the
+  account's live sessions on those changes, including when AD/LDAP sync
+  disables an account that left the directory. The call fans out to every
+  address the engine service resolves to, because each replica keeps its own
+  session table and a single call would only reach one of them
 
 ## [1.0.1] - 2026-09-18
 

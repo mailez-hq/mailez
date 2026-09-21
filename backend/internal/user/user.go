@@ -17,6 +17,7 @@ import (
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/core/models"
 	"mailez/backend/internal/drive"
+	"mailez/backend/internal/mail"
 	"mailez/backend/internal/password"
 )
 
@@ -270,7 +271,22 @@ func (h *Handler) updateUser(c *fiber.Ctx) error {
 	if err := h.DB.Save(&u).Error; err != nil {
 		return core.Fail(c, 400, err, "update failed")
 	}
+	// Access is decided at login, so an open session outlives the change.
+	if in.Password != "" ||
+		(in.Enabled != nil && !*in.Enabled) ||
+		(in.EnableImap != nil && !*in.EnableImap) ||
+		(in.EnablePop != nil && !*in.EnablePop) {
+		h.disconnectEngineSessions(u.Email)
+	}
 	return c.JSON(u)
+}
+
+// disconnectEngineSessions drops the account's live engine sessions
+// (best-effort).
+func (h *Handler) disconnectEngineSessions(email string) {
+	if err := mail.DisconnectSessions(h.Cfg.MailEngineMgmtAddr, h.Cfg.MailEngineMgmtSecret, email); err != nil {
+		log.Printf("user update: engine disconnect for %s failed: %v", email, err)
+	}
 }
 
 // parseUserDate accepts RFC3339 or plain "2006-01-02"; empty clears the date.

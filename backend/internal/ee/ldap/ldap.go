@@ -36,6 +36,10 @@ type Service struct {
 	// mailbox so directory sync cannot bypass the license's mailbox cap.
 	CheckCapacity func(db *gorm.DB) error
 
+	// Disconnect drops an account's live mail sessions; set by the wiring
+	// layer.
+	Disconnect func(email string)
+
 	// groupCache memoizes delivery-time member expansion for a short TTL so
 	// directory changes land within a minute without hammering LDAP on every
 	// message to a group mailbox.
@@ -346,6 +350,9 @@ func (s *Service) SyncAccounts(ctx context.Context) (created, disabled int, err 
 		}
 		if err := s.DB.WithContext(ctx).Model(cur).Update("enabled", false).Error; err != nil {
 			return created, disabled, err
+		}
+		if s.Disconnect != nil {
+			s.Disconnect(cur.Email)
 		}
 		disabled++
 	}
