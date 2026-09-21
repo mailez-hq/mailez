@@ -24,6 +24,20 @@ jobs:
           if [ -n "$unformatted" ]; then
             echo "unformatted files:"; echo "$unformatted"; exit 1
           fi
+      - name: Protocol toggles have a single decision point
+        # enable_imap/enable_pop are stored in models and bound in user, but
+        # stack/auth.go is the only place allowed to decide access from them.
+        run: |
+          stray=$(grep -rn --include='*.go' -E '\b(EnableImap|EnablePop|webmailPorts)\b' internal cmd \
+            | grep -v '^internal/core/models/' \
+            | grep -v '^internal/user/' \
+            | grep -v '^internal/stack/' \
+            | grep -v '_test.go:' || true)
+          if [ -n "$stray" ]; then
+            echo "protocol toggles referenced outside the single decision point:"
+            echo "$stray"
+            exit 1
+          fi
       - name: Dependency check
         # This repo is a filtered subset of the private monorepo, whose
         # go.mod legitimately carries commercial-edition-only requirements

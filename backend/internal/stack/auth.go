@@ -16,18 +16,6 @@ import (
 	"mailez/backend/internal/password"
 )
 
-// webmailPorts are the internal ports reserved for webmail traffic; temp
-// tokens are only accepted on these ports. The mailezine engine publishes
-// the standard engine ports itself (143 imap, 4190 managesieve, 1587
-// submission), so those must be accepted for the temp-token path too.
-var webmailPorts = map[string]bool{
-	"11490": true, // gateway managesieve proxy
-	"1143":  true, // gateway imap proxy
-	"1587":  true, // submission (both engines)
-	"143":   true, // mailezine imap direct
-	"4190":  true, // mailezine managesieve direct
-}
-
 // bcryptGate caps concurrent password verifications. A cost-12 bcrypt check
 // burns a full core for ~300-500ms; a login burst would otherwise saturate
 // every CPU and blow tail latency into multi-second territory, making
@@ -134,7 +122,6 @@ func (h *Handler) authBasic(c *fiber.Ctx) error {
 func (h *Handler) authEmail(c *fiber.Ctx) error {
 	method := strings.ToLower(c.Get("Auth-Method"))
 	protocol := strings.ToLower(c.Get("Auth-Protocol"))
-	authPort := c.Get("Auth-Port")
 
 	// Incoming mail: no authentication, just route to the right backend.
 	if (method == "" || method == "none") && (protocol == "smtp" || protocol == "lmtp") {
@@ -167,7 +154,7 @@ func (h *Handler) authEmail(c *fiber.Ctx) error {
 	var user models.User
 	userFound := h.DB.WithContext(c.Context()).First(&user, "email = ?", userEmail).Error == nil
 
-	if userFound && h.checkCredentials(&user, authPass, clientIP, protocol, authPort, c) {
+	if userFound && h.checkCredentials(&user, authPass, protocol, c) {
 		if h.Auth.Bans != nil {
 			h.Auth.Bans.Reset(c.Context(), clientIP)
 		}
@@ -212,17 +199,25 @@ func (h *Handler) authEmail(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-func (h *Handler) checkCredentials(u *models.User, pw, ip, protocol, authPort string, c *fiber.Ctx) bool {
+// isWebmailSessionCredential reports whether pw is a webmail session token
+// rather than a mailbox password or an app token.
+func isWebmailSessionCredential(pw string) bool {
+	return strings.HasPrefix(pw, "token-")
+}
+
+// checkCredentials decides one protocol login; the listener port is
+// deliberately not an argument.
+func (h *Handler) checkCredentials(u *models.User, pw, protocol string, c *fiber.Ctx) bool {
 	if !u.Enabled {
 		return false
 	}
-	if protocol == "imap" && !u.EnableImap && !webmailPorts[authPort] {
+	if protocol == "imap" && !u.EnableImap && !isWebmailSessionCredential(pw) {
 		return false
 	}
 	if protocol == "pop3" && !u.EnablePop {
 		return false
 	}
-	if webmailPorts[authPort] && strings.HasPrefix(pw, "token-") {
+	if isWebmailSessionCredential(pw) {
 		if h.Auth.VerifyTempToken(c.Context(), u.Email, pw) {
 			return true
 		}

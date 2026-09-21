@@ -38,7 +38,7 @@ func registerOptionalRoutes(s *Server, app *core.App, v1, authed, stackGroup fib
 
 // newDirectorySync returns nil in the base build: no AD/LDAP directory
 // integration.
-func newDirectorySync(db *gorm.DB, secretKey string) core.DirectorySync {
+func newDirectorySync(db *gorm.DB, cfg core.Config) core.DirectorySync {
 	return nil
 }
 

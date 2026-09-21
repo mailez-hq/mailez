@@ -147,6 +147,8 @@ func (h *Handler) meChangePassword(c *fiber.Ctx) error {
 	}).Error; err != nil {
 		return core.Fail(c, 400, err, "update failed")
 	}
+	// End the sessions authenticated with the old password.
+	h.disconnectEngineSessions(u.Email)
 	return c.SendStatus(204)
 }
 
