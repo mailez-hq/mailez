@@ -249,6 +249,27 @@ export const adminTraffic = (days = 14): Promise<TrafficReport> =>
     ? api<TrafficReport>(`/admin/traffic?days=${days}`)
     : Promise.resolve({ days: [], latest_queue_depth: 0, sampling: false });
 
+export type OrgFooter = {
+  id: number;
+  domain: string;
+  body_html: string;
+  body_text: string;
+  enabled: boolean;
+};
+
+export const adminOrgFooters = (): Promise<OrgFooter[]> =>
+  HAS_OPTIONAL_MODULES ? api<OrgFooter[]>("/admin/org-footer") : Promise.resolve([]);
+
+export const adminOrgFooterSave = (input: {
+  domain: string;
+  body_html: string;
+  enabled: boolean;
+}): Promise<OrgFooter> =>
+  api<OrgFooter>("/admin/org-footer", {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+
 // DNS wizard: the records a domain must publish, with live verification.
 export type DnsRecordView = {
   id: string;

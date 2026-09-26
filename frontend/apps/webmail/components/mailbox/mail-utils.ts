@@ -117,6 +117,85 @@ export function escHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+export const SIGNATURE_ATTR = "data-mailez-signature";
+
+export function buildSignatureHTML(id: number | null, bodyHtml: string): string {
+  return `<div ${SIGNATURE_ATTR}="${id && id > 0 ? id : "custom"}"><p>--</p>${bodyHtml}</div>`;
+}
+
+export function appendSignatureHTML(html: string, id: number | null, bodyHtml: string): string {
+  return `${html}<p><br></p>${buildSignatureHTML(id, bodyHtml)}`;
+}
+
+export function stripSignatureHTML(html: string): string {
+  if (typeof DOMParser === "undefined") return html;
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const block = doc.querySelector(`[${SIGNATURE_ATTR}]`);
+  if (!block) return html;
+  const spacer = block.previousElementSibling;
+  const follower = block.nextElementSibling;
+  block.remove();
+  const emptyParagraph = (el: Element | null) =>
+    !!el && el.tagName === "P" && el.textContent?.trim() === "" && !el.querySelector("img,table,hr");
+  if (emptyParagraph(spacer)) {
+    spacer?.remove();
+  } else if (emptyParagraph(follower)) {
+    follower?.remove();
+  }
+  return doc.body.innerHTML;
+}
+
+export function currentSignatureID(html: string): number | null {
+  if (typeof DOMParser === "undefined") return null;
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const raw = doc.querySelector(`[${SIGNATURE_ATTR}]`)?.getAttribute(SIGNATURE_ATTR);
+  const id = Number(raw);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+export function swapSignatureHTML(
+  html: string,
+  id: number | null,
+  bodyHtml: string,
+  above = false,
+): string {
+  if (typeof DOMParser === "undefined") return html;
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const existing = doc.querySelector(`[${SIGNATURE_ATTR}]`);
+  if (!bodyHtml) return existing ? stripSignatureHTML(html) : html;
+  if (!existing) return above ? `${buildSignatureHTML(id, bodyHtml)}${html}` : appendSignatureHTML(html, id, bodyHtml);
+  const holder = doc.createElement("div");
+  holder.innerHTML = buildSignatureHTML(id, bodyHtml);
+  existing.replaceWith(...Array.from(holder.childNodes));
+  return doc.body.innerHTML;
+}
+
+export function appendSignatureText(text: string, bodyText: string): string {
+  return text ? `${text}\n\n-- \n${bodyText}` : `-- \n${bodyText}`;
+}
+
+export function stripSignatureText(text: string): string {
+  return text.replace(/\n\n-- \n[\s\S]*$/, "");
+}
+
+export function spliceSignatureText(
+  text: string,
+  remove: string | null,
+  insert: string | null,
+  above: boolean,
+): string {
+  let body = text;
+  if (remove && body.includes(remove)) {
+    const at = body.indexOf(remove);
+    const before = body.slice(0, at).replace(/\n+$/, "");
+    const after = body.slice(at + remove.length).replace(/^\n+/, "");
+    body = before && after ? `${before}\n\n${after}` : before || after;
+  }
+  if (!insert) return body;
+  if (!body) return insert;
+  return above ? `${insert}\n\n${body}` : `${body}\n\n${insert}`;
+}
+
 // readFileAsBase64 converts a picked/dropped file into the wire attachment
 // shape (base64 data) used by the mail send/draft APIs.
 export function readFileAsBase64(file: File): Promise<OutboundAttachment> {

@@ -16,6 +16,7 @@ import (
 	"mailez/backend/internal/alias"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/mail"
+	"mailez/backend/internal/mailflow"
 )
 
 // registerOptionalRoutes mounts the optional compose routes.
@@ -203,12 +204,13 @@ func (h *Handler) mailMerge(c *fiber.Ctx) error {
 		return core.DialFailure(c, err)
 	}
 	var in struct {
-		From        string            `json:"from"`
-		Subject     string            `json:"subject"`
-		Body        string            `json:"body"`
-		HTML        string            `json:"html"`
-		Attachments []mail.Attachment `json:"attachments"`
-		Recipients  []mergeRecipient  `json:"recipients"`
+		From             string            `json:"from"`
+		Subject          string            `json:"subject"`
+		Body             string            `json:"body"`
+		HTML             string            `json:"html"`
+		Attachments      []mail.Attachment `json:"attachments"`
+		Recipients       []mergeRecipient  `json:"recipients"`
+		SignatureApplied bool              `json:"signature_applied"`
 	}
 	if err := c.BodyParser(&in); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
@@ -251,6 +253,13 @@ func (h *Handler) mailMerge(c *fiber.Ctx) error {
 		subject := substitute(in.Subject, vars)
 		text := substitute(in.Body, vars)
 		html := substitute(in.HTML, vars)
+		text, html = mailflow.Decorate(h.DB, mailflow.Options{
+			OwnerEmail:       user.Email,
+			From:             from,
+			Text:             text,
+			HTML:             html,
+			SignatureApplied: in.SignatureApplied,
+		})
 		if err := h.Mail.With(d).Send(d.Email, d.Token, from, []string{email}, nil, nil,
 			subject, text, html, in.Attachments); err != nil {
 			log.Printf("compose: merge to %s: %v", email, err)

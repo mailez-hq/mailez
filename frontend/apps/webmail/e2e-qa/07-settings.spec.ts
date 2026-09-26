@@ -26,20 +26,33 @@ test.describe("settings — every section opens and persists", () => {
     if (await cozy.isVisible({ timeout: 3_000 }).catch(() => false)) await cozy.click();
   });
 
-  test("identity: display name and signature persist", async ({ page }) => {
+  test("identity: display name and signatures persist", async ({ page }) => {
     await openSettings(page);
     const name = page.getByLabel(/Display name|显示名/i).first();
-    if (await name.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await name.fill("QA Tester");
-      const sig = page.getByLabel(/Signature|签名/i).first();
-      await sig.fill("-- QA").catch(() => {});
-      const save = page.getByRole("button", { name: /Save settings|Save/i }).last();
-      await save.click();
-      await expect(page.getByText(/Saved|Settings saved/i).first()).toBeVisible({ timeout: 15_000 }).catch(() => {});
-      // Reload to confirm persistence
-      await page.reload();
-      await expect(name).toHaveValue(/QA Tester/, { timeout: 15_000 });
-    }
+    if (!(await name.isVisible({ timeout: 5_000 }).catch(() => false))) return;
+    await name.fill("QA Tester");
+    await page.getByRole("button", { name: /Save settings|保存设置/i }).last().click();
+    await page.reload();
+    await openSettings(page);
+    await expect(page.getByLabel(/Display name|显示名/i).first()).toHaveValue(/QA Tester/, { timeout: 15_000 });
+
+    const add = page.getByRole("button", { name: /New signature|新建签名/i }).first();
+    if (!(await add.isVisible({ timeout: 5_000 }).catch(() => false))) return;
+    await add.click();
+    await page.getByLabel(/Signature name|签名名称/i).first().fill("QA Sig");
+    await page.getByRole("button", { name: /HTML source|HTML 源码/i }).first().click();
+    await page.getByTestId("signature-html").fill("<p>QA signature</p>");
+    await page.getByRole("button", { name: /Save signature|保存签名/i }).first().click();
+    await expect(page.getByText(/Signature saved|签名已保存/i).first()).toBeVisible({ timeout: 15_000 });
+    await page.reload();
+    await openSettings(page);
+    const row = page.getByRole("button", { name: /QA Sig/ }).first();
+    await expect(row).toBeVisible({ timeout: 15_000 });
+
+    await row.click();
+    page.once("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: /Delete signature|删除签名/i }).first().click();
+    await expect(page.getByRole("button", { name: /QA Sig/ })).toHaveCount(0, { timeout: 15_000 });
   });
 
   test("password section rejects a wrong old password", async ({ page }) => {

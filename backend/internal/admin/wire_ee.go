@@ -20,5 +20,6 @@ func (h *Handler) registerExtraRoutes(r fiber.Router, mw fiber.Handler) {
 	r.Get("/admin/license", mw, func(c *fiber.Ctx) error {
 		return c.JSON(license.FromEnv().Status(h.DB.WithContext(c.Context())))
 	})
+	h.registerOrgFooter(r, mw)
 	h.registerTraffic(r, mw)
 }

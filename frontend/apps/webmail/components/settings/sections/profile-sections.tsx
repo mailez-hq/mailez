@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { MeSettings } from "@/lib/api";
 import type { Preferences } from "@/lib/preferences";
+import { SignatureSection } from "./signature-section";
 
 // The small profile sections. They all live inside the shared profile
 // <form> in sections.tsx and persist through its single save button, so
@@ -91,13 +92,11 @@ export function IdentitySection({
   t,
   profile,
   displayedName, setDisplayedName,
-  signature, setSignature,
   autoSignature, setAutoSignature,
 }: {
   t: (key: string) => string;
   profile: MeSettings | null;
   displayedName: string; setDisplayedName: (v: string) => void;
-  signature: string; setSignature: (v: string) => void;
   autoSignature: boolean; setAutoSignature: (v: boolean) => void;
 }) {
   return (
@@ -107,16 +106,7 @@ export function IdentitySection({
         <Label>{t("displayedName")}</Label>
         <Input value={displayedName} onChange={(e) => setDisplayedName(e.target.value)} placeholder={profile?.email} />
       </div>
-      <div className="space-y-2">
-        <Label>{t("signature")}</Label>
-        <textarea
-          value={signature}
-          onChange={(e) => setSignature(e.target.value)}
-          rows={4}
-          className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
-        />
-        <p className="text-xs text-muted-foreground">{t("signatureHint")}</p>
-      </div>
+      <SignatureSection />
       <div className="flex items-center justify-between">
         <div>
           <Label>{t("autoSignature")}</Label>

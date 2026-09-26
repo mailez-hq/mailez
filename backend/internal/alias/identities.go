@@ -12,11 +12,13 @@ import (
 
 // MailIdentity is a From address the current user may pick when composing.
 type MailIdentity struct {
-	Email       string `json:"email"`
-	Name        string `json:"name"`
-	DkimEnabled bool   `json:"dkim_enabled"`
-	Signature   string `json:"signature"`
-	Delegated   bool   `json:"delegated,omitempty"` // true when sending as a delegated mailbox owner
+	Email         string `json:"email"`
+	Name          string `json:"name"`
+	DkimEnabled   bool   `json:"dkim_enabled"`
+	Signature     string `json:"signature"`
+	SignatureID   uint   `json:"signature_id,omitempty"`
+	SignatureHTML string `json:"signature_html,omitempty"`
+	Delegated     bool   `json:"delegated,omitempty"` // true when sending as a delegated mailbox owner
 }
 
 // mailIdentities lists the addresses the current user may send from: their own
@@ -40,11 +42,22 @@ func (h *Handler) mailIdentities(c *fiber.Ctx) error {
 		return d.DkimKey != ""
 	}
 
+	signature := func(ownerEmail, identity string) (string, uint, string) {
+		sig := models.DefaultSignature(h.DB, ownerEmail, identity, false)
+		if sig == nil {
+			return "", 0, ""
+		}
+		return sig.BodyText, sig.ID, sig.BodyHTML
+	}
+
+	ownText, ownID, ownHTML := signature(user.Email, user.Email)
 	ids := []MailIdentity{{
-		Email:       user.Email,
-		Name:        user.DisplayedName,
-		DkimEnabled: dkim(user.DomainName),
-		Signature:   user.Signature,
+		Email:         user.Email,
+		Name:          user.DisplayedName,
+		DkimEnabled:   dkim(user.DomainName),
+		Signature:     ownText,
+		SignatureID:   ownID,
+		SignatureHTML: ownHTML,
 	}}
 	seen := map[string]bool{strings.ToLower(user.Email): true}
 
@@ -54,9 +67,13 @@ func (h *Handler) mailIdentities(c *fiber.Ctx) error {
 			continue
 		}
 		seen[key] = true
+		text, id, html := signature(user.Email, a.Email)
 		ids = append(ids, MailIdentity{
-			Email:       a.Email,
-			DkimEnabled: dkim(a.DomainName),
+			Email:         a.Email,
+			DkimEnabled:   dkim(a.DomainName),
+			Signature:     text,
+			SignatureID:   id,
+			SignatureHTML: html,
 		})
 	}
 	// Delegated mailboxes: owners that granted this user send-as (or full
@@ -75,8 +92,8 @@ func (h *Handler) mailIdentities(c *fiber.Ctx) error {
 			var owner models.User
 			if err := h.DB.First(&owner, "email = ?", dep.OwnerEmail).Error; err == nil {
 				idn.Name = owner.DisplayedName
-				idn.Signature = owner.Signature
 			}
+			idn.Signature, idn.SignatureID, idn.SignatureHTML = signature(dep.OwnerEmail, dep.OwnerEmail)
 			ids = append(ids, idn)
 		}
 	}

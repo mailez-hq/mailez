@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { quoteBlockText } from "@/components/mailbox/mail-utils";
 import { CollapsibleBlockquote } from "./collapsible-blockquote";
+import { SignatureBlock } from "./signature-block";
 
 // Font size rides on TextStyle so it survives serialization as inline style.
 const FontSize = TextStyle.extend({
@@ -107,6 +108,7 @@ export function ComposeEditor({
         blockquote: false,
       }),
       CollapsibleBlockquote,
+      SignatureBlock,
       Placeholder.configure({placeholder}),
       FontSize,
       FontFamily,

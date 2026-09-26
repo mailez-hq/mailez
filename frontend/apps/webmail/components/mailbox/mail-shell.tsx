@@ -92,6 +92,10 @@ export function MailShell({ children }: { children: React.ReactNode }) {
     identities,
     from,
     selectIdentity,
+    signatures,
+    selectSignature,
+    refreshSignatures,
+    refreshIdentities,
     to,
     cc,
     bcc,
@@ -306,6 +310,8 @@ export function MailShell({ children }: { children: React.ReactNode }) {
           identities={identities}
           from={from}
           onSelectIdentity={selectIdentity}
+          signatures={signatures}
+          onSelectSignature={selectSignature}
           composeError={composeError}
           composeNotice={composeNotice}
           draftSaved={draftSaved}
@@ -368,7 +374,11 @@ export function MailShell({ children }: { children: React.ReactNode }) {
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         initialSection={settingsInitialSection}
-        onSaved={() => loadMessages(folder)}
+        onSaved={() => {
+          loadMessages(folder);
+          refreshSignatures();
+          refreshIdentities();
+        }}
       />
 
       <MailContacts

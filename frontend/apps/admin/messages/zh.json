@@ -1,6 +1,7 @@
 {
   "common": {
     "save": "保存",
+    "saving": "保存中…",
     "create": "创建",
     "edit": "编辑",
     "delete": "删除",
@@ -47,6 +48,7 @@
     "audit": "审计日志",
     "archive": "邮件归档",
     "dlp": "审批/DLP",
+    "orgFooter": "组织页脚",
     "config": "配置",
     "backups": "数据备份",
     "groupOverview": "概览与监控",
@@ -581,6 +583,27 @@
     "queue": "当前队列深度 {n}",
     "noData": "暂无采样数据。",
     "samplingOff": "未配置引擎指标采样（MAILEZ_ENGINE_METRICS_URL），报表为空。"
+  },
+  "orgFooter": {
+    "title": "组织页脚",
+    "description": "为该域名发出的每封邮件自动追加的页脚（免责声明）。用户无法修改或删除，由服务端在发送时统一附加，位置在个人签名之后。",
+    "editor": "页脚内容",
+    "editorHint": "支持 HTML；保存时服务端会做安全清洗，颜色、字体、字号等样式会保留。",
+    "domain": "域名",
+    "body": "页脚 HTML",
+    "bodyPlaceholder": "<p>本邮件仅供指定收件人阅读，可能包含保密信息。</p>",
+    "bodyHint": "留空并保存即停用；停用后不会追加任何页脚。",
+    "enabled": "启用",
+    "enabledHint": "启用后，以该域名发出的邮件都会带上此页脚。",
+    "configured": "已配置的域名",
+    "configuredHint": "只有处于启用状态的域名会实际追加页脚。",
+    "none": "尚未配置任何组织页脚。",
+    "disabled": "未启用",
+    "noDomains": "还没有可用域名，请先在「域名」中新增。",
+    "savedEnabled": "已保存并启用",
+    "savedDisabled": "已保存（未启用）",
+    "loadFailed": "加载失败",
+    "saveFailed": "保存失败"
   },
   "config": {
     "title": "配置",

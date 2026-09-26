@@ -8,10 +8,11 @@ import { Label } from "@/components/ui/label";
 import { ComposeEditor } from "@/components/compose/compose-editor";
 import { RecipientInput } from "@/components/compose/recipient-input";
 import { TemplatesDialog } from "@/components/compose/templates-dialog";
-import { fmtBytes } from "@/components/mailbox/mail-utils";
+import { currentSignatureID, fmtBytes } from "@/components/mailbox/mail-utils";
 import { cn } from "@/lib/utils";
 import {
   mailTemplates, type Contact, type MailIdentity, type MailTemplate, type OutboundAttachment,
+  type Signature,
 } from "@/lib/api";
 
 // datetime-local values are local wall time; toISOString() would emit UTC and
@@ -26,6 +27,8 @@ export interface ComposePanelProps {
   identities: MailIdentity[];
   from: string;
   onSelectIdentity: (email: string) => void;
+  signatures: Signature[];
+  onSelectSignature: (id: number | null) => void;
   composeError: string;
   composeNotice: string;
   draftSaved: boolean;
@@ -87,6 +90,8 @@ export function ComposePanel(props: ComposePanelProps) {
     identities,
     from,
     onSelectIdentity,
+    signatures,
+    onSelectSignature,
     composeError,
     composeNotice,
     draftSaved,
@@ -141,6 +146,8 @@ export function ComposePanel(props: ComposePanelProps) {
   const [templates, setTemplates] = useState<MailTemplate[]>([]);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false);
+  const [signatureMenuOpen, setSignatureMenuOpen] = useState(false);
+  const activeSignatureID = currentSignatureID(body);
   // Earliest schedulable moment, captured once so render stays pure (the
   // backend re-checks that send_at is in the future anyway).
   const [minScheduleAt] = useState(() => localDateTime(new Date(Date.now() + 60000)));
@@ -398,6 +405,61 @@ export function ComposePanel(props: ComposePanelProps) {
           >
             {t("mergeToggle")}
           </button>
+          <div className="relative">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSignatureMenuOpen((v) => !v)}
+              title={t("signature")}
+              data-testid="compose-signature"
+            >
+              <PenLine className="size-4" />
+              <span className="hidden sm:inline">{t("signature")}</span>
+            </Button>
+            {signatureMenuOpen && (
+              <div className="absolute bottom-full left-0 z-30 mb-1 w-64 rounded-lg border border-border bg-popover p-1 text-sm shadow-lg">
+                {signatures.length === 0 && (
+                  <p className="px-2 py-1.5 text-xs text-muted-foreground">{t("noSignatures")}</p>
+                )}
+                {signatures.map((sig) => (
+                  <button
+                    key={sig.id}
+                    type="button"
+                    onClick={() => {
+                      onSelectSignature(sig.id);
+                      setSignatureMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted"
+                  >
+                    <Check
+                      className={cn(
+                        "size-3.5 shrink-0",
+                        activeSignatureID === sig.id ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    <span className="truncate">{sig.name}</span>
+                    {sig.identity_email && (
+                      <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
+                        {sig.identity_email}
+                      </span>
+                    )}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelectSignature(null);
+                    setSignatureMenuOpen(false);
+                  }}
+                  className="mt-0.5 flex w-full items-center gap-2 rounded-md border-t border-border px-2 py-1.5 text-left text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                  {t("noSignature")}
+                </button>
+              </div>
+            )}
+          </div>
           <div className="relative">
             <Button type="button" variant="ghost" size="sm" onClick={openTemplates} title={t("templates")}>
               <LayoutTemplate className="size-4" />

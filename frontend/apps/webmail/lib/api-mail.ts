@@ -118,7 +118,7 @@ export const mailSend = (
     "/mail/send",
     {
       method: "POST",
-      body: JSON.stringify({ to, cc, bcc, subject, body, html, from, attachments, undo_seconds: undoSeconds, send_at: sendAt, receipt_requested: receiptRequested, burn_after_minutes: burnAfterMinutes, in_reply_to: inReplyTo, references }),
+      body: JSON.stringify({ to, cc, bcc, subject, body, html, from, attachments, undo_seconds: undoSeconds, send_at: sendAt, receipt_requested: receiptRequested, burn_after_minutes: burnAfterMinutes, in_reply_to: inReplyTo, references, signature_applied: true }),
     },
   );
 
@@ -136,6 +136,7 @@ export const mailSendReply = (
     body: JSON.stringify({
       to, cc, bcc: [], subject, body, html: "",
       undo_seconds: 0, in_reply_to: inReplyTo, references,
+      signature_applied: true,
     }),
   });
 
@@ -167,7 +168,11 @@ export const mailMerge = (input: {
   html?: string;
   from?: string;
   recipients: MailMergeRecipient[];
-}) => apiPost<{ sent: number; failed: { email: string; error: string }[] }>("/mail/merge", input);
+}) =>
+  apiPost<{ sent: number; failed: { email: string; error: string }[] }>("/mail/merge", {
+    ...input,
+    signature_applied: true,
+  });
 
 // mailReadAll marks an entire folder as read.
 export const mailReadAll = (folder: string) =>

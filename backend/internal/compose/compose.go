@@ -10,6 +10,7 @@ import (
 	"mailez/backend/internal/alias"
 	"mailez/backend/internal/core"
 	"mailez/backend/internal/mail"
+	"mailez/backend/internal/mailflow"
 )
 
 // decodeThreadHeaderID normalizes a client-supplied In-Reply-To/References
@@ -89,15 +90,16 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 		Body    string          `json:"body"`
 		// Drafts name the same field "text"; accept it so a caller following
 		// the draft call does not send an empty body.
-		Text        string            `json:"text"`
-		HTML        string            `json:"html"`
-		Attachments []mail.Attachment `json:"attachments"`
-		UndoSeconds int               `json:"undo_seconds"`
-		SendAt      string            `json:"send_at"` // RFC3339; future value schedules the send
-		InReplyTo   string            `json:"in_reply_to"`
-		References  string            `json:"references"`
-		Receipt     bool              `json:"receipt_requested"`
-		BurnAfter   int               `json:"burn_after_minutes"`
+		Text             string            `json:"text"`
+		HTML             string            `json:"html"`
+		Attachments      []mail.Attachment `json:"attachments"`
+		UndoSeconds      int               `json:"undo_seconds"`
+		SendAt           string            `json:"send_at"` // RFC3339; future value schedules the send
+		InReplyTo        string            `json:"in_reply_to"`
+		References       string            `json:"references"`
+		Receipt          bool              `json:"receipt_requested"`
+		BurnAfter        int               `json:"burn_after_minutes"`
+		SignatureApplied bool              `json:"signature_applied"`
 	}
 	if err := c.BodyParser(&in); err != nil || len(in.To) == 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "to is required"})
@@ -127,6 +129,14 @@ func (h *Handler) mailSend(c *fiber.Ctx) error {
 	} else if !alias.MaySendAs(h.App, user, from) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "cannot send as this identity"})
 	}
+	in.Body, in.HTML = mailflow.Decorate(h.DB, mailflow.Options{
+		OwnerEmail:       user.Email,
+		From:             from,
+		Text:             in.Body,
+		HTML:             in.HTML,
+		Reply:            in.InReplyTo != "" || in.References != "",
+		SignatureApplied: in.SignatureApplied,
+	})
 	// A future send_at parks the message in the outbox until that moment
 	// (scheduled send); an undo window parks it for a few seconds instead.
 	// The two are mutually exclusive: scheduling disables undo.
