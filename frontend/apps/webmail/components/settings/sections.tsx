@@ -44,7 +44,6 @@ export type SettingsSectionsProps = {
   landing: Landing; setLanding: (v: Landing) => void;
   prefs: Preferences; setAi: (ai: Preferences["ai"]) => void; setNotifications: (v: boolean) => void;
   displayedName: string; setDisplayedName: (v: string) => void;
-  signature: string; setSignature: (v: string) => void;
   whitelist: string; setWhitelist: (v: string) => void;
   blacklist: string; setBlacklist: (v: string) => void;
   forwardEnabled: boolean; setForwardEnabled: (v: boolean) => void;
@@ -157,7 +156,7 @@ export function SettingsSections(props: SettingsSectionsProps) {
     listPreview, setListPreview,
     autoSignature, setAutoSignature, collapseReplyQuote, setCollapseReplyQuote, landing, setLanding,
     prefs, setAi, setNotifications,
-    displayedName, setDisplayedName, signature, setSignature,
+    displayedName, setDisplayedName,
     whitelist, setWhitelist, blacklist, setBlacklist,
     forwardEnabled, setForwardEnabled, forwardDestination, setForwardDestination, forwardKeep, setForwardKeep,
     replyEnabled, setReplyEnabled, replySubject, setReplySubject, replyBody, setReplyBody,
@@ -253,7 +252,6 @@ export function SettingsSections(props: SettingsSectionsProps) {
                 t={t}
                 profile={profile}
                 displayedName={displayedName} setDisplayedName={setDisplayedName}
-                signature={signature} setSignature={setSignature}
                 autoSignature={autoSignature} setAutoSignature={setAutoSignature}
               />
             )}

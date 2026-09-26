@@ -6,6 +6,7 @@ import type {
   DelegationListing,
   Me,
   MeSettings,
+  Signature,
   TotpStatus,
 } from "@mailez/types";
 
@@ -172,6 +173,28 @@ export const meLogins = () => api<RecentLogin[]>("/me/logins");
 
 export const updateMeSettings = (body: Partial<MeSettings>) =>
   apiPut("/me/settings", body);
+
+export const signatureList = () => api<Signature[]>("/me/signatures");
+
+export type SignatureInput = {
+  name: string;
+  identity_email?: string;
+  body_html: string;
+  default_for_new?: boolean;
+  default_for_reply?: boolean;
+};
+
+export const signatureCreate = (body: SignatureInput) =>
+  apiPost<Signature>("/me/signatures", body);
+
+export const signatureUpdate = (id: number, body: SignatureInput) =>
+  apiPut<Signature>(`/me/signatures/${id}`, body);
+
+export const signatureDelete = (id: number) =>
+  api<void>(`/me/signatures/${id}`, { method: "DELETE" });
+
+export const signatureSetDefault = (id: number, kind: "new" | "reply", enabled: boolean) =>
+  apiPut<Signature>(`/me/signatures/${id}/default`, { kind, enabled });
 
 export const changePassword = (oldPw: string, newPw: string) =>
   api("/me/password", { method: "PUT", body: JSON.stringify({ old_pw: oldPw, new_pw: newPw }) });

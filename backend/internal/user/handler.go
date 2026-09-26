@@ -25,6 +25,7 @@ func RegisterPublic(r fiber.Router, app *core.App) {
 // Register mounts the authenticated user-domain routes.
 func (h *Handler) Register(r fiber.Router) {
 	h.registerMe(r)
+	h.registerSignatures(r)
 	h.registerTotp(r)
 	h.registerWebauthn(r)
 	h.registerPGP(r)

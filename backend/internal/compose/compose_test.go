@@ -28,6 +28,8 @@ type fakeGateway struct {
 	mail.Gateway
 	sentTo     []string
 	sentCc     []string
+	sentText   string
+	sentHTML   string
 	sentAttach []mail.Attachment
 	savedTo    []string
 	savedBcc   []string
@@ -39,6 +41,8 @@ func (f *fakeGateway) With(dial mail.Dial) mail.Gateway { return f }
 func (f *fakeGateway) Send(email, token, from string, to, cc, bcc []string, subject, text, html string, attachments []mail.Attachment, extra ...mail.Header) error {
 	f.sentTo = to
 	f.sentCc = cc
+	f.sentText = text
+	f.sentHTML = html
 	f.sentAttach = attachments
 	return nil
 }

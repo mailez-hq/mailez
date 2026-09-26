@@ -382,6 +382,19 @@ var migrations = []migration{
 			return db.AutoMigrate(&BackupRun{})
 		},
 	},
+	{
+		ID: "20261023_signatures",
+		Up: func(db *gorm.DB) error {
+			if err := db.AutoMigrate(&Signature{}); err != nil {
+				return err
+			}
+			return backfillSignatures(db)
+		},
+	},
+	{
+		ID: "20261024_org_footer",
+		Up: func(db *gorm.DB) error { return db.AutoMigrate(&OrgFooter{}) },
+	},
 }
 
 // Migrate applies pending migrations in order and records them in

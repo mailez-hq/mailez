@@ -23,6 +23,7 @@ import {
   Server,
   Settings,
   ShieldCheck,
+  Stamp,
   Users,
   UsersRound,
 } from "lucide-react";
@@ -83,6 +84,7 @@ const navGroups: { key: string; items: NavItem[] }[] = [
     items: [
       // Approvers (regular users listed on hold rules) also need the center.
       { href: "/dlp", key: "dlp", roles: ["admin", "user"], icon: ShieldAlert },
+      { href: "/org-footer", key: "orgFooter", roles: ["admin"], icon: Stamp },
       { href: "/archive", key: "archive", roles: ["admin"], icon: Archive },
       { href: "/audit", key: "audit", roles: ["admin"], icon: ScrollText },
     ],
@@ -100,7 +102,7 @@ const navGroups: { key: string; items: NavItem[] }[] = [
 // Paid-edition-only sections must not surface in the community build (their
 // CE routes render "not enabled" placeholders). Page-level placeholders still
 // catch direct deep links; the module filter only hides the navigation.
-const EE_NAV_HREFS: ReadonlySet<string> = new Set(["/announcement", "/archive", "/dlp", "/reports"]);
+const EE_NAV_HREFS: ReadonlySet<string> = new Set(["/announcement", "/archive", "/dlp", "/reports", "/org-footer"]);
 
 function roleLabel(me: Me) {
   if (me.global_admin) return "admin";

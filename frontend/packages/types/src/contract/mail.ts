@@ -139,7 +139,23 @@ export type MailIdentity = {
   name: string;
   dkim_enabled: boolean;
   signature?: string;
+  signature_id?: number;
+  signature_html?: string;
   delegated?: boolean;
+};
+
+export type Signature = {
+  id: number;
+  user_email: string;
+  identity_email: string;
+  name: string;
+  body_html: string;
+  body_text: string;
+  default_for_new: boolean;
+  default_for_reply: boolean;
+  created_at: string;
+  updated_at?: string | null;
+  comment: string;
 };
 
 // MailDelegation is a mailbox-sharing grant: the owner lets a delegate send

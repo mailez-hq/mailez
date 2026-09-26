@@ -15,6 +15,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&Alternative{},
 		&Relay{},
 		&User{},
+		&Signature{},
+		&OrgFooter{},
 		&Alias{},
 		&Token{},
 		&Fetch{},

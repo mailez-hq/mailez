@@ -1,21 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import {
   aiComposeDraft, aiComposeStream, aiDraft, aiDraftNew,
   contacts, mailDelete, mailIdentities, mailSaveDraft, mailSend, mailUndoSend, mailMerge,
   pgpEncrypt, pgpLookup, pgpSign,
+  signatureList,
   uploadLargeAttachment,
   type Contact, type DraftTone, type MailIdentity, type MailMessage, type Me, type OutboundAttachment,
+  type Signature,
 } from "@/lib/api";
 import {
   MAX_ATTACHMENT_BYTES,
+  appendSignatureHTML,
+  buildSignatureHTML,
   escHtml,
   normalizeQuoteBody,
   readFileAsBase64,
+  spliceSignatureText,
   stripCollapseMarkers,
+  swapSignatureHTML,
   textToHtml,
 } from "@/components/mailbox/mail-utils";
 import { composeSignature } from "@/lib/compose-signature";
@@ -109,6 +115,7 @@ export function useCompose({
   const [allContacts, setAllContacts] = useState<Contact[] | null>(null);
   const [identities, setIdentities] = useState<MailIdentity[]>([]);
   const [from, setFrom] = useState("");
+  const [signatures, setSignatures] = useState<Signature[]>([]);
 
   const toInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -120,6 +127,7 @@ export function useCompose({
     attachments: OutboundAttachment[]; uid: number | null;
   } | null>(null);
   const draftUidRef = useRef<number | null>(null);
+  const sigTextRef = useRef<string | null>(null);
   // Threading headers of the message this compose session replies to, so
   // full-compose replies stay in the conversation exactly like quick replies.
   const replyHeadersRef = useRef<{ inReplyTo: string; references: string } | null>(null);
@@ -159,7 +167,7 @@ export function useCompose({
   });
 
   // load the From identities (own address + aliases with DKIM status)
-  useEffect(() => {
+  const refreshIdentities = useCallback(() => {
     mailIdentities()
       .then((ids) => {
         setIdentities(ids);
@@ -167,6 +175,18 @@ export function useCompose({
       })
       .catch(() => setFrom(me.email));
   }, [me.email]);
+
+  const refreshSignatures = useCallback(() => {
+    signatureList().then(setSignatures).catch(() => setSignatures([]));
+  }, []);
+
+  useEffect(() => {
+    refreshIdentities();
+  }, [refreshIdentities]);
+
+  useEffect(() => {
+    refreshSignatures();
+  }, [refreshSignatures]);
 
   // quoteText builds the quoted original message used in replies/forwards.
   const quoteText = (d: MailMessage) => {
@@ -356,6 +376,8 @@ export function useCompose({
     replyHeadersRef.current = replyHeaders ?? null;
     setComposeError("");
     setComposeNotice("");
+    refreshIdentities();
+    refreshSignatures();
     // A bare "Write" right after closing a draft restores the saved content
     // instead of starting from scratch (the close path persisted it).
     if (!toAddr && !subj && !html && !text && lastDraftRef.current) {
@@ -371,6 +393,7 @@ export function useCompose({
       setSubject(s.subject);
       setBody(s.body);
       setBodyText(s.bodyText);
+      rememberSigText(s.bodyText);
       setSignOn(false);
       setEncryptOn(false);
       setDraftSaved(false);
@@ -383,18 +406,18 @@ export function useCompose({
       return;
     }
     const identity = identities.find((i) => i.email === from);
-    const sig = prefs.autoSignature
-      ? identity?.signature?.trim() || me.signature?.trim()
-      : "";
+    const sig = prefs.autoSignature ? signatureFor(identity, me.signature) : null;
     let finalHtml = html;
     let finalText = text;
     if (sig) {
-      const sigHtml = sig
-        .split("\n")
-        .map((l) => (l.trim() ? `<p>${escHtml(l)}</p>` : "<p><br></p>"))
-        .join("");
-      finalHtml = `${html}<p><br></p><p>--</p>${sigHtml}`;
-      finalText = text ? `${text}\n\n-- \n${sig}` : `-- \n${sig}`;
+      finalHtml = replyTarget
+        ? `${buildSignatureHTML(sig.id, sig.html)}<p><br></p>${html}`
+        : appendSignatureHTML(html, sig.id, sig.html);
+      const block = `-- \n${sig.text}`;
+      finalText = spliceSignatureText(text, null, block, replyTarget);
+      sigTextRef.current = block;
+    } else {
+      sigTextRef.current = null;
     }
     const parsedTo = toAddr ? toAddr.split(",").map((s) => s.trim()).filter(Boolean) : [];
     setTo(parsedTo);
@@ -511,33 +534,58 @@ export function useCompose({
     );
   }
 
-  // Swapping the From identity replaces the appended signature in place.
-  function applySignature(text: string, html: string, sig: string) {
-    const sigHtml = sig
-      .split("\n")
-      .map((l) => (l.trim() ? `<p>${escHtml(l)}</p>` : "<p><br></p>"))
-      .join("");
-    const cleanText = text.replace(/\n\n-- \n[\s\S]*$/, "");
-    const marker = "<p><br></p><p>--</p>";
-    const cleanHtml = (() => {
-      const idx = html.lastIndexOf(marker);
-      return idx >= 0 ? html.slice(0, idx) : html;
-    })();
+  function signatureFor(
+    identity: MailIdentity | undefined,
+    legacy: string | undefined,
+  ): { id: number | null; html: string; text: string } | null {
+    const html = identity?.signature_html?.trim();
+    const text = (identity?.signature || legacy || "").trim();
+    if (html) return { id: identity?.signature_id ?? null, html, text };
+    if (!text) return null;
     return {
-      text: cleanText ? `${cleanText}\n\n-- \n${sig}` : `-- \n${sig}`,
-      html: `${cleanHtml}${marker}${sigHtml}`,
+      id: null,
+      html: text
+        .split("\n")
+        .map((l) => (l.trim() ? `<p>${escHtml(l)}</p>` : "<p><br></p>"))
+        .join(""),
+      text,
     };
+  }
+
+  function rememberSigText(text: string) {
+    sigTextRef.current = null;
+    const candidates: string[] = [];
+    for (const idn of identities) {
+      const sig = signatureFor(idn, me.signature);
+      if (sig?.text) candidates.push(sig.text);
+    }
+    for (const row of signatures) if (row.body_text) candidates.push(row.body_text);
+    for (const body of candidates) {
+      const block = `-- \n${body}`;
+      if (text.startsWith(block) || text.endsWith(block)) {
+        sigTextRef.current = block;
+        return;
+      }
+    }
+  }
+
+  function applySignature(sig: { id: number | null; html: string; text: string } | null) {
+    const above = hasReplyTarget;
+    setBody((prev) => swapSignatureHTML(prev, sig?.id ?? null, sig?.html ?? "", above));
+    const block = sig && sig.text ? `-- \n${sig.text}` : null;
+    setBodyText((prev) => spliceSignatureText(prev, sigTextRef.current, block, above));
+    sigTextRef.current = block;
   }
 
   function selectIdentity(email: string) {
     setFrom(email);
     const idn = identities.find((i) => i.email === email);
-    const sig = prefs.autoSignature ? idn?.signature?.trim() : "";
-    if (sig) {
-      const next = applySignature(bodyText, body, sig);
-      setBodyText(next.text);
-      setBody(next.html);
-    }
+    applySignature(prefs.autoSignature ? signatureFor(idn, me.signature) : null);
+  }
+
+  function selectSignature(id: number | null) {
+    const sig = id == null ? null : signatures.find((s) => s.id === id) ?? null;
+    applySignature(sig ? { id: sig.id, html: sig.body_html, text: sig.body_text } : null);
   }
 
   // Recipient auto-suggest: lazily load the address book once and match the
@@ -588,6 +636,7 @@ export function useCompose({
     setSubject(m.subject || "");
     setBody(html);
     setBodyText(text);
+    rememberSigText(text);
     setSignOn(false);
     setEncryptOn(false);
     setDraftSaved(false);
@@ -1015,6 +1064,10 @@ export function useCompose({
     identities,
     from,
     selectIdentity,
+    signatures,
+    selectSignature,
+    refreshIdentities,
+    refreshSignatures,
     toInputRef, fileInputRef,
     quoteText,
     saveDraftNow,

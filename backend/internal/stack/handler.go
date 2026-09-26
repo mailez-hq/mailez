@@ -67,4 +67,5 @@ func (h *Handler) Register(r fiber.Router) {
 	h.registerFetch(r)
 	h.registerNotify(r)
 	h.registerAutoconfig(r)
+	h.registerOrgFooter(r)
 }

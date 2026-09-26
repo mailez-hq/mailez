@@ -1,6 +1,7 @@
 {
   "common": {
     "save": "Save",
+    "saving": "Saving…",
     "create": "Create",
     "edit": "Edit",
     "delete": "Delete",
@@ -47,6 +48,7 @@
     "audit": "Audit",
     "archive": "Archive",
     "dlp": "Approval / DLP",
+    "orgFooter": "Org footer",
     "config": "Config",
     "backups": "Backups",
     "groupOverview": "Overview & Monitoring",
@@ -581,6 +583,27 @@
     "queue": "Current queue depth {n}",
     "noData": "No samples yet.",
     "samplingOff": "Engine metrics sampling is not configured (MAILEZ_ENGINE_METRICS_URL), the report is empty."
+  },
+  "orgFooter": {
+    "title": "Organization footer",
+    "description": "A footer (disclaimer) appended to every message sent as this domain. Senders cannot edit or remove it: the server adds it after the personal signature.",
+    "editor": "Footer content",
+    "editorHint": "HTML is supported. The server sanitises it on save and keeps colours, fonts and sizes.",
+    "domain": "Domain",
+    "body": "Footer HTML",
+    "bodyPlaceholder": "<p>This message is intended only for the named recipient and may contain confidential information.</p>",
+    "bodyHint": "Empty and saved disables the footer; a disabled domain gets nothing appended.",
+    "enabled": "Enabled",
+    "enabledHint": "While enabled, mail sent as this domain carries the footer.",
+    "configured": "Configured domains",
+    "configuredHint": "Only enabled domains actually add a footer.",
+    "none": "No organization footer configured yet.",
+    "disabled": "Disabled",
+    "noDomains": "No domains yet — add one under Domains first.",
+    "savedEnabled": "Saved and enabled",
+    "savedDisabled": "Saved (not enabled)",
+    "loadFailed": "Could not load",
+    "saveFailed": "Could not save"
   },
   "config": {
     "title": "Configuration",

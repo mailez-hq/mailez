@@ -113,7 +113,6 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
   }
 
   const [displayedName, setDisplayedName] = useState("");
-  const [signature, setSignature] = useState("");
   const [whitelist, setWhitelist] = useState("");
   const [blacklist, setBlacklist] = useState("");
   const [forwardEnabled, setForwardEnabled] = useState(false);
@@ -233,7 +232,6 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
     meProfile().then((p) => {
       setProfile(p);
       setDisplayedName(p.displayed_name);
-      setSignature(p.signature || "");
       setWhitelist(p.whitelist || "");
       setBlacklist(p.blacklist || "");
       setForwardEnabled(p.forward_enabled);
@@ -256,7 +254,6 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
     try {
       await updateMeSettings({
         displayed_name: displayedName,
-        signature,
         whitelist,
         blacklist,
         forward_enabled: forwardEnabled,
@@ -700,8 +697,6 @@ export function MailSettings({ open, onOpenChange, initialSection = "appearance"
               setNotifications={setNotifications}
               displayedName={displayedName}
               setDisplayedName={setDisplayedName}
-              signature={signature}
-              setSignature={setSignature}
               whitelist={whitelist}
               setWhitelist={setWhitelist}
               blacklist={blacklist}

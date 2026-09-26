@@ -1,6 +1,9 @@
 package mail
 
 import (
+	"regexp"
+	"strings"
+
 	"github.com/microcosm-cc/bluemonday"
 )
 
@@ -35,4 +38,68 @@ func SanitizeHTML(html string) string {
 		return ""
 	}
 	return sanitizeHTMLPolicy().Sanitize(html)
+}
+
+func sanitizeSignaturePolicy() *bluemonday.Policy {
+	p := sanitizeHTMLPolicy()
+	p.AllowAttrs("style").Globally()
+	p.AllowAttrs("bgcolor").OnElements("td", "th", "table")
+	return p
+}
+
+func SanitizeSignatureHTML(html string) string {
+	if html == "" {
+		return ""
+	}
+	return sanitizeSignatureStyles(sanitizeSignaturePolicy().Sanitize(html))
+}
+
+var signatureStyleAttr = regexp.MustCompile(`(?i)\sstyle\s*=\s*"([^"]*)"`)
+
+var signatureStyleAllowedProps = map[string]bool{
+	"color": true, "background": true, "background-color": true,
+	"font-family": true, "font-size": true, "font-style": true, "font-weight": true,
+	"text-align": true, "text-decoration": true, "text-transform": true, "line-height": true,
+	"letter-spacing": true, "vertical-align": true, "white-space": true,
+	"border": true, "border-top": true, "border-right": true, "border-bottom": true,
+	"border-left": true, "border-color": true, "border-style": true, "border-width": true,
+	"border-radius": true, "border-collapse": true, "border-spacing": true,
+	"padding": true, "padding-top": true, "padding-right": true, "padding-bottom": true, "padding-left": true,
+	"margin": true, "margin-top": true, "margin-right": true, "margin-bottom": true, "margin-left": true,
+	"width": true, "height": true, "max-width": true, "min-width": true,
+}
+
+var signatureStyleUnsafeValue = regexp.MustCompile(
+	`(?i)(url\s*\(|expression\s*\(|javascript:|vbscript:|@import|<|>|\\|/\*)`,
+)
+
+func sanitizeSignatureStyles(html string) string {
+	return signatureStyleAttr.ReplaceAllStringFunc(html, func(match string) string {
+		parts := signatureStyleAttr.FindStringSubmatch(match)
+		kept := filterSignatureStyle(parts[1])
+		if kept == "" {
+			return ""
+		}
+		return ` style="` + kept + `"`
+	})
+}
+
+func filterSignatureStyle(decls string) string {
+	kept := make([]string, 0, 4)
+	for _, decl := range strings.Split(decls, ";") {
+		prop, value, ok := strings.Cut(decl, ":")
+		if !ok {
+			continue
+		}
+		prop = strings.ToLower(strings.TrimSpace(prop))
+		value = strings.TrimSpace(value)
+		if !signatureStyleAllowedProps[prop] || value == "" {
+			continue
+		}
+		if signatureStyleUnsafeValue.MatchString(value) {
+			continue
+		}
+		kept = append(kept, prop+": "+value)
+	}
+	return strings.Join(kept, "; ")
 }

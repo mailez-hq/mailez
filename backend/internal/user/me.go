@@ -26,7 +26,10 @@ func (h *Handler) registerMe(r fiber.Router) {
 // @Failure 401 {object} map[string]interface{}
 // @Router /me [get]
 func (h *Handler) meProfile(c *fiber.Ctx) error {
-	return c.JSON(currentUser(c))
+	u := currentUser(c)
+	out := *u
+	out.Signature = h.legacySignatureText(u.Email)
+	return c.JSON(out)
 }
 
 // meSettingsIn are the fields a user may manage for themselves.
@@ -99,7 +102,9 @@ func (h *Handler) meUpdateSettings(c *fiber.Ctx) error {
 		u.SpamThreshold = *in.SpamThreshold
 	}
 	if in.Signature != nil {
-		u.Signature = *in.Signature
+		if err := h.saveLegacySignature(u, *in.Signature); err != nil {
+			return core.Fail(c, 400, err, "update signature failed")
+		}
 	}
 	if in.Whitelist != nil {
 		u.Whitelist = *in.Whitelist
