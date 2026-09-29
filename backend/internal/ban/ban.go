@@ -99,10 +99,20 @@ func (e *Engine) whitelisted(ip string) bool {
 	return false
 }
 
+// attributable reports whether ip identifies a source at all. An empty or
+// unparseable value must never become a ban subject: stored as "" it would
+// compare equal to every other request that arrives without a resolved
+// source (the stack auth endpoint treats a missing Client-Ip header that
+// way), so one unattributed failure would lock out every unattributed
+// login -- including the mail engine's own service-to-service calls.
+func attributable(ip string) bool {
+	return net.ParseIP(ip) != nil
+}
+
 // Active reports whether ip is currently banned. Database errors fail open:
 // a broken backend must not lock every user out.
 func (e *Engine) Active(ctx context.Context, ip string) bool {
-	if e == nil || e.max <= 0 || e.Count == nil || e.DB == nil || e.whitelisted(ip) {
+	if e == nil || e.max <= 0 || e.Count == nil || e.DB == nil || !attributable(ip) || e.whitelisted(ip) {
 		return false
 	}
 	var n int64
@@ -117,7 +127,7 @@ func (e *Engine) Active(ctx context.Context, ip string) bool {
 // Failure records an authentication failure from ip on surface; when the
 // windowed count reaches the threshold the IP is banned.
 func (e *Engine) Failure(ctx context.Context, ip, surface string) {
-	if e == nil || e.max <= 0 || e.Count == nil || e.DB == nil || e.whitelisted(ip) {
+	if e == nil || e.max <= 0 || e.Count == nil || e.DB == nil || !attributable(ip) || e.whitelisted(ip) {
 		return
 	}
 	n, err := e.Count.Incr(ctx, failKeyPrefix+ip, e.find)

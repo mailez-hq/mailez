@@ -182,3 +182,82 @@ func TestRecentCount(t *testing.T) {
 		t.Fatalf("recent count: %d %v", n, err)
 	}
 }
+
+// An auth attempt with no resolvable source must never be banned, and must
+// never create a ban row. Rows keyed on "" compare equal to every other
+// unattributed request, so one such row locks out every unattributed login,
+// including the mail engine's own service-to-service calls.
+func TestUnattributableNeverBans(t *testing.T) {
+	ctx := context.Background()
+	e := New(newEngineDB(t), newMemCounter(), testCfg(""))
+
+	for i := 0; i < 10; i++ {
+		e.Failure(ctx, "", "imap")
+	}
+
+	var n int64
+	if err := e.DB.Model(&models.BanRecord{}).Where("ip = ?", "").Count(&n).Error; err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("empty source IP created %d ban row(s)", n)
+	}
+	if e.Active(ctx, "") {
+		t.Fatal("empty source IP reported as banned")
+	}
+}
+
+// Same for a value that is present but not an IP.
+func TestMalformedSourceNeverBans(t *testing.T) {
+	ctx := context.Background()
+	e := New(newEngineDB(t), newMemCounter(), testCfg(""))
+
+	for _, ip := range []string{"not-an-ip", "999.999.999.999", " "} {
+		for i := 0; i < 10; i++ {
+			e.Failure(ctx, ip, "imap")
+		}
+		if e.Active(ctx, ip) {
+			t.Fatalf("%q reported as banned", ip)
+		}
+	}
+
+	var n int64
+	if err := e.DB.Model(&models.BanRecord{}).Count(&n).Error; err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("malformed source IPs created %d ban row(s)", n)
+	}
+}
+
+// A stale row already keyed on "" -- written before the guard existed, or by
+// an older build -- must not lock out an unattributed login.
+func TestPreExistingEmptyRowDoesNotBlock(t *testing.T) {
+	ctx := context.Background()
+	e := New(newEngineDB(t), newMemCounter(), testCfg(""))
+
+	if err := e.DB.Create(&models.BanRecord{
+		IP:      "",
+		Surface: "smtp",
+		Failed:  20,
+		Until:   time.Now().Add(time.Hour),
+	}).Error; err != nil {
+		t.Fatalf("seed row: %v", err)
+	}
+
+	if e.Active(ctx, "") {
+		t.Fatal("legacy empty-IP row still gates unattributed logins")
+	}
+	// A real attacker is still gated.
+	if err := e.DB.Create(&models.BanRecord{
+		IP:      "203.0.113.20",
+		Surface: "smtp",
+		Failed:  20,
+		Until:   time.Now().Add(time.Hour),
+	}).Error; err != nil {
+		t.Fatalf("seed row: %v", err)
+	}
+	if !e.Active(ctx, "203.0.113.20") {
+		t.Fatal("attributable ban no longer enforced")
+	}
+}
