@@ -71,8 +71,9 @@ git for-each-ref --format='%(refname)' refs/stash refs/notes refs/replace refs/t
 MAILMAP="${EXPORT_DIR}.mailmap"
 cat > "${MAILMAP}" <<'EOF'
 Guan <guan.shiliang@gmail.com> guanshiliang <guan.shiliang@chinaott.net>
+zerocxq <zerocxq@gmail.com>
 EOF
-bad="$(git log --all --format='%ae' | sort -u | grep -v -x -E 'guan\.shiliang@gmail\.com|guan\.shiliang@chinaott\.net' || true)"
+bad="$(git log --all --format='%ae' | sort -u | grep -v -x -E 'guan\.shiliang@gmail\.com|guan\.shiliang@chinaott\.net|zerocxq@gmail\.com' || true)"
 if [ -n "${bad}" ]; then
   echo "export-ce: unmapped author email(s) — add a mailmap line first:" >&2
   echo "${bad}" >&2
