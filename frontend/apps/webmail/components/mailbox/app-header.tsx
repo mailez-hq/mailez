@@ -9,7 +9,7 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { FolderSearch, LogOut, Menu, Search, Settings, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { ExternalLink, FolderSearch, LogOut, Menu, Search, Settings, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -24,9 +24,13 @@ import { Logo } from "@/components/logo";
 import { useBrand } from "@/lib/use-brand";
 import { cn } from "@/lib/utils";
 
+// /admin behind nginx in deployments; NEXT_PUBLIC_ADMIN_URL overrides it in dev.
+const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL || "/admin";
+
 export function AppHeader({
   email,
   displayName,
+  isAdmin,
   query,
   onQueryChange,
   onSearchSubmit,
@@ -44,6 +48,8 @@ export function AppHeader({
 }: {
   email: string;
   displayName?: string;
+  /** Global admins only. */
+  isAdmin?: boolean;
   query: string;
   onQueryChange: (q: string) => void;
   onSearchSubmit: () => void;
@@ -180,6 +186,17 @@ export function AppHeader({
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-1">
+        {isAdmin && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => window.open(ADMIN_URL, "_blank", "noopener,noreferrer")}
+            title={t("adminConsole")}
+            aria-label={t("adminConsole")}
+          >
+            <ExternalLink className="size-4" />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon-sm"

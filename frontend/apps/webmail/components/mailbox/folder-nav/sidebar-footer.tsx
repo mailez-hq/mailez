@@ -1,30 +1,12 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import {
-  CalendarDays,
-  Ellipsis,
-  ExternalLink,
-  Filter,
-  HardDrive,
-  Users,
-} from "lucide-react";
+import { CalendarDays, Filter, HardDrive, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { cn } from "@/lib/utils";
 
-// The admin console lives behind the same nginx front in deployments (/admin);
-// local dev can override with NEXT_PUBLIC_ADMIN_URL (e.g. http://localhost:3000).
-const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL || "/admin";
-
 export function SidebarFooter({
-  isAdmin,
   quotaPercent,
   quotaBarColor,
   onContacts,
@@ -32,8 +14,6 @@ export function SidebarFooter({
   onDrive,
   onSieve,
 }: {
-  /** Global admins only — everyone else never sees the console entry. */
-  isAdmin?: boolean;
   quotaPercent: number | null;
   quotaBarColor: string;
   onContacts: () => void;
@@ -61,31 +41,9 @@ export function SidebarFooter({
         <Button variant="ghost" size="sm" onClick={onDrive} title={t("drive")}>
           <HardDrive className="size-4" />
         </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant="ghost" size="sm" title={t("more")}>
-                <Ellipsis className="size-4" />
-              </Button>
-            }
-          />
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onSieve}>
-              <Filter className="size-4" />
-              {t("filterRules")}
-            </DropdownMenuItem>
-            {/* Admin console requires global-admin, so the entry is hidden
-                for regular users and delegated mailboxes alike. */}
-            {isAdmin && (
-              <DropdownMenuItem
-                onClick={() => window.open(ADMIN_URL, "_blank", "noopener,noreferrer")}
-              >
-                <ExternalLink className="size-4" />
-                {t("adminConsole")}
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button variant="ghost" size="sm" onClick={onSieve} title={t("filterRules")}>
+          <Filter className="size-4" />
+        </Button>
       </div>
       {quotaPercent !== null && (
         <div className="mt-1.5 px-3">
