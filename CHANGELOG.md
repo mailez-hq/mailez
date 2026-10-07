@@ -6,6 +6,21 @@ All notable changes to mailez are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Composing supports multiple rich-text signatures: an account keeps a list
+  of signatures (HTML with a plain-text fallback) and the compose panel picks
+  one per message. Administrators can also publish an organization-wide
+  footer from the admin console; the engine appends it, when enabled for the
+  sender's domain, to outbound mail
+
+### Changed
+
+- The webmail navigation chrome: the admin console entry moved from the
+  sidebar footer's overflow menu to the header (top right, admins only), and
+  the sidebar footer shows filter rules as a direct icon in the icon row, so
+  the "…" overflow menu is gone
+
 ### Fixed
 
 - Web push missed the first message after a subscription or a restart: the
@@ -66,6 +81,22 @@ All notable changes to mailez are documented here. The format follows
   disables an account that left the directory. The call fans out to every
   address the engine service resolves to, because each replica keeps its own
   session table and a single call would only reach one of them
+- A burst of failed logins from an unattributable source locked out every
+  mail-protocol login. The ban engine keys failure counters and bans on the
+  source address, and a request with no resolvable address — the engine's own
+  service-to-service auth calls among them — was recorded as the empty
+  address; that ban row then matched every other unattributed request, so
+  twenty failures answered every IMAP/SMTP/POP3 login with LIMIT (webmail
+  showed a service error on every folder) and the escalation ladder kept the
+  ban alive while clients kept retrying. Unattributable sources are no longer
+  ban subjects, and the engine now presents the connecting client's address
+  on auth calls, so bans attribute to real sources again
+- Messages whose MIME tree nests `multipart/alternative` inside
+  `multipart/mixed` — the layout most mailers emit — rendered with a blank
+  body: body extraction walked a single level of multipart, so the nested
+  text and HTML parts were never found. The extractor now descends the whole
+  tree, honouring each part's own transfer encoding and charset; attachment,
+  calendar and charset handling are unchanged
 
 ## [1.0.1] - 2026-09-18
 
