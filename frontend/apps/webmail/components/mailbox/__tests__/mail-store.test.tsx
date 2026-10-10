@@ -348,4 +348,50 @@ describe("MailStore (characterization)", () => {
       window.localStorage.removeItem("mailez.prefs");
     }
   });
+
+  // Regression: forwarding must keep the original rich body and its
+  // attachments instead of degrading to a plain-text quote with no files.
+  it('forwardFrom carries the original HTML body and its attachments', async () => {
+    const { observe } = renderMailStore(null);
+    await waitFor(() => expect(observe().loading).toBe(false));
+
+    const msg = makeMsg({
+      uid: 5,
+      id: 'm5',
+      html_body: '<p>rich <b>body</b></p>',
+      text_body: 'rich body',
+      attachments: [
+        { filename: 'a.pdf', content_type: 'application/pdf', size: 3, data: 'YWJj' },
+      ],
+    });
+
+    await act(async () => {
+      observe().forwardFrom(msg);
+    });
+
+    expect(observe().composeOpen).toBe(true);
+    expect(observe().subject).toBe('Fwd: Hello');
+    // HTML body preferred, and the original attachments are carried over.
+    expect(observe().body).toContain('<b>body</b>');
+    expect(observe().attachments).toEqual([
+      { filename: 'a.pdf', content_type: 'application/pdf', size: 3, data: 'YWJj' },
+    ]);
+  });
+
+  // Regression: the plain-text-only case still works (no html_body).
+  it('forwardFrom falls back to the plain-text quote when there is no HTML body', async () => {
+    const { observe } = renderMailStore(null);
+    await waitFor(() => expect(observe().loading).toBe(false));
+
+    const msg = makeMsg({ uid: 6, id: 'm6', text_body: 'plain body' });
+
+    await act(async () => {
+      observe().forwardFrom(msg);
+    });
+
+    expect(observe().composeOpen).toBe(true);
+    expect(observe().body).toContain('plain body');
+    expect(observe().attachments).toEqual([]);
+  });
+
 });

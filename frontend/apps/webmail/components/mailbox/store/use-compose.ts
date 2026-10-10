@@ -524,14 +524,26 @@ export function useCompose({
     const from = m.from.map((a) => a.name || a.email).join(", ");
     const head = `---------- Forwarded message ----------\nFrom: ${from}\nDate: ${fmtDate(m.date)}\nSubject: ${m.subject}\n\n`;
     const quote = head + normalizeQuoteBody(m.text_body || "");
+    // Prefer the original HTML so rich formatting and inline images survive
+    // the forward; fall back to the plain-text quote when there is no
+    // html_body. Mirrors editDraft's html-first restore.
+    const html = m.html_body ? textToHtml(head) + m.html_body : textToHtml(quote);
+    // Carry the source attachments (only those whose payload is present),
+    // exactly like editDraft restores a draft's attachments.
+    const atts = (m.attachments || [])
+      .filter((a) => a.data)
+      .map((a) => ({ filename: a.filename, content_type: a.content_type, size: a.size, data: a.data as string }));
     openCompose(
       "",
       m.subject.startsWith("Fwd:") ? m.subject : `Fwd: ${m.subject}`,
-      textToHtml(quote),
+      html,
       quote,
       "to",
       true,
     );
+    // openCompose clears the attachment list; restore the forwarded message's
+    // attachments right after it opens (same .filter/.map guard editDraft uses).
+    setAttachments(atts);
   }
 
   function signatureFor(
@@ -690,14 +702,24 @@ export function useCompose({
     const from = detail.from.map((a) => a.name || a.email).join(", ");
     const head = `---------- Forwarded message ----------\nFrom: ${from}\nDate: ${fmtDate(detail.date)}\nSubject: ${detail.subject}\n\n`;
     const quote = head + normalizeQuoteBody(detail.text_body || "");
+    // Same html-first / carry-attachments rule as forwardFrom: preserve the
+    // original rich body and its attachments instead of forwarding a
+    // degraded plain-text quote.
+    const html = detail.html_body ? textToHtml(head) + detail.html_body : textToHtml(quote);
+    const atts = (detail.attachments || [])
+      .filter((a) => a.data)
+      .map((a) => ({ filename: a.filename, content_type: a.content_type, size: a.size, data: a.data as string }));
     openCompose(
       "",
       detail.subject.startsWith("Fwd:") ? detail.subject : `Fwd: ${detail.subject}`,
-      textToHtml(quote),
+      html,
       quote,
       "to",
       true,
     );
+    // openCompose clears the attachment list; restore the forwarded message's
+    // attachments right after it opens (same .filter/.map guard editDraft uses).
+    setAttachments(atts);
   }
 
   async function aiDraftReply() {
