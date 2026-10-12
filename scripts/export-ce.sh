@@ -73,8 +73,9 @@ cat > "${MAILMAP}" <<'EOF'
 Guan <guan.shiliang@gmail.com> guanshiliang <guan.shiliang@chinaott.net>
 zerocxq <zerocxq@gmail.com>
 FengHuangYuan <zerocxq@gmail.com> FengHuangYuan <zerocxq@5cm-s.com>
+FengHuangYuan <zerocxq@gmail.com> FengHuangYuan <123302586+FengHuangYuan@users.noreply.github.com>
 EOF
-bad="$(git log --all --format='%ae' | sort -u | grep -v -x -E 'guan\.shiliang@gmail\.com|guan\.shiliang@chinaott\.net|zerocxq@gmail\.com|zerocxq@5cm-s\.com' || true)"
+bad="$(git log --all --format='%ae' | sort -u | grep -v -x -E 'guan\.shiliang@gmail\.com|guan\.shiliang@chinaott\.net|zerocxq@gmail\.com|zerocxq@5cm-s\.com|123302586\+FengHuangYuan@users\.noreply\.github\.com' || true)"
 if [ -n "${bad}" ]; then
   echo "export-ce: unmapped author email(s) — add a mailmap line first:" >&2
   echo "${bad}" >&2
