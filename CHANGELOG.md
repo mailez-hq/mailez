@@ -28,6 +28,11 @@ All notable changes to mailez are documented here. The format follows
   that landed before that read was folded into the baseline and never pushed.
   A delivery receipt now announces its Inbox copies directly, without waiting
   for the unseen count to agree. Junk copies stay quiet
+- Forwarding dropped HTML formatting and attachments: the compose window opened
+  with a plain-text quote and no files even when the original had rich HTML and
+  attachments. Both forward entry points (`forward()` and `forwardFrom()`) now
+  prefer the original `html_body` (falling back to plain text) and carry over
+  the source message's attachments, mirroring how `editDraft()` restores drafts
 - `install.sh` reported success when seeding the admin account failed: the
   failure was downgraded to a `seed failed (maybe already seeded)` warning,
   which left a running stack with no admin account at all. A failed seed is
