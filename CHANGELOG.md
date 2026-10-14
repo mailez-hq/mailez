@@ -6,6 +6,8 @@ All notable changes to mailez are documented here. The format follows
 
 ## [Unreleased]
 
+## [v1.0.2] - 2026-10-14
+
 ### Added
 
 - Composing supports multiple rich-text signatures: an account keeps a list
