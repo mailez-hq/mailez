@@ -193,6 +193,10 @@ cd backend
 go run ./cmd/e2e    # sends a test mail, checks delivery, DKIM and spam filtering
 ```
 
+## One-click deploy
+
+[![Deploy on RepoCloud](https://d16t0pc4846x52.cloudfront.net/deploylobe.svg)](https://repocloud.io/details/mailez/)
+
 ## Tech stack (for developers)
 
 - Backend: Go + Fiber, GORM, Redis
